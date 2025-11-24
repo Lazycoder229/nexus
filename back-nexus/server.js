@@ -1,24 +1,25 @@
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
-const cookieParser = require("cookie-parser");
-require("dotenv").config();
+import express from "express";
+import cors from "cors";
+import bodyParser from "body-parser";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import cookieParser from "cookie-parser";
+import dotenv from "dotenv"; // ✅ ESM import
+import authRoutes from "./routes/authRoutes.js"; // your route file
 
-const facultyRoutes = require("./routes/faculty");
-const departmentRoutes = require("./routes/departments");
-const authRoutes = require("./routes/authRoutes");
+dotenv.config(); // load env variables
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Rate limiter
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100,
   message: "Too many requests from this IP, try again later",
 });
-// CORS first
+
+// CORS
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -28,22 +29,27 @@ app.use(
   })
 );
 
-// Secure HTTP headers
+// Security headers
 app.use(helmet());
 
-// Body parser
+// Body parser & cookies
 app.use(bodyParser.json());
 app.use(cookieParser());
-// Rate limiter last
+
+// Rate limiter
 app.use(limiter);
 
-// Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/faculty", facultyRoutes);
-app.use("/api/departments", departmentRoutes);
-
 // Root route
-app.get("/", (req, res) => res.send("ERP Backend running"));
+app.get("/", (req, res) => res.send("ERP Backendsdsds running"));
 
+// Auth routes
+app.use("/api/auth", authRoutes);
+// import bcrypt from "bcrypt";
+// const password = "admin123"; // plaintext password
+// const saltRounds = 10;
+
+// bcrypt.hash(password, saltRounds).then((hash) => {
+//   console.log("Bcrypt hash:", hash);
+// });
 // Start server
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

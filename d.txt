@@ -1,0 +1,18 @@
+Admin Portal
+Dashboard
+Department Management
+Student Information System
+Academic Management
+Attendance  Management
+Examination Management
+Finance& Acounting
+HR& pAYROLL
+lIBRARY Management
+Scholarship
+Event&Communication
+Inventory
+Reprts
+System Setting
+
+
+DepartmentMngt

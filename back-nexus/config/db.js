@@ -1,19 +1,16 @@
 // config/db.js
-const mysql = require("mysql2");
+import mysql from "mysql2/promise";
 
-const db = mysql.createConnection({
+const db = mysql.createPool({
   host: "localhost",
   user: "nexusbcc",
   password: "plantobe",
-  database: "nexusbcc",
+  database: "nexus",
+  waitForConnections: true,
+  connectionLimit: 10, // max 10 simultaneous connections
+  queueLimit: 0,
 });
 
-db.connect((err) => {
-  if (err) {
-    console.error("Database connection failed:", err);
-  } else {
-    console.log("Connected to MySQL database!");
-  }
-});
+console.log("Connected to MySQL database (pool)!");
 
-module.exports = db;
+export default db;
