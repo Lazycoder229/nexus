@@ -126,7 +126,7 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
     }
 
     try {
-      // 1️⃣ Send login request
+      // 1️ Send login request
       const { data } = await axios.post(
         "http://localhost:5000/api/auth/login",
         {
@@ -137,14 +137,14 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
 
       console.log("Login Response:", data);
 
-      // 2️⃣ Save JWT token & user info
+      // 2️Save JWT token & user info
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
       localStorage.setItem("userId", data.userId);
 
       alert(`Login successful! Role: ${data.role}`);
 
-      // 3️⃣ Redirect based on role
+      // 3️ Redirect based on role
       if (data.role === "Student") {
         navigate("/student/dashboard"); // make sure this route exists
       } else if (data.role === "Admin") {

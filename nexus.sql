@@ -130,9 +130,14 @@ CREATE TABLE courses (
     code VARCHAR(20) NOT NULL UNIQUE,              -- Course code (e.g., CS101)
     title VARCHAR(100) NOT NULL,                   -- Course title
     description TEXT,                              -- Optional course description
-    units INT DEFAULT 3,                            -- Number of credit units
+    units INT DEFAULT 3, 
+    hours INT NOT NULL,
+    type ENUM("Major","Minor") NOT NULL,                           -- Number of credit units
     department_id INT NOT NULL,                     -- FK to department offering the course
-    instructor_id INT,                              -- FK to faculty member teaching the course
+    instructor_id INT, 
+    semester_offer VARCHAR(100) NOT NULL,
+
+   status ENUM('Active', 'Inactive') NOT NULL                       -- FK to faculty member teaching the course
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (department_id) REFERENCES departments(department_id) ON DELETE CASCADE,
@@ -143,15 +148,26 @@ CREATE TABLE courses (
 -- 9. Optional: Student-Course Enrollment Table
 -- Many-to-Many mapping between students and courses
 -- ===========================
-CREATE TABLE enrollments (
-    enrollment_id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT NOT NULL,                        -- FK to users.user_id (Student)
-    course_id INT NOT NULL,                         -- FK to courses.course_id
-    semester VARCHAR(20),                           -- e.g., 'Fall 2025'
-    year INT,                                       -- Academic year
-    grade VARCHAR(5),                               -- Optional grade
+CREATE TABLE prerequisites (
+    prereq_link_id INT AUTO_INCREMENT PRIMARY KEY,
+    
+    -- The course that requires a prerequisite (e.g., CS201)
+    course_id INT NOT NULL, 
+    
+    -- The prerequisite course (e.g., CS101)
+    prereq_course_id INT NOT NULL, 
+    
+    
+    -- TRUE if the requirement can be taken concurrently
+    is_corequisite BOOLEAN DEFAULT FALSE NOT NULL,
+    
+    -- Ensure a course cannot be its own prerequisite
+    CHECK (course_id != prereq_course_id),
+    
+    -- A course cannot have the same prerequisite defined twice
+    UNIQUE KEY unique_prereq (course_id, prereq_course_id),
 
-    UNIQUE(student_id, course_id, semester, year), -- Prevent duplicate enrollment
-    FOREIGN KEY (student_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (course_id) REFERENCES courses(course_id) ON DELETE CASCADE
+    -- Define Foreign Keys to connect back to the courses table
+    FOREIGN KEY (course_id) REFERENCES courses(course_id) ON DELETE CASCADE,
+    FOREIGN KEY (prereq_course_id) REFERENCES courses(course_id) ON DELETE CASCADE
 );

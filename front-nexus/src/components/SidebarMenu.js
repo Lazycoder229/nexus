@@ -37,12 +37,12 @@ const Menu = {
         {
           label: "Course Management",
           icons: BookOpen,
-          link: "/admin_course_management",
+          link: "/admin/admin_course_management",
         },
         {
           label: "Pre-requisite Setup",
           icons: FileText,
-          link: "/admin_prerequisite",
+          link: "/admin/admin_prerequisite",
         },
         {
           label: "Program Offerings",

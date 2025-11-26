@@ -1305,7 +1305,7 @@ function UserManagement() {
           <div className="relative group">
             <button
               onClick={exportCSV}
-              className="p-2 border rounded-md bg-slate-100 border-slate-400 text-sm hover:bg-gray-100 transition"
+              className="p-2 border rounded-md  border-slate-400 text-sm hover:bg-gray-100 transition"
             >
               <FileDown size={18} />
             </button>
@@ -1321,7 +1321,7 @@ function UserManagement() {
           <div className="relative group">
             <button
               onClick={exportPDF}
-              className="p-2 border rounded-md text-sm bg-slate-100 border-slate-400 hover:bg-gray-100 transition"
+              className="p-2 border rounded-md text-sm  border-slate-400 hover:bg-gray-100 transition"
             >
               <FileText size={18} />
             </button>

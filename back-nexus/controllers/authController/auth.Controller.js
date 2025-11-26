@@ -120,7 +120,8 @@ export const registerEmployee = async (req, res) => {
     // Validate required fields
     if (!email || !password || !firstName || !lastName || !employeeId) {
       return res.status(400).json({
-        message: "Email, password, first name, last name, and employeeId are required",
+        message:
+          "Email, password, first name, last name, and employeeId are required",
       });
     }
 
@@ -168,10 +169,10 @@ export const registerEmployee = async (req, res) => {
   }
 };
 
-
 // Login
 export const loginUser = async (req, res) => {
   try {
+    console.log("REQ BODY:", req.body);
     const { email, password } = req.body;
     const user = await findUserByEmail(email);
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
