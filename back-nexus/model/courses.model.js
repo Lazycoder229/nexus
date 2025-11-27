@@ -12,16 +12,31 @@ export const getAllCourses = async () => {
         c.status,
         d.department_id,
         d.name AS department_name,
-
         c.instructor_id,
         CONCAT(u.first_name, ' ', u.last_name) AS instructor_name,
-
-       
         c.created_at
      FROM courses c
      LEFT JOIN departments d ON c.department_id = d.department_id
      LEFT JOIN users u ON c.instructor_id = u.user_id`
   );
+
+  // Fetch prerequisites for all courses
+  for (const course of rows) {
+    const [prereqs] = await db.query(
+      `SELECT 
+        p.prereq_link_id AS id,
+        p.prereq_course_id,
+        c2.code AS prereq_code,
+        c2.title AS prereq_title,
+        p.is_corequisite
+       FROM prerequisites p
+       JOIN courses c2 ON p.prereq_course_id = c2.course_id
+       WHERE p.course_id = ?`,
+      [course.id]
+    );
+    course.prerequisites = prereqs;
+  }
+
   return rows;
 };
 
@@ -45,6 +60,23 @@ export const getCourseById = async (id) => {
      WHERE c.course_id = ?`,
     [id]
   );
+
+  if (rows[0]) {
+    const [prereqs] = await db.query(
+      `SELECT 
+        p.prereq_link_id AS id,
+        p.prereq_course_id,
+        c2.code AS prereq_code,
+        c2.title AS prereq_title,
+        p.is_corequisite
+       FROM prerequisites p
+       JOIN courses c2 ON p.prereq_course_id = c2.course_id
+       WHERE p.course_id = ?`,
+      [id]
+    );
+    rows[0].prerequisites = prereqs;
+  }
+
   return rows[0];
 };
 

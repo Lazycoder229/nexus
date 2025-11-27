@@ -408,11 +408,14 @@ function UserManagement() {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get("http://localhost:5000/api/auth/all", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log("Fetched users:", response.data.users); // should log array
-      setUsers(response.data.users);
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/api/users`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      console.log("Fetched users:", response.data);
+      setUsers(response.data);
     } catch (error) {
       console.error(error);
     }
@@ -535,7 +538,7 @@ function UserManagement() {
         // STUDENT ACCOUNT CREATION
         if (selectedRole === "Student") {
           response = await axios.post(
-            "http://localhost:5000/api/auth/register",
+            `${import.meta.env.VITE_API_BASE_URL}/api/users/student`,
             formData
           );
         }
@@ -543,7 +546,7 @@ function UserManagement() {
         // EMPLOYEE / ADMIN / FACULTY / STAFF CREATION
         else {
           response = await axios.post(
-            "http://localhost:5000/api/auth/employee",
+            `${import.meta.env.VITE_API_BASE_URL}/api/users/employee`,
             formData
           );
         }
@@ -556,7 +559,7 @@ function UserManagement() {
         // STUDENT UPDATE
         if (selectedRole === "Student") {
           response = await axios.put(
-            `http://localhost:5000/api/auth/student/${userId}`,
+            `${import.meta.env.VITE_API_BASE_URL}/api/users/student/${userId}`,
             formData
           );
         }
@@ -564,7 +567,7 @@ function UserManagement() {
         // EMPLOYEE / ADMIN / FACULTY / STAFF UPDATE
         else {
           response = await axios.put(
-            `http://localhost:5000/api/auth/employee/${userId}`,
+            `${import.meta.env.VITE_API_BASE_URL}/api/users/employee/${userId}`,
             formData
           );
         }
@@ -639,7 +642,9 @@ function UserManagement() {
     if (!confirm("Delete this user? This action cannot be undone.")) return;
 
     try {
-      await axios.delete(`http://localhost:5000/api/auth/${userId}`);
+      await axios.delete(
+        `${import.meta.env.VITE_API_BASE_URL}/api/users/${userId}`
+      );
 
       setUsers((prev) => prev.filter((u) => u.user_id !== userId));
 

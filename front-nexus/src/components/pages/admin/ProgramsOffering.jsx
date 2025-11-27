@@ -11,10 +11,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  BookAIcon,
-  BookOpenText,
-  BookAlert,
-  EyeIcon,
+  GraduationCap,
+  BookOpen,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
@@ -63,47 +61,46 @@ const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
   </div>
 );
 
-// --- Modal Component ---
-const CourseModal = ({
+// --- Program Modal Component ---
+const ProgramModal = ({
   isOpen,
   onClose,
   onSubmit,
   mode,
   initialData,
   departments,
-  instructors,
 }) => {
   const [formData, setFormData] = useState({
     code: "",
-    title: "",
+    name: "",
     description: "",
-    units: 3,
+    degree_type: "Bachelor",
+    duration_years: 4,
     department_id: null,
-    instructor_id: null,
     status: "Active",
   });
+
   useEffect(() => {
     if (initialData) {
       setFormData({
         code: initialData.code || "",
-        title: initialData.title || "",
+        name: initialData.name || "",
         description: initialData.description || "",
-        units: initialData.units || 3,
+        degree_type: initialData.degree_type || "Bachelor",
+        duration_years: initialData.duration_years || 4,
         department_id: initialData.department_id || null,
-        instructor_id: initialData.instructor_id || null,
-        status: initialData?.status || "Active",
-        id: initialData.id, // <-- use id
+        status: initialData.status || "Active",
+        id: initialData.id,
       });
     } else {
       setFormData({
         code: "",
-        title: "",
+        name: "",
         description: "",
-        units: 3,
+        degree_type: "Bachelor",
+        duration_years: 4,
         department_id: null,
-        instructor_id: null,
         status: "Active",
-        id: null,
       });
     }
   }, [initialData]);
@@ -114,7 +111,6 @@ const CourseModal = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit(formData);
-    console.log("Form data being submitted:", formData);
     onClose();
   };
 
@@ -128,8 +124,8 @@ const CourseModal = ({
       >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold flex items-center gap-2">
-            <BookOpenText size={24} />
-            {mode === "add" ? "Add Course" : "Edit Course"}
+            <GraduationCap size={24} />
+            {mode === "add" ? "Add Program" : "Edit Program"}
           </h3>
         </div>
 
@@ -139,25 +135,29 @@ const CourseModal = ({
         >
           {/* Code */}
           <div>
-            <label className="block text-sm font-medium mb-1">Code</label>
+            <label className="block text-sm font-medium mb-1">
+              Program Code
+            </label>
             <input
               name="code"
               value={formData.code}
               onChange={handleChange}
-              placeholder="ex. CCS-2025"
+              placeholder="e.g. BSIT"
               required
               className="w-full px-3 py-1 rounded-md border border-slate-300"
             />
           </div>
 
-          {/* Title */}
+          {/* Name */}
           <div>
-            <label className="block text-sm font-medium mb-1">Title</label>
+            <label className="block text-sm font-medium mb-1">
+              Program Name
+            </label>
             <input
-              name="title"
-              value={formData.title}
+              name="name"
+              value={formData.name}
               onChange={handleChange}
-              placeholder="ex. Introduction to Programming"
+              placeholder="e.g. Information Technology"
               required
               className="w-full px-3 py-1 rounded-md border border-slate-300"
             />
@@ -165,27 +165,50 @@ const CourseModal = ({
 
           {/* Description */}
           <div className="md:col-span-2">
-            <label className="block text-sm font-small mb-1">Description</label>
+            <label className="block text-sm font-medium mb-1">
+              Description
+            </label>
             <textarea
               name="description"
               value={formData.description}
-              placeholder="Focus on INTRO"
               onChange={handleChange}
+              placeholder="Program description..."
               rows={3}
-              className="w-full px-3 py-1 border rounded-md  border-slate-300"
+              className="w-full px-3 py-1 border rounded-md border-slate-300"
             />
           </div>
 
-          {/* Units */}
+          {/* Degree Type */}
           <div>
-            <label className="block text-sm font-medium mb-1">Units</label>
+            <label className="block text-sm font-medium mb-1">
+              Degree Type
+            </label>
+            <select
+              name="degree_type"
+              value={formData.degree_type}
+              onChange={handleChange}
+              className="w-full px-3 py-1 rounded-md border border-slate-300"
+            >
+              <option value="Bachelor">Bachelor</option>
+              <option value="Associate">Associate</option>
+              <option value="Certificate">Certificate</option>
+              <option value="Diploma">Diploma</option>
+            </select>
+          </div>
+
+          {/* Duration */}
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Duration (Years)
+            </label>
             <input
-              name="units"
+              name="duration_years"
               type="number"
               min={1}
-              value={formData.units}
+              max={10}
+              value={formData.duration_years}
               onChange={handleChange}
-              className="w-full px-3 py-1  rounded-md border border-slate-300 "
+              className="w-full px-3 py-1 rounded-md border border-slate-300"
             />
           </div>
 
@@ -218,7 +241,7 @@ const CourseModal = ({
               styles={{
                 control: (base, state) => ({
                   ...base,
-                  borderColor: "#CBD5E1", // slate-300
+                  borderColor: "#CBD5E1",
                   boxShadow: state.isFocused ? "0 0 0 1px #CBD5E1" : "none",
                   "&:hover": { borderColor: "#CBD5E1" },
                   minHeight: "20px",
@@ -236,61 +259,7 @@ const CourseModal = ({
                   ...base,
                   backgroundColor: state.isFocused
                     ? "#2563EB"
-                    : base.backgroundColor, // blue on hover
-                  color: state.isFocused ? "white" : "black",
-                }),
-              }}
-            />
-          </div>
-
-          {/* Instructor */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Instructor</label>
-            <Select
-              value={
-                formData.instructor_id
-                  ? instructors
-                      .map((i) => ({
-                        value: i.user_id,
-                        label: `${i.first_name} ${i.last_name}`,
-                      }))
-                      .find((o) => o.value === formData.instructor_id)
-                  : null
-              }
-              onChange={(selected) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  instructor_id: selected ? selected.value : null,
-                }))
-              }
-              options={instructors.map((i) => ({
-                value: i.user_id,
-                label: `${i.first_name} ${i.last_name}`,
-              }))}
-              placeholder="Select instructor..."
-              isClearable
-              styles={{
-                control: (base, state) => ({
-                  ...base,
-                  borderColor: "#CBD5E1", // slate-300
-                  boxShadow: state.isFocused ? "0 0 0 1px #CBD5E1" : "none",
-                  "&:hover": { borderColor: "#CBD5E1" },
-                  minHeight: "20px",
-                  padding: "0px",
-                }),
-                valueContainer: (base) => ({
-                  ...base,
-                  padding: "0 4px",
-                }),
-                menu: (base) => ({
-                  ...base,
-                  zIndex: 9999,
-                }),
-                option: (base, state) => ({
-                  ...base,
-                  backgroundColor: state.isFocused
-                    ? "#2563EB"
-                    : base.backgroundColor, // blue on hover
+                    : base.backgroundColor,
                   color: state.isFocused ? "white" : "black",
                 }),
               }}
@@ -332,9 +301,10 @@ const CourseModal = ({
     </div>
   );
 };
-// --- Course View Modal ---
-const CourseViewModal = ({ isOpen, onClose, course }) => {
-  if (!isOpen || !course) return null;
+
+// --- Program View Modal ---
+const ProgramViewModal = ({ isOpen, onClose, program }) => {
+  if (!isOpen || !program) return null;
 
   return (
     <div
@@ -348,41 +318,42 @@ const CourseViewModal = ({ isOpen, onClose, course }) => {
         {/* Header */}
         <div className="flex flex-col items-center mb-6">
           <div className="bg-indigo-100 rounded-full p-4 mb-3">
-            <BookOpenText className="w-10 h-10 text-indigo-600" />
+            <GraduationCap className="w-10 h-10 text-indigo-600" />
           </div>
-          <h2 className="text-lg font-bold text-gray-900">{course.title}</h2>
-          <p className="text-sm text-gray-600">{course.code}</p>
+          <h2 className="text-lg font-bold text-gray-900">{program.name}</h2>
+          <p className="text-sm text-gray-600">{program.code}</p>
         </div>
 
-        {/* Course Details */}
+        {/* Program Details */}
         <div className="flex flex-col gap-4 border p-4 rounded-lg bg-gray-50">
           {/* Department */}
           <div>
             <span className="font-semibold text-gray-700">Department:</span>
             <p className="text-gray-900 mt-1">
-              {course.department_name || "N/A"}
+              {program.department_name || "N/A"}
             </p>
           </div>
 
-          {/* Instructor */}
+          {/* Degree Type */}
           <div>
-            <span className="font-semibold text-gray-700">Instructor:</span>
+            <span className="font-semibold text-gray-700">Degree Type:</span>
+            <p className="text-gray-900 mt-1">{program.degree_type}</p>
+          </div>
+
+          {/* Duration */}
+          <div>
+            <span className="font-semibold text-gray-700">Duration:</span>
             <p className="text-gray-900 mt-1">
-              {course.instructor_name || "N/A"}
+              {program.duration_years}{" "}
+              {program.duration_years === 1 ? "Year" : "Years"}
             </p>
-          </div>
-
-          {/* Units */}
-          <div>
-            <span className="font-semibold text-gray-700">Units:</span>
-            <p className="text-gray-900 mt-1">{course.units}</p>
           </div>
 
           {/* Status */}
           <div>
             <span className="font-semibold text-gray-700">Status:</span>
             <div className="mt-1">
-              <StatusBadge status={course.status} />
+              <StatusBadge status={program.status} />
             </div>
           </div>
 
@@ -390,29 +361,8 @@ const CourseViewModal = ({ isOpen, onClose, course }) => {
           <div>
             <span className="font-semibold text-gray-700">Description:</span>
             <p className="text-gray-900 mt-1">
-              {course.description || "No description"}
+              {program.description || "No description"}
             </p>
-          </div>
-
-          {/* Prerequisites */}
-          <div>
-            <span className="font-semibold text-gray-700">Prerequisites:</span>
-            <div className="mt-1">
-              {course.prerequisites && course.prerequisites.length ? (
-                <ul className="list-disc list-inside text-gray-900">
-                  {course.prerequisites.map((p) => (
-                    <li key={p.id || p.prereq_course_id}>
-                      {p.prereq_code
-                        ? `${p.prereq_code} - ${p.prereq_title}`
-                        : p.prereq_title || "N/A"}
-                      {p.is_corequisite ? " (Corequisite)" : ""}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-900 mt-1">None</p>
-              )}
-            </div>
           </div>
         </div>
 
@@ -431,28 +381,27 @@ const CourseViewModal = ({ isOpen, onClose, course }) => {
 };
 
 // --- Main Component ---
-const CourseManagement = () => {
-  const [courses, setCourses] = useState([]);
+function ProgramsOffering() {
+  const [programs, setPrograms] = useState([]);
   const [departments, setDepartments] = useState([]);
-  const [instructors, setInstructors] = useState([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(10);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("add");
   const [currentRecord, setCurrentRecord] = useState(null);
-  const [viewCourse, setViewCourse] = useState(null);
+  const [viewProgram, setViewProgram] = useState(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
 
   // Fetch data
-  const fetchCourses = async () => {
+  const fetchPrograms = async () => {
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/course/courses`
+        `${import.meta.env.VITE_API_BASE_URL}/api/programs`
       );
-      setCourses(res.data);
+      setPrograms(res.data);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch programs:", err);
     }
   };
 
@@ -463,38 +412,25 @@ const CourseManagement = () => {
       );
       setDepartments(res.data);
     } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const fetchInstructors = async () => {
-    try {
-      const res = await axios.get(
-        `${
-          import.meta.env.VITE_API_BASE_URL
-        }/api/dept/departments/eligible-heads`
-      );
-      setInstructors(res.data);
-    } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch departments:", err);
     }
   };
 
   useEffect(() => {
-    fetchCourses();
+    fetchPrograms();
     fetchDepartments();
-    fetchInstructors();
   }, []);
 
   // Filter & paginate
   const filtered = useMemo(
     () =>
-      courses.filter(
-        (c) =>
-          (c.code || "").toLowerCase().includes(search.toLowerCase()) ||
-          (c.title || "").toLowerCase().includes(search.toLowerCase())
+      programs.filter(
+        (p) =>
+          (p.code || "").toLowerCase().includes(search.toLowerCase()) ||
+          (p.name || "").toLowerCase().includes(search.toLowerCase()) ||
+          (p.degree_type || "").toLowerCase().includes(search.toLowerCase())
       ),
-    [courses, search]
+    [programs, search]
   );
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
@@ -506,37 +442,44 @@ const CourseManagement = () => {
   // Export
   const exportCSV = (data) => {
     const csv = [
-      ["ID", "Code", "Title", "Department", "Instructor", "Units"],
-      ...data.map((c) => [
-        c.course_id,
-        c.code,
-        c.title,
-        c.department_name,
-        c.instructor_name || "N/A",
-        c.units,
+      ["ID", "Code", "Name", "Degree Type", "Duration", "Department", "Status"],
+      ...data.map((p) => [
+        p.id,
+        p.code,
+        p.name,
+        p.degree_type,
+        p.duration_years,
+        p.department_name || "N/A",
+        p.status,
       ]),
     ]
       .map((e) => e.join(","))
       .join("\n");
-    saveAs(new Blob([csv], { type: "text/csv;charset=utf-8;" }), "courses.csv");
+    saveAs(
+      new Blob([csv], { type: "text/csv;charset=utf-8;" }),
+      "programs.csv"
+    );
   };
 
   const exportPDF = (data) => {
     const doc = new jsPDF();
-    doc.text("Courses", 14, 16);
+    doc.text("Programs Offering", 14, 16);
     doc.autoTable({
-      head: [["ID", "Code", "Title", "Department", "Instructor", "Units"]],
-      body: data.map((c) => [
-        c.course_id,
-        c.code,
-        c.title,
-        c.department_name,
-        c.instructor_name || "N/A",
-        c.units,
+      head: [
+        ["ID", "Code", "Name", "Degree", "Duration", "Department", "Status"],
+      ],
+      body: data.map((p) => [
+        p.id,
+        p.code,
+        p.name,
+        p.degree_type,
+        `${p.duration_years} yrs`,
+        p.department_name || "N/A",
+        p.status,
       ]),
       startY: 20,
     });
-    doc.save("courses.pdf");
+    doc.save("programs.pdf");
   };
 
   // CRUD
@@ -545,41 +488,43 @@ const CourseManagement = () => {
       let res;
       if (modalMode === "add") {
         res = await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL}/api/course/courses`,
+          `${import.meta.env.VITE_API_BASE_URL}/api/programs`,
           data
         );
-        setCourses((prev) => [...prev, res.data]);
+        setPrograms((prev) => [...prev, res.data]);
       } else {
         res = await axios.put(
-          `${import.meta.env.VITE_API_BASE_URL}/api/course/courses/${data.id}`,
+          `${import.meta.env.VITE_API_BASE_URL}/api/programs/${data.id}`,
           data
         );
-        setCourses((prev) =>
-          prev.map((c) =>
-            c.id === data.id
+        setPrograms((prev) =>
+          prev.map((p) =>
+            p.id === data.id
               ? {
-                  ...c, // keep department_name, instructor_name
-                  ...data, // update code, title, units, status, etc.
+                  ...p,
+                  ...data,
                 }
-              : c
+              : p
           )
         );
       }
       setModalOpen(false);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to save program:", err);
+      alert(err.response?.data?.message || "Failed to save program");
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this course?")) return;
+    if (!confirm("Are you sure you want to delete this program?")) return;
     try {
       await axios.delete(
-        `${import.meta.env.VITE_API_BASE_URL}/api/course/courses/${id}`
+        `${import.meta.env.VITE_API_BASE_URL}/api/programs/${id}`
       );
-      setCourses((prev) => prev.filter((c) => c.course_id !== id));
+      setPrograms((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      console.error(err);
+      console.error("Failed to delete program:", err);
+      alert(err.response?.data?.message || "Failed to delete program");
     }
   };
 
@@ -593,18 +538,19 @@ const CourseManagement = () => {
     <div className="p-4">
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BookOpenText size={24} /> Course Management
+          <GraduationCap size={24} /> Programs Offering
         </h1>
         <p className="text-sm text-slate-600 mt-1">
-          Manage all courses, their departments, instructors, and status here.
-          You can add, edit, view, or export course records.
+          Manage all academic programs, their departments, degree types, and
+          status. You can add, edit, view, or export program records.
         </p>
       </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
         <input
           type="text"
-          placeholder="Search courses..."
+          placeholder="Search programs..."
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -631,7 +577,7 @@ const CourseManagement = () => {
             onClick={() => openModal("add")}
             className="flex items-center gap-2 px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
           >
-            <Plus size={16} /> Course
+            <Plus size={16} /> Program
           </button>
         </div>
       </div>
@@ -646,19 +592,16 @@ const CourseManagement = () => {
                 Code
               </th>
               <th className="px-3 py-2 text-left text-sm font-semibold">
-                Title
+                Program Name
+              </th>
+              <th className="px-3 py-2 text-left text-sm font-semibold">
+                Degree Type
+              </th>
+              <th className="px-3 py-2 text-left text-sm font-semibold">
+                Duration
               </th>
               <th className="px-3 py-2 text-left text-sm font-semibold">
                 Department
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Instructor
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Units
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Prerequisites
               </th>
               <th className="px-3 py-2 text-left text-sm font-semibold">
                 Status
@@ -670,44 +613,43 @@ const CourseManagement = () => {
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
             {displayed.length ? (
-              displayed.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50 transition">
-                  <td className="px-3 py-2 text-sm">{c.id}</td>
-                  <td className="px-3 py-2 text-sm">{c.code}</td>
-                  <td className="px-3 py-2 text-sm">{c.title}</td>
-                  <td className="px-3 py-2 text-sm">{c.department_name}</td>
+              displayed.map((p) => (
+                <tr key={p.id} className="hover:bg-slate-50 transition">
+                  <td className="px-3 py-2 text-sm">{p.id}</td>
+                  <td className="px-3 py-2 text-sm font-semibold">{p.code}</td>
+                  <td className="px-3 py-2 text-sm">{p.name}</td>
+                  <td className="px-3 py-2 text-sm">{p.degree_type}</td>
                   <td className="px-3 py-2 text-sm">
-                    {c.instructor_name || "N/A"}
-                  </td>
-
-                  <td className="px-3 py-2 text-sm">{c.units}</td>
-                  <td className="px-3 py-2 text-sm">
-                    {c.prerequisites ? c.prerequisites.length : 0}
+                    {p.duration_years} {p.duration_years === 1 ? "yr" : "yrs"}
                   </td>
                   <td className="px-3 py-2 text-sm">
-                    {" "}
-                    <StatusBadge status={c.status} />
+                    {p.department_name || "N/A"}
+                  </td>
+                  <td className="px-3 py-2 text-sm">
+                    <StatusBadge status={p.status} />
                   </td>
                   <td className="px-3 py-2 text-right flex justify-end gap-2">
                     <button
                       onClick={() => {
-                        setViewCourse(c);
+                        setViewProgram(p);
                         setViewModalOpen(true);
                       }}
                       className="text-indigo-600 hover:text-indigo-800"
+                      title="View Details"
                     >
                       <Eye size={16} />
                     </button>
-
                     <button
-                      onClick={() => openModal("edit", c)}
+                      onClick={() => openModal("edit", p)}
                       className="text-indigo-600 hover:text-indigo-800"
+                      title="Edit Program"
                     >
                       <Pencil size={16} />
                     </button>
                     <button
-                      onClick={() => handleDelete(c.id)}
+                      onClick={() => handleDelete(p.id)}
                       className="text-red-600 hover:text-red-800"
+                      title="Delete Program"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -715,12 +657,12 @@ const CourseManagement = () => {
                 </tr>
               ))
             ) : (
-              <tr key="no-courses">
+              <tr key="no-programs">
                 <td
-                  colSpan={9}
+                  colSpan={8}
                   className="text-center py-4 text-slate-500 italic"
                 >
-                  No courses found.
+                  No programs found.
                 </td>
               </tr>
             )}
@@ -735,23 +677,22 @@ const CourseManagement = () => {
         totalItems={filtered.length}
       />
 
-      {/* Modal */}
-      <CourseModal
+      {/* Modals */}
+      <ProgramModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
         mode={modalMode}
         initialData={currentRecord}
         departments={departments}
-        instructors={instructors}
       />
-      <CourseViewModal
+      <ProgramViewModal
         isOpen={viewModalOpen}
         onClose={() => setViewModalOpen(false)}
-        course={viewCourse}
+        program={viewProgram}
       />
     </div>
   );
-};
+}
 
-export default CourseManagement;
+export default ProgramsOffering;

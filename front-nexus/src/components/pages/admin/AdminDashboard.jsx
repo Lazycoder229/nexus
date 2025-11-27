@@ -1,76 +1,17 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
 import {
   LayoutDashboard,
   Users,
   BookOpen,
   Briefcase,
   CalendarDays,
+  CheckSquare,
 } from "lucide-react";
 
-// ---------- Sample Data ----------
-const statsData = [
-  {
-    title: "Total Students",
-    value: "4,521",
-    icon: Users,
-    color: "bg-indigo-600",
-    detail: "+12 new this month",
-  },
-  {
-    title: "Active Courses",
-    value: "89",
-    icon: BookOpen,
-    color: "bg-green-600",
-    detail: "4 departments involved",
-  },
-  {
-    title: "Faculty Members",
-    value: "128",
-    icon: Briefcase,
-    color: "bg-red-600",
-    detail: "2 pending reviews",
-  },
-  {
-    title: "Financial Aid Requests",
-    value: "34",
-    icon: LayoutDashboard,
-    color: "bg-yellow-600",
-    detail: "Action required in 24h",
-  },
-];
-
-// Recent Activity Data
-const activityData = [
-  {
-    type: "Student Enrollment",
-    detail: "New student, Mark Sotto, registered for CS.",
-    time: "10 mins ago",
-    color: "border-green-500",
-    icon: Users,
-  },
-  {
-    type: "Faculty Absence",
-    detail: "Prof. Cruz reported absence for upcoming lecture.",
-    time: "1 hour ago",
-    color: "border-red-500",
-    icon: Briefcase,
-  },
-  {
-    type: "Course Creation",
-    detail: 'New course "Advanced AI" approved by committee.',
-    time: "2 hours ago",
-    color: "border-indigo-500",
-    icon: BookOpen,
-  },
-  {
-    type: "Financial Payment",
-    detail: "Tuition payment received from Jane Doe.",
-    time: "4 hours ago",
-    color: "border-yellow-500",
-    icon: LayoutDashboard,
-  },
-];
+dayjs.extend(relativeTime);
 
 // ---------- Helper Components ----------
 
@@ -94,31 +35,41 @@ const Card = ({ title, value, icon: Icon, color, detail }) => (
 );
 
 // Recent Activity
-const RecentActivity = () => (
+const RecentActivity = ({ activities, loading }) => (
   <div className="bg-white p-4 rounded-xl shadow border border-gray-100 h-full">
     <h3 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2 flex items-center space-x-2">
       <LayoutDashboard className="w-5 h-5 text-indigo-500" />
       <span>Recent System Activity</span>
     </h3>
-    <ul className="space-y-3 text-sm">
-      {activityData.map((item, index) => (
-        <li
-          key={index}
-          className={`flex items-start space-x-2 p-2 rounded-lg hover:bg-gray-50 transition border-l-4 ${item.color}`}
-        >
-          <item.icon
-            className={`w-4 h-4 flex-shrink-0 mt-0.5 ${item.color.replace(
-              "border-",
-              "text-"
-            )}`}
-          />
-          <div className="flex-1">
-            <p className="text-xs font-medium text-gray-800">{item.detail}</p>
-            <p className="text-[10px] text-gray-500 mt-0.5">{item.time}</p>
-          </div>
-        </li>
-      ))}
-    </ul>
+    {loading ? (
+      <div className="flex justify-center items-center h-40">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    ) : activities.length === 0 ? (
+      <p className="text-center text-gray-500 text-sm py-8">
+        No recent activity
+      </p>
+    ) : (
+      <ul className="space-y-3 text-sm">
+        {activities.map((item, index) => (
+          <li
+            key={index}
+            className={`flex items-start space-x-2 p-2 rounded-lg hover:bg-gray-50 transition border-l-4 ${item.color}`}
+          >
+            <item.icon
+              className={`w-4 h-4 flex-shrink-0 mt-0.5 ${item.color.replace(
+                "border-",
+                "text-"
+              )}`}
+            />
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-800">{item.detail}</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">{item.time}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    )}
   </div>
 );
 
@@ -189,6 +140,143 @@ const UpcomingCalendar = () => {
 
 // ---------- Admin Dashboard Page ----------
 export default function AdminDashboard() {
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    activeCourses: 0,
+    facultyMembers: 0,
+    pendingAdmissions: 0,
+  });
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+  useEffect(() => {
+    fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch all data in parallel
+      const [
+        usersRes,
+        coursesRes,
+        admissionsRes,
+        enrollmentsRes,
+        clearancesRes,
+      ] = await Promise.all([
+        axios.get(`${API_BASE}/api/users`),
+        axios.get(`${API_BASE}/api/course/courses`),
+        axios.get(`${API_BASE}/api/admissions`),
+        axios.get(`${API_BASE}/api/enrollments`),
+        axios.get(`${API_BASE}/api/clearances`),
+      ]);
+
+      const users = usersRes.data || [];
+      const courses = coursesRes.data || [];
+      const admissions = admissionsRes.data || [];
+      const enrollments = enrollmentsRes.data || [];
+      const clearances = clearancesRes.data || [];
+
+      // Calculate statistics
+      const students = users.filter((u) => u.role === "Student");
+      const faculty = users.filter((u) => u.role === "Faculty");
+      const pendingAdmissions = admissions.filter(
+        (a) => a.status === "Pending"
+      ).length;
+
+      setStats({
+        totalStudents: students.length,
+        activeCourses: courses.length,
+        facultyMembers: faculty.length,
+        pendingAdmissions,
+      });
+
+      // Generate recent activity from multiple sources
+      const activities = [];
+
+      // Recent enrollments
+      enrollments.slice(0, 2).forEach((enrollment) => {
+        activities.push({
+          type: "Student Enrollment",
+          detail: `${enrollment.student_name} enrolled in ${enrollment.course_code}`,
+          time: dayjs(enrollment.created_at).fromNow(),
+          color: "border-green-500",
+          icon: Users,
+        });
+      });
+
+      // Recent admissions
+      admissions.slice(0, 2).forEach((admission) => {
+        activities.push({
+          type: "New Admission",
+          detail: `${admission.first_name} ${admission.last_name} applied for ${admission.program_applied}`,
+          time: dayjs(admission.created_at).fromNow(),
+          color: "border-indigo-500",
+          icon: Users,
+        });
+      });
+
+      // Recent clearances
+      clearances.slice(0, 1).forEach((clearance) => {
+        activities.push({
+          type: "Clearance Update",
+          detail: `${clearance.student_name} clearance status: ${clearance.overall_status}`,
+          time: dayjs(clearance.updated_at).fromNow(),
+          color: "border-yellow-500",
+          icon: CheckSquare,
+        });
+      });
+
+      // Sort by most recent
+      activities.sort((a, b) => {
+        const timeA = a.time.includes("ago") ? a.time : "999 days ago";
+        const timeB = b.time.includes("ago") ? b.time : "999 days ago";
+        return timeA.localeCompare(timeB);
+      });
+
+      setRecentActivity(activities.slice(0, 4));
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+      setLoading(false);
+    }
+  };
+
+  const statsData = [
+    {
+      title: "Total Students",
+      value: loading ? "..." : stats.totalStudents.toLocaleString(),
+      icon: Users,
+      color: "bg-indigo-600",
+      detail: "Active student accounts",
+    },
+    {
+      title: "Active Courses",
+      value: loading ? "..." : stats.activeCourses.toString(),
+      icon: BookOpen,
+      color: "bg-green-600",
+      detail: "Available for enrollment",
+    },
+    {
+      title: "Faculty Members",
+      value: loading ? "..." : stats.facultyMembers.toString(),
+      icon: Briefcase,
+      color: "bg-red-600",
+      detail: "Teaching staff registered",
+    },
+    {
+      title: "Pending Admissions",
+      value: loading ? "..." : stats.pendingAdmissions.toString(),
+      icon: LayoutDashboard,
+      color: "bg-yellow-600",
+      detail: "Awaiting review",
+    },
+  ];
+
   return (
     <div className="h-[80vh] font-sans text-gray-800">
       <main className="p-4">
@@ -223,7 +311,7 @@ export default function AdminDashboard() {
 
           {/* Recent Activity & Calendar */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <RecentActivity />
+            <RecentActivity activities={recentActivity} loading={loading} />
             <UpcomingCalendar />
           </div>
         </div>

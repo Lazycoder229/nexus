@@ -416,7 +416,9 @@ const Department = () => {
 
   const fetchDepartments = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/dept/departments");
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`
+      );
       setDepartments(res.data);
     } catch (error) {
       console.error("Failed to fetch departments:", error);
@@ -426,7 +428,9 @@ const Department = () => {
   const fetchEligibleHeads = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:5000/api/dept/departments/eligible-heads"
+        `${
+          import.meta.env.VITE_API_BASE_URL
+        }/api/dept/departments/eligible-heads`
       );
       setEligibleHeads(res.data);
     } catch (error) {
@@ -456,7 +460,7 @@ const Department = () => {
 
       if (modalMode === "add") {
         res = await axios.post(
-          "http://localhost:5000/api/dept/departments",
+          `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`,
           data
         );
 
@@ -472,7 +476,9 @@ const Department = () => {
         setDepartments((prev) => [...prev, newDept]);
       } else {
         res = await axios.put(
-          `http://localhost:5000/api/dept/departments/${data.id}`,
+          `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments/${
+            data.id
+          }`,
           data
         );
 
@@ -504,7 +510,9 @@ const Department = () => {
   const handleDelete = async (id) => {
     if (!confirm("Are you sure you want to delete this department?")) return;
     try {
-      await axios.delete(`http://localhost:5000/api/dept/departments/${id}`);
+      await axios.delete(
+        `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments/${id}`
+      );
       setDepartments((prev) => prev.filter((d) => d.id !== id));
     } catch (error) {
       console.error("Failed to delete department:", error);

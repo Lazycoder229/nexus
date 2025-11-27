@@ -1,0 +1,177 @@
+// model/enrollments.model.js
+import db from "../config/db.js";
+
+// Get all enrollments with student, course, and period details
+export const getAllEnrollments = async () => {
+  const [rows] = await db.query(
+    `SELECT 
+        e.enrollment_id,
+        e.student_id,
+        CONCAT(u.first_name, ' ', u.last_name) AS student_name,
+        sd.student_number,
+        sd.year_level,
+        sd.course AS student_course,
+        
+        e.course_id,
+        c.code AS course_code,
+        c.title AS course_title,
+        c.units,
+        
+        e.period_id,
+        ap.school_year,
+        ap.semester,
+        
+        e.enrollment_date,
+        e.status,
+        e.midterm_grade,
+        e.final_grade,
+        e.remarks,
+        e.created_at,
+        e.updated_at
+     FROM enrollments e
+     JOIN users u ON e.student_id = u.user_id
+     LEFT JOIN student_details sd ON e.student_id = sd.user_id
+     JOIN courses c ON e.course_id = c.course_id
+     JOIN academic_periods ap ON e.period_id = ap.period_id
+     ORDER BY e.created_at DESC`
+  );
+  return rows;
+};
+
+// Get enrollments by student
+export const getEnrollmentsByStudent = async (studentId) => {
+  const [rows] = await db.query(
+    `SELECT 
+        e.enrollment_id,
+        e.course_id,
+        c.code AS course_code,
+        c.title AS course_title,
+        c.units,
+        
+        e.period_id,
+        ap.school_year,
+        ap.semester,
+        
+        e.enrollment_date,
+        e.status,
+        e.midterm_grade,
+        e.final_grade,
+        e.remarks,
+        e.created_at,
+        e.updated_at
+     FROM enrollments e
+     JOIN courses c ON e.course_id = c.course_id
+     JOIN academic_periods ap ON e.period_id = ap.period_id
+     WHERE e.student_id = ?
+     ORDER BY e.created_at DESC`,
+    [studentId]
+  );
+  return rows;
+};
+
+// Get single enrollment by ID
+export const getEnrollmentById = async (id) => {
+  const [rows] = await db.query(
+    `SELECT 
+        e.*,
+        CONCAT(u.first_name, ' ', u.last_name) AS student_name,
+        c.code AS course_code,
+        c.title AS course_title,
+        ap.school_year,
+        ap.semester
+     FROM enrollments e
+     JOIN users u ON e.student_id = u.user_id
+     JOIN courses c ON e.course_id = c.course_id
+     JOIN academic_periods ap ON e.period_id = ap.period_id
+     WHERE e.enrollment_id = ?`,
+    [id]
+  );
+  return rows[0];
+};
+
+// Create new enrollment
+export const createEnrollment = async ({
+  student_id,
+  course_id,
+  period_id,
+  year_level = null,
+  enrollment_date,
+  status = "Enrolled",
+  midterm_grade = null,
+  final_grade = null,
+  remarks = null,
+}) => {
+  const [result] = await db.query(
+    `INSERT INTO enrollments 
+     (student_id, course_id, period_id, year_level, enrollment_date, status, midterm_grade, final_grade, remarks)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      student_id,
+      course_id,
+      period_id,
+      year_level,
+      enrollment_date,
+      status,
+      midterm_grade,
+      final_grade,
+      remarks,
+    ]
+  );
+
+  return getEnrollmentById(result.insertId);
+};
+
+// Update enrollment
+export const updateEnrollment = async (
+  id,
+  {
+    course_id,
+    period_id,
+    year_level,
+    enrollment_date,
+    status,
+    midterm_grade,
+    final_grade,
+    remarks,
+  }
+) => {
+  await db.query(
+    `UPDATE enrollments 
+     SET course_id = ?, period_id = ?, year_level = ?, enrollment_date = ?, status = ?, 
+         midterm_grade = ?, final_grade = ?, remarks = ?
+     WHERE enrollment_id = ?`,
+    [
+      course_id,
+      period_id,
+      year_level,
+      enrollment_date,
+      status,
+      midterm_grade,
+      final_grade,
+      remarks,
+      id,
+    ]
+  );
+
+  return getEnrollmentById(id);
+};
+
+// Delete enrollment
+export const deleteEnrollment = async (id) => {
+  await db.query(`DELETE FROM enrollments WHERE enrollment_id = ?`, [id]);
+  return true;
+};
+
+// Check if enrollment exists (prevent duplicates)
+export const checkEnrollmentExists = async (
+  student_id,
+  course_id,
+  period_id
+) => {
+  const [rows] = await db.query(
+    `SELECT enrollment_id FROM enrollments 
+     WHERE student_id = ? AND course_id = ? AND period_id = ?`,
+    [student_id, course_id, period_id]
+  );
+  return rows.length > 0;
+};
