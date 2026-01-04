@@ -145,7 +145,7 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
       alert(`Login successful! Role: ${data.role}`);
 
       // 3️ Redirect based on role
-      if (data.role === "Student") {
+      if (data.role === "student") {
         navigate("/student/dashboard"); // make sure this route exists
       } else if (data.role === "Admin") {
         navigate("/admin/dashboard"); // admin route
@@ -154,12 +154,19 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
         navigate("/");
       }
     } catch (error) {
+      console.error("Login error:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+
       if (error.response?.data?.message) {
         alert(`Login Failed: ${error.response.data.message}`);
+      } else if (error.response?.status === 400) {
+        alert(
+          "Login Failed: Invalid email or password. Please check your credentials."
+        );
       } else {
         alert("Network error. Please try again later.");
       }
-      console.error("Login error:", error);
     }
   };
   return (

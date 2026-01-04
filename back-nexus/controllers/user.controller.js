@@ -23,7 +23,15 @@ export const getAllUsers = async (req, res) => {
 // Register student
 export const registerStudent = async (req, res) => {
   try {
-    const userId = await registerStudentService(req.body);
+    // Map frontend field names to backend field names
+    const mappedData = {
+      ...req.body,
+      dateOfBirth: req.body.dob || req.body.dateOfBirth,
+      // Remove the frontend-only field
+      dob: undefined,
+    };
+
+    const userId = await registerStudentService(mappedData);
     const token = generateToken({ userId, role: "Student" });
 
     res.status(201).json({

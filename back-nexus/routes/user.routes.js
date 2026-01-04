@@ -23,6 +23,9 @@ router.post("/users/employee", registerEmployee);
 // Login
 router.post("/auth/login", loginUser);
 
+// Register (unified endpoint for student registration from frontend)
+router.post("/auth/register", registerStudent);
+
 // Update student
 router.put("/users/student/:userId", updateStudent);
 

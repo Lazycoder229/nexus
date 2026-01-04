@@ -22,6 +22,28 @@ import facultyCourseAssignmentRoutes from "./routes/facultyCourseAssignment.rout
 import facultyAdvisoryRoutes from "./routes/facultyAdvisory.routes.js"; // faculty advisory assignments
 import facultyEvaluationRoutes from "./routes/facultyEvaluation.routes.js"; // faculty evaluations
 import facultyScheduleRoutes from "./routes/facultySchedule.routes.js"; // faculty schedules
+import sectionsRoutes from "./routes/sections.routes.js"; // sections management routes
+import gradesRoutes from "./routes/grades.routes.js"; // grades management routes
+import academicEventsRoutes from "./routes/academicEvents.routes.js"; // academic events/calendar routes
+import syllabusRoutes from "./routes/syllabus.routes.js"; // syllabus repository routes
+import staffAttendanceRoutes from "./routes/staffAttendance.routes.js"; // staff attendance routes
+import studentAttendanceRoutes from "./routes/studentAttendance.routes.js"; // student attendance routes
+import rfidCardsRoutes from "./routes/rfidCards.routes.js"; // RFID cards management routes
+import absenteeAlertsRoutes from "./routes/absenteeAlerts.routes.js"; // absentee alerts routes
+import examsRoutes from "./routes/exams.routes.js"; // exams management routes
+import examSchedulesRoutes from "./routes/examSchedules.routes.js"; // exam schedules routes
+import gradeEntriesRoutes from "./routes/gradeEntries.routes.js"; // grade entries/approval routes
+import gradeComputationSettingsRoutes from "./routes/gradeComputationSettings.routes.js"; // grade computation settings routes
+import tuitionFeesRoutes from "./routes/tuitionFees.routes.js"; // tuition fee setup routes
+import invoicesRoutes from "./routes/invoices.routes.js"; // invoice management routes
+import paymentsRoutes from "./routes/payments.routes.js"; // payment collection routes
+import scholarshipsRoutes from "./routes/scholarships.routes.js"; // scholarship routes
+import incomeExpensesRoutes from "./routes/incomeExpenses.routes.js"; // income & expenses routes
+import paymentGatewayRoutes from "./routes/paymentGateway.routes.js"; // payment gateway routes
+import employeeRecordsRoutes from "./routes/employeeRecords.routes.js"; // employee records routes
+import staffLeaveRoutes from "./routes/staffLeave.routes.js"; // staff leave routes
+import payrollRoutes from "./routes/payroll.routes.js"; // payroll routes
+import deductionsRoutes from "./routes/deductions.routes.js"; // deductions routes
 
 dotenv.config(); // load env variables
 
@@ -77,8 +99,35 @@ app.use("/api/faculty-assignments", facultyCourseAssignmentRoutes);
 app.use("/api/faculty-advisory", facultyAdvisoryRoutes);
 app.use("/api/faculty-evaluations", facultyEvaluationRoutes);
 app.use("/api/faculty-schedules", facultyScheduleRoutes);
-// import bcrypt from "bcrypt";
+app.use("/api/sections", sectionsRoutes);
+app.use("/api/grades", gradesRoutes);
+app.use("/api/academic-events", academicEventsRoutes);
+app.use("/api/syllabus", syllabusRoutes);
+app.use("/api/staff-attendance", staffAttendanceRoutes);
+app.use("/api/student-attendance", studentAttendanceRoutes);
+app.use("/api/rfid-cards", rfidCardsRoutes);
+app.use("/api/absentee-alerts", absenteeAlertsRoutes);
+app.use("/api/exams", examsRoutes);
+app.use("/api/exam-schedules", examSchedulesRoutes);
+app.use("/api/grade-entries", gradeEntriesRoutes);
+app.use("/api/grade-computation-settings", gradeComputationSettingsRoutes);
 
-// bcrypt.hash("admin123", 10).then((hash) => console.log(hash));
+// Financial & Accounting routes
+app.use("/api/tuition-fees", tuitionFeesRoutes);
+app.use("/api/invoices", invoicesRoutes);
+app.use("/api/payments", paymentsRoutes);
+app.use("/api/scholarships", scholarshipsRoutes);
+app.use("/api/income-expenses", incomeExpensesRoutes);
+app.use("/api/payment-gateway", paymentGatewayRoutes);
 
+// HR & Payroll routes
+app.use("/api/employees", employeeRecordsRoutes);
+app.use("/api/staff-leave", staffLeaveRoutes);
+app.use("/api/payroll", payrollRoutes);
+app.use("/api/deductions", deductionsRoutes);
+
+/* import bcrypt from "bcrypt";
+
+ bcrypt.hash("admin123", 10).then((hash) => console.log(hash));
+ */
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
