@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Plus, Edit, Trash2, Users, Briefcase, DollarSign } from "lucide-react";
+import { Plus, Edit, Trash2, Users, Briefcase, DollarSign, Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 const EmployeeRecords = () => {
   const [employees, setEmployees] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [summary, setSummary] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [filters, setFilters] = useState({
     department: "",
     employment_status: "",
@@ -138,229 +140,293 @@ const EmployeeRecords = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Employee Records</h1>
-          <p className="text-gray-600 mt-1">Manage employee information</p>
-        </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          <Plus size={20} />
-          Add Employee
-        </button>
+    <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
+      <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
+      {/* Header */}
+      <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <Users size={24} className="text-indigo-600" />
+          Employee Records
+        </h2>
+        <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+          Data Integrity: Online
+        </span>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-indigo-500 dark:border-indigo-600">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Employees</p>
-              <p className="text-2xl font-bold text-gray-800">
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Total Employees</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                 {summary.total_employees || 0}
               </p>
             </div>
-            <Users className="text-blue-600" size={32} />
+            <Users className="text-indigo-600 dark:text-indigo-400" size={28} />
           </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-600">Active</p>
-          <p className="text-2xl font-bold text-green-600">
-            {summary.active_employees || 0}
-          </p>
+        <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-green-500 dark:border-green-600">
+          <div>
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Active</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
+              {summary.active_employees || 0}
+            </p>
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-600">Full-time</p>
-          <p className="text-2xl font-bold text-blue-600">
-            {summary.full_time || 0}
-          </p>
+        <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-blue-500 dark:border-blue-600">
+          <div>
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Full-time</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+              {summary.full_time || 0}
+            </p>
+          </div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
-          <p className="text-sm text-gray-600">Part-time</p>
-          <p className="text-2xl font-bold text-purple-600">
-            {summary.part_time || 0}
-          </p>
+        <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-purple-500 dark:border-purple-600">
+          <div>
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Part-time</p>
+            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">
+              {summary.part_time || 0}
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <input
-              type="text"
-              placeholder="Search..."
-              value={filters.search}
-              onChange={(e) =>
-                setFilters({ ...filters, search: e.target.value })
-              }
-              className="w-full border rounded-lg px-3 py-2"
-            />
-          </div>
-          <div>
-            <select
-              value={filters.department}
-              onChange={(e) =>
-                setFilters({ ...filters, department: e.target.value })
-              }
-              className="w-full border rounded-lg px-3 py-2"
-            >
-              <option value="">All Departments</option>
-              {departments.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <select
-              value={filters.employment_status}
-              onChange={(e) =>
-                setFilters({ ...filters, employment_status: e.target.value })
-              }
-              className="w-full border rounded-lg px-3 py-2"
-            >
-              <option value="">All Status</option>
-              {employmentStatuses.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <select
-              value={filters.employment_type}
-              onChange={(e) =>
-                setFilters({ ...filters, employment_type: e.target.value })
-              }
-              className="w-full border rounded-lg px-3 py-2"
-            >
-              <option value="">All Types</option>
-              {employmentTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Search Input - LEFT */}
+        <div className="relative flex-grow max-w-xs">
+          <input
+            type="text"
+            placeholder="Search employees..."
+            value={filters.search}
+            onChange={(e) =>
+              setFilters({ ...filters, search: e.target.value })
+            }
+            className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
+          />
+          <Search
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+            size={14}
+          />
+        </div>
+
+        {/* Filters - RIGHT */}
+        <div className="flex items-center gap-2">
+          <select
+            value={filters.department}
+            onChange={(e) =>
+              setFilters({ ...filters, department: e.target.value })
+            }
+            className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-40"
+          >
+            <option value="">All Departments</option>
+            {departments.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filters.employment_status}
+            onChange={(e) =>
+              setFilters({ ...filters, employment_status: e.target.value })
+            }
+            className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-32"
+          >
+            <option value="">All Status</option>
+            {employmentStatuses.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filters.employment_type}
+            onChange={(e) =>
+              setFilters({ ...filters, employment_type: e.target.value })
+            }
+            className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-32"
+          >
+            <option value="">All Types</option>
+            {employmentTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => {
+              resetForm();
+              setShowModal(true);
+            }}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-sm border shadow-md shadow-indigo-500/30"
+          >
+            <Plus size={14} />
+            Add Employee
+          </button>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+      <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
+        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+          <thead className="bg-slate-100 dark:bg-slate-700/70">
+            <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              <th className="px-4 py-2.5">
                 Employee #
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 py-2.5">
                 Name
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 py-2.5">
                 Department
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 py-2.5">
                 Position
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 py-2.5">
                 Type
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 py-2.5">
                 Basic Salary
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 py-2.5">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 py-2.5 w-1/12 text-right">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {employees.map((employee) => (
-              <tr key={employee.employee_id}>
-                <td className="px-6 py-4 whitespace-nowrap font-mono text-sm">
-                  {employee.employee_number}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div>
-                    <div className="font-medium">
-                      {employee.first_name} {employee.last_name}
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
+            {employees.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).length ? (
+              employees.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((employee) => (
+                <tr key={employee.employee_id} className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150">
+                  <td className="px-4 py-2 font-mono">
+                    {employee.employee_number}
+                  </td>
+                  <td className="px-4 py-2">
+                    <div>
+                      <div className="font-medium text-slate-900 dark:text-white">
+                        {employee.first_name} {employee.last_name}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        {employee.email}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-500">
-                      {employee.email}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {employee.department}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {employee.position}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {employee.employment_type}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap font-semibold">
-                  ₱{parseFloat(employee.basic_salary || 0).toLocaleString()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      employee.employment_status === "Active"
-                        ? "bg-green-100 text-green-800"
-                        : employee.employment_status === "On Leave"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {employee.employment_status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex gap-2">
+                  </td>
+                  <td className="px-4 py-2">
+                    {employee.department}
+                  </td>
+                  <td className="px-4 py-2">
+                    {employee.position}
+                  </td>
+                  <td className="px-4 py-2">
+                    {employee.employment_type}
+                  </td>
+                  <td className="px-4 py-2 font-semibold">
+                    ₱{parseFloat(employee.basic_salary || 0).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2">
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${
+                        employee.employment_status === "Active"
+                          ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                          : employee.employment_status === "On Leave"
+                          ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+                          : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                      }`}
+                    >
+                      {employee.employment_status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-right space-x-2">
                     <button
                       onClick={() => handleEdit(employee)}
-                      className="text-blue-600 hover:text-blue-800"
-                      title="Edit"
+                      title="Edit Employee"
+                      className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
                     >
-                      <Edit size={18} />
+                      <Edit size={14} />
                     </button>
                     <button
                       onClick={() => handleDelete(employee.employee_id)}
-                      className="text-red-600 hover:text-red-800"
-                      title="Delete"
+                      title="Delete Employee"
+                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
                     >
-                      <Trash2 size={18} />
+                      <Trash2 size={14} />
                     </button>
-                  </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td
+                  colSpan={8}
+                  className="p-4 text-center text-slate-500 italic"
+                >
+                  No employee records found matching your search criteria.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
 
+      {/* Pagination */}
+      <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
+        <span className="text-xs sm:text-sm">
+          Page <span className="font-semibold">{currentPage}</span> of{" "}
+          <span className="font-semibold">{Math.ceil(employees.length / itemsPerPage)}</span> | Total Records:{" "}
+          {employees.length}
+        </span>
+        <div className="flex gap-1 items-center mt-2 sm:mt-0">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span className="px-2 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+            {currentPage}
+          </span>
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, Math.ceil(employees.length / itemsPerPage)))}
+            disabled={currentPage === Math.ceil(employees.length / itemsPerPage)}
+            className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+      </div>
+
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg p-6 max-w-4xl w-full my-8 max-h-screen overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">
-              {formData.employee_id ? "Edit" : "Add"} Employee
-            </h2>
-            <form onSubmit={handleSubmit}>
-              <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-2 z-50 transition-opacity duration-300" onClick={() => setShowModal(false)}>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-4xl transform transition-transform duration-300 scale-100 border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="sticky top-0 flex justify-between items-center px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 rounded-t-lg z-10">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                {formData.employee_id ? "Edit" : "Add"} Employee
+              </h3>
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  resetForm();
+                }}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              >
+                <Plus size={18} className="rotate-45" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSubmit} className="p-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     User ID *
                   </label>
                   <input
@@ -369,11 +435,11 @@ const EmployeeRecords = () => {
                     value={formData.user_id}
                     onChange={handleInputChange}
                     required
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Department *
                   </label>
                   <select
@@ -381,7 +447,7 @@ const EmployeeRecords = () => {
                     value={formData.department}
                     onChange={handleInputChange}
                     required
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   >
                     <option value="">Select Department</option>
                     {departments.map((dept) => (
@@ -392,7 +458,7 @@ const EmployeeRecords = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Position *
                   </label>
                   <input
@@ -401,11 +467,11 @@ const EmployeeRecords = () => {
                     value={formData.position}
                     onChange={handleInputChange}
                     required
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Employment Type *
                   </label>
                   <select
@@ -413,7 +479,7 @@ const EmployeeRecords = () => {
                     value={formData.employment_type}
                     onChange={handleInputChange}
                     required
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   >
                     {employmentTypes.map((type) => (
                       <option key={type} value={type}>
@@ -423,7 +489,7 @@ const EmployeeRecords = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Status *
                   </label>
                   <select
@@ -431,7 +497,7 @@ const EmployeeRecords = () => {
                     value={formData.employment_status}
                     onChange={handleInputChange}
                     required
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   >
                     {employmentStatuses.map((status) => (
                       <option key={status} value={status}>
@@ -441,7 +507,7 @@ const EmployeeRecords = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Hire Date *
                   </label>
                   <input
@@ -450,11 +516,11 @@ const EmployeeRecords = () => {
                     value={formData.hire_date}
                     onChange={handleInputChange}
                     required
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     End Date
                   </label>
                   <input
@@ -462,11 +528,11 @@ const EmployeeRecords = () => {
                     name="end_date"
                     value={formData.end_date}
                     onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Basic Salary *
                   </label>
                   <input
@@ -476,11 +542,11 @@ const EmployeeRecords = () => {
                     onChange={handleInputChange}
                     step="0.01"
                     required
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Allowances
                   </label>
                   <input
@@ -489,11 +555,11 @@ const EmployeeRecords = () => {
                     value={formData.allowances}
                     onChange={handleInputChange}
                     step="0.01"
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     SSS Number
                   </label>
                   <input
@@ -501,11 +567,11 @@ const EmployeeRecords = () => {
                     name="sss_number"
                     value={formData.sss_number}
                     onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     TIN Number
                   </label>
                   <input
@@ -513,11 +579,11 @@ const EmployeeRecords = () => {
                     name="tin_number"
                     value={formData.tin_number}
                     onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     PhilHealth Number
                   </label>
                   <input
@@ -525,11 +591,11 @@ const EmployeeRecords = () => {
                     name="philhealth_number"
                     value={formData.philhealth_number}
                     onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Pag-IBIG Number
                   </label>
                   <input
@@ -537,11 +603,11 @@ const EmployeeRecords = () => {
                     name="pagibig_number"
                     value={formData.pagibig_number}
                     onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Emergency Contact Name
                   </label>
                   <input
@@ -549,11 +615,11 @@ const EmployeeRecords = () => {
                     name="emergency_contact_name"
                     value={formData.emergency_contact_name}
                     onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Emergency Contact Phone
                   </label>
                   <input
@@ -561,11 +627,11 @@ const EmployeeRecords = () => {
                     name="emergency_contact_phone"
                     value={formData.emergency_contact_phone}
                     onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Emergency Contact Relationship
                   </label>
                   <input
@@ -573,11 +639,11 @@ const EmployeeRecords = () => {
                     name="emergency_contact_relationship"
                     value={formData.emergency_contact_relationship}
                     onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Bank Name
                   </label>
                   <input
@@ -585,11 +651,11 @@ const EmployeeRecords = () => {
                     name="bank_name"
                     value={formData.bank_name}
                     onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Bank Account Number
                   </label>
                   <input
@@ -597,11 +663,11 @@ const EmployeeRecords = () => {
                     name="bank_account_number"
                     value={formData.bank_account_number}
                     onChange={handleInputChange}
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Notes
                   </label>
                   <textarea
@@ -609,24 +675,26 @@ const EmployeeRecords = () => {
                     value={formData.notes}
                     onChange={handleInputChange}
                     rows="2"
-                    className="w-full border rounded-lg px-3 py-2"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
               </div>
-              <div className="flex gap-2 justify-end">
+
+              {/* Modal Footer */}
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700/50">
                 <button
                   type="button"
                   onClick={() => {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                  className="px-3 py-1.5 text-sm bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors border border-slate-300 dark:border-slate-600"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-500/30"
                 >
                   Save Employee
                 </button>

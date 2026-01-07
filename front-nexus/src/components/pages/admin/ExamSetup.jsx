@@ -1,13 +1,30 @@
 import { useState, useEffect } from "react";
-import { FileText, Plus, Edit, Trash2, BookOpen, Calendar } from "lucide-react";
+import { FileText, Plus, Edit, Trash2, BookOpen, Calendar, Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 const ExamSetup = () => {
   const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [filters, setFilters] = useState({
     course_id: "",
     exam_type: "",
     status: "",
+    search: "",
+  });
+  const [showModal, setShowModal] = useState(false);
+  const [editingExam, setEditingExam] = useState(null);
+  const [formData, setFormData] = useState({
+    exam_name: "",
+    course_id: "",
+    exam_type: "quiz",
+    exam_date: "",
+    exam_time: "",
+    exam_duration: "",
+    total_points: "",
+    passing_score: "",
+    instructions: "",
+    status: "draft",
   });
 
   useEffect(() => {
@@ -36,19 +53,112 @@ const ExamSetup = () => {
     fetchExams();
   };
 
+  const handleOpenModal = (exam = null) => {
+    if (exam) {
+      setEditingExam(exam);
+      setFormData({
+        exam_name: exam.exam_name || "",
+        course_id: exam.course_id || "",
+        exam_type: exam.exam_type || "quiz",
+        exam_date: exam.exam_date || "",
+        exam_time: exam.exam_time || "",
+        exam_duration: exam.exam_duration || "",
+        total_points: exam.total_points || "",
+        passing_score: exam.passing_score || "",
+        instructions: exam.instructions || "",
+        status: exam.status || "draft",
+      });
+    } else {
+      setEditingExam(null);
+      setFormData({
+        exam_name: "",
+        course_id: "",
+        exam_type: "quiz",
+        exam_date: "",
+        exam_time: "",
+        exam_duration: "",
+        total_points: "",
+        passing_score: "",
+        instructions: "",
+        status: "draft",
+      });
+    }
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingExam(null);
+    setFormData({
+      exam_name: "",
+      course_id: "",
+      exam_type: "quiz",
+      exam_date: "",
+      exam_time: "",
+      exam_duration: "",
+      total_points: "",
+      passing_score: "",
+      instructions: "",
+      status: "draft",
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const url = editingExam
+        ? `http://localhost:5000/api/exams/${editingExam.exam_id}`
+        : "http://localhost:5000/api/exams";
+      const method = editingExam ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        fetchExams();
+        handleCloseModal();
+      }
+    } catch (error) {
+      console.error("Error saving exam:", error);
+    }
+  };
+
+  const handleDelete = async (examId) => {
+    if (window.confirm("Are you sure you want to delete this exam?")) {
+      try {
+        const response = await fetch(
+          `http://localhost:5000/api/exams/${examId}`,
+          { method: "DELETE" }
+        );
+        const data = await response.json();
+        if (data.success) {
+          fetchExams();
+        }
+      } catch (error) {
+        console.error("Error deleting exam:", error);
+      }
+    }
+  };
+
   const getStatusBadge = (status) => {
     const statusColors = {
-      draft: "bg-gray-100 text-gray-800",
-      scheduled: "bg-blue-100 text-blue-800",
-      ongoing: "bg-green-100 text-green-800",
-      completed: "bg-purple-100 text-purple-800",
-      cancelled: "bg-red-100 text-red-800",
+      draft: "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300",
+      scheduled: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400",
+      ongoing: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400",
+      completed: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400",
+      cancelled: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400",
     };
 
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-          statusColors[status] || "bg-gray-100 text-gray-800"
+        className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+          statusColors[status] || "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300"
         }`}
       >
         {status}
@@ -58,17 +168,17 @@ const ExamSetup = () => {
 
   const getExamTypeBadge = (type) => {
     const typeColors = {
-      quiz: "bg-yellow-100 text-yellow-800",
-      midterm: "bg-orange-100 text-orange-800",
-      final: "bg-red-100 text-red-800",
-      practical: "bg-indigo-100 text-indigo-800",
-      project: "bg-pink-100 text-pink-800",
+      quiz: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400",
+      midterm: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400",
+      final: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400",
+      practical: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-400",
+      project: "bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-400",
     };
 
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-          typeColors[type] || "bg-gray-100 text-gray-800"
+        className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+          typeColors[type] || "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300"
         }`}
       >
         {type}
@@ -77,66 +187,66 @@ const ExamSetup = () => {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Exam Setup</h1>
-        <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-          <Plus className="h-4 w-4" />
-          Create New Exam
-        </button>
+    <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
+      <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
+      {/* Header */}
+      <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <FileText size={24} className="text-indigo-600" />
+          Exam Setup
+        </h2>
+        <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+          Data Integrity: Online
+        </span>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600">Total Exams</h3>
-            <FileText className="h-4 w-4 text-gray-400" />
-          </div>
-          <div className="text-2xl font-bold">245</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+          <p className="text-sm text-slate-600 dark:text-slate-400">Total Exams</p>
+          <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">245</p>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600">Scheduled</h3>
-            <Calendar className="h-4 w-4 text-blue-500" />
-          </div>
-          <div className="text-2xl font-bold">32</div>
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+          <p className="text-sm text-slate-600 dark:text-slate-400">Scheduled</p>
+          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">32</p>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600">Ongoing</h3>
-            <BookOpen className="h-4 w-4 text-green-500" />
-          </div>
-          <div className="text-2xl font-bold">8</div>
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+          <p className="text-sm text-slate-600 dark:text-slate-400">Ongoing</p>
+          <p className="text-2xl font-bold text-green-600 dark:text-green-400">8</p>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600">Completed</h3>
-            <FileText className="h-4 w-4 text-purple-500" />
-          </div>
-          <div className="text-2xl font-bold">205</div>
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+          <p className="text-sm text-slate-600 dark:text-slate-400">Completed</p>
+          <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">205</p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-lg font-semibold mb-4">Filter Exams</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Search Input - LEFT */}
+        <div className="relative flex-grow max-w-xs">
           <input
             type="text"
-            placeholder="Course ID"
-            className="border border-gray-300 rounded-lg px-3 py-2"
-            value={filters.course_id}
+            placeholder="Search exams..."
+            value={filters.search}
             onChange={(e) =>
-              setFilters({ ...filters, course_id: e.target.value })
+              setFilters({ ...filters, search: e.target.value })
             }
+            className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
           />
+          <Search
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+            size={14}
+          />
+        </div>
+
+        {/* Filters - RIGHT */}
+        <div className="flex items-center gap-2">
           <select
-            className="border border-gray-300 rounded-lg px-3 py-2"
             value={filters.exam_type}
             onChange={(e) =>
               setFilters({ ...filters, exam_type: e.target.value })
             }
+            className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-40"
           >
             <option value="">All Exam Types</option>
             <option value="quiz">Quiz</option>
@@ -146,9 +256,9 @@ const ExamSetup = () => {
             <option value="project">Project</option>
           </select>
           <select
-            className="border border-gray-300 rounded-lg px-3 py-2"
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-32"
           >
             <option value="">All Status</option>
             <option value="draft">Draft</option>
@@ -158,108 +268,436 @@ const ExamSetup = () => {
             <option value="cancelled">Cancelled</option>
           </select>
           <button
-            onClick={handleFilter}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            onClick={() => handleOpenModal()}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-sm border shadow-md shadow-indigo-500/30"
           >
-            Apply Filters
+            <Plus size={14} />
+            Create New Exam
           </button>
         </div>
       </div>
 
       {/* Exams Table */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-lg font-semibold mb-4">Exam List</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <div>
+        <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-100">Exam List</h2>
+        <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
+          <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+            <thead className="bg-slate-100 dark:bg-slate-700/70">
+              <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                <th className="px-4 py-2.5">
                   Exam Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2.5">
                   Course
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2.5">
                   Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2.5">
                   Total Points
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2.5">
                   Duration
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2.5">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2.5">
                   Created By
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-2.5 w-1/12 text-right">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="px-6 py-4 text-center text-gray-500"
-                  >
-                    Loading...
-                  </td>
-                </tr>
-              ) : exams.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="px-6 py-4 text-center text-gray-500"
-                  >
-                    No exams found
-                  </td>
-                </tr>
-              ) : (
-                exams.map((exam) => (
-                  <tr key={exam.exam_id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
+              {(() => {
+                if (loading) {
+                  return (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="p-4 text-center text-slate-500 italic"
+                      >
+                        Loading...
+                      </td>
+                    </tr>
+                  );
+                }
+
+                const searchTerm = filters.search.toLowerCase();
+                const filtered = exams.filter((exam) => {
+                  const matchesSearch =
+                    exam.exam_name?.toLowerCase().includes(searchTerm) ||
+                    exam.course_code?.toLowerCase().includes(searchTerm) ||
+                    exam.exam_type?.toLowerCase().includes(searchTerm);
+                  return matchesSearch;
+                });
+
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const paginatedData = filtered.slice(startIndex, startIndex + itemsPerPage);
+
+                if (paginatedData.length === 0) {
+                  return (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="p-4 text-center text-slate-500 italic"
+                      >
+                        No exams found matching your search criteria.
+                      </td>
+                    </tr>
+                  );
+                }
+
+                return paginatedData.map((exam) => (
+                  <tr key={exam.exam_id} className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150">
+                    <td className="px-4 py-2 font-medium">
                       {exam.exam_name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                    <td className="px-4 py-2">
                       {exam.course_code}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-2">
                       {getExamTypeBadge(exam.exam_type)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                    <td className="px-4 py-2">
                       {exam.total_points}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                    <td className="px-4 py-2">
                       {exam.exam_duration
                         ? `${exam.exam_duration} mins`
                         : "N/A"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-2">
                       {getStatusBadge(exam.status)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                    <td className="px-4 py-2">
                       {exam.creator_first_name} {exam.creator_last_name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex gap-2">
-                        <button className="text-blue-600 hover:text-blue-800">
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button className="text-red-600 hover:text-red-800">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                    <td className="px-4 py-2 text-right space-x-2">
+                      <button
+                        onClick={() => handleOpenModal(exam)}
+                        className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                        title="Edit"
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(exam.exam_id)}
+                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </td>
                   </tr>
-                ))
-              )}
+                ));
+              })()}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
+          <span className="text-xs sm:text-sm">
+            Page <span className="font-semibold">{currentPage}</span> of{" "}
+            <span className="font-semibold">{(() => {
+              const searchTerm = filters.search.toLowerCase();
+              const filtered = exams.filter((exam) => {
+                const matchesSearch =
+                  exam.exam_name?.toLowerCase().includes(searchTerm) ||
+                  exam.course_code?.toLowerCase().includes(searchTerm) ||
+                  exam.exam_type?.toLowerCase().includes(searchTerm);
+                return matchesSearch;
+              });
+              return Math.ceil(filtered.length / itemsPerPage) || 1;
+            })()}</span> | Total Records:{" "}
+            {(() => {
+              const searchTerm = filters.search.toLowerCase();
+              const filtered = exams.filter((exam) => {
+                const matchesSearch =
+                  exam.exam_name?.toLowerCase().includes(searchTerm) ||
+                  exam.course_code?.toLowerCase().includes(searchTerm) ||
+                  exam.exam_type?.toLowerCase().includes(searchTerm);
+                return matchesSearch;
+              });
+              return filtered.length;
+            })()}
+          </span>
+          <div className="flex gap-1 mt-2 sm:mt-0">
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              <ChevronLeft size={16} className="text-slate-600 dark:text-slate-400" />
+            </button>
+            {(() => {
+              const searchTerm = filters.search.toLowerCase();
+              const filtered = exams.filter((exam) => {
+                const matchesSearch =
+                  exam.exam_name?.toLowerCase().includes(searchTerm) ||
+                  exam.course_code?.toLowerCase().includes(searchTerm) ||
+                  exam.exam_type?.toLowerCase().includes(searchTerm);
+                return matchesSearch;
+              });
+              const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+              
+              return [...Array(totalPages)].map((_, i) => (
+                <button
+                  key={i + 1}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                    currentPage === i + 1
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ));
+            })()}
+            <button
+              onClick={() => {
+                const searchTerm = filters.search.toLowerCase();
+                const filtered = exams.filter((exam) => {
+                  const matchesSearch =
+                    exam.exam_name?.toLowerCase().includes(searchTerm) ||
+                    exam.course_code?.toLowerCase().includes(searchTerm) ||
+                    exam.exam_type?.toLowerCase().includes(searchTerm);
+                  return matchesSearch;
+                });
+                const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+                setCurrentPage(Math.min(totalPages, currentPage + 1));
+              }}
+              disabled={(() => {
+                const searchTerm = filters.search.toLowerCase();
+                const filtered = exams.filter((exam) => {
+                  const matchesSearch =
+                    exam.exam_name?.toLowerCase().includes(searchTerm) ||
+                    exam.course_code?.toLowerCase().includes(searchTerm) ||
+                    exam.exam_type?.toLowerCase().includes(searchTerm);
+                  return matchesSearch;
+                });
+                const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+                return currentPage === totalPages;
+              })()}
+              className="p-1.5 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              <ChevronRight size={16} className="text-slate-600 dark:text-slate-400" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Exam Modal */}
+      {showModal && (
+        <div
+          className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseModal}
+        >
+          <div
+            className="bg-white dark:bg-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200 dark:border-slate-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Sticky Header */}
+            <div className="sticky top-0 bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600 px-6 py-4 rounded-t-lg">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                  {editingExam ? "Edit Exam" : "Create New Exam"}
+                </h2>
+                <button
+                  onClick={handleCloseModal}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                >
+                  <Plus size={24} className="rotate-45" />
+                </button>
+              </div>
+            </div>
+
+            {/* Form Wrapper */}
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Exam Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.exam_name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, exam_name: e.target.value })
+                      }
+                      required
+                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Course ID
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.course_id}
+                      onChange={(e) =>
+                        setFormData({ ...formData, course_id: e.target.value })
+                      }
+                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Exam Type *
+                    </label>
+                    <select
+                      value={formData.exam_type}
+                      onChange={(e) =>
+                        setFormData({ ...formData, exam_type: e.target.value })
+                      }
+                      required
+                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                    >
+                      <option value="quiz">Quiz</option>
+                      <option value="midterm">Midterm</option>
+                      <option value="final">Final</option>
+                      <option value="practical">Practical</option>
+                      <option value="project">Project</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Exam Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.exam_date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, exam_date: e.target.value })
+                      }
+                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Exam Time
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.exam_time}
+                      onChange={(e) =>
+                        setFormData({ ...formData, exam_time: e.target.value })
+                      }
+                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Duration (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.exam_duration}
+                      onChange={(e) =>
+                        setFormData({ ...formData, exam_duration: e.target.value })
+                      }
+                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Total Points
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.total_points}
+                      onChange={(e) =>
+                        setFormData({ ...formData, total_points: e.target.value })
+                      }
+                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Passing Score
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.passing_score}
+                      onChange={(e) =>
+                        setFormData({ ...formData, passing_score: e.target.value })
+                      }
+                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Status *
+                    </label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) =>
+                        setFormData({ ...formData, status: e.target.value })
+                      }
+                      required
+                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="scheduled">Scheduled</option>
+                      <option value="ongoing">Ongoing</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      Instructions
+                    </label>
+                    <textarea
+                      value={formData.instructions}
+                      onChange={(e) =>
+                        setFormData({ ...formData, instructions: e.target.value })
+                      }
+                      rows={4}
+                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sticky Footer */}
+              <div className="sticky bottom-0 bg-slate-50 dark:bg-slate-700 border-t border-slate-200 dark:border-slate-600 px-6 py-4 rounded-b-lg">
+                <div className="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-500 transition-colors text-sm font-medium"
+                  >
+                    {editingExam ? "Update Exam" : "Create Exam"}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

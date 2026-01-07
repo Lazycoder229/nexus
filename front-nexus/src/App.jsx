@@ -54,6 +54,18 @@ import PayslipGenerator from "./components/pages/admin/PayslipGenerator";
 import DeductionManagement from "./components/pages/admin/DeductionManagement";
 import PayrollReports from "./components/pages/admin/PayrollReports";
 import PaymentGateway from "./components/pages/admin/PaymentGateway";
+import BookCatalog from "./components/pages/admin/BookCatalog";
+import BorrowReturn from "./components/pages/admin/BorrowReturn";
+import LostDamageLogs from "./components/pages/admin/LostDamageLogs";
+import DigitalLibrary from "./components/pages/admin/DigitalLibrary";
+import ScholarshipTypeSetup from "./components/pages/admin/ScholarshipTypeSetup";
+import ApplicationForms from "./components/pages/admin/ApplicationForms";
+import BeneficiaryList from "./components/pages/admin/BeneficiaryList";
+import EligibilityScreening from "./components/pages/admin/EligibilityScreening";
+import AnnouncementCenter from "./components/pages/admin/AnnouncementCenter";
+import EventScheduling from "./components/pages/admin/EventScheduling";
+import SchoolCalendar from "./components/pages/admin/SchoolCalendar";
+import PublicEventPosting from "./components/pages/admin/PublicEventPosting";
 
 function AppWrapper() {
   const navigate = useNavigate();
@@ -135,6 +147,54 @@ function AppWrapper() {
         <Route
           path="admin_syllabus_repository"
           element={<SyllabusRepository />}
+        />
+        <Route
+          path="admin_library_management"
+          element={<BookCatalog />}
+        />
+        <Route
+          path="admin_borrow_return"
+          element={<BorrowReturn />}
+        />
+        <Route
+          path="admin_lost_damage_logs"
+          element={<LostDamageLogs />}
+        />
+        <Route
+          path="admin_digital_library"
+          element={<DigitalLibrary />}
+        />
+        <Route
+          path="admin_scholar_type_setup"
+          element={<ScholarshipTypeSetup />}
+        />
+        <Route
+          path="admin_application_forms"
+          element={<ApplicationForms />}
+        />
+        <Route
+          path="admin_benefeciary_list"
+          element={<BeneficiaryList />}
+        />
+        <Route
+          path="admin_eligibility_screening"
+          element={<EligibilityScreening />}
+        />
+        <Route
+          path="admin_announcement_center"
+          element={<AnnouncementCenter />}
+        />
+        <Route
+          path="admin_event_scheduling"
+          element={<EventScheduling />}
+        />
+        <Route
+          path="admin_school_calendar"
+          element={<SchoolCalendar />}
+        />
+        <Route
+          path="admin_public_event_posting"
+          element={<PublicEventPosting />}
         />
         <Route path="admin_staff_attendance" element={<StaffAttendance />} />
         <Route

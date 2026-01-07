@@ -229,26 +229,30 @@ const SyllabusRepository = () => {
   };
 
   // Helper Components
-  const Pagination = ({ currentPage, totalPages, onPageChange }) => (
-    <div className="flex items-center justify-between">
-      <p className="text-sm text-gray-700">
-        Page <span className="font-medium">{currentPage}</span> of{" "}
-        <span className="font-medium">{totalPages}</span>
-      </p>
-      <div className="flex gap-2">
+  const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
+    <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
+      <span className="text-xs sm:text-sm">
+        Page <span className="font-semibold">{currentPage}</span> of{" "}
+        <span className="font-semibold">{totalPages}</span> | Total Records:{" "}
+        {totalItems}
+      </span>
+      <div className="flex gap-1 items-center mt-2 sm:mt-0">
         <button
-          onClick={() => onPageChange(currentPage - 1)}
+          onClick={() => setPage((p) => Math.max(p - 1, 1))}
           disabled={currentPage === 1}
-          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
         >
-          <ChevronLeft size={18} />
+          <ChevronLeft size={16} />
         </button>
+        <span className="px-2 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+          {currentPage}
+        </span>
         <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+          disabled={currentPage === totalPages || totalPages === 0}
+          className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
         >
-          <ChevronRight size={18} />
+          <ChevronRight size={16} />
         </button>
       </div>
     </div>
@@ -265,103 +269,88 @@ const SyllabusRepository = () => {
   }).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
+      <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <FileText size={24} className="text-indigo-600" />
             Syllabus Repository
-          </h1>
-          <p className="text-gray-600">
-            Centralized repository for course syllabi and materials
-          </p>
+          </h2>
+          <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+            Course Materials & Documents
+          </span>
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Files</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {totalFiles}
-                </p>
-              </div>
-              <FileText className="text-blue-500" size={40} />
-            </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="bg-white dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm p-4">
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Total Files</p>
+            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+              {totalFiles}
+            </p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Total Storage
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {formatFileSize(totalSize)}
-                </p>
-              </div>
-              <BookOpen className="text-green-500" size={40} />
-            </div>
+          <div className="bg-white dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm p-4">
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+              Total Storage
+            </p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
+              {formatFileSize(totalSize)}
+            </p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Recent Uploads (7d)
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {recentUploads}
-                </p>
-              </div>
-              <Clock className="text-purple-500" size={40} />
-            </div>
+          <div className="bg-white dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm p-4">
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+              Recent Uploads (7d)
+            </p>
+            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1">
+              {recentUploads}
+            </p>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-lg shadow-md">
+        <div className="space-y-3">
           {/* Controls Bar */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Search */}
-              <div className="flex-1 relative">
-                <Search
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  size={20}
-                />
-                <input
-                  type="text"
-                  placeholder="Search syllabus files..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Search Input - LEFT */}
+            <div className="relative flex-grow max-w-xs">
+              <input
+                type="text"
+                placeholder="Search syllabus files..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
+              />
+              <Search
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={14}
+              />
+            </div>
 
-              {/* Filter by Course */}
-              <div className="w-full lg:w-64">
+            {/* Filters and Action Buttons - RIGHT */}
+            <div className="flex items-center gap-2">
+              <div className="w-44">
                 <Select
                   options={courseOptions}
                   value={filterCourse}
                   onChange={setFilterCourse}
-                  placeholder="Filter by Course"
+                  placeholder="Course"
                   isClearable
-                  className="react-select-container"
+                  className="text-sm"
                   classNamePrefix="react-select"
                 />
               </div>
 
-              {/* Filter by Period */}
-              <div className="w-full lg:w-64">
+              <div className="w-44">
                 <Select
                   options={periodOptions}
                   value={filterPeriod}
                   onChange={setFilterPeriod}
-                  placeholder="Filter by Period"
+                  placeholder="Period"
                   isClearable
-                  className="react-select-container"
+                  className="text-sm"
                   classNamePrefix="react-select"
                 />
               </div>
@@ -369,58 +358,58 @@ const SyllabusRepository = () => {
               {/* Upload Button */}
               <button
                 onClick={() => setShowModal(true)}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium border border-indigo-700 dark:border-indigo-600 shadow-md shadow-indigo-500/30 whitespace-nowrap"
               >
-                <Upload size={20} />
+                <Upload size={14} />
                 Upload Syllabus
               </button>
             </div>
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-100 dark:bg-slate-700/70">
+                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  <th className="px-4 py-2.5">
                     File Name
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5">
                     Course
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5">
                     Period
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5">
                     Size
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5">
                     Uploaded By
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5">
                     Upload Date
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-right">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
                 {currentItems.length > 0 ? (
                   currentItems.map((syllabus) => (
                     <tr
                       key={syllabus.syllabus_id}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150"
                     >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <FileText className="text-blue-500" size={24} />
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-2">
+                          <FileText className="text-indigo-600 dark:text-indigo-400" size={18} />
                           <div>
-                            <div className="font-semibold text-gray-900">
+                            <div className="font-semibold text-slate-900 dark:text-white">
                               {syllabus.file_name}
                             </div>
                             {syllabus.description && (
-                              <div className="text-sm text-gray-500 mt-1">
+                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-xs truncate">
                                 {syllabus.description.substring(0, 60)}
                                 {syllabus.description.length > 60 && "..."}
                               </div>
@@ -428,56 +417,56 @@ const SyllabusRepository = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">
+                      <td className="px-4 py-2">
+                        <div className="font-medium text-slate-900 dark:text-white">
                           {syllabus.course_code}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 max-w-xs truncate">
                           {syllabus.course_title}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-4 py-2">
                         {syllabus.period_name
                           ? `${syllabus.period_name} ${syllabus.year}`
-                          : "N/A"}
+                          : <span className="text-slate-400 dark:text-slate-500">N/A</span>}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-4 py-2">
                         {formatFileSize(syllabus.file_size)}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-900">
-                          <Users size={14} className="text-gray-400" />
-                          {syllabus.first_name} {syllabus.last_name}
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <Users size={12} className="text-slate-400 dark:text-slate-500" />
+                          <span className="text-xs">{syllabus.first_name} {syllabus.last_name}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-900">
-                          <Clock size={14} className="text-gray-400" />
-                          {formatDate(syllabus.created_at)}
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <Clock size={12} className="text-slate-400 dark:text-slate-500" />
+                          <span className="text-xs">{formatDate(syllabus.created_at)}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-center gap-2">
+                      <td className="px-4 py-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => handleDownload(syllabus)}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
                             title="Download"
                           >
-                            <Download size={18} />
+                            <Download size={14} />
                           </button>
                           <button
                             onClick={() => handleEdit(syllabus)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
                             title="Edit"
                           >
-                            <Edit size={18} />
+                            <Edit size={14} />
                           </button>
                           <button
                             onClick={() => handleDelete(syllabus.syllabus_id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
                             title="Delete"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
@@ -485,16 +474,8 @@ const SyllabusRepository = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="px-6 py-12 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <FileText size={48} className="text-gray-300" />
-                        <p className="text-gray-500 font-medium">
-                          No syllabus files found
-                        </p>
-                        <p className="text-gray-400 text-sm">
-                          Upload your first syllabus to get started
-                        </p>
-                      </div>
+                    <td colSpan="7" className="p-4 text-center text-slate-500 dark:text-slate-400 italic">
+                      No syllabus files found matching your search criteria.
                     </td>
                   </tr>
                 )}
@@ -503,33 +484,38 @@ const SyllabusRepository = () => {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="px-6 py-4 border-t border-gray-200">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-              />
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setPage={setCurrentPage}
+            totalItems={filteredSyllabi.length}
+          />
         </div>
       </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: "600px" }}>
-            <div className="modal-header">
-              <h2>{editMode ? "Edit Syllabus" : "Upload New Syllabus"}</h2>
-              <button className="btn-close" onClick={closeModal}>
-                <X size={24} />
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-2 z-50 transition-opacity duration-300" onClick={closeModal}>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-2xl transform transition-transform duration-300 scale-100 border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="sticky top-0 flex justify-between items-center px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 rounded-t-lg z-10">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                {editMode ? "Edit Syllabus" : "Upload New Syllabus"}
+              </h3>
+              <button
+                onClick={closeModal}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              >
+                <Plus size={18} className="rotate-45" />
               </button>
             </div>
-            <form onSubmit={handleSubmit}>
-              <div className="form-grid">
-                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
-                  <label>
-                    Course <span className="required">*</span>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSubmit} className="p-4 space-y-3">
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Course *
                   </label>
                   <Select
                     options={courseOptions}
@@ -541,11 +527,15 @@ const SyllabusRepository = () => {
                     }
                     placeholder="Select Course"
                     required
+                    className="text-sm"
+                    classNamePrefix="react-select"
                   />
                 </div>
 
-                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
-                  <label>Academic Period</label>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Academic Period
+                  </label>
                   <Select
                     options={periodOptions}
                     value={periodOptions.find(
@@ -556,85 +546,83 @@ const SyllabusRepository = () => {
                     }
                     placeholder="Select Period (Optional)"
                     isClearable
+                    className="text-sm"
+                    classNamePrefix="react-select"
                   />
                 </div>
 
                 {!editMode && (
-                  <div className="form-group" style={{ gridColumn: "1 / -1" }}>
-                    <label>
-                      Upload File <span className="required">*</span>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Upload File *
                     </label>
-                    <div
-                      style={{
-                        border: "2px dashed #bdc3c7",
-                        borderRadius: "8px",
-                        padding: "30px",
-                        textAlign: "center",
-                        background: "#ecf0f1",
-                      }}
-                    >
+                    <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-8 text-center bg-slate-50 dark:bg-slate-700/50">
                       <Upload
                         size={40}
-                        color="#7f8c8d"
-                        style={{ margin: "0 auto" }}
+                        className="text-slate-400 dark:text-slate-500 mx-auto mb-3"
                       />
                       <input
                         type="file"
                         onChange={handleFileChange}
                         accept=".pdf,.doc,.docx"
-                        style={{ marginTop: "10px" }}
+                        className="text-sm text-slate-600 dark:text-slate-300"
                         required={!editMode}
                       />
-                      <p style={{ margin: "10px 0 0", color: "#7f8c8d" }}>
+                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                         Accepted formats: PDF, DOC, DOCX
                       </p>
                     </div>
                     {formData.file_name && (
-                      <div style={{ marginTop: "10px", color: "#27ae60" }}>
-                        <FileText size={16} /> Selected: {formData.file_name}
+                      <div className="mt-2 flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                        <FileText size={16} />
+                        <span>Selected: {formData.file_name}</span>
                       </div>
                     )}
                   </div>
                 )}
 
                 {editMode && (
-                  <div className="form-group" style={{ gridColumn: "1 / -1" }}>
-                    <label>Current File</label>
-                    <div
-                      style={{
-                        padding: "10px",
-                        background: "#ecf0f1",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      <FileText size={16} /> {formData.file_name} (
-                      {formatFileSize(formData.file_size)})
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Current File
+                    </label>
+                    <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-md border border-slate-200 dark:border-slate-600">
+                      <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                        <FileText size={16} />
+                        <span>{formData.file_name} ({formatFileSize(formData.file_size)})</span>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
-                  <label>Description</label>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Description
+                  </label>
                   <textarea
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
                     rows="4"
                     placeholder="Brief description of the syllabus content..."
-                    style={{ resize: "vertical" }}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-vertical"
                   />
                 </div>
               </div>
 
-              <div className="modal-footer">
+              {/* Modal Footer */}
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700/50">
                 <button
                   type="button"
-                  className="btn-cancel"
                   onClick={closeModal}
+                  className="px-3 py-1.5 text-sm bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors border border-slate-300 dark:border-slate-600"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn-submit">
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-500/30"
+                >
                   {editMode ? "Update Syllabus" : "Upload Syllabus"}
                 </button>
               </div>

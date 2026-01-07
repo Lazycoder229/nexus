@@ -20,6 +20,9 @@ const ClassCapacityMonitor = () => {
   const [filterPeriod, setFilterPeriod] = useState(null);
   const [filterCourse, setFilterCourse] = useState(null);
   const [filterStatus, setFilterStatus] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
 
   useEffect(() => {
     fetchSections();
@@ -101,8 +104,22 @@ const ClassCapacityMonitor = () => {
       matchesStatus = status === filterStatus.value;
     }
 
-    return matchesPeriod && matchesCourse && matchesStatus;
+    const matchesSearch =
+      !searchQuery ||
+      section.course_code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      section.section_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      section.course_title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      section.period_name?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesPeriod && matchesCourse && matchesStatus && matchesSearch;
   });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredSections.length / rowsPerPage);
+  const paginatedSections = filteredSections.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
 
   // Calculate statistics
   const totalSections = filteredSections.length;
@@ -141,297 +158,304 @@ const ClassCapacityMonitor = () => {
   ];
 
   // Helper Components
-  const Pagination = ({ currentPage, totalPages, onPageChange }) => (
-    <div className="flex items-center justify-between">
-      <p className="text-sm text-gray-700">
-        Page <span className="font-medium">{currentPage}</span> of{" "}
-        <span className="font-medium">{totalPages}</span>
-      </p>
-      <div className="flex gap-2">
+  const StatusBadge = ({ status, percentage }) => {
+    let colorClass = "";
+    switch (status) {
+      case "full":
+        colorClass = "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300";
+        break;
+      case "near-full":
+        colorClass = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
+        break;
+      case "moderate":
+        colorClass = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300";
+        break;
+      case "low":
+        colorClass = "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300";
+        break;
+      default:
+        colorClass = "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300";
+    }
+    return (
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
+        {percentage}%
+      </span>
+    );
+  };
+
+  const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
+    <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
+      <span className="text-xs sm:text-sm">
+        Page <span className="font-semibold">{currentPage}</span> of{" "}
+        <span className="font-semibold">{totalPages}</span> | Total Records:{" "}
+        {totalItems}
+      </span>
+      <div className="flex gap-1 items-center mt-2 sm:mt-0">
         <button
-          onClick={() => onPageChange(currentPage - 1)}
+          onClick={() => setPage((p) => Math.max(p - 1, 1))}
           disabled={currentPage === 1}
-          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
         >
-          <ChevronLeft size={18} />
+          <ChevronLeft size={16} />
         </button>
+        <span className="px-2 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+          {currentPage}
+        </span>
         <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+          disabled={currentPage === totalPages || totalPages === 0}
+          className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
         >
-          <ChevronRight size={18} />
+          <ChevronRight size={16} />
         </button>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
+      <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Users size={24} className="text-indigo-600" />
             Class Capacity Monitor
-          </h1>
-          <p className="text-gray-600">
-            Real-time monitoring of class enrollment and capacity utilization
-          </p>
+          </h2>
+          <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+            Real-time Enrollment Tracking
+          </span>
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-indigo-500 dark:border-indigo-600">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-600">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
                   Total Sections
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                   {totalSections}
                 </p>
               </div>
-              <BookOpen className="text-blue-500" size={32} />
+              <BookOpen className="text-indigo-600 dark:text-indigo-400" size={28} />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-green-500 dark:border-green-600">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-600">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
                   Total Enrolled
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                   {totalEnrolled}
                 </p>
               </div>
-              <Users className="text-green-500" size={32} />
+              <Users className="text-green-600 dark:text-green-400" size={28} />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
+          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-purple-500 dark:border-purple-600">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-600">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
                   Total Capacity
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                   {totalCapacity}
                 </p>
               </div>
-              <TrendingUp className="text-purple-500" size={32} />
+              <TrendingUp className="text-purple-600 dark:text-purple-400" size={28} />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
+          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-orange-500 dark:border-orange-600">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-600">Utilization</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Utilization</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                   {overallUtilization}%
                 </p>
               </div>
-              <Clock className="text-orange-500" size={32} />
+              <Clock className="text-orange-600 dark:text-orange-400" size={28} />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
+          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-red-500 dark:border-red-600">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-600">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
                   Full Sections
                 </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                   {fullSections}
                 </p>
               </div>
-              <AlertCircle className="text-red-500" size={32} />
+              <AlertCircle className="text-red-600 dark:text-red-400" size={28} />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
+          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-yellow-500 dark:border-yellow-600">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-gray-600">Near Full</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Near Full</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                   {nearFullSections}
                 </p>
               </div>
-              <TrendingUp className="text-yellow-500" size={32} />
+              <TrendingUp className="text-yellow-600 dark:text-yellow-400" size={28} />
             </div>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Academic Period
-              </label>
-              <Select
-                options={periodOptions}
-                value={filterPeriod}
-                onChange={setFilterPeriod}
-                placeholder="Filter by Period"
-                isClearable
-                className="react-select-container"
-                classNamePrefix="react-select"
+        {/* Controls and Filters */}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Search Input - LEFT */}
+            <div className="relative flex-grow max-w-xs">
+              <input
+                type="text"
+                placeholder="Search sections..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
+              />
+              <Search
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={14}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Course
-              </label>
-              <Select
-                options={courseOptions}
-                value={filterCourse}
-                onChange={setFilterCourse}
-                placeholder="Filter by Course"
-                isClearable
-                className="react-select-container"
-                classNamePrefix="react-select"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
-              <Select
-                options={statusFilterOptions}
-                value={filterStatus}
-                onChange={setFilterStatus}
-                placeholder="Filter by Status"
-                isClearable
-                className="react-select-container"
-                classNamePrefix="react-select"
-              />
+
+            {/* Filters - RIGHT */}
+            <div className="flex items-center gap-2">
+              <div className="w-44">
+                <Select
+                  options={periodOptions}
+                  value={filterPeriod}
+                  onChange={(option) => {
+                    setFilterPeriod(option);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Period"
+                  isClearable
+                  className="text-sm"
+                  classNamePrefix="react-select"
+                />
+              </div>
+              <div className="w-44">
+                <Select
+                  options={courseOptions}
+                  value={filterCourse}
+                  onChange={(option) => {
+                    setFilterCourse(option);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Course"
+                  isClearable
+                  className="text-sm"
+                  classNamePrefix="react-select"
+                />
+              </div>
+              <div className="w-44">
+                <Select
+                  options={statusFilterOptions}
+                  value={filterStatus}
+                  onChange={(option) => {
+                    setFilterStatus(option);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Status"
+                  isClearable
+                  className="text-sm"
+                  classNamePrefix="react-select"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Sections Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSections.length > 0 ? (
-            filteredSections.map((section) => {
-              const status = getCapacityStatus(
-                section.current_enrolled,
-                section.max_capacity
-              );
-              const percentage = getCapacityPercentage(
-                section.current_enrolled,
-                section.max_capacity
-              );
-              const statusColor = getStatusColor(status);
+          {/* Table */}
+          <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-100 dark:bg-slate-700/70">
+                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  <th className="px-4 py-2.5">Section</th>
+                  <th className="px-4 py-2.5">Course</th>
+                  <th className="px-4 py-2.5">Period</th>
+                  <th className="px-4 py-2.5">Room</th>
+                  <th className="px-4 py-2.5 text-right">Enrolled</th>
+                  <th className="px-4 py-2.5 text-right">Capacity</th>
+                  <th className="px-4 py-2.5 text-right">Utilization</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
+                {paginatedSections.length > 0 ? (
+                  paginatedSections.map((section) => {
+                    const status = getCapacityStatus(
+                      section.current_enrolled,
+                      section.max_capacity
+                    );
+                    const percentage = getCapacityPercentage(
+                      section.current_enrolled,
+                      section.max_capacity
+                    );
 
-              const borderColorClass =
-                status === "full"
-                  ? "border-l-red-500"
-                  : status === "near-full"
-                  ? "border-l-yellow-500"
-                  : status === "moderate"
-                  ? "border-l-blue-500"
-                  : "border-l-green-500";
-
-              return (
-                <div
-                  key={section.section_id}
-                  className={`bg-white rounded-lg shadow-md p-6 border-l-4 ${borderColorClass} hover:shadow-lg transition-shadow`}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900">
-                        {section.course_code} - {section.section_name}
-                      </h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {section.course_title}
-                      </p>
-                    </div>
-                    <span
-                      className="px-3 py-1 rounded-full text-xs font-semibold text-white"
-                      style={{ backgroundColor: statusColor }}
+                    return (
+                      <tr
+                        key={section.section_id}
+                        className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150"
+                      >
+                        <td className="px-4 py-2">
+                          <div className="font-semibold">{section.section_name}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            {section.course_code}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2">
+                          <div className="max-w-xs truncate">{section.course_title}</div>
+                        </td>
+                        <td className="px-4 py-2">
+                          {section.period_name} {section.year}
+                        </td>
+                        <td className="px-4 py-2">
+                          {section.room || <span className="text-slate-400">-</span>}
+                        </td>
+                        <td className="px-4 py-2 text-right font-semibold">
+                          {section.current_enrolled}
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          {section.max_capacity}
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          <StatusBadge status={status} percentage={percentage} />
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="p-4 text-center text-slate-500 dark:text-slate-400 italic"
                     >
-                      {percentage}%
-                    </span>
-                  </div>
+                      No sections found matching your search criteria.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center mb-2 text-sm">
-                      <span className="flex items-center gap-2 text-gray-600">
-                        <Users size={14} />
-                        Enrolled
-                      </span>
-                      <span className="font-bold text-gray-900">
-                        {section.current_enrolled} / {section.max_capacity}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="h-2.5 rounded-full transition-all"
-                        style={{
-                          width: `${percentage}%`,
-                          backgroundColor: statusColor,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div>
-                      <span className="font-semibold">Period:</span>{" "}
-                      {section.period_name} {section.year}
-                    </div>
-                    {section.room && (
-                      <div>
-                        <span className="font-semibold">Room:</span>{" "}
-                        {section.room}
-                      </div>
-                    )}
-                    {section.schedule_day && (
-                      <div>
-                        <span className="font-semibold">Schedule:</span>{" "}
-                        {section.schedule_day} {section.schedule_time_start} -{" "}
-                        {section.schedule_time_end}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    {status === "full" && (
-                      <div className="flex items-center gap-2 text-red-600">
-                        <AlertCircle size={16} />
-                        <span className="text-xs font-medium">
-                          Section is full
-                        </span>
-                      </div>
-                    )}
-                    {status === "near-full" && (
-                      <div className="flex items-center gap-2 text-yellow-600">
-                        <TrendingUp size={16} />
-                        <span className="text-xs font-medium">Almost full</span>
-                      </div>
-                    )}
-                    {status === "low" && (
-                      <div className="flex items-center gap-2 text-green-600">
-                        <TrendingDown size={16} />
-                        <span className="text-xs font-medium">
-                          Seats available
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <div className="col-span-full text-center py-12">
-              <BookOpen size={48} className="text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 font-medium">No sections found</p>
-              <p className="text-gray-400 text-sm">
-                Try adjusting your filters
-              </p>
-            </div>
-          )}
+          {/* Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setPage={setCurrentPage}
+            totalItems={filteredSections.length}
+          />
         </div>
       </div>
     </div>

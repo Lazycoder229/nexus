@@ -199,17 +199,17 @@ const AcademicCalendar = () => {
   const StatusBadge = ({ type }) => {
     const eventTypeObj = eventTypes.find((t) => t.value === type);
     const colorMap = {
-      enrollment: "bg-blue-100 text-blue-800",
-      exam: "bg-red-100 text-red-800",
-      holiday: "bg-green-100 text-green-800",
-      meeting: "bg-purple-100 text-purple-800",
-      deadline: "bg-orange-100 text-orange-800",
-      activity: "bg-teal-100 text-teal-800",
-      other: "bg-gray-100 text-gray-800",
+      enrollment: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+      exam: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+      holiday: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+      meeting: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+      deadline: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
+      activity: "bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300",
+      other: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
     };
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
           colorMap[type] || colorMap.other
         }`}
       >
@@ -218,26 +218,28 @@ const AcademicCalendar = () => {
     );
   };
 
-  const Pagination = ({ currentPage, totalPages, onPageChange }) => (
-    <div className="flex items-center justify-between">
-      <p className="text-sm text-gray-700">
-        Page <span className="font-medium">{currentPage}</span> of{" "}
-        <span className="font-medium">{totalPages}</span>
-      </p>
-      <div className="flex gap-2">
+  const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
+    <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
+      <span className="text-xs sm:text-sm">
+        Page {currentPage} of {totalPages} | Total Records: {totalItems}
+      </span>
+      <div className="flex gap-1 items-center mt-2 sm:mt-0">
         <button
-          onClick={() => onPageChange(currentPage - 1)}
+          onClick={() => setPage((p) => Math.max(p - 1, 1))}
           disabled={currentPage === 1}
-          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
         >
-          <ChevronLeft size={18} />
+          <ChevronLeft size={16} />
         </button>
+        <span className="px-2 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+          {currentPage}
+        </span>
         <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+          disabled={currentPage === totalPages || totalPages === 0}
+          className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
         >
-          <ChevronRight size={18} />
+          <ChevronRight size={16} />
         </button>
       </div>
     </div>
@@ -312,98 +314,103 @@ const AcademicCalendar = () => {
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-lg shadow-md">
+        <div className="space-y-3">
           {/* Controls Bar */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Search */}
-              <div className="flex-1 relative">
-                <Search
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  size={20}
-                />
-                <input
-                  type="text"
-                  placeholder="Search events..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Search Input - LEFT */}
+            <div className="relative flex-grow max-w-xs">
+              <input
+                type="text"
+                placeholder="Search events..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
+              />
+              <Search
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={14}
+              />
+            </div>
 
-              {/* Filter by Period */}
-              <div className="w-full lg:w-64">
+            {/* Filter & Action Buttons - RIGHT */}
+            <div className="flex items-center gap-2">
+              <div className="w-48">
                 <Select
                   options={periodOptions}
                   value={filterPeriod}
-                  onChange={setFilterPeriod}
+                  onChange={(option) => {
+                    setFilterPeriod(option);
+                    setCurrentPage(1);
+                  }}
                   placeholder="Filter by Period"
                   isClearable
-                  className="react-select-container"
+                  className="text-sm"
                   classNamePrefix="react-select"
                 />
               </div>
-
-              {/* Filter by Type */}
-              <div className="w-full lg:w-64">
+              <div className="w-48">
                 <Select
                   options={eventTypes}
                   value={filterType}
-                  onChange={setFilterType}
+                  onChange={(option) => {
+                    setFilterType(option);
+                    setCurrentPage(1);
+                  }}
                   placeholder="Filter by Type"
                   isClearable
-                  className="react-select-container"
+                  className="text-sm"
                   classNamePrefix="react-select"
                 />
               </div>
-
-              {/* Add Button */}
               <button
                 onClick={() => setShowModal(true)}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors text-sm border shadow-sm whitespace-nowrap bg-indigo-600 text-white hover:bg-indigo-700 border-indigo-700 dark:border-indigo-600 shadow-md shadow-indigo-500/30"
               >
-                <Plus size={20} />
-                Add Event
+                <Plus size={14} />
+                New Event
               </button>
             </div>
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-100 dark:bg-slate-700/70">
+                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  <th className="px-4 py-2.5">
                     Event Name
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5">
                     Type
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5">
                     Date
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5">
                     Period
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5">
                     Location
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5">
                     Audience
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-right">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
                 {currentItems.length > 0 ? (
                   currentItems.map((event) => (
                     <tr
                       key={event.event_id}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150"
                     >
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-2">
                         <div className="flex items-center gap-3">
                           <div
                             className="w-1 h-12 rounded-full"
@@ -412,11 +419,11 @@ const AcademicCalendar = () => {
                             }}
                           />
                           <div>
-                            <div className="font-semibold text-gray-900">
+                            <div className="font-semibold">
                               {event.event_name}
                             </div>
                             {event.description && (
-                              <div className="text-sm text-gray-500 mt-1">
+                              <div className="text-slate-500 dark:text-slate-400 text-xs mt-1">
                                 {event.description.substring(0, 60)}
                                 {event.description.length > 60 && "..."}
                               </div>
@@ -424,78 +431,68 @@ const AcademicCalendar = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-2">
                         <StatusBadge type={event.event_type} />
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-900">
-                          <CalendarIcon size={16} className="text-gray-400" />
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-2">
+                          <CalendarIcon size={16} className="text-slate-400" />
                           <div>
                             <div>{formatDate(event.start_date)}</div>
                             {event.end_date &&
                               event.end_date !== event.start_date && (
-                                <div className="text-gray-500 text-xs">
+                                <div className="text-slate-500 dark:text-slate-400 text-xs">
                                   to {formatDate(event.end_date)}
                                 </div>
                               )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-4 py-2">
                         {event.period_name
                           ? `${event.period_name} ${event.year}`
                           : "N/A"}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-2">
                         {event.location ? (
-                          <div className="flex items-center gap-2 text-sm text-gray-900">
-                            <MapPin size={14} className="text-gray-400" />
+                          <div className="flex items-center gap-2">
+                            <MapPin size={14} className="text-slate-400" />
                             {event.location}
                           </div>
                         ) : (
-                          <span className="text-gray-400 text-sm">N/A</span>
+                          <span className="text-slate-400 italic">N/A</span>
                         )}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-900">
-                          <Users size={14} className="text-gray-400" />
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-2">
+                          <Users size={14} className="text-slate-400" />
                           <span className="capitalize">
                             {event.target_audience}
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleEdit(event)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(event.event_id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
+                      <td className="px-4 py-2 text-right space-x-2">
+                        <button
+                          onClick={() => handleEdit(event)}
+                          className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                          title="Edit"
+                        >
+                          <Edit size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(event.event_id)}
+                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="px-6 py-12 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <CalendarIcon size={48} className="text-gray-300" />
-                        <p className="text-gray-500 font-medium">
-                          No events found
-                        </p>
-                        <p className="text-gray-400 text-sm">
-                          Try adjusting your search or filters
-                        </p>
-                      </div>
+                    <td colSpan="7" className="p-4 text-center text-slate-500 italic">
+                      No events found matching your search criteria.
                     </td>
                   </tr>
                 )}
@@ -504,15 +501,12 @@ const AcademicCalendar = () => {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="px-6 py-4 border-t border-gray-200">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-              />
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setPage={setCurrentPage}
+            totalItems={filteredEvents.length}
+          />
         </div>
       </div>
 

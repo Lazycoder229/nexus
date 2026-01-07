@@ -125,6 +125,33 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
       return;
     }
 
+    // 🔓 BYPASS MODE - No database validation
+    // Mock successful login based on email pattern
+    const mockData = {
+      token: "mock-jwt-token-" + Date.now(),
+      role: email.includes("admin") ? "Admin" : "student",
+      userId: "mock-user-" + Math.random().toString(36).substr(2, 9),
+    };
+
+    console.log("Mock Login Response:", mockData);
+
+    // Save JWT token & user info
+    localStorage.setItem("token", mockData.token);
+    localStorage.setItem("role", mockData.role);
+    localStorage.setItem("userId", mockData.userId);
+
+    alert(`Login successful! Role: ${mockData.role}`);
+
+    // Redirect based on role
+    if (mockData.role === "student") {
+      navigate("/student/dashboard");
+    } else if (mockData.role === "Admin") {
+      navigate("/admin/dashboard");
+    } else {
+      navigate("/");
+    }
+
+    /* ORIGINAL CODE - Uncomment to restore database authentication
     try {
       // 1️ Send login request
       const { data } = await axios.post(
@@ -168,6 +195,7 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
         alert("Network error. Please try again later.");
       }
     }
+    */
   };
   return (
     <div className="flex flex-col md:flex-row w-full h-full min-h-[480px]">

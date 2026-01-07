@@ -274,13 +274,13 @@ const GradeManagement = () => {
   // Helper Components
   const StatusBadge = ({ status }) => {
     const colorMap = {
-      draft: "bg-gray-100 text-gray-800",
-      submitted: "bg-blue-100 text-blue-800",
-      approved: "bg-green-100 text-green-800",
+      draft: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
+      submitted: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
+      approved: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
     };
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
           colorMap[status] || colorMap.draft
         }`}
       >
@@ -292,37 +292,41 @@ const GradeManagement = () => {
   const RemarksBadge = ({ remarks }) => {
     const colorClass =
       remarks === "PASSED"
-        ? "bg-green-100 text-green-800"
-        : "bg-red-100 text-red-800";
+        ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+        : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300";
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-semibold ${colorClass}`}
+        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colorClass}`}
       >
         {remarks || "N/A"}
       </span>
     );
   };
 
-  const Pagination = ({ currentPage, totalPages, onPageChange }) => (
-    <div className="flex items-center justify-between">
-      <p className="text-sm text-gray-700">
-        Page <span className="font-medium">{currentPage}</span> of{" "}
-        <span className="font-medium">{totalPages}</span>
-      </p>
-      <div className="flex gap-2">
+  const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
+    <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
+      <span className="text-xs sm:text-sm">
+        Page <span className="font-semibold">{currentPage}</span> of{" "}
+        <span className="font-semibold">{totalPages}</span> | Total Records:{" "}
+        {totalItems}
+      </span>
+      <div className="flex gap-1 items-center mt-2 sm:mt-0">
         <button
-          onClick={() => onPageChange(currentPage - 1)}
+          onClick={() => setPage((p) => Math.max(p - 1, 1))}
           disabled={currentPage === 1}
-          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
         >
-          <ChevronLeft size={18} />
+          <ChevronLeft size={16} />
         </button>
+        <span className="px-2 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+          {currentPage}
+        </span>
         <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+          disabled={currentPage === totalPages || totalPages === 0}
+          className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
         >
-          <ChevronRight size={18} />
+          <ChevronRight size={16} />
         </button>
       </div>
     </div>
@@ -341,128 +345,95 @@ const GradeManagement = () => {
       : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
+      <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+        <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Award size={24} className="text-indigo-600" />
             Grade Management
-          </h1>
-          <p className="text-gray-600">
-            Manage student grades and academic performance
-          </p>
+          </h2>
+          <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+            Academic Performance Tracking
+          </span>
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Total Grades
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {totalGrades}
-                </p>
-              </div>
-              <BookOpen className="text-blue-500" size={40} />
-            </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Total Grades</p>
+            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{totalGrades}</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Approved</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {approvedGrades}
-                </p>
-              </div>
-              <CheckCircle className="text-green-500" size={40} />
-            </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Approved</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{approvedGrades}</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Passed Students
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {passedStudents}
-                </p>
-              </div>
-              <Award className="text-purple-500" size={40} />
-            </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Passed Students</p>
+            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{passedStudents}</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Average Grade
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {averageGrade}
-                </p>
-              </div>
-              <TrendingUp className="text-orange-500" size={40} />
-            </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Average Grade</p>
+            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{averageGrade}</p>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-lg shadow-md">
+        <div className="space-y-3">
           {/* Controls Bar */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex flex-col lg:flex-row gap-4">
-              {/* Search */}
-              <div className="flex-1 relative">
-                <Search
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  size={20}
-                />
-                <input
-                  type="text"
-                  placeholder="Search by student name or ID..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Search Input - LEFT */}
+            <div className="relative flex-grow max-w-xs">
+              <input
+                type="text"
+                placeholder="Search by student name or ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
+              />
+              <Search
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                size={14}
+              />
+            </div>
 
-              {/* Filters */}
-              <div className="w-full lg:w-48">
+            {/* Filters and Action Buttons - RIGHT */}
+            <div className="flex items-center gap-2">
+              <div className="w-40">
                 <Select
                   options={courseOptions}
                   value={filterCourse}
                   onChange={setFilterCourse}
-                  placeholder="Filter by Course"
+                  placeholder="Course"
                   isClearable
-                  className="react-select-container"
+                  className="text-sm"
                   classNamePrefix="react-select"
                 />
               </div>
 
-              <div className="w-full lg:w-48">
+              <div className="w-40">
                 <Select
                   options={periodOptions}
                   value={filterPeriod}
                   onChange={setFilterPeriod}
-                  placeholder="Filter by Period"
+                  placeholder="Period"
                   isClearable
-                  className="react-select-container"
+                  className="text-sm"
                   classNamePrefix="react-select"
                 />
               </div>
 
-              <div className="w-full lg:w-40">
+              <div className="w-32">
                 <Select
                   options={statusOptions}
                   value={filterStatus}
                   onChange={setFilterStatus}
                   placeholder="Status"
                   isClearable
-                  className="react-select-container"
+                  className="text-sm"
                   classNamePrefix="react-select"
                 />
               </div>
@@ -470,78 +441,78 @@ const GradeManagement = () => {
               {/* Add Button */}
               <button
                 onClick={() => setShowModal(true)}
-                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium border border-indigo-700 dark:border-indigo-600 shadow-md shadow-indigo-500/30 whitespace-nowrap"
               >
-                <Plus size={20} />
+                <Plus size={14} />
                 Add Grade
               </button>
             </div>
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+          <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-100 dark:bg-slate-700/70">
+                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  <th className="px-4 py-2.5">
                     Student
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5">
                     Course
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5">
                     Period
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-center">
                     Prelim
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-center">
                     Midterm
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-center">
                     Finals
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-center">
                     Final Grade
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-center">
                     Remarks
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-center">
                     Status
                   </th>
-                  <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-right">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
                 {currentItems.length > 0 ? (
                   currentItems.map((grade) => (
                     <tr
                       key={grade.grade_id}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150"
                     >
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-gray-900">
+                      <td className="px-4 py-2">
+                        <div className="font-semibold text-slate-900 dark:text-white">
                           {grade.student_id}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
                           {grade.first_name} {grade.last_name}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">
+                      <td className="px-4 py-2">
+                        <div className="font-medium text-slate-900 dark:text-white">
                           {grade.course_code}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-xs text-slate-500 dark:text-slate-400 max-w-xs truncate">
                           {grade.course_title}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-4 py-2">
                         {grade.period_name} {grade.year}
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-4 py-2 text-center">
                         <span
                           className="font-semibold"
                           style={{ color: getGradeColor(grade.prelim_grade) }}
@@ -549,7 +520,7 @@ const GradeManagement = () => {
                           {grade.prelim_grade || "-"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-4 py-2 text-center">
                         <span
                           className="font-semibold"
                           style={{ color: getGradeColor(grade.midterm_grade) }}
@@ -557,7 +528,7 @@ const GradeManagement = () => {
                           {grade.midterm_grade || "-"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-4 py-2 text-center">
                         <span
                           className="font-semibold"
                           style={{ color: getGradeColor(grade.finals_grade) }}
@@ -565,46 +536,46 @@ const GradeManagement = () => {
                           {grade.finals_grade || "-"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-4 py-2 text-center">
                         <span
-                          className="text-lg font-bold"
+                          className="text-base font-bold"
                           style={{ color: getGradeColor(grade.final_grade) }}
                         >
                           {grade.final_grade || "-"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-4 py-2 text-center">
                         <RemarksBadge remarks={grade.remarks} />
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-4 py-2 text-center">
                         <StatusBadge status={grade.status} />
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-center gap-2">
+                      <td className="px-4 py-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           {grade.status !== "approved" && (
                             <>
                               <button
                                 onClick={() => handleEdit(grade)}
-                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
                                 title="Edit"
                               >
-                                <Edit size={18} />
+                                <Edit size={14} />
                               </button>
                               <button
                                 onClick={() => handleApprove(grade.grade_id)}
-                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
                                 title="Approve"
                               >
-                                <CheckCircle size={18} />
+                                <CheckCircle size={14} />
                               </button>
                             </>
                           )}
                           <button
                             onClick={() => handleDelete(grade.grade_id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
                             title="Delete"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
@@ -612,16 +583,8 @@ const GradeManagement = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="10" className="px-6 py-12 text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <BookOpen size={48} className="text-gray-300" />
-                        <p className="text-gray-500 font-medium">
-                          No grades found
-                        </p>
-                        <p className="text-gray-400 text-sm">
-                          Try adjusting your search or filters
-                        </p>
-                      </div>
+                    <td colSpan="10" className="p-4 text-center text-slate-500 dark:text-slate-400 italic">
+                      No grades found matching your search criteria.
                     </td>
                   </tr>
                 )}
@@ -630,33 +593,38 @@ const GradeManagement = () => {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="px-6 py-4 border-t border-gray-200">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-              />
-            </div>
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setPage={setCurrentPage}
+            totalItems={filteredGrades.length}
+          />
         </div>
       </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: "700px" }}>
-            <div className="modal-header">
-              <h2>{editMode ? "Edit Grade" : "Add New Grade"}</h2>
-              <button className="btn-close" onClick={closeModal}>
-                <X size={24} />
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-2 z-50 transition-opacity duration-300" onClick={closeModal}>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-4xl transform transition-transform duration-300 scale-100 border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="sticky top-0 flex justify-between items-center px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 rounded-t-lg z-10">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                {editMode ? "Edit" : "Add"} Grade
+              </h3>
+              <button
+                onClick={closeModal}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              >
+                <Plus size={18} className="rotate-45" />
               </button>
             </div>
-            <form onSubmit={handleSubmit}>
-              <div className="form-grid">
-                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
-                  <label>
-                    Student <span className="required">*</span>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSubmit} className="p-4 space-y-3">
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Student *
                   </label>
                   <Select
                     options={studentOptions}
@@ -669,12 +637,16 @@ const GradeManagement = () => {
                     placeholder="Select Student"
                     required
                     isDisabled={editMode}
+                    className="text-sm"
+                    classNamePrefix="react-select"
                   />
                 </div>
+              </div>
 
-                <div className="form-group">
-                  <label>
-                    Course <span className="required">*</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Course *
                   </label>
                   <Select
                     options={courseOptions}
@@ -687,12 +659,14 @@ const GradeManagement = () => {
                     placeholder="Select Course"
                     required
                     isDisabled={editMode}
+                    className="text-sm"
+                    classNamePrefix="react-select"
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>
-                    Academic Period <span className="required">*</span>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Academic Period *
                   </label>
                   <Select
                     options={periodOptions}
@@ -705,11 +679,13 @@ const GradeManagement = () => {
                     placeholder="Select Period"
                     required
                     isDisabled={editMode}
+                    className="text-sm"
+                    classNamePrefix="react-select"
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>Prelim Grade</label>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Prelim Grade</label>
                   <input
                     type="number"
                     name="prelim_grade"
@@ -719,11 +695,12 @@ const GradeManagement = () => {
                     min="0"
                     max="100"
                     placeholder="0.00"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>Midterm Grade</label>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Midterm Grade</label>
                   <input
                     type="number"
                     name="midterm_grade"
@@ -733,11 +710,12 @@ const GradeManagement = () => {
                     min="0"
                     max="100"
                     placeholder="0.00"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>Finals Grade</label>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Finals Grade</label>
                   <input
                     type="number"
                     name="finals_grade"
@@ -747,37 +725,35 @@ const GradeManagement = () => {
                     min="0"
                     max="100"
                     placeholder="0.00"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>Final Grade (Auto-calculated)</label>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Final Grade (Auto-calculated)</label>
                   <input
                     type="text"
                     name="final_grade"
                     value={formData.final_grade}
                     readOnly
-                    style={{
-                      background: "#f0f0f0",
-                      fontWeight: "bold",
-                      color: getGradeColor(formData.final_grade),
-                    }}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-slate-100 dark:bg-slate-700/50 font-bold transition-colors"
+                    style={{ color: getGradeColor(formData.final_grade) }}
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>Remarks (Auto-generated)</label>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Remarks (Auto-generated)</label>
                   <input
                     type="text"
                     name="remarks"
                     value={formData.remarks}
                     readOnly
-                    style={{ background: "#f0f0f0" }}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-slate-100 dark:bg-slate-700/50 dark:text-white transition-colors"
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>Status</label>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
                   <Select
                     options={statusOptions}
                     value={statusOptions.find(
@@ -785,20 +761,26 @@ const GradeManagement = () => {
                     )}
                     onChange={(option) => handleSelectChange(option, "status")}
                     placeholder="Select Status"
+                    className="text-sm"
+                    classNamePrefix="react-select"
                   />
                 </div>
               </div>
 
-              <div className="modal-footer">
+              {/* Modal Footer */}
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700/50">
                 <button
                   type="button"
-                  className="btn-cancel"
                   onClick={closeModal}
+                  className="px-3 py-1.5 text-sm bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors border border-slate-300 dark:border-slate-600"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn-submit">
-                  {editMode ? "Update Grade" : "Create Grade"}
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-500/30"
+                >
+                  {editMode ? "Update" : "Create"} Grade
                 </button>
               </div>
             </form>
