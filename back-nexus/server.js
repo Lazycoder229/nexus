@@ -44,6 +44,18 @@ import employeeRecordsRoutes from "./routes/employeeRecords.routes.js"; // emplo
 import staffLeaveRoutes from "./routes/staffLeave.routes.js"; // staff leave routes
 import payrollRoutes from "./routes/payroll.routes.js"; // payroll routes
 import deductionsRoutes from "./routes/deductions.routes.js"; // deductions routes
+import libraryBooksRoutes from "./routes/libraryBooks.routes.js"; // library books routes
+import libraryTransactionsRoutes from "./routes/libraryTransactions.routes.js"; // library transactions routes
+import libraryIncidentsRoutes from "./routes/libraryIncidents.routes.js"; // library incidents routes
+import digitalLibraryRoutes from "./routes/digitalLibrary.routes.js"; // digital library routes
+import scholarshipTypesRoutes from "./routes/scholarshipTypes.routes.js"; // scholarship types routes
+import scholarshipApplicationsRoutes from "./routes/scholarshipApplications.routes.js"; // scholarship applications routes
+import scholarshipBeneficiariesRoutes from "./routes/scholarshipBeneficiaries.routes.js"; // scholarship beneficiaries routes
+import scholarshipEligibilityRoutes from "./routes/scholarshipEligibility.routes.js"; // scholarship eligibility routes
+import announcementsRoutes from "./routes/announcements.routes.js"; // announcements routes
+import eventsRoutes from "./routes/events.routes.js"; // events routes
+import schoolCalendarRoutes from "./routes/schoolCalendar.routes.js"; // school calendar routes
+import publicEventsRoutes from "./routes/publicEvents.routes.js"; // public events routes
 
 dotenv.config(); // load env variables
 
@@ -125,6 +137,24 @@ app.use("/api/employees", employeeRecordsRoutes);
 app.use("/api/staff-leave", staffLeaveRoutes);
 app.use("/api/payroll", payrollRoutes);
 app.use("/api/deductions", deductionsRoutes);
+
+// Library Management routes
+app.use("/api/library/books", libraryBooksRoutes);
+app.use("/api/library/transactions", libraryTransactionsRoutes);
+app.use("/api/library/incidents", libraryIncidentsRoutes);
+app.use("/api/library/digital", digitalLibraryRoutes);
+
+// Scholarship & Grants routes
+app.use("/api/scholarships/types", scholarshipTypesRoutes);
+app.use("/api/scholarships/applications", scholarshipApplicationsRoutes);
+app.use("/api/scholarships/beneficiaries", scholarshipBeneficiariesRoutes);
+app.use("/api/scholarships/screening", scholarshipEligibilityRoutes);
+
+// Events & Communication routes
+app.use("/api/events/announcements", announcementsRoutes);
+app.use("/api/events/scheduling", eventsRoutes);
+app.use("/api/events/calendar", schoolCalendarRoutes);
+app.use("/api/events/public", publicEventsRoutes);
 
 /* import bcrypt from "bcrypt";
 
