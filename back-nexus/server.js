@@ -56,6 +56,9 @@ import announcementsRoutes from "./routes/announcements.routes.js"; // announcem
 import eventsRoutes from "./routes/events.routes.js"; // events routes
 import schoolCalendarRoutes from "./routes/schoolCalendar.routes.js"; // school calendar routes
 import publicEventsRoutes from "./routes/publicEvents.routes.js"; // public events routes
+import inventoryRoutes from "./routes/inventory.routes.js"; // inventory assets routes
+import reportsRoutes from "./routes/reports.routes.js"; // reports & analytics routes
+import systemSettingsRoutes from "./routes/systemSettings.routes.js"; // system settings routes
 
 dotenv.config(); // load env variables
 
@@ -155,6 +158,15 @@ app.use("/api/events/announcements", announcementsRoutes);
 app.use("/api/events/scheduling", eventsRoutes);
 app.use("/api/events/calendar", schoolCalendarRoutes);
 app.use("/api/events/public", publicEventsRoutes);
+
+// Inventory Management routes
+app.use("/api/inventory", inventoryRoutes);
+
+// Reports & Analytics routes
+app.use("/api/reports", reportsRoutes);
+
+// System Settings routes
+app.use("/api/system-settings", systemSettingsRoutes);
 
 /* import bcrypt from "bcrypt";
 

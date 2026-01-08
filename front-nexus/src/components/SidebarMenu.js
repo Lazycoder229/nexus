@@ -371,7 +371,7 @@ const Menu = {
         {
           label: "Assets List",
           icons: ClipboardList,
-          link: "/admin_inventory_asset_management",
+          link: "/admin/admin_inventory_asset_management",
         },
       ],
     },
@@ -380,25 +380,25 @@ const Menu = {
       icons: ReportIcon,
       submenu: [
         {
-          label: "Student Reports",
+          label: "Reports",
           icons: ReportIcon,
-          link: "/admin_student_reports",
-        },
+          link: "/admin/admin_student_reports",
+        }/* ,
         {
           label: "Enrollment Reports",
           icons: ReportIcon,
-          link: "/admin_enrollment_reports",
+          link: "/admin/admin_enrollment_reports",
         },
         {
           label: "Attendance Reports",
           icons: ReportIcon,
-          link: "/admin_attendance_reports",
+          link: "/admin/admin_attendance_reports",
         },
         {
           label: "HR & Payroll Reports",
           icons: ReportIcon,
-          link: "/admin_hr_payroll_reports",
-        },
+          link: "/admin/admin_hr_payroll_reports",
+        }, */
       ],
     },
     {
@@ -414,14 +414,14 @@ const Menu = {
         {
           label: "General setting",
           icons: Settings,
-          link: "/admin_general_setting",
+          link: "/admin/admin_general_setting",
         },
         {
           label: "Email & SMS gateway",
           icons: Mail,
-          link: "/admin_email_sms_gateway",
+          link: "/admin/admin_email_sms_gateway",
         },
-        { label: "System logs", icons: FileText, link: "/admin_system_logs" },
+        { label: "System logs", icons: FileText, link: "/admin/admin_system_logs" },
       ],
     },
   ],

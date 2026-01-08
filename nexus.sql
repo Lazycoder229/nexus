@@ -1412,3 +1412,1441 @@ CREATE INDEX idx_deduction_active ON deductions(is_active);
 
 CREATE INDEX idx_payroll_report_payroll ON payroll_reports(payroll_setup_id);
 CREATE INDEX idx_payroll_report_type ON payroll_reports(report_type);
+
+-- ===========================
+-- Library Management System
+-- ===========================
+
+-- Book Catalog Table
+CREATE TABLE library_books (
+    book_id INT AUTO_INCREMENT PRIMARY KEY,
+    isbn VARCHAR(20) UNIQUE,                    -- International Standard Book Number
+    title VARCHAR(255) NOT NULL,                -- Book title
+    author VARCHAR(255) NOT NULL,               -- Author name(s)
+    publisher VARCHAR(200),                     -- Publisher name
+    publication_year YEAR,                      -- Year published
+    edition VARCHAR(50),                        -- Edition (e.g., '1st', '2nd')
+    category VARCHAR(100) NOT NULL,             -- Category/Genre (Fiction, Science, etc.)
+    subcategory VARCHAR(100),                   -- Subcategory
+    language VARCHAR(50) DEFAULT 'English',     -- Book language
+    pages INT,                                  -- Number of pages
+    
+    -- Inventory details
+    quantity_total INT DEFAULT 1,               -- Total copies available
+    quantity_available INT DEFAULT 1,           -- Copies currently available
+    quantity_borrowed INT DEFAULT 0,            -- Copies currently borrowed
+    quantity_reserved INT DEFAULT 0,            -- Copies reserved
+    quantity_lost INT DEFAULT 0,                -- Copies reported lost
+    quantity_damaged INT DEFAULT 0,             -- Copies reported damaged
+    
+    -- Location and classification
+    shelf_location VARCHAR(100),                -- Physical location (e.g., 'A-101')
+    dewey_decimal VARCHAR(20),                  -- Dewey Decimal Classification
+    call_number VARCHAR(50),                    -- Library call number
+    
+    -- Additional info
+    description TEXT,                           -- Book description/synopsis
+    cover_image_url VARCHAR(255),               -- URL to book cover image
+    price DECIMAL(10,2),                        -- Book price
+    date_acquired DATE,                         -- Date book was acquired
+    
+    -- Status and metadata
+    status ENUM('Available', 'Limited', 'Unavailable') DEFAULT 'Available',
+    is_reference BOOLEAN DEFAULT FALSE,         -- Reference books (non-borrowable)
+    borrowable BOOLEAN DEFAULT TRUE,            -- Can be borrowed
+    
+    created_by INT,                             -- User who added the book
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- Book Borrowing Records
+CREATE TABLE library_transactions (
+    transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+    book_id INT NOT NULL,
+    borrower_id INT NOT NULL,                   -- Student/Faculty user_id
+    transaction_type ENUM('Borrow', 'Return', 'Reserve', 'Renew') NOT NULL,
+    
+    -- Borrowing details
+    borrow_date DATE NOT NULL,
+    due_date DATE NOT NULL,
+    return_date DATE,                           -- Actual return date (NULL if not returned)
+    renewed_count INT DEFAULT 0,                -- Number of times renewed
+    
+    -- Status
+    status ENUM('Active', 'Returned', 'Overdue', 'Lost', 'Damaged') DEFAULT 'Active',
+    
+    -- Penalties
+    overdue_days INT DEFAULT 0,
+    penalty_amount DECIMAL(10,2) DEFAULT 0.00,
+    penalty_paid BOOLEAN DEFAULT FALSE,
+    
+    -- Condition tracking
+    condition_out ENUM('Excellent', 'Good', 'Fair', 'Poor') DEFAULT 'Good',
+    condition_in ENUM('Excellent', 'Good', 'Fair', 'Poor'),
+    
+    -- Staff handling
+    issued_by INT,                              -- Staff who issued the book
+    returned_to INT,                            -- Staff who received return
+    
+    remarks TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (book_id) REFERENCES library_books(book_id) ON DELETE CASCADE,
+    FOREIGN KEY (borrower_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (issued_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (returned_to) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- Lost and Damaged Books Log
+CREATE TABLE library_incidents (
+    incident_id INT AUTO_INCREMENT PRIMARY KEY,
+    book_id INT NOT NULL,
+    transaction_id INT,                         -- Related transaction (if applicable)
+    user_id INT,                                -- User responsible (if applicable)
+    
+    incident_type ENUM('Lost', 'Damaged', 'Missing') NOT NULL,
+    incident_date DATE NOT NULL,
+    
+    -- Damage/Loss details
+    severity ENUM('Minor', 'Moderate', 'Severe', 'Total Loss'),
+    description TEXT,                           -- Description of incident
+    
+    -- Financial
+    replacement_cost DECIMAL(10,2),
+    amount_charged DECIMAL(10,2),
+    amount_paid DECIMAL(10,2) DEFAULT 0.00,
+    payment_status ENUM('Pending', 'Partial', 'Paid') DEFAULT 'Pending',
+    
+    -- Resolution
+    resolved BOOLEAN DEFAULT FALSE,
+    resolved_date DATE,
+    resolution_notes TEXT,
+    
+    reported_by INT,                            -- Staff who reported incident
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (book_id) REFERENCES library_books(book_id) ON DELETE CASCADE,
+    FOREIGN KEY (transaction_id) REFERENCES library_transactions(transaction_id) ON DELETE SET NULL,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (reported_by) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- Book Reservations
+CREATE TABLE library_reservations (
+    reservation_id INT AUTO_INCREMENT PRIMARY KEY,
+    book_id INT NOT NULL,
+    user_id INT NOT NULL,
+    
+    reservation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expiry_date DATE,                           -- When reservation expires
+    status ENUM('Active', 'Fulfilled', 'Cancelled', 'Expired') DEFAULT 'Active',
+    
+    notified BOOLEAN DEFAULT FALSE,             -- User notified when book available
+    notification_sent_at TIMESTAMP,
+    
+    fulfilled_at TIMESTAMP,
+    cancelled_at TIMESTAMP,
+    cancellation_reason TEXT,
+    
+    FOREIGN KEY (book_id) REFERENCES library_books(book_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- Digital Library Resources
+CREATE TABLE digital_library (
+    digital_id INT AUTO_INCREMENT PRIMARY KEY,
+    book_id INT,                                -- Link to physical book (optional)
+    
+    title VARCHAR(255) NOT NULL,
+    author VARCHAR(255),
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_type VARCHAR(50),                      -- PDF, EPUB, etc.
+    file_size BIGINT,                           -- File size in bytes
+    
+    category VARCHAR(100),
+    description TEXT,
+    cover_image_url VARCHAR(255),
+    
+    access_level ENUM('Public', 'Students Only', 'Faculty Only', 'Restricted') DEFAULT 'Students Only',
+    download_allowed BOOLEAN DEFAULT TRUE,
+    view_count INT DEFAULT 0,
+    download_count INT DEFAULT 0,
+    
+    uploaded_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (book_id) REFERENCES library_books(book_id) ON DELETE SET NULL,
+    FOREIGN KEY (uploaded_by) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- Indexes for Library Tables
+CREATE INDEX idx_library_books_category ON library_books(category);
+CREATE INDEX idx_library_books_status ON library_books(status);
+CREATE INDEX idx_library_books_isbn ON library_books(isbn);
+CREATE INDEX idx_library_books_title ON library_books(title);
+
+CREATE INDEX idx_library_transactions_book ON library_transactions(book_id);
+CREATE INDEX idx_library_transactions_borrower ON library_transactions(borrower_id);
+CREATE INDEX idx_library_transactions_status ON library_transactions(status);
+CREATE INDEX idx_library_transactions_due ON library_transactions(due_date);
+
+CREATE INDEX idx_library_incidents_book ON library_incidents(book_id);
+CREATE INDEX idx_library_incidents_type ON library_incidents(incident_type);
+CREATE INDEX idx_library_incidents_user ON library_incidents(user_id);
+
+CREATE INDEX idx_library_reservations_book ON library_reservations(book_id);
+CREATE INDEX idx_library_reservations_user ON library_reservations(user_id);
+CREATE INDEX idx_library_reservations_status ON library_reservations(status);
+
+CREATE INDEX idx_digital_library_category ON digital_library(category);
+CREATE INDEX idx_digital_library_access ON digital_library(access_level);
+
+-- ===========================
+-- Scholarship & Grants Management
+-- ===========================
+
+-- Scholarship Types Setup
+CREATE TABLE scholarship_types (
+    scholarship_type_id INT AUTO_INCREMENT PRIMARY KEY,
+    scholarship_name VARCHAR(255) NOT NULL,
+    scholarship_code VARCHAR(50) UNIQUE NOT NULL,
+    description TEXT,
+    
+    -- Funding Details
+    funding_source VARCHAR(255),                -- Government, Private, Institution
+    total_budget DECIMAL(15,2) DEFAULT 0.00,
+    allocated_budget DECIMAL(15,2) DEFAULT 0.00,
+    remaining_budget DECIMAL(15,2) DEFAULT 0.00,
+    
+    -- Eligibility Criteria
+    min_gpa DECIMAL(3,2),                       -- Minimum GPA requirement
+    max_family_income DECIMAL(15,2),            -- Maximum family income
+    year_level_requirement VARCHAR(100),        -- e.g., "All", "1st Year", "2nd-4th Year"
+    course_restriction TEXT,                    -- Specific courses eligible (JSON or CSV)
+    
+    -- Coverage Details
+    tuition_coverage_percentage DECIMAL(5,2),   -- 0-100%
+    covers_miscellaneous BOOLEAN DEFAULT FALSE,
+    covers_books BOOLEAN DEFAULT FALSE,
+    covers_allowance BOOLEAN DEFAULT FALSE,
+    monthly_allowance DECIMAL(10,2) DEFAULT 0.00,
+    
+    -- Application Period
+    application_start DATE,
+    application_end DATE,
+    
+    -- Slot Management
+    total_slots INT DEFAULT 0,
+    slots_filled INT DEFAULT 0,
+    slots_available INT DEFAULT 0,
+    
+    status ENUM('Active', 'Inactive', 'Closed') DEFAULT 'Active',
+    renewable BOOLEAN DEFAULT FALSE,            -- Can be renewed each semester/year
+    
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- Scholarship Applications
+CREATE TABLE scholarship_applications (
+    application_id INT AUTO_INCREMENT PRIMARY KEY,
+    scholarship_type_id INT NOT NULL,
+    student_id INT NOT NULL,
+    
+    -- Application Details
+    application_number VARCHAR(50) UNIQUE NOT NULL,
+    application_date DATE NOT NULL,
+    academic_year VARCHAR(20),
+    semester ENUM('1st Semester', '2nd Semester', 'Summer') NOT NULL,
+    
+    -- Student Academic Info (snapshot at application time)
+    current_gpa DECIMAL(3,2),
+    current_year_level VARCHAR(50),
+    current_course VARCHAR(100),
+    units_enrolled INT,
+    
+    -- Financial Information
+    family_income DECIMAL(15,2),
+    number_of_siblings INT,
+    working_student BOOLEAN DEFAULT FALSE,
+    
+    -- Required Documents Status
+    grade_sheet_submitted BOOLEAN DEFAULT FALSE,
+    income_certificate_submitted BOOLEAN DEFAULT FALSE,
+    recommendation_letter_submitted BOOLEAN DEFAULT FALSE,
+    essay_submitted BOOLEAN DEFAULT FALSE,
+    other_documents TEXT,                       -- JSON or description of other docs
+    
+    -- Application Status
+    status ENUM('Pending', 'Under Review', 'Approved', 'Rejected', 'Withdrawn') DEFAULT 'Pending',
+    priority_score DECIMAL(5,2),                -- Computed score for ranking
+    
+    -- Review Process
+    reviewed_by INT,
+    review_date DATETIME,
+    review_notes TEXT,
+    rejection_reason TEXT,
+    
+    -- Approval
+    approved_by INT,
+    approval_date DATETIME,
+    approved_amount DECIMAL(15,2),
+    
+    remarks TEXT,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (scholarship_type_id) REFERENCES scholarship_types(scholarship_type_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewed_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- Scholarship Beneficiaries (Approved & Active Scholars)
+CREATE TABLE scholarship_beneficiaries (
+    beneficiary_id INT AUTO_INCREMENT PRIMARY KEY,
+    application_id INT NOT NULL UNIQUE,         -- Link to approved application
+    scholarship_type_id INT NOT NULL,
+    student_id INT NOT NULL,
+    
+    -- Grant Period
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    academic_year VARCHAR(20),
+    semester ENUM('1st Semester', '2nd Semester', 'Summer', 'Full Year'),
+    
+    -- Grant Amount
+    total_grant_amount DECIMAL(15,2) NOT NULL,
+    tuition_discount DECIMAL(15,2) DEFAULT 0.00,
+    allowance_amount DECIMAL(15,2) DEFAULT 0.00,
+    other_benefits TEXT,
+    
+    -- Disbursement Tracking
+    total_disbursed DECIMAL(15,2) DEFAULT 0.00,
+    disbursement_status ENUM('Pending', 'Partial', 'Completed') DEFAULT 'Pending',
+    last_disbursement_date DATE,
+    
+    -- Performance Monitoring
+    required_gpa DECIMAL(3,2),
+    current_gpa DECIMAL(3,2),
+    gpa_maintained BOOLEAN DEFAULT TRUE,
+    
+    community_service_hours_required INT DEFAULT 0,
+    community_service_hours_completed INT DEFAULT 0,
+    service_requirement_met BOOLEAN DEFAULT TRUE,
+    
+    -- Renewal Status
+    renewable BOOLEAN DEFAULT FALSE,
+    renewal_application_id INT,
+    renewal_status ENUM('Not Applicable', 'Pending', 'Approved', 'Denied'),
+    
+    -- Status
+    status ENUM('Active', 'Completed', 'Revoked', 'Suspended') DEFAULT 'Active',
+    revocation_reason TEXT,
+    revoked_by INT,
+    revoked_date DATETIME,
+    
+    remarks TEXT,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (application_id) REFERENCES scholarship_applications(application_id) ON DELETE CASCADE,
+    FOREIGN KEY (scholarship_type_id) REFERENCES scholarship_types(scholarship_type_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (renewal_application_id) REFERENCES scholarship_applications(application_id) ON DELETE SET NULL,
+    FOREIGN KEY (revoked_by) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- Eligibility Screening Records
+CREATE TABLE scholarship_eligibility_screening (
+    screening_id INT AUTO_INCREMENT PRIMARY KEY,
+    application_id INT NOT NULL,
+    scholarship_type_id INT NOT NULL,
+    student_id INT NOT NULL,
+    
+    screening_date DATE NOT NULL,
+    screened_by INT NOT NULL,
+    
+    -- Academic Criteria Checks
+    gpa_requirement_met BOOLEAN DEFAULT FALSE,
+    gpa_value DECIMAL(3,2),
+    gpa_required DECIMAL(3,2),
+    
+    year_level_eligible BOOLEAN DEFAULT FALSE,
+    year_level_value VARCHAR(50),
+    year_level_required VARCHAR(100),
+    
+    course_eligible BOOLEAN DEFAULT FALSE,
+    course_value VARCHAR(100),
+    course_required TEXT,
+    
+    -- Financial Criteria
+    income_requirement_met BOOLEAN DEFAULT FALSE,
+    family_income DECIMAL(15,2),
+    max_income_allowed DECIMAL(15,2),
+    
+    -- Document Verification
+    documents_complete BOOLEAN DEFAULT FALSE,
+    documents_checklist TEXT,                   -- JSON of required docs and status
+    missing_documents TEXT,
+    
+    -- Interview/Assessment (if applicable)
+    interview_required BOOLEAN DEFAULT FALSE,
+    interview_completed BOOLEAN DEFAULT FALSE,
+    interview_date DATETIME,
+    interview_score DECIMAL(5,2),
+    interview_notes TEXT,
+    
+    -- Final Screening Result
+    overall_eligible BOOLEAN DEFAULT FALSE,
+    eligibility_score DECIMAL(5,2),             -- Computed eligibility score
+    screening_status ENUM('Passed', 'Failed', 'Pending Review', 'Conditional') DEFAULT 'Pending Review',
+    
+    disqualification_reasons TEXT,
+    conditional_requirements TEXT,               -- What needs to be fulfilled for conditional approval
+    
+    recommendations TEXT,
+    remarks TEXT,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (application_id) REFERENCES scholarship_applications(application_id) ON DELETE CASCADE,
+    FOREIGN KEY (scholarship_type_id) REFERENCES scholarship_types(scholarship_type_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (screened_by) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- Scholarship Disbursements (Payment Records)
+CREATE TABLE scholarship_disbursements (
+    disbursement_id INT AUTO_INCREMENT PRIMARY KEY,
+    beneficiary_id INT NOT NULL,
+    scholarship_type_id INT NOT NULL,
+    student_id INT NOT NULL,
+    
+    disbursement_date DATE NOT NULL,
+    disbursement_type ENUM('Tuition Discount', 'Monthly Allowance', 'Book Allowance', 'Other') NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    
+    academic_year VARCHAR(20),
+    semester ENUM('1st Semester', '2nd Semester', 'Summer'),
+    month VARCHAR(20),                          -- For monthly allowances
+    
+    payment_method ENUM('Direct Payment', 'Bank Transfer', 'Check', 'Tuition Deduction') DEFAULT 'Tuition Deduction',
+    reference_number VARCHAR(100),
+    
+    processed_by INT,
+    approved_by INT,
+    
+    status ENUM('Pending', 'Processed', 'Completed', 'Failed') DEFAULT 'Pending',
+    remarks TEXT,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (beneficiary_id) REFERENCES scholarship_beneficiaries(beneficiary_id) ON DELETE CASCADE,
+    FOREIGN KEY (scholarship_type_id) REFERENCES scholarship_types(scholarship_type_id) ON DELETE CASCADE,
+    FOREIGN KEY (student_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (processed_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- Indexes for Scholarship Tables
+CREATE INDEX idx_scholarship_types_status ON scholarship_types(status);
+CREATE INDEX idx_scholarship_types_code ON scholarship_types(scholarship_code);
+
+CREATE INDEX idx_scholarship_applications_student ON scholarship_applications(student_id);
+CREATE INDEX idx_scholarship_applications_type ON scholarship_applications(scholarship_type_id);
+CREATE INDEX idx_scholarship_applications_status ON scholarship_applications(status);
+CREATE INDEX idx_scholarship_applications_date ON scholarship_applications(application_date);
+
+CREATE INDEX idx_scholarship_beneficiaries_student ON scholarship_beneficiaries(student_id);
+CREATE INDEX idx_scholarship_beneficiaries_type ON scholarship_beneficiaries(scholarship_type_id);
+CREATE INDEX idx_scholarship_beneficiaries_status ON scholarship_beneficiaries(status);
+CREATE INDEX idx_scholarship_beneficiaries_year ON scholarship_beneficiaries(academic_year);
+
+CREATE INDEX idx_scholarship_screening_application ON scholarship_eligibility_screening(application_id);
+CREATE INDEX idx_scholarship_screening_student ON scholarship_eligibility_screening(student_id);
+CREATE INDEX idx_scholarship_screening_status ON scholarship_eligibility_screening(screening_status);
+
+CREATE INDEX idx_scholarship_disbursements_beneficiary ON scholarship_disbursements(beneficiary_id);
+CREATE INDEX idx_scholarship_disbursements_student ON scholarship_disbursements(student_id);
+CREATE INDEX idx_scholarship_disbursements_date ON scholarship_disbursements(disbursement_date);
+
+-- ===========================
+-- EVENTS & COMMUNICATION MANAGEMENT TABLES
+-- ===========================
+
+-- Announcement Center Table
+CREATE TABLE announcements (
+    announcement_id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    announcement_type ENUM('General', 'Academic', 'Administrative', 'Emergency', 'Event', 'Holiday') DEFAULT 'General',
+    priority ENUM('Low', 'Normal', 'High', 'Urgent') DEFAULT 'Normal',
+    
+    -- Targeting
+    target_audience ENUM('All', 'Students', 'Faculty', 'Staff', 'Parents', 'Custom') DEFAULT 'All',
+    target_year_levels TEXT, -- JSON array: ["1st Year", "2nd Year"]
+    target_courses TEXT, -- JSON array: ["BSIT", "BSCS"]
+    target_departments TEXT, -- JSON array
+    
+    -- Media attachments
+    attachment_url VARCHAR(255),
+    attachment_type VARCHAR(50), -- 'image', 'pdf', 'document'
+    
+    -- Scheduling
+    publish_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expiry_date DATETIME,
+    is_pinned BOOLEAN DEFAULT FALSE,
+    
+    -- Status & visibility
+    status ENUM('Draft', 'Published', 'Archived', 'Scheduled') DEFAULT 'Draft',
+    views_count INT DEFAULT 0,
+    
+    -- Audit
+    created_by INT,
+    updated_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- Event Scheduling Table
+CREATE TABLE events (
+    event_id INT AUTO_INCREMENT PRIMARY KEY,
+    event_name VARCHAR(255) NOT NULL,
+    event_code VARCHAR(50) UNIQUE,
+    description TEXT,
+    event_type ENUM('Academic', 'Sports', 'Cultural', 'Seminar', 'Workshop', 'Competition', 'Meeting', 'Other') DEFAULT 'Academic',
+    event_category ENUM('Internal', 'Public', 'External', 'Hybrid') DEFAULT 'Internal',
+    
+    -- Date & Time
+    start_date DATETIME NOT NULL,
+    end_date DATETIME NOT NULL,
+    registration_start DATETIME,
+    registration_end DATETIME,
+    duration_hours DECIMAL(5,2),
+    
+    -- Location
+    venue VARCHAR(255),
+    venue_type ENUM('On-Campus', 'Off-Campus', 'Online', 'Hybrid') DEFAULT 'On-Campus',
+    room_number VARCHAR(50),
+    building VARCHAR(100),
+    online_meeting_link VARCHAR(255),
+    
+    -- Capacity & Registration
+    max_participants INT,
+    registered_count INT DEFAULT 0,
+    checked_in_count INT DEFAULT 0,
+    requires_registration BOOLEAN DEFAULT FALSE,
+    registration_fee DECIMAL(10,2) DEFAULT 0.00,
+    
+    -- Organizer & Contact
+    organizer VARCHAR(200),
+    organizer_contact VARCHAR(100),
+    organizer_email VARCHAR(255),
+    department_id INT,
+    
+    -- Additional details
+    event_poster_url VARCHAR(255),
+    event_materials_url VARCHAR(255),
+    special_instructions TEXT,
+    
+    -- Status & Approval
+    status ENUM('Draft', 'Pending Approval', 'Approved', 'Ongoing', 'Completed', 'Cancelled') DEFAULT 'Draft',
+    approval_status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    approved_by INT,
+    approval_date DATETIME,
+    rejection_reason TEXT,
+    
+    -- Visibility
+    is_public BOOLEAN DEFAULT FALSE,
+    is_featured BOOLEAN DEFAULT FALSE,
+    
+    -- Audit
+    created_by INT,
+    updated_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- School Calendar Table
+CREATE TABLE school_calendar (
+    calendar_id INT AUTO_INCREMENT PRIMARY KEY,
+    event_title VARCHAR(255) NOT NULL,
+    event_description TEXT,
+    calendar_type ENUM('Academic', 'Holiday', 'Exam', 'Break', 'Enrollment', 'Event', 'Deadline', 'Meeting') DEFAULT 'Academic',
+    
+    -- Date & Time
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    is_all_day BOOLEAN DEFAULT TRUE,
+    start_time TIME,
+    end_time TIME,
+    
+    -- Academic context
+    academic_year VARCHAR(20), -- e.g., "2023-2024"
+    semester ENUM('1st Semester', '2nd Semester', 'Summer', 'All') DEFAULT 'All',
+    
+    -- Visual styling
+    color_code VARCHAR(7), -- Hex color code for calendar display
+    icon VARCHAR(50), -- Icon identifier for UI
+    
+    -- Recurrence
+    is_recurring BOOLEAN DEFAULT FALSE,
+    recurrence_pattern ENUM('Daily', 'Weekly', 'Monthly', 'Yearly', 'Custom'),
+    recurrence_end_date DATE,
+    
+    -- Reminders & Notifications
+    send_reminder BOOLEAN DEFAULT FALSE,
+    reminder_days_before INT DEFAULT 1,
+    notification_sent BOOLEAN DEFAULT FALSE,
+    
+    -- Status & Visibility
+    status ENUM('Active', 'Cancelled', 'Rescheduled', 'Completed') DEFAULT 'Active',
+    visibility ENUM('Public', 'Students Only', 'Faculty Only', 'Staff Only', 'Admin Only') DEFAULT 'Public',
+    is_highlighted BOOLEAN DEFAULT FALSE,
+    
+    -- Audit
+    created_by INT,
+    updated_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- Public Event Posting Table
+CREATE TABLE public_events (
+    public_event_id INT AUTO_INCREMENT PRIMARY KEY,
+    event_title VARCHAR(255) NOT NULL,
+    event_slug VARCHAR(255) UNIQUE, -- URL-friendly identifier
+    short_description VARCHAR(500),
+    full_description TEXT,
+    event_category ENUM('Admission', 'Open House', 'Scholarship', 'Competition', 'Workshop', 'Seminar', 'Community Outreach', 'Other') DEFAULT 'Other',
+    
+    -- Date & Time
+    event_date DATE NOT NULL,
+    event_time TIME,
+    end_date DATE,
+    end_time TIME,
+    
+    -- Location
+    venue VARCHAR(255),
+    address TEXT,
+    city VARCHAR(100),
+    province VARCHAR(100),
+    map_coordinates VARCHAR(100), -- Latitude,Longitude for maps
+    
+    -- Media
+    featured_image_url VARCHAR(255),
+    gallery_images TEXT, -- JSON array of image URLs
+    video_url VARCHAR(255),
+    promotional_materials_url VARCHAR(255),
+    
+    -- Registration & Contact
+    requires_registration BOOLEAN DEFAULT FALSE,
+    registration_link VARCHAR(255),
+    max_attendees INT,
+    registered_count INT DEFAULT 0,
+    contact_person VARCHAR(200),
+    contact_email VARCHAR(255),
+    contact_phone VARCHAR(50),
+    
+    -- SEO & Social Media
+    meta_keywords TEXT,
+    meta_description VARCHAR(500),
+    social_media_links TEXT, -- JSON object with platform links
+    hashtags VARCHAR(255),
+    
+    -- Publishing
+    publish_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expiry_date DATETIME,
+    is_featured BOOLEAN DEFAULT FALSE,
+    display_order INT DEFAULT 0,
+    
+    -- Analytics
+    views_count INT DEFAULT 0,
+    registrations_count INT DEFAULT 0,
+    shares_count INT DEFAULT 0,
+    
+    -- Status
+    status ENUM('Draft', 'Published', 'Upcoming', 'Ongoing', 'Completed', 'Cancelled') DEFAULT 'Draft',
+    approval_status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    approved_by INT,
+    approval_date DATETIME,
+    
+    -- Audit
+    created_by INT,
+    updated_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- Event Registrations Table (for both events and public_events)
+CREATE TABLE event_registrations (
+    registration_id INT AUTO_INCREMENT PRIMARY KEY,
+    event_id INT, -- Links to events table
+    public_event_id INT, -- Links to public_events table
+    
+    -- Registrant Info
+    user_id INT, -- If registered user
+    external_name VARCHAR(200), -- For non-users
+    external_email VARCHAR(255),
+    external_phone VARCHAR(50),
+    external_organization VARCHAR(200),
+    
+    -- Registration details
+    registration_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    registration_number VARCHAR(50) UNIQUE,
+    payment_status ENUM('Free', 'Pending', 'Paid', 'Refunded') DEFAULT 'Free',
+    payment_amount DECIMAL(10,2) DEFAULT 0.00,
+    payment_reference VARCHAR(100),
+    
+    -- Attendance
+    checked_in BOOLEAN DEFAULT FALSE,
+    check_in_time DATETIME,
+    attendance_status ENUM('Registered', 'Attended', 'No Show', 'Cancelled') DEFAULT 'Registered',
+    
+    -- Additional info
+    special_requirements TEXT,
+    remarks TEXT,
+    
+    status ENUM('Active', 'Cancelled', 'Waitlist') DEFAULT 'Active',
+    cancellation_reason TEXT,
+    
+    FOREIGN KEY (event_id) REFERENCES events(event_id) ON DELETE CASCADE,
+    FOREIGN KEY (public_event_id) REFERENCES public_events(public_event_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL
+);
+
+-- Indexes for Events & Communication Tables
+CREATE INDEX idx_announcements_type ON announcements(announcement_type);
+CREATE INDEX idx_announcements_status ON announcements(status);
+CREATE INDEX idx_announcements_publish_date ON announcements(publish_date);
+CREATE INDEX idx_announcements_target ON announcements(target_audience);
+
+CREATE INDEX idx_events_type ON events(event_type);
+CREATE INDEX idx_events_status ON events(status);
+CREATE INDEX idx_events_start_date ON events(start_date);
+CREATE INDEX idx_events_category ON events(event_category);
+CREATE INDEX idx_events_code ON events(event_code);
+
+CREATE INDEX idx_calendar_type ON school_calendar(calendar_type);
+CREATE INDEX idx_calendar_start_date ON school_calendar(start_date);
+CREATE INDEX idx_calendar_academic_year ON school_calendar(academic_year);
+CREATE INDEX idx_calendar_semester ON school_calendar(semester);
+
+CREATE INDEX idx_public_events_status ON public_events(status);
+CREATE INDEX idx_public_events_category ON public_events(event_category);
+CREATE INDEX idx_public_events_date ON public_events(event_date);
+CREATE INDEX idx_public_events_slug ON public_events(event_slug);
+
+CREATE INDEX idx_registrations_event ON event_registrations(event_id);
+CREATE INDEX idx_registrations_public_event ON event_registrations(public_event_id);
+CREATE INDEX idx_registrations_user ON event_registrations(user_id);
+CREATE INDEX idx_registrations_status ON event_registrations(attendance_status);
+
+-- ===========================
+-- Inventory Management Tables
+-- ===========================
+
+-- Main Assets/Inventory tracking
+CREATE TABLE inventory_assets (
+    asset_id INT AUTO_INCREMENT PRIMARY KEY,
+    asset_code VARCHAR(50) UNIQUE NOT NULL,  -- Unique asset code (e.g., AST-2024-001)
+    asset_name VARCHAR(255) NOT NULL,
+    asset_type ENUM('equipment', 'furniture', 'electronics', 'vehicle', 'building', 'land', 'other') NOT NULL DEFAULT 'equipment',
+    category VARCHAR(100),  -- Sub-category (e.g., IT Equipment, Office Furniture)
+    description TEXT,
+    
+    -- Identification & Purchase Info
+    serial_number VARCHAR(100),
+    model_number VARCHAR(100),
+    manufacturer VARCHAR(200),
+    supplier VARCHAR(200),
+    purchase_date DATE,
+    purchase_price DECIMAL(12, 2),
+    purchase_order_number VARCHAR(100),
+    invoice_number VARCHAR(100),
+    
+    -- Warranty Information
+    warranty_start_date DATE,
+    warranty_end_date DATE,
+    warranty_provider VARCHAR(200),
+    warranty_terms TEXT,
+    
+    -- Financial & Depreciation
+    current_value DECIMAL(12, 2),
+    salvage_value DECIMAL(12, 2) DEFAULT 0.00,
+    depreciation_method ENUM('straight_line', 'declining_balance', 'none') DEFAULT 'straight_line',
+    useful_life_years INT DEFAULT 5,
+    depreciation_rate DECIMAL(5, 2),  -- Annual depreciation rate
+    last_depreciation_date DATE,
+    
+    -- Location & Assignment
+    location VARCHAR(255),
+    building VARCHAR(100),
+    floor VARCHAR(50),
+    room VARCHAR(100),
+    department VARCHAR(100),
+    assigned_to VARCHAR(255),  -- Person currently using the asset
+    custodian VARCHAR(255),  -- Person responsible for the asset
+    
+    -- Status & Condition
+    status ENUM('available', 'in_use', 'maintenance', 'repair', 'reserved', 'disposed', 'lost', 'stolen') NOT NULL DEFAULT 'available',
+    `condition` ENUM('excellent', 'good', 'fair', 'poor', 'non_functional') NOT NULL DEFAULT 'good',
+    condition_notes TEXT,
+    
+    -- Maintenance
+    last_maintenance_date DATE,
+    next_maintenance_date DATE,
+    maintenance_frequency_days INT,  -- How often maintenance is required
+    maintenance_cost_total DECIMAL(10, 2) DEFAULT 0.00,
+    
+    -- Additional Information
+    barcode VARCHAR(100),
+    qr_code VARCHAR(255),
+    rfid_tag VARCHAR(100),
+    image_url VARCHAR(500),
+    document_url VARCHAR(500),
+    specifications JSON,  -- Store technical specs as JSON
+    notes TEXT,
+    
+    -- Disposal Information
+    disposal_date DATE,
+    disposal_method VARCHAR(100),
+    disposal_reason TEXT,
+    disposal_value DECIMAL(10, 2),
+    
+    -- Audit Trail
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by INT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_asset_code (asset_code),
+    INDEX idx_asset_type (asset_type),
+    INDEX idx_category (category),
+    INDEX idx_status (status),
+    INDEX idx_location (location),
+    INDEX idx_department (department),
+    INDEX idx_assigned_to (assigned_to),
+    INDEX idx_warranty_end (warranty_end_date),
+    INDEX idx_next_maintenance (next_maintenance_date),
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Asset Categories (for dropdown/organization)
+CREATE TABLE inventory_categories (
+    category_id INT AUTO_INCREMENT PRIMARY KEY,
+    category_name VARCHAR(100) NOT NULL UNIQUE,
+    category_type ENUM('equipment', 'furniture', 'electronics', 'vehicle', 'building', 'land', 'other'),
+    description TEXT,
+    parent_category_id INT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_category_id) REFERENCES inventory_categories(category_id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Asset Movement/Transfer History
+CREATE TABLE inventory_transfers (
+    transfer_id INT AUTO_INCREMENT PRIMARY KEY,
+    asset_id INT NOT NULL,
+    transfer_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    -- From Location
+    from_location VARCHAR(255),
+    from_building VARCHAR(100),
+    from_department VARCHAR(100),
+    from_assigned_to VARCHAR(255),
+    from_custodian VARCHAR(255),
+    
+    -- To Location
+    to_location VARCHAR(255),
+    to_building VARCHAR(100),
+    to_department VARCHAR(100),
+    to_assigned_to VARCHAR(255),
+    to_custodian VARCHAR(255),
+    
+    -- Transfer Details
+    transfer_type ENUM('relocation', 'reassignment', 'temporary', 'permanent') DEFAULT 'permanent',
+    reason TEXT,
+    expected_return_date DATE,
+    actual_return_date DATE,
+    transfer_condition ENUM('excellent', 'good', 'fair', 'poor', 'damaged'),
+    transfer_notes TEXT,
+    
+    -- Approval
+    requested_by INT,
+    approved_by INT,
+    approval_status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    approval_date DATETIME,
+    approval_notes TEXT,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (asset_id) REFERENCES inventory_assets(asset_id) ON DELETE CASCADE,
+    FOREIGN KEY (requested_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_asset (asset_id),
+    INDEX idx_transfer_date (transfer_date),
+    INDEX idx_status (approval_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Asset Maintenance Records
+CREATE TABLE inventory_maintenance (
+    maintenance_id INT AUTO_INCREMENT PRIMARY KEY,
+    asset_id INT NOT NULL,
+    maintenance_type ENUM('preventive', 'corrective', 'inspection', 'calibration', 'cleaning', 'repair', 'other') NOT NULL,
+    maintenance_date DATE NOT NULL,
+    scheduled_date DATE,
+    
+    -- Maintenance Details
+    description TEXT NOT NULL,
+    problem_reported TEXT,
+    action_taken TEXT,
+    parts_replaced TEXT,
+    maintenance_cost DECIMAL(10, 2) DEFAULT 0.00,
+    labor_cost DECIMAL(10, 2) DEFAULT 0.00,
+    parts_cost DECIMAL(10, 2) DEFAULT 0.00,
+    total_cost DECIMAL(10, 2) AS (maintenance_cost + labor_cost + parts_cost) STORED,
+    
+    -- Service Provider
+    performed_by VARCHAR(200),
+    service_provider VARCHAR(200),
+    technician_name VARCHAR(200),
+    contact_number VARCHAR(50),
+    
+    -- Status
+    maintenance_status ENUM('scheduled', 'in_progress', 'completed', 'cancelled') DEFAULT 'scheduled',
+    priority ENUM('low', 'medium', 'high', 'critical') DEFAULT 'medium',
+    downtime_hours DECIMAL(6, 2),  -- How long asset was unavailable
+    
+    -- Next Maintenance
+    next_maintenance_date DATE,
+    
+    -- Documentation
+    invoice_number VARCHAR(100),
+    receipt_url VARCHAR(500),
+    before_image_url VARCHAR(500),
+    after_image_url VARCHAR(500),
+    notes TEXT,
+    
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (asset_id) REFERENCES inventory_assets(asset_id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_asset (asset_id),
+    INDEX idx_maintenance_date (maintenance_date),
+    INDEX idx_status (maintenance_status),
+    INDEX idx_next_maintenance (next_maintenance_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Asset Depreciation History
+CREATE TABLE inventory_depreciation (
+    depreciation_id INT AUTO_INCREMENT PRIMARY KEY,
+    asset_id INT NOT NULL,
+    depreciation_date DATE NOT NULL,
+    depreciation_period VARCHAR(50),  -- e.g., "2024-Q1", "January 2024"
+    
+    -- Values
+    opening_value DECIMAL(12, 2) NOT NULL,
+    depreciation_amount DECIMAL(12, 2) NOT NULL,
+    closing_value DECIMAL(12, 2) NOT NULL,
+    accumulated_depreciation DECIMAL(12, 2),
+    
+    -- Calculation Details
+    depreciation_method ENUM('straight_line', 'declining_balance', 'manual'),
+    calculation_basis TEXT,
+    
+    notes TEXT,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (asset_id) REFERENCES inventory_assets(asset_id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_asset (asset_id),
+    INDEX idx_date (depreciation_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Asset Audit/Inspection Records
+CREATE TABLE inventory_audits (
+    audit_id INT AUTO_INCREMENT PRIMARY KEY,
+    audit_date DATE NOT NULL,
+    audit_type ENUM('annual', 'quarterly', 'random', 'investigation') DEFAULT 'annual',
+    auditor_name VARCHAR(200),
+    department VARCHAR(100),
+    location VARCHAR(255),
+    
+    status ENUM('scheduled', 'in_progress', 'completed', 'cancelled') DEFAULT 'scheduled',
+    completion_date DATE,
+    
+    total_assets_expected INT DEFAULT 0,
+    total_assets_found INT DEFAULT 0,
+    total_assets_missing INT DEFAULT 0,
+    total_assets_damaged INT DEFAULT 0,
+    
+    findings TEXT,
+    recommendations TEXT,
+    report_url VARCHAR(500),
+    
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_audit_date (audit_date),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Asset Audit Details (individual asset checks)
+CREATE TABLE inventory_audit_items (
+    audit_item_id INT AUTO_INCREMENT PRIMARY KEY,
+    audit_id INT NOT NULL,
+    asset_id INT NOT NULL,
+    
+    expected_location VARCHAR(255),
+    actual_location VARCHAR(255),
+    expected_condition ENUM('excellent', 'good', 'fair', 'poor'),
+    actual_condition ENUM('excellent', 'good', 'fair', 'poor', 'missing', 'damaged'),
+    
+    verification_status ENUM('verified', 'discrepancy', 'missing', 'unaccounted') DEFAULT 'verified',
+    discrepancy_notes TEXT,
+    action_required TEXT,
+    
+    verified_by VARCHAR(200),
+    verification_date DATETIME,
+    
+    FOREIGN KEY (audit_id) REFERENCES inventory_audits(audit_id) ON DELETE CASCADE,
+    FOREIGN KEY (asset_id) REFERENCES inventory_assets(asset_id) ON DELETE CASCADE,
+    INDEX idx_audit (audit_id),
+    INDEX idx_asset (asset_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Asset Disposal Records
+CREATE TABLE inventory_disposals (
+    disposal_id INT AUTO_INCREMENT PRIMARY KEY,
+    asset_id INT NOT NULL,
+    disposal_date DATE NOT NULL,
+    disposal_method ENUM('sale', 'donation', 'scrap', 'trade_in', 'write_off', 'auction', 'other') NOT NULL,
+    
+    -- Financial Details
+    book_value DECIMAL(12, 2),  -- Value at time of disposal
+    disposal_value DECIMAL(12, 2),  -- Amount received
+    disposal_cost DECIMAL(10, 2),  -- Cost to dispose
+    gain_loss DECIMAL(12, 2) AS (disposal_value - book_value) STORED,
+    
+    -- Disposal Details
+    reason TEXT NOT NULL,
+    buyer_recipient VARCHAR(200),
+    authorization_number VARCHAR(100),
+    authorized_by VARCHAR(200),
+    
+    -- Documentation
+    disposal_certificate_url VARCHAR(500),
+    receipt_url VARCHAR(500),
+    approval_document_url VARCHAR(500),
+    
+    notes TEXT,
+    disposal_status ENUM('pending', 'approved', 'completed', 'cancelled') DEFAULT 'pending',
+    
+    created_by INT,
+    approved_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (asset_id) REFERENCES inventory_assets(asset_id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_asset (asset_id),
+    INDEX idx_disposal_date (disposal_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Asset Requests/Requisitions
+CREATE TABLE inventory_requests (
+    request_id INT AUTO_INCREMENT PRIMARY KEY,
+    request_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    request_type ENUM('new_asset', 'transfer', 'maintenance', 'disposal', 'temporary_use') NOT NULL,
+    
+    -- For new asset requests
+    requested_asset_type VARCHAR(100),
+    requested_item_name VARCHAR(255),
+    quantity INT DEFAULT 1,
+    estimated_cost DECIMAL(10, 2),
+    justification TEXT,
+    
+    -- For existing asset requests
+    asset_id INT,
+    
+    -- Request Details
+    requested_by INT NOT NULL,
+    department VARCHAR(100),
+    purpose TEXT,
+    priority ENUM('low', 'medium', 'high', 'urgent') DEFAULT 'medium',
+    required_date DATE,
+    
+    -- Approval Workflow
+    status ENUM('pending', 'under_review', 'approved', 'rejected', 'completed', 'cancelled') DEFAULT 'pending',
+    reviewed_by INT,
+    review_date DATETIME,
+    review_notes TEXT,
+    approved_by INT,
+    approval_date DATETIME,
+    approval_notes TEXT,
+    
+    completion_date DATETIME,
+    completion_notes TEXT,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (asset_id) REFERENCES inventory_assets(asset_id) ON DELETE SET NULL,
+    FOREIGN KEY (requested_by) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewed_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_status (status),
+    INDEX idx_request_date (request_date),
+    INDEX idx_requested_by (requested_by)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sample Categories
+INSERT INTO inventory_categories (category_name, category_type, description) VALUES
+('IT Equipment', 'electronics', 'Computers, servers, networking equipment'),
+('Office Furniture', 'furniture', 'Desks, chairs, cabinets'),
+('Classroom Equipment', 'equipment', 'Projectors, screens, whiteboards'),
+('Laboratory Equipment', 'equipment', 'Lab instruments and apparatus'),
+('Vehicles', 'vehicle', 'School service vehicles'),
+('Building Infrastructure', 'building', 'Building facilities and structures'),
+('Sports Equipment', 'equipment', 'Sports and athletic equipment'),
+('Library Resources', 'equipment', 'Library furniture and equipment'),
+('Cleaning Equipment', 'equipment', 'Janitorial and maintenance equipment'),
+('Security Systems', 'electronics', 'CCTV, access control, alarms');
+
+-- Sample Assets Data
+INSERT INTO inventory_assets (
+    asset_code, asset_name, asset_type, category, description, serial_number, model_number, 
+    manufacturer, supplier, purchase_date, purchase_price, current_value, warranty_start_date, 
+    warranty_end_date, location, building, department, status, `condition`, assigned_to,
+    depreciation_method, useful_life_years
+) VALUES
+('AST-2024-001', 'Dell Optiplex 7090', 'electronics', 'IT Equipment', 'Desktop computer for faculty office', 'DO7090-2024-001', 'Optiplex 7090', 'Dell', 'Tech Solutions Inc.', '2024-01-15', 45000.00, 42000.00, '2024-01-15', '2027-01-15', 'Faculty Office 201', 'Main Building', 'Faculty Department', 'in_use', 'excellent', 'Juan Dela Cruz', 'straight_line', 5),
+('AST-2023-045', 'HP LaserJet Pro', 'electronics', 'IT Equipment', 'Printer for admin department', 'HPLJ-2023-045', 'LaserJet Pro M404n', 'HP', 'Office Depot', '2023-06-20', 18000.00, 15000.00, '2023-06-20', '2024-06-20', 'Admin Office', 'Admin Building', 'Administration', 'in_use', 'good', 'Admin Department', 'straight_line', 3),
+('AST-2024-125', 'Office Desk', 'furniture', 'Office Furniture', 'Standard office desk with drawers', 'OD-2024-125', 'Executive Desk 60x30', 'National Furniture', 'Office World', '2024-02-10', 8500.00, 8000.00, NULL, NULL, 'Library Room 3', 'Library Building', 'Library', 'available', 'good', NULL, 'straight_line', 10),
+('AST-2022-089', 'Projector Epson EB-X49', 'electronics', 'Classroom Equipment', 'Classroom projector', 'EPSON-2022-089', 'EB-X49', 'Epson', 'AV Solutions', '2022-08-15', 28000.00, 20000.00, '2022-08-15', '2023-08-15', 'Room 305', 'Academic Building', 'Academic Affairs', 'maintenance', 'fair', NULL, 'straight_line', 5),
+('AST-2020-001', 'Toyota Hiace', 'vehicle', 'Vehicles', 'School service vehicle', 'TH-2020-001', 'Hiace Commuter', 'Toyota', 'Toyota Manila', '2020-03-01', 1200000.00, 950000.00, '2020-03-01', '2023-03-01', 'Parking Area', 'Main Campus', 'Transportation', 'available', 'good', NULL, 'declining_balance', 10),
+('AST-2023-012', 'Conference Table', 'furniture', 'Office Furniture', 'Large conference table for meetings', 'CT-2023-012', 'Conference Table 12-seater', 'Furniture Plus', 'Office Supplies Co.', '2023-04-12', 35000.00, 32000.00, NULL, NULL, 'Conference Room A', 'Admin Building', 'Administration', 'in_use', 'excellent', NULL, 'straight_line', 15),
+('AST-2024-078', 'Air Conditioning Unit', 'equipment', 'Building Infrastructure', '2.5HP split-type aircon', 'AC-2024-078', 'Inverter 2.5HP', 'Carrier', 'Cool Systems Inc.', '2024-05-20', 32000.00, 31000.00, '2024-05-20', '2025-05-20', 'Computer Lab 1', 'IT Building', 'IT Department', 'in_use', 'excellent', NULL, 'straight_line', 7),
+('AST-2023-156', 'Whiteboard', 'equipment', 'Classroom Equipment', 'Magnetic whiteboard 4x6 feet', 'WB-2023-156', 'Magnetic Board 4x6', 'Classroom Essentials', 'School Supplies Hub', '2023-09-10', 4500.00, 4200.00, NULL, NULL, 'Room 402', 'Academic Building', 'Academic Affairs', 'available', 'good', NULL, 'straight_line', 10),
+('AST-2022-203', 'Filing Cabinet', 'furniture', 'Office Furniture', '4-drawer steel filing cabinet', 'FC-2022-203', 'Steel Cabinet 4D', 'Metal Works', 'Office Depot', '2022-11-05', 6500.00, 5500.00, NULL, NULL, 'Registrar Office', 'Admin Building', 'Registrar', 'in_use', 'fair', 'Registrar', 'straight_line', 10),
+('AST-2024-033', 'Laptop Lenovo ThinkPad', 'electronics', 'IT Equipment', 'Portable laptop for presentations', 'LTP-2024-033', 'ThinkPad E14', 'Lenovo', 'Tech Hub', '2024-07-08', 55000.00, 54000.00, '2024-07-08', '2025-07-08', 'Admin Office', 'Admin Building', 'Administration', 'in_use', 'excellent', 'Maria Santos', 'straight_line', 4);
+
+-- Sample Maintenance Records
+INSERT INTO inventory_maintenance (asset_id, maintenance_type, maintenance_date, description, action_taken, maintenance_cost, performed_by, maintenance_status, priority) VALUES
+(4, 'corrective', '2025-12-15', 'Lamp replacement needed', 'Replaced projector lamp and cleaned filters', 5500.00, 'AV Technician', 'completed', 'high'),
+(5, 'preventive', '2025-11-20', 'Regular vehicle maintenance', 'Oil change, tire rotation, brake check', 8500.00, 'Toyota Service Center', 'completed', 'medium'),
+(7, 'preventive', '2025-10-01', 'Aircon cleaning and maintenance', 'Cleaned filters, checked refrigerant levels', 1200.00, 'Cool Systems Inc.', 'completed', 'medium');
+
+-- Sample Transfer Records
+INSERT INTO inventory_transfers (asset_id, from_location, from_department, to_location, to_department, transfer_type, reason, requested_by, approval_status) VALUES
+(1, 'Storage Room', 'IT Department', 'Faculty Office 201', 'Faculty Department', 'permanent', 'New faculty member assignment', 1, 'approved'),
+(8, 'Room 301', 'Academic Affairs', 'Room 402', 'Academic Affairs', 'relocation', 'Classroom reassignment', 1, 'approved');
+
+-- ===========================
+-- Reports & Analytics System
+-- ===========================
+
+-- Report Templates
+CREATE TABLE report_templates (
+    template_id INT AUTO_INCREMENT PRIMARY KEY,
+    template_name VARCHAR(200) NOT NULL,
+    template_type ENUM('student', 'enrollment', 'attendance', 'payroll', 'financial', 'academic', 'custom') NOT NULL,
+    description TEXT,
+    query_template TEXT,
+    parameters JSON,
+    default_filters JSON,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE,
+    
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_template_type (template_type),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Saved Reports
+CREATE TABLE saved_reports (
+    report_id INT AUTO_INCREMENT PRIMARY KEY,
+    report_name VARCHAR(200) NOT NULL,
+    report_type ENUM('student', 'enrollment', 'attendance', 'payroll', 'financial', 'academic', 'custom') NOT NULL,
+    template_id INT,
+    generated_by INT,
+    generated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    parameters JSON,
+    filters_applied JSON,
+    
+    file_path VARCHAR(255),
+    file_format ENUM('pdf', 'csv', 'excel', 'json') DEFAULT 'pdf',
+    file_size INT,
+    
+    data_snapshot JSON,
+    
+    status ENUM('generating', 'completed', 'failed') DEFAULT 'generating',
+    error_message TEXT,
+    
+    is_scheduled BOOLEAN DEFAULT FALSE,
+    schedule_frequency ENUM('daily', 'weekly', 'monthly', 'quarterly', 'yearly'),
+    
+    access_level ENUM('private', 'department', 'public') DEFAULT 'private',
+    
+    FOREIGN KEY (template_id) REFERENCES report_templates(template_id) ON DELETE SET NULL,
+    FOREIGN KEY (generated_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_report_type (report_type),
+    INDEX idx_generated_by (generated_by),
+    INDEX idx_generated_date (generated_date),
+    INDEX idx_status (status),
+    INDEX idx_access_level (access_level)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Report Schedules
+CREATE TABLE report_schedules (
+    schedule_id INT AUTO_INCREMENT PRIMARY KEY,
+    report_name VARCHAR(200) NOT NULL,
+    template_id INT,
+    
+    frequency ENUM('daily', 'weekly', 'monthly', 'quarterly', 'yearly') NOT NULL,
+    schedule_time TIME,
+    schedule_day INT,
+    schedule_month INT,
+    
+    parameters JSON,
+    filters JSON,
+    
+    recipients JSON,
+    
+    file_format ENUM('pdf', 'csv', 'excel', 'json') DEFAULT 'pdf',
+    delivery_method ENUM('email', 'storage', 'both') DEFAULT 'both',
+    
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    last_run_date DATETIME,
+    next_run_date DATETIME,
+    
+    is_active BOOLEAN DEFAULT TRUE,
+    
+    FOREIGN KEY (template_id) REFERENCES report_templates(template_id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_frequency (frequency),
+    INDEX idx_is_active (is_active),
+    INDEX idx_next_run_date (next_run_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Report Exports Log
+CREATE TABLE report_exports (
+    export_id INT AUTO_INCREMENT PRIMARY KEY,
+    report_id INT,
+    
+    export_type ENUM('student', 'enrollment', 'attendance', 'payroll', 'financial', 'academic', 'custom') NOT NULL,
+    export_format ENUM('pdf', 'csv', 'excel', 'json') NOT NULL,
+    
+    exported_by INT,
+    export_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    record_count INT,
+    file_size INT,
+    file_path VARCHAR(255),
+    
+    filters_applied JSON,
+    
+    FOREIGN KEY (report_id) REFERENCES saved_reports(report_id) ON DELETE CASCADE,
+    FOREIGN KEY (exported_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_export_type (export_type),
+    INDEX idx_exported_by (exported_by),
+    INDEX idx_export_date (export_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Report Analytics Metrics
+CREATE TABLE report_analytics (
+    analytics_id INT AUTO_INCREMENT PRIMARY KEY,
+    report_type ENUM('student', 'enrollment', 'attendance', 'payroll', 'financial', 'academic', 'custom') NOT NULL,
+    
+    metric_name VARCHAR(100) NOT NULL,
+    metric_value DECIMAL(15, 2),
+    metric_data JSON,
+    
+    academic_period_id INT,
+    department VARCHAR(100),
+    
+    calculated_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_report_type (report_type),
+    INDEX idx_metric_name (metric_name),
+    INDEX idx_calculated_date (calculated_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sample Report Templates
+INSERT INTO report_templates (template_name, template_type, description, created_by) VALUES
+('Student Enrollment Summary', 'student', 'Summary of all student enrollments with program breakdown', 1),
+('Attendance Overview', 'attendance', 'Daily/weekly attendance summary for students and staff', 1),
+('Monthly Payroll Summary', 'payroll', 'Monthly payroll summary with deductions and benefits', 1),
+('Academic Performance Report', 'academic', 'Student academic performance analysis with GPA trends', 1);
+-- ===========================
+-- SYSTEM SETTINGS MODULE
+-- ===========================
+
+-- System Settings Table
+-- Stores key-value configuration settings for the system
+CREATE TABLE IF NOT EXISTS system_settings (
+    setting_id INT AUTO_INCREMENT PRIMARY KEY,
+    setting_key VARCHAR(100) NOT NULL UNIQUE,
+    setting_value TEXT NOT NULL,
+    description TEXT,
+    category VARCHAR(50) DEFAULT 'general',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_setting_key (setting_key),
+    INDEX idx_category (category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Communication Gateways Table
+-- Stores configuration for email and SMS gateways
+CREATE TABLE IF NOT EXISTS communication_gateways (
+    gateway_id INT AUTO_INCREMENT PRIMARY KEY,
+    gateway_name VARCHAR(100) NOT NULL,
+    gateway_type ENUM('email', 'sms') NOT NULL,
+    provider VARCHAR(100) NOT NULL,
+    
+    -- Gateway Configuration (stored as JSON)
+    configuration JSON NOT NULL,
+    
+    -- Status and Authentication
+    is_active BOOLEAN DEFAULT FALSE,
+    is_default BOOLEAN DEFAULT FALSE,
+    
+    -- Rate Limiting
+    daily_limit INT,
+    monthly_limit INT,
+    
+    -- Tracking
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    last_used_at TIMESTAMP NULL,
+    
+    INDEX idx_gateway_type (gateway_type),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- System Logs Table
+-- Stores all system activity, errors, and audit trails
+CREATE TABLE IF NOT EXISTS system_logs (
+    log_id INT AUTO_INCREMENT PRIMARY KEY,
+    log_type ENUM('info', 'warning', 'error', 'security', 'audit', 'database', 'api', 'user_activity') NOT NULL,
+    
+    -- Log Details
+    message TEXT NOT NULL,
+    details JSON,
+    
+    -- User and Request Info
+    user_id INT NULL,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    
+    -- Module/Feature Context
+    module VARCHAR(100),
+    action VARCHAR(100),
+    
+    -- Error Information
+    error_code VARCHAR(50),
+    stack_trace TEXT,
+    
+    -- Timestamp
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    INDEX idx_log_type (log_type),
+    INDEX idx_user_id (user_id),
+    INDEX idx_created_at (created_at),
+    INDEX idx_module (module),
+    
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insert Default System Settings
+INSERT INTO system_settings (setting_key, setting_value, description, category) VALUES
+('system_name', 'Nexus ERP', 'Name of the system', 'general'),
+('system_logo', '/assets/logo.png', 'Path to system logo', 'general'),
+('timezone', 'Asia/Manila', 'System timezone', 'general'),
+('date_format', 'YYYY-MM-DD', 'Default date format', 'general'),
+('time_format', '24h', 'Default time format (12h or 24h)', 'general'),
+('currency', 'PHP', 'Default currency', 'general'),
+('language', 'en', 'Default language', 'general'),
+
+-- Academic Settings
+('current_academic_year', '2024-2025', 'Current academic year', 'academic'),
+('current_semester', 'First Semester', 'Current semester', 'academic'),
+('enrollment_open', 'true', 'Is enrollment currently open', 'academic'),
+
+-- Security Settings
+('session_timeout', '3600', 'Session timeout in seconds', 'security'),
+('password_min_length', '8', 'Minimum password length', 'security'),
+('max_login_attempts', '5', 'Maximum login attempts before lockout', 'security'),
+('lockout_duration', '900', 'Account lockout duration in seconds', 'security'),
+
+-- Notification Settings
+('email_notifications', 'true', 'Enable email notifications', 'notifications'),
+('sms_notifications', 'false', 'Enable SMS notifications', 'notifications'),
+('notification_retention_days', '90', 'Days to retain notifications', 'notifications'),
+
+-- Maintenance
+('maintenance_mode', 'false', 'Is system in maintenance mode', 'maintenance'),
+('backup_enabled', 'true', 'Enable automatic backups', 'maintenance'),
+('backup_frequency', 'daily', 'Backup frequency (daily, weekly, monthly)', 'maintenance');
+
+-- Insert Sample Gateway Configurations
+INSERT INTO communication_gateways (gateway_name, gateway_type, provider, configuration, is_active, is_default) VALUES
+('Default Email Gateway', 'email', 'SMTP', 
+    JSON_OBJECT(
+        'host', 'smtp.gmail.com',
+        'port', 587,
+        'secure', false,
+        'auth', JSON_OBJECT('user', '', 'pass', '')
+    ), 
+    false, true),
+    
+('Twilio SMS Gateway', 'sms', 'Twilio', 
+    JSON_OBJECT(
+        'accountSid', '',
+        'authToken', '',
+        'fromNumber', ''
+    ), 
+    false, false);

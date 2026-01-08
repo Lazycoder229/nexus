@@ -66,6 +66,11 @@ import AnnouncementCenter from "./components/pages/admin/AnnouncementCenter";
 import EventScheduling from "./components/pages/admin/EventScheduling";
 import SchoolCalendar from "./components/pages/admin/SchoolCalendar";
 import PublicEventPosting from "./components/pages/admin/PublicEventPosting";
+import InventoryAssetManagement from "./components/pages/admin/InventoryAssetManagement";
+import StudentReports from "./components/pages/admin/StudentReports";
+import GeneralSettings from "./components/pages/admin/GeneralSettings";
+import EmailSMSGateway from "./components/pages/admin/EmailSMSGateway";
+import SystemLogs from "./components/pages/admin/SystemLogs";
 
 function AppWrapper() {
   const navigate = useNavigate();
@@ -196,6 +201,16 @@ function AppWrapper() {
           path="admin_public_event_posting"
           element={<PublicEventPosting />}
         />
+        <Route
+          path="admin_inventory_asset_management"
+          element={<InventoryAssetManagement />}
+        />
+        <Route path="admin_general_setting" element={<GeneralSettings />} />
+        <Route
+          path="admin_email_sms_gateway"
+          element={<EmailSMSGateway />}
+        />
+        <Route path="admin_system_logs" element={<SystemLogs />} />
         <Route path="admin_staff_attendance" element={<StaffAttendance />} />
         <Route
           path="admin_student_attendance"
@@ -203,6 +218,7 @@ function AppWrapper() {
         />
         <Route path="admin_rfid_integration" element={<RFIDIntegration />} />
         <Route path="admin_absentee" element={<AbsenteeAlerts />} />
+        <Route path="admin_student_reports" element={<StudentReports />} />
         <Route path="admin_exam_setup" element={<ExamSetup />} />
         <Route path="admin_grade_entry" element={<GradeEntryApproval />} />
         <Route
