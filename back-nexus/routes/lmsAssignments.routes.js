@@ -1,0 +1,42 @@
+import express from "express";
+import lmsAssignmentsController from "../controllers/lmsAssignments.controller.js";
+
+const router = express.Router();
+
+// Create new assignment
+router.post("/", lmsAssignmentsController.create);
+
+// Get assignments by faculty
+router.get("/faculty", lmsAssignmentsController.getByFaculty);
+
+// Get assignments by section
+router.get("/section", lmsAssignmentsController.getBySection);
+
+// Get assignment by ID
+router.get("/:id", lmsAssignmentsController.getById);
+
+// Update assignment
+router.put("/:id", lmsAssignmentsController.update);
+
+// Delete assignment
+router.delete("/:id", lmsAssignmentsController.delete);
+
+// Submit assignment
+router.post("/submit", lmsAssignmentsController.submitAssignment);
+
+// Get submissions for an assignment
+router.get("/:assignment_id/submissions", lmsAssignmentsController.getSubmissions);
+
+// Grade submission
+router.put("/submissions/:submission_id/grade", lmsAssignmentsController.gradeSubmission);
+
+// Get student submission
+router.get("/student-submission", lmsAssignmentsController.getStudentSubmission);
+
+// Create quiz question
+router.post("/quiz-question", lmsAssignmentsController.createQuizQuestion);
+
+// Get quiz questions
+router.get("/:assignment_id/quiz-questions", lmsAssignmentsController.getQuizQuestions);
+
+export default router;

@@ -426,17 +426,16 @@ const Menu = {
     },
   ],
 
-  faculty: [
+  Faculty: [
     {
       title: "Dashboard",
       icons: LayoutDashboard,
-      submenu: [
-        {
-          label: "Overview",
-          icons: LayoutDashboard,
-          link: "/faculty_dashboard",
-        },
-      ],
+      path: "/faculty/faculty_dashboard",
+    },
+    {
+      title: "Profile",
+      icons: Users,
+      path: "/faculty/faculty_profile",
     },
     {
       title: "My Courses",
@@ -445,14 +444,14 @@ const Menu = {
         {
           label: "Assigned Subjects & Sections",
           icons: BookOpen,
-          link: "/faculty_assigned_subjects",
+          link: "/faculty/faculty_assigned_subjects",
         },
         {
           label: "Syllabus Upload",
           icons: FileText,
-          link: "/faculty_syllabus_upload",
+          link: "/faculty/faculty_syllabus_upload",
         },
-        { label: "Student List", icons: Users, link: "/faculty_student_list" },
+        { label: "Student List", icons: Users, link: "/faculty/faculty_student_list" },
       ],
     },
     {
@@ -462,12 +461,12 @@ const Menu = {
         {
           label: "Mark Attendance",
           icons: CalendarCheck,
-          link: "/faculty_mark_attendance",
+          link: "/faculty/faculty_mark_attendance",
         },
         {
           label: "Absentee Alerts",
           icons: Bell,
-          link: "/faculty_absentee_alerts",
+          link: "/faculty/faculty_absentee_alerts",
         },
       ],
     },
@@ -478,17 +477,12 @@ const Menu = {
         {
           label: "Grade Encoding",
           icons: FileText,
-          link: "/faculty_grade_encoding",
-        },
-        {
-          label: "Grade Computation",
-          icons: FileText,
-          link: "/faculty_grade_computation",
+          link: "/faculty/faculty_grade_encoding",
         },
         {
           label: "Grade Review",
           icons: CheckSquare,
-          link: "/faculty_grade_review",
+          link: "/faculty/faculty_grade_review",
         },
       ],
     },
@@ -499,17 +493,17 @@ const Menu = {
         {
           label: "Upload Learning Materials",
           icons: BookOpen,
-          link: "/faculty_lms_materials",
+          link: "/faculty/faculty_lms_materials",
         },
         {
           label: "Assignments & Quizzes",
           icons: FileText,
-          link: "/faculty_lms_assignments",
+          link: "/faculty/faculty_lms_assignments",
         },
         {
           label: "Class Discussion",
           icons: MessageCircle,
-          link: "/faculty_lms_discussion",
+          link: "/faculty/faculty_lms_discussion",
         },
       ],
     },
@@ -517,13 +511,13 @@ const Menu = {
       title: "Communication",
       icons: Mail,
       submenu: [
-        { label: "Announcements", icons: Bell, link: "/faculty_announcements" },
+        { label: "Announcements", icons: Bell, link: "/faculty/faculty_announcements" },
         {
           label: "Private Messaging",
           icons: MessageCircle,
-          link: "/faculty_messaging",
+          link: "/faculty/faculty_messaging",
         },
-        { label: "Email Student", icons: Mail, link: "/faculty_email_student" },
+        { label: "Email Student", icons: Mail, link: "/faculty/faculty_email_student" },
       ],
     },
     {
@@ -533,23 +527,23 @@ const Menu = {
         {
           label: "Grade Reports",
           icons: ReportIcon,
-          link: "/faculty_report_grades",
+          link: "/faculty/faculty_report_grades",
         },
         {
           label: "Attendance Reports",
           icons: ReportIcon,
-          link: "/faculty_report_attendance",
+          link: "/faculty/faculty_report_attendance",
         },
         {
           label: "Class Performance",
           icons: ReportIcon,
-          link: "/faculty_report_performance",
+          link: "/faculty/faculty_report_performance",
         },
       ],
     },
   ],
 
-  student: [
+  Student: [
     {
       title: "Dashboard",
       icons: LayoutDashboard,

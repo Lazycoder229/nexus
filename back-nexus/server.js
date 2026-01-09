@@ -59,6 +59,9 @@ import publicEventsRoutes from "./routes/publicEvents.routes.js"; // public even
 import inventoryRoutes from "./routes/inventory.routes.js"; // inventory assets routes
 import reportsRoutes from "./routes/reports.routes.js"; // reports & analytics routes
 import systemSettingsRoutes from "./routes/systemSettings.routes.js"; // system settings routes
+import lmsMaterialsRoutes from "./routes/lmsMaterials.routes.js"; // LMS materials routes
+import lmsAssignmentsRoutes from "./routes/lmsAssignments.routes.js"; // LMS assignments routes
+import lmsDiscussionsRoutes from "./routes/lmsDiscussions.routes.js"; // LMS discussions routes
 
 dotenv.config(); // load env variables
 
@@ -167,6 +170,11 @@ app.use("/api/reports", reportsRoutes);
 
 // System Settings routes
 app.use("/api/system-settings", systemSettingsRoutes);
+
+// LMS routes
+app.use("/api/lms/materials", lmsMaterialsRoutes);
+app.use("/api/lms/assignments", lmsAssignmentsRoutes);
+app.use("/api/lms/discussions", lmsDiscussionsRoutes);
 
 /* import bcrypt from "bcrypt";
 

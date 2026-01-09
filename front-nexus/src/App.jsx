@@ -68,9 +68,29 @@ import SchoolCalendar from "./components/pages/admin/SchoolCalendar";
 import PublicEventPosting from "./components/pages/admin/PublicEventPosting";
 import InventoryAssetManagement from "./components/pages/admin/InventoryAssetManagement";
 import StudentReports from "./components/pages/admin/StudentReports";
-import GeneralSettings from "./components/pages/admin/GeneralSettings";
+import GeneralSettings from "./components/pages/admin/GeneralSettings_New";
 import EmailSMSGateway from "./components/pages/admin/EmailSMSGateway";
 import SystemLogs from "./components/pages/admin/SystemLogs";
+
+// Faculty Pages
+import FacultyDashboard from "./components/pages/faculty/FacultyDashboard";
+import FacultyProfile from "./components/pages/faculty/FacultyProfile";
+import AssignedSubjects from "./components/pages/faculty/AssignedSubjects";
+import SyllabusUpload from "./components/pages/faculty/SyllabusUpload";
+import StudentList from "./components/pages/faculty/StudentList";
+import MarkAttendance from "./components/pages/faculty/MarkAttendance";
+import FacultyAbsenteeAlerts from "./components/pages/faculty/AbsenteeAlerts";
+import GradeEncoding from "./components/pages/faculty/GradeEncoding";
+import GradeReview from "./components/pages/faculty/GradeReview";
+import LMSMaterials from "./components/pages/faculty/LMSMaterials";
+import LMSAssignments from "./components/pages/faculty/LMSAssignments";
+import LMSDiscussion from "./components/pages/faculty/LMSDiscussion";
+import FacultyAnnouncements from "./components/pages/faculty/Announcements";
+import Messaging from "./components/pages/faculty/Messaging";
+import EmailStudent from "./components/pages/faculty/EmailStudent";
+import GradeReports from "./components/pages/faculty/GradeReports";
+import AttendanceReports from "./components/pages/faculty/AttendanceReports";
+import ClassPerformance from "./components/pages/faculty/ClassPerformance";
 
 function AppWrapper() {
   const navigate = useNavigate();
@@ -85,6 +105,8 @@ function AppWrapper() {
   const handleNavigateByRole = (role) => {
     if (role === "Admin") {
       navigate("/admin/dashboard", { replace: true });
+    } else if (role === "Faculty") {
+      navigate("/faculty/dashboard", { replace: true });
     } else if (role === "Student") {
       navigate("/student/dashboard", { replace: true });
     }
@@ -264,6 +286,46 @@ function AppWrapper() {
       >
         <Route path="dashboard" element={<StudentInformation />} />
         {/* Add more student routes here */}
+      </Route>
+
+      {/* Faculty Routes */}
+      <Route
+        path="/faculty/*"
+        element={<SharedLayout role="Faculty" handleLogout={handleLogout} />}
+      >
+        <Route path="dashboard" element={<FacultyDashboard />} />
+        <Route path="faculty_dashboard" element={<FacultyDashboard />} />
+        
+        {/* Profile */}
+        <Route path="faculty_profile" element={<FacultyProfile />} />
+        
+        {/* My Courses */}
+        <Route path="faculty_assigned_subjects" element={<AssignedSubjects />} />
+        <Route path="faculty_syllabus_upload" element={<SyllabusUpload />} />
+        <Route path="faculty_student_list" element={<StudentList />} />
+        
+        {/* Attendance */}
+        <Route path="faculty_mark_attendance" element={<MarkAttendance />} />
+        <Route path="faculty_absentee_alerts" element={<FacultyAbsenteeAlerts />} />
+        
+        {/* Grades */}
+        <Route path="faculty_grade_encoding" element={<GradeEncoding />} />
+        <Route path="faculty_grade_review" element={<GradeReview />} />
+        
+        {/* LMS */}
+        <Route path="faculty_lms_materials" element={<LMSMaterials />} />
+        <Route path="faculty_lms_assignments" element={<LMSAssignments />} />
+        <Route path="faculty_lms_discussion" element={<LMSDiscussion />} />
+        
+        {/* Communication */}
+        <Route path="faculty_announcements" element={<FacultyAnnouncements />} />
+        <Route path="faculty_messaging" element={<Messaging />} />
+        <Route path="faculty_email_student" element={<EmailStudent />} />
+        
+        {/* Reports */}
+        <Route path="faculty_report_grades" element={<GradeReports />} />
+        <Route path="faculty_report_attendance" element={<AttendanceReports />} />
+        <Route path="faculty_report_performance" element={<ClassPerformance />} />
       </Route>
     </Routes>
   );

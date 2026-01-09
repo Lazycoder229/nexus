@@ -127,9 +127,16 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
 
     // 🔓 BYPASS MODE - No database validation
     // Mock successful login based on email pattern
+    let role = "Student";
+    if (email.toLowerCase().includes("admin")) {
+      role = "Admin";
+    } else if (email.toLowerCase().includes("faculty")) {
+      role = "Faculty";
+    }
+
     const mockData = {
       token: "mock-jwt-token-" + Date.now(),
-      role: email.includes("admin") ? "Admin" : "student",
+      role: role,
       userId: "mock-user-" + Math.random().toString(36).substr(2, 9),
     };
 
@@ -143,10 +150,12 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
     alert(`Login successful! Role: ${mockData.role}`);
 
     // Redirect based on role
-    if (mockData.role === "student") {
-      navigate("/student/dashboard");
-    } else if (mockData.role === "Admin") {
+    if (mockData.role === "Admin") {
       navigate("/admin/dashboard");
+    } else if (mockData.role === "Faculty") {
+      navigate("/faculty/dashboard");
+    } else if (mockData.role === "Student") {
+      navigate("/student/dashboard");
     } else {
       navigate("/");
     }
@@ -943,8 +952,8 @@ const RegistrationForm = ({ onBackToLogin }) => {
 /* ==========================================
     MAIN APP CONTAINER - Renamed for clarity
     ========================================== */
-const LoginLayout = ({ onNavigateToAdmin }) => {
-  // onNavigateToAdmin is the handler
+const LoginLayout = ({ onNavigateToAdmin, onNavigateByRole }) => {
+  // onNavigateToAdmin is the handler for admin, onNavigateByRole for other roles
   const [view, setView] = useState("login");
   const [isLoggedIn, setIsLoggedIn] = useState(false); // New state to track login status
   const [userRole, setUserRole] = useState(null); // New state to track role
@@ -960,11 +969,12 @@ const LoginLayout = ({ onNavigateToAdmin }) => {
     // Call the external navigation function to switch layouts/routes
     if (userData.role === "Admin") {
       onNavigateToAdmin(); // Navigate to the admin dashboard
+    } else if (userData.role === "Faculty") {
+      onNavigateByRole("Faculty"); // Navigate to faculty dashboard
+    } else if (userData.role === "Student") {
+      onNavigateByRole("Student"); // Navigate to student dashboard
     }
-    // You would add else if blocks for Faculty, Student, Staff here
-    // else if (userData.role === 'Student') {
-    //   onNavigateToAdmin('/student/dashboard');
-    // }
+    // Add more role-based navigation as needed
   };
 
   if (isLoggedIn && userRole === "Admin") {
@@ -974,6 +984,34 @@ const LoginLayout = ({ onNavigateToAdmin }) => {
       <div className="min-h-screen flex items-center justify-center p-4">
         <h1 className="text-3xl font-bold text-green-600">
           🚀 Redirecting to Admin Dashboard...
+        </h1>
+        <p className="text-slate-600 mt-2">
+          (Simulated: The actual routing is handled by the parent
+          component/router)
+        </p>
+      </div>
+    );
+  }
+
+  if (isLoggedIn && userRole === "Faculty") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <h1 className="text-3xl font-bold text-green-600">
+          🚀 Redirecting to Faculty Dashboard...
+        </h1>
+        <p className="text-slate-600 mt-2">
+          (Simulated: The actual routing is handled by the parent
+          component/router)
+        </p>
+      </div>
+    );
+  }
+
+  if (isLoggedIn && userRole === "Student") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <h1 className="text-3xl font-bold text-green-600">
+          🚀 Redirecting to Student Dashboard...
         </h1>
         <p className="text-slate-600 mt-2">
           (Simulated: The actual routing is handled by the parent
