@@ -547,114 +547,68 @@ const Menu = {
     {
       title: "Dashboard",
       icons: LayoutDashboard,
-      submenu: [
-        {
-          label: "Overview",
-          icons: LayoutDashboard,
-          link: "/student_dashboard",
-        },
-      ],
+
+          path: "/student/student_dashboard",
+        
+    },
+    {
+title: "Profile",
+icons: Users,
+path: "/student/student_profile",
     },
     {
       title: "My Courses",
       icons: BookOpen,
-      submenu: [
-        {
-          label: "Subject Enlistment",
-          icons: BookOpen,
-          link: "/student_enlistment",
-        },
-        { label: "Timetable", icons: Calendar, link: "/student_timetable" },
-      ],
+      
+          path: "/student/student_courses",
+       
     },
     {
       title: "Academic",
       icons: GraduationCap,
-      submenu: [
-        { label: "Grades", icons: CheckSquare, link: "/student_grades" },
-        { label: "Report Card", icons: FileText, link: "/student_report_card" },
-      ],
+      
+          path: "/student/student_academic",
+       
     },
     {
       title: "LMS",
       icons: BookOpen,
-      submenu: [
-        {
-          label: "View Lessons",
-          icons: BookOpen,
-          link: "/student_lms_lessons",
-        },
-        { label: "Quizzes", icons: FileText, link: "/student_lms_quizzes" },
-        {
-          label: "Assignments",
-          icons: FileText,
-          link: "/student_lms_assignments",
-        },
-      ],
+      
+          path: "/student/student_lms_lessons",
+       
     },
     {
       title: "Attendance",
       icons: CalendarCheck,
-      submenu: [
-        {
-          label: "Attendance Logs",
-          icons: CalendarCheck,
-          link: "/student_attendance_logs",
-        },
-        {
-          label: "Daily Records",
-          icons: CalendarCheck,
-          link: "/student_attendance_records",
-        },
-      ],
+      
+          path: "/student/student_attendance_logs",
+       
     },
     {
       title: "Announcements",
       icons: Bell,
-      submenu: [
-        { label: "New Feedback", icons: Bell, link: "/student_feedback" },
-        { label: "Notifications", icons: Bell, link: "/student_notifications" },
-      ],
+       path: "/student/student_feedback" 
     },
     {
       title: "Calendar",
       icons: Calendar,
-      submenu: [
-        {
-          label: "Exam Schedules",
-          icons: CalendarCheck,
-          link: "/student_calendar_exams",
-        },
-        {
-          label: "School Events",
-          icons: Calendar,
-          link: "/student_calendar_events",
-        },
-      ],
+      
+          path: "/student/student_calendar_exams",
+       
     },
     {
       title: "Communication",
       icons: Mail,
-      submenu: [
-        { label: "Chat", icons: MessageCircle, link: "/student_chat" },
-        { label: "Email Faculty", icons: Mail, link: "/student_email_faculty" },
-      ],
+      
+          path: "/student/student_communication",
+       
     },
     {
       title: "Finance",
       icons: DollarSign,
-      submenu: [
-        {
-          label: "Tuition Balance",
-          icons: DollarSign,
-          link: "/student_finance_balance",
-        },
-        {
-          label: "Payment Receipts",
-          icons: DollarSign,
-          link: "/student_finance_receipts",
-        },
-      ],
+      
+          path: "/student/student_finance",
+       
     },
   ],
 

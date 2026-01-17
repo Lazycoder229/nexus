@@ -36,7 +36,7 @@ import ClassCapacityMonitor from "./components/pages/admin/ClassCapacityMonitor"
 import GradeManagement from "./components/pages/admin/GradeManagement";
 import SyllabusRepository from "./components/pages/admin/SyllabusRepository";
 import StaffAttendance from "./components/pages/admin/StaffAttendance";
-import StudentAttendance from "./components/pages/admin/StudentAttendance";
+import AdminStudentAttendance from "./components/pages/admin/StudentAttendance";
 import RFIDIntegration from "./components/pages/admin/RFIDIntegration";
 import AbsenteeAlerts from "./components/pages/admin/AbsenteeAlerts";
 import ExamSetup from "./components/pages/admin/ExamSetup";
@@ -91,6 +91,20 @@ import EmailStudent from "./components/pages/faculty/EmailStudent";
 import GradeReports from "./components/pages/faculty/GradeReports";
 import AttendanceReports from "./components/pages/faculty/AttendanceReports";
 import ClassPerformance from "./components/pages/faculty/ClassPerformance";
+
+// Student Pages
+import StudentDashboard from "./components/pages/student/StudentDashboard";
+import StudentProfile from "./components/pages/student/StudentProfile";
+import StudentCourses from "./components/pages/student/StudentCourses";
+import StudentAcademic from "./components/pages/student/StudentAcademic";
+import StudentFinance from "./components/pages/student/StudentFinance";
+import StudentFinanceBalance from "./components/pages/student/StudentFinanceBalance";
+import StudentFinanceReceipts from "./components/pages/student/StudentFinanceReceipts";
+import StudentLMS from "./components/pages/student/StudentLMS";
+import StudentAttendance from "./components/pages/student/StudentAttendance";
+import StudentCalendar from "./components/pages/student/StudentCalendar";
+import StudentAnnouncements from "./components/pages/student/StudentAnnouncements";
+import StudentCommunication from "./components/pages/student/StudentCommunication";
 
 function AppWrapper() {
   const navigate = useNavigate();
@@ -236,7 +250,7 @@ function AppWrapper() {
         <Route path="admin_staff_attendance" element={<StaffAttendance />} />
         <Route
           path="admin_student_attendance"
-          element={<StudentAttendance />}
+          element={<AdminStudentAttendance />}
         />
         <Route path="admin_rfid_integration" element={<RFIDIntegration />} />
         <Route path="admin_absentee" element={<AbsenteeAlerts />} />
@@ -279,13 +293,44 @@ function AppWrapper() {
         <Route path="admin_payroll_reports" element={<PayrollReports />} />
       </Route>
 
-      {/* Example Student Routes */}
+      {/* Student Routes */}
       <Route
         path="/student/*"
         element={<SharedLayout role="Student" handleLogout={handleLogout} />}
       >
-        <Route path="dashboard" element={<StudentInformation />} />
-        {/* Add more student routes here */}
+        {/* Dashboard & Profile */}
+        <Route path="dashboard" element={<StudentDashboard />} />
+        <Route path="student_dashboard" element={<StudentDashboard />} />
+        <Route path="student_profile" element={<StudentProfile />} />
+        
+        {/* My Courses */}
+        <Route path="student_courses" element={<StudentCourses />} />
+        
+        {/* Academic */}
+        <Route path="student_academic" element={<StudentAcademic />} />
+        
+        {/* LMS */}
+        <Route path="student_lms_lessons" element={<StudentLMS />} />
+        <Route path="student_lms_quizzes" element={<StudentLMS />} />
+        <Route path="student_lms_assignments" element={<StudentLMS />} />
+        
+        {/* Attendance */}
+        <Route path="student_attendance_logs" element={<StudentAttendance />} />
+        <Route path="student_attendance_records" element={<StudentAttendance />} />
+        
+        {/* Announcements */}
+        <Route path="student_feedback" element={<StudentAnnouncements />} />
+        <Route path="student_notifications" element={<StudentAnnouncements />} />
+        
+        {/* Calendar */}
+        <Route path="student_calendar_exams" element={<StudentCalendar />} />
+        <Route path="student_calendar_events" element={<StudentCalendar />} />
+        
+        {/* Communication */}
+        <Route path="student_communication" element={<StudentCommunication />} />
+        
+        {/* Finance */}
+        <Route path="student_finance" element={<StudentFinance />} />
       </Route>
 
       {/* Faculty Routes */}
