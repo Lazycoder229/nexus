@@ -20,6 +20,7 @@ import {
   Home,
   Circle,
   Settings,
+  User2,
 } from "lucide-react";
 
 const Menu = {
@@ -212,99 +213,7 @@ const Menu = {
         },
       ],
     },
-    {
-      title: "Financial & Accounting",
-      icons: DollarSign,
-      submenu: [
-        {
-          label: "Tuition Fee Setup",
-          icons: DollarSign,
-          link: "/admin/admin_tuition_fee_setup",
-        },
-        {
-          label: "Payment Collection",
-          icons: DollarSign,
-          link: "/admin/admin_payment_collection",
-        },
-        {
-          label: "Invoice Management",
-          icons: FileText,
-          link: "/admin/admin_invoice_management",
-        },
-        {
-          label: "Scholarship Fund Allocation",
-          icons: Award,
-          link: "/admin/admin_scholarship_fund",
-        },
-        {
-          label: "Income & Expenses Reports",
-          icons: ReportIcon,
-          link: "/admin/admin_income_expenses",
-        },
-        {
-          label: "Payment Gateway",
-          icons: DollarSign,
-          link: "/admin/admin_payment_gateway",
-        },
-      ],
-    },
-    {
-      title: "HR & Payroll",
-      icons: Lock,
-      submenu: [
-        {
-          label: "Employee records",
-          icons: Users,
-          link: "/admin/admin_employee_records",
-        },
-        {
-          label: "Staff Leave",
-          icons: CalendarCheck,
-          link: "/admin/admin_staff_leave",
-        },
-        {
-          label: "Payslip Generator",
-          icons: DollarSign,
-          link: "/admin/admin_payslip_generator",
-        },
-        {
-          label: "Deduction Management",
-          icons: DollarSign,
-          link: "/admin/admin_deduction_management",
-        },
-        {
-          label: "Payroll Reports",
-          icons: ReportIcon,
-          link: "/admin/admin_payroll_reports",
-        },
-      ],
-    },
-    {
-      title: "Library Management",
-      icons: Book,
-      submenu: [
-        {
-          label: "Book Catalog",
-          icons: Book,
-          link: "/admin/admin_library_management",
-        },
-        {
-          label: "Borrow & Return",
-          icons: BookOpen,
-          link: "/admin/admin_borrow_return",
-        },
-        {
-          label: "Lost & Damage logs",
-          icons: FileText,
-          link: "/admin/admin_lost_damage_logs",
-        },
-        {
-          label: "Digital Library",
-          icons: BookOpen,
-          link: "/admin/admin_digital_library",
-        },
-      ],
-    },
+
     {
       title: "Learning Management",
       icons: BookOpen,
@@ -312,32 +221,7 @@ const Menu = {
         { label: "Manage Room", icons: Home, link: "/admin_manage_room" },
       ],
     },
-    {
-      title: "Scholarship & Grants",
-      icons: Award,
-      submenu: [
-        {
-          label: "Application form",
-          icons: FileText,
-          link: "/admin/admin_application_forms",
-        },
-        {
-          label: "Scholarship Type Setup",
-          icons: Award,
-          link: "/admin/admin_scholar_type_setup",
-        },
-        {
-          label: "Benefeciary list",
-          icons: Users,
-          link: "/admin/admin_benefeciary_list",
-        },
-        {
-          label: "Eligibility Screening",
-          icons: CheckSquare,
-          link: "/admin/admin_eligibility_screening",
-        },
-      ],
-    },
+
     {
       title: "Events & Communication",
       icons: Bell,
@@ -383,7 +267,7 @@ const Menu = {
           label: "Reports",
           icons: ReportIcon,
           link: "/admin/admin_student_reports",
-        }/* ,
+        } /* ,
         {
           label: "Enrollment Reports",
           icons: ReportIcon,
@@ -398,7 +282,7 @@ const Menu = {
           label: "HR & Payroll Reports",
           icons: ReportIcon,
           link: "/admin/admin_hr_payroll_reports",
-        }, */
+        }, */,
       ],
     },
     {
@@ -421,7 +305,11 @@ const Menu = {
           icons: Mail,
           link: "/admin/admin_email_sms_gateway",
         },
-        { label: "System logs", icons: FileText, link: "/admin/admin_system_logs" },
+        {
+          label: "System logs",
+          icons: FileText,
+          link: "/admin/admin_system_logs",
+        },
       ],
     },
   ],
@@ -451,7 +339,11 @@ const Menu = {
           icons: FileText,
           link: "/faculty/faculty_syllabus_upload",
         },
-        { label: "Student List", icons: Users, link: "/faculty/faculty_student_list" },
+        {
+          label: "Student List",
+          icons: Users,
+          link: "/faculty/faculty_student_list",
+        },
       ],
     },
     {
@@ -511,13 +403,21 @@ const Menu = {
       title: "Communication",
       icons: Mail,
       submenu: [
-        { label: "Announcements", icons: Bell, link: "/faculty/faculty_announcements" },
+        {
+          label: "Announcements",
+          icons: Bell,
+          link: "/faculty/faculty_announcements",
+        },
         {
           label: "Private Messaging",
           icons: MessageCircle,
           link: "/faculty/faculty_messaging",
         },
-        { label: "Email Student", icons: Mail, link: "/faculty/faculty_email_student" },
+        {
+          label: "Email Student",
+          icons: Mail,
+          link: "/faculty/faculty_email_student",
+        },
       ],
     },
     {
@@ -548,268 +448,207 @@ const Menu = {
       title: "Dashboard",
       icons: LayoutDashboard,
 
-          path: "/student/student_dashboard",
-        
+      path: "/student/student_dashboard",
     },
     {
-title: "Profile",
-icons: Users,
-path: "/student/student_profile",
+      title: "Profile",
+      icons: Users,
+      path: "/student/student_profile",
     },
     {
       title: "My Courses",
       icons: BookOpen,
-      
-          path: "/student/student_courses",
-       
+
+      path: "/student/student_courses",
     },
     {
       title: "Academic",
       icons: GraduationCap,
-      
-          path: "/student/student_academic",
-       
+
+      path: "/student/student_academic",
     },
     {
       title: "LMS",
       icons: BookOpen,
-      
-          path: "/student/student_lms_lessons",
-       
+
+      path: "/student/student_lms_lessons",
     },
     {
       title: "Attendance",
       icons: CalendarCheck,
-      
-          path: "/student/student_attendance_logs",
-       
+
+      path: "/student/student_attendance_logs",
     },
     {
       title: "Announcements",
       icons: Bell,
-       path: "/student/student_feedback" 
+      path: "/student/student_feedback",
     },
     {
       title: "Calendar",
       icons: Calendar,
-      
-          path: "/student/student_calendar_exams",
-       
+
+      path: "/student/student_calendar_exams",
     },
     {
       title: "Communication",
       icons: Mail,
-      
-          path: "/student/student_communication",
-       
+
+      path: "/student/student_communication",
     },
     {
       title: "Finance",
       icons: DollarSign,
-      
-          path: "/student/student_finance",
-       
+
+      path: "/student/student_finance",
     },
   ],
 
-  hr_payroll: [
+  HR: [
     {
       title: "Dashboard",
       icons: LayoutDashboard,
-      submenu: [
-        { label: "Overview", icons: LayoutDashboard, link: "/hr_dashboard" },
-      ],
+      path: "/hr/hr_dashboard",
     },
     {
-      title: "Employee Management",
-      icons: Users,
+      title: "Profile",
+      icons: User2,
+      path: "/hr/hr_profile",
+    },
+    {
+      title: "HR & Payroll",
+      icons: Lock,
       submenu: [
-        { label: "Staff Profiles", icons: Users, link: "/hr_staff_profiles" },
         {
-          label: "Faculty Assignment",
-          icons: GraduationCap,
-          link: "/hr_faculty_assignment",
+          label: "Employee records",
+          icons: Users,
+          link: "/hr/hr_employee_records",
         },
         {
-          label: "Leave & Attendance Logs",
+          label: "Staff Leave",
           icons: CalendarCheck,
-          link: "/hr_attendance_logs",
-        },
-      ],
-    },
-    {
-      title: "Payroll",
-      icons: DollarSign,
-      submenu: [
-        {
-          label: "Payroll Setup",
-          icons: DollarSign,
-          link: "/hr_payroll_setup",
+          link: "/hr/hr_staff_leave",
         },
         {
-          label: "Pay Computation",
+          label: "Payslip Generator",
           icons: DollarSign,
-          link: "/hr_pay_computation",
+          link: "/hr/hr_payslip_generator",
         },
-        { label: "Incentives", icons: Award, link: "/hr_incentives" },
         {
-          label: "Payment Download",
+          label: "Deduction Management",
           icons: DollarSign,
-          link: "/hr_payment_download",
+          link: "/hr/hr_deduction_management",
         },
-      ],
-    },
-    {
-      title: "Reports",
-      icons: ReportIcon,
-      submenu: [
         {
           label: "Payroll Reports",
           icons: ReportIcon,
-          link: "/hr_report_payroll",
-        },
-        {
-          label: "Employee Attendance Reports",
-          icons: ReportIcon,
-          link: "/hr_report_attendance",
+          link: "/hr/hr_payroll_reports",
         },
       ],
     },
   ],
 
-  accounting: [
+  Accounting: [
     {
       title: "Dashboard",
       icons: LayoutDashboard,
-      submenu: [
-        {
-          label: "Overview",
-          icons: LayoutDashboard,
-          link: "/accounting_dashboard",
-        },
-      ],
+
+      path: "/accounting/accounting_dashboard",
     },
     {
-      title: "Fees Management",
+      title: "Financial & Accounting",
       icons: DollarSign,
       submenu: [
         {
-          label: "Billing & Invoice",
+          label: "Tuition Fee Setup",
           icons: DollarSign,
-          link: "/accounting_billing",
+          link: "/accounting/accounting_tuition_fee_setup",
         },
         {
-          label: "Payment Tracking",
+          label: "Payment Collection",
           icons: DollarSign,
-          link: "/accounting_payment_tracking",
+          link: "/accounting/accounting_payment_collection",
         },
         {
-          label: "Refund Management",
-          icons: DollarSign,
-          link: "/accounting_refund_management",
-        },
-      ],
-    },
-    {
-      title: "Finance",
-      icons: DollarSign,
-      submenu: [
-        {
-          label: "Income / Expenses",
-          icons: DollarSign,
-          link: "/accounting_income_expenses",
-        },
-        {
-          label: "Ledger Entries",
+          label: "Invoice Management",
           icons: FileText,
-          link: "/accounting_ledger_entries",
+          link: "/accounting/accounting_invoice_management",
         },
         {
-          label: "Budget Allocation",
+          label: "Scholarship Fund Allocation",
+          icons: Award,
+          link: "/accounting/accounting_scholarship_fund",
+        },
+        {
+          label: "Income & Expenses Reports",
+          icons: ReportIcon,
+          link: "/accounting/accounting_income_expenses",
+        },
+        {
+          label: "Payment Gateway",
           icons: DollarSign,
-          link: "/accounting_budget_allocation",
-        },
-        {
-          label: "Expenses Approval",
-          icons: CheckSquare,
-          link: "/accounting_expenses_approval",
+          link: "/accounting/accounting_payment_gateway",
         },
       ],
     },
     {
-      title: "Scholarship",
+      title: "Scholarship & Grants",
       icons: Award,
       submenu: [
         {
-          label: "Fund Setup",
-          icons: Award,
-          link: "/accounting_scholarship_setup",
-        },
-        {
-          label: "Disbursement History",
+          label: "Application form",
           icons: FileText,
-          link: "/accounting_scholarship_disbursement",
+          link: "/accounting/accounting_application_forms",
         },
         {
-          label: "Scholarship Reports",
-          icons: ReportIcon,
-          link: "/accounting_scholarship_reports",
+          label: "Scholarship Type Setup",
+          icons: Award,
+          link: "/accounting/accounting_scholar_type_setup",
         },
-      ],
-    },
-    {
-      title: "Reports",
-      icons: ReportIcon,
-      submenu: [
         {
-          label: "General Financial Reports",
-          icons: ReportIcon,
-          link: "/accounting_reports_general",
+          label: "Benefeciary list",
+          icons: Users,
+          link: "/accounting/accounting_benefeciary_list",
+        },
+        {
+          label: "Eligibility Screening",
+          icons: CheckSquare,
+          link: "/accounting/accounting_eligibility_screening",
         },
       ],
     },
   ],
 
-  staff: [
+  Staff: [
     {
       title: "Dashboard",
       icons: LayoutDashboard,
-      submenu: [
-        { label: "Overview", icons: LayoutDashboard, link: "/staff_dashboard" },
-      ],
+      path: "/staff/staff_dashboard",
     },
     {
-      title: "Library",
+      title: "Library Management",
       icons: Book,
       submenu: [
-        { label: "Book Management", icons: Book, link: "/staff_library_books" },
         {
-          label: "Borrower Logs",
-          icons: ClipboardList,
-          link: "/staff_library_borrowers",
+          label: "Book Catalog",
+          icons: Book,
+          link: "/staff/staff_library_management",
         },
         {
-          label: "Penalty Records",
+          label: "Borrow & Return",
+          icons: BookOpen,
+          link: "/staff/staff_borrow_return",
+        },
+        {
+          label: "Lost & Damage logs",
           icons: FileText,
-          link: "/staff_library_penalties",
-        },
-      ],
-    },
-    {
-      title: "Inventory",
-      icons: ClipboardList,
-      submenu: [
-        {
-          label: "Assets",
-          icons: ClipboardList,
-          link: "/staff_inventory_assets",
+          link: "/staff/staff_lost_damage_logs",
         },
         {
-          label: "Maintenance",
-          icons: FileText,
-          link: "/staff_inventory_maintenance",
+          label: "Digital Library",
+          icons: BookOpen,
+          link: "/staff/staff_digital_library",
         },
-        { label: "Requests", icons: Mail, link: "/staff_inventory_requests" },
       ],
     },
   ],

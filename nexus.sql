@@ -1,3 +1,4 @@
+
 -- ===========================
 -- Database: Nexus
 -- ===========================
@@ -1538,23 +1539,37 @@ CREATE TABLE library_incidents (
 -- Book Reservations
 CREATE TABLE library_reservations (
     reservation_id INT AUTO_INCREMENT PRIMARY KEY,
+
     book_id INT NOT NULL,
     user_id INT NOT NULL,
-    
-    reservation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expiry_date DATE,                           -- When reservation expires
-    status ENUM('Active', 'Fulfilled', 'Cancelled', 'Expired') DEFAULT 'Active',
-    
-    notified BOOLEAN DEFAULT FALSE,             -- User notified when book available
-    notification_sent_at TIMESTAMP,
-    
-    fulfilled_at TIMESTAMP,
-    cancelled_at TIMESTAMP,
+
+    reservation_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expiry_date DATE,
+
+    status ENUM('Active', 'Fulfilled', 'Cancelled', 'Expired')
+        NOT NULL DEFAULT 'Active',
+
+    notified BOOLEAN NOT NULL DEFAULT FALSE,
+
+    notification_sent_at TIMESTAMP NULL DEFAULT NULL,
+    fulfilled_at TIMESTAMP NULL DEFAULT NULL,
+    cancelled_at TIMESTAMP NULL DEFAULT NULL,
+
     cancellation_reason TEXT,
-    
-    FOREIGN KEY (book_id) REFERENCES library_books(book_id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+
+    INDEX idx_book_status (book_id, status),
+    INDEX idx_user_status (user_id, status),
+    INDEX idx_expiry (expiry_date),
+
+    FOREIGN KEY (book_id)
+        REFERENCES library_books(book_id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
 );
+
 
 -- Digital Library Resources
 CREATE TABLE digital_library (
@@ -2273,50 +2288,70 @@ CREATE TABLE inventory_categories (
     FOREIGN KEY (parent_category_id) REFERENCES inventory_categories(category_id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Asset Movement/Transfer History
 CREATE TABLE inventory_transfers (
     transfer_id INT AUTO_INCREMENT PRIMARY KEY,
+
     asset_id INT NOT NULL,
+
     transfer_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- From Location
     from_location VARCHAR(255),
     from_building VARCHAR(100),
     from_department VARCHAR(100),
     from_assigned_to VARCHAR(255),
     from_custodian VARCHAR(255),
-    
+
     -- To Location
     to_location VARCHAR(255),
     to_building VARCHAR(100),
     to_department VARCHAR(100),
     to_assigned_to VARCHAR(255),
     to_custodian VARCHAR(255),
-    
+
     -- Transfer Details
-    transfer_type ENUM('relocation', 'reassignment', 'temporary', 'permanent') DEFAULT 'permanent',
+    transfer_type ENUM('relocation', 'reassignment', 'temporary', 'permanent')
+        DEFAULT 'permanent',
+
     reason TEXT,
     expected_return_date DATE,
     actual_return_date DATE,
+
     transfer_condition ENUM('excellent', 'good', 'fair', 'poor', 'damaged'),
     transfer_notes TEXT,
-    
+
     -- Approval
-    requested_by INT,
-    approved_by INT,
-    approval_status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    requested_by INT NULL,
+    approved_by  INT NULL,
+
+    approval_status ENUM('pending', 'approved', 'rejected')
+        DEFAULT 'pending',
+
     approval_date DATETIME,
     approval_notes TEXT,
-    
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (asset_id) REFERENCES inventory_assets(asset_id) ON DELETE CASCADE,
-    FOREIGN KEY (requested_by) REFERENCES users(user_id) ON DELETE SET NULL,
-    FOREIGN KEY (approved_by) REFERENCES users(user_id) ON DELETE SET NULL,
+
     INDEX idx_asset (asset_id),
     INDEX idx_transfer_date (transfer_date),
-    INDEX idx_status (approval_status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    INDEX idx_status (approval_status),
+
+    CONSTRAINT fk_transfer_asset
+        FOREIGN KEY (asset_id)
+        REFERENCES inventory_assets(asset_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_transfer_requested_by
+        FOREIGN KEY (requested_by)
+        REFERENCES users(user_id)
+        ON DELETE SET NULL,
+
+    CONSTRAINT fk_transfer_approved_by
+        FOREIGN KEY (approved_by)
+        REFERENCES users(user_id)
+        ON DELETE SET NULL
+);
+
 
 -- Asset Maintenance Records
 CREATE TABLE inventory_maintenance (
@@ -2367,7 +2402,7 @@ CREATE TABLE inventory_maintenance (
     INDEX idx_maintenance_date (maintenance_date),
     INDEX idx_status (maintenance_status),
     INDEX idx_next_maintenance (next_maintenance_date)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
 
 -- Asset Depreciation History
 CREATE TABLE inventory_depreciation (
@@ -2394,7 +2429,7 @@ CREATE TABLE inventory_depreciation (
     FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
     INDEX idx_asset (asset_id),
     INDEX idx_date (depreciation_date)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
 
 -- Asset Audit/Inspection Records
 CREATE TABLE inventory_audits (
@@ -2424,7 +2459,7 @@ CREATE TABLE inventory_audits (
     FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
     INDEX idx_audit_date (audit_date),
     INDEX idx_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
 
 -- Asset Audit Details (individual asset checks)
 CREATE TABLE inventory_audit_items (
@@ -2448,7 +2483,7 @@ CREATE TABLE inventory_audit_items (
     FOREIGN KEY (asset_id) REFERENCES inventory_assets(asset_id) ON DELETE CASCADE,
     INDEX idx_audit (audit_id),
     INDEX idx_asset (asset_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ;
 
 -- Asset Disposal Records
 CREATE TABLE inventory_disposals (
@@ -2534,48 +2569,6 @@ CREATE TABLE inventory_requests (
     INDEX idx_request_date (request_date),
     INDEX idx_requested_by (requested_by)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Sample Categories
-INSERT INTO inventory_categories (category_name, category_type, description) VALUES
-('IT Equipment', 'electronics', 'Computers, servers, networking equipment'),
-('Office Furniture', 'furniture', 'Desks, chairs, cabinets'),
-('Classroom Equipment', 'equipment', 'Projectors, screens, whiteboards'),
-('Laboratory Equipment', 'equipment', 'Lab instruments and apparatus'),
-('Vehicles', 'vehicle', 'School service vehicles'),
-('Building Infrastructure', 'building', 'Building facilities and structures'),
-('Sports Equipment', 'equipment', 'Sports and athletic equipment'),
-('Library Resources', 'equipment', 'Library furniture and equipment'),
-('Cleaning Equipment', 'equipment', 'Janitorial and maintenance equipment'),
-('Security Systems', 'electronics', 'CCTV, access control, alarms');
-
--- Sample Assets Data
-INSERT INTO inventory_assets (
-    asset_code, asset_name, asset_type, category, description, serial_number, model_number, 
-    manufacturer, supplier, purchase_date, purchase_price, current_value, warranty_start_date, 
-    warranty_end_date, location, building, department, status, `condition`, assigned_to,
-    depreciation_method, useful_life_years
-) VALUES
-('AST-2024-001', 'Dell Optiplex 7090', 'electronics', 'IT Equipment', 'Desktop computer for faculty office', 'DO7090-2024-001', 'Optiplex 7090', 'Dell', 'Tech Solutions Inc.', '2024-01-15', 45000.00, 42000.00, '2024-01-15', '2027-01-15', 'Faculty Office 201', 'Main Building', 'Faculty Department', 'in_use', 'excellent', 'Juan Dela Cruz', 'straight_line', 5),
-('AST-2023-045', 'HP LaserJet Pro', 'electronics', 'IT Equipment', 'Printer for admin department', 'HPLJ-2023-045', 'LaserJet Pro M404n', 'HP', 'Office Depot', '2023-06-20', 18000.00, 15000.00, '2023-06-20', '2024-06-20', 'Admin Office', 'Admin Building', 'Administration', 'in_use', 'good', 'Admin Department', 'straight_line', 3),
-('AST-2024-125', 'Office Desk', 'furniture', 'Office Furniture', 'Standard office desk with drawers', 'OD-2024-125', 'Executive Desk 60x30', 'National Furniture', 'Office World', '2024-02-10', 8500.00, 8000.00, NULL, NULL, 'Library Room 3', 'Library Building', 'Library', 'available', 'good', NULL, 'straight_line', 10),
-('AST-2022-089', 'Projector Epson EB-X49', 'electronics', 'Classroom Equipment', 'Classroom projector', 'EPSON-2022-089', 'EB-X49', 'Epson', 'AV Solutions', '2022-08-15', 28000.00, 20000.00, '2022-08-15', '2023-08-15', 'Room 305', 'Academic Building', 'Academic Affairs', 'maintenance', 'fair', NULL, 'straight_line', 5),
-('AST-2020-001', 'Toyota Hiace', 'vehicle', 'Vehicles', 'School service vehicle', 'TH-2020-001', 'Hiace Commuter', 'Toyota', 'Toyota Manila', '2020-03-01', 1200000.00, 950000.00, '2020-03-01', '2023-03-01', 'Parking Area', 'Main Campus', 'Transportation', 'available', 'good', NULL, 'declining_balance', 10),
-('AST-2023-012', 'Conference Table', 'furniture', 'Office Furniture', 'Large conference table for meetings', 'CT-2023-012', 'Conference Table 12-seater', 'Furniture Plus', 'Office Supplies Co.', '2023-04-12', 35000.00, 32000.00, NULL, NULL, 'Conference Room A', 'Admin Building', 'Administration', 'in_use', 'excellent', NULL, 'straight_line', 15),
-('AST-2024-078', 'Air Conditioning Unit', 'equipment', 'Building Infrastructure', '2.5HP split-type aircon', 'AC-2024-078', 'Inverter 2.5HP', 'Carrier', 'Cool Systems Inc.', '2024-05-20', 32000.00, 31000.00, '2024-05-20', '2025-05-20', 'Computer Lab 1', 'IT Building', 'IT Department', 'in_use', 'excellent', NULL, 'straight_line', 7),
-('AST-2023-156', 'Whiteboard', 'equipment', 'Classroom Equipment', 'Magnetic whiteboard 4x6 feet', 'WB-2023-156', 'Magnetic Board 4x6', 'Classroom Essentials', 'School Supplies Hub', '2023-09-10', 4500.00, 4200.00, NULL, NULL, 'Room 402', 'Academic Building', 'Academic Affairs', 'available', 'good', NULL, 'straight_line', 10),
-('AST-2022-203', 'Filing Cabinet', 'furniture', 'Office Furniture', '4-drawer steel filing cabinet', 'FC-2022-203', 'Steel Cabinet 4D', 'Metal Works', 'Office Depot', '2022-11-05', 6500.00, 5500.00, NULL, NULL, 'Registrar Office', 'Admin Building', 'Registrar', 'in_use', 'fair', 'Registrar', 'straight_line', 10),
-('AST-2024-033', 'Laptop Lenovo ThinkPad', 'electronics', 'IT Equipment', 'Portable laptop for presentations', 'LTP-2024-033', 'ThinkPad E14', 'Lenovo', 'Tech Hub', '2024-07-08', 55000.00, 54000.00, '2024-07-08', '2025-07-08', 'Admin Office', 'Admin Building', 'Administration', 'in_use', 'excellent', 'Maria Santos', 'straight_line', 4);
-
--- Sample Maintenance Records
-INSERT INTO inventory_maintenance (asset_id, maintenance_type, maintenance_date, description, action_taken, maintenance_cost, performed_by, maintenance_status, priority) VALUES
-(4, 'corrective', '2025-12-15', 'Lamp replacement needed', 'Replaced projector lamp and cleaned filters', 5500.00, 'AV Technician', 'completed', 'high'),
-(5, 'preventive', '2025-11-20', 'Regular vehicle maintenance', 'Oil change, tire rotation, brake check', 8500.00, 'Toyota Service Center', 'completed', 'medium'),
-(7, 'preventive', '2025-10-01', 'Aircon cleaning and maintenance', 'Cleaned filters, checked refrigerant levels', 1200.00, 'Cool Systems Inc.', 'completed', 'medium');
-
--- Sample Transfer Records
-INSERT INTO inventory_transfers (asset_id, from_location, from_department, to_location, to_department, transfer_type, reason, requested_by, approval_status) VALUES
-(1, 'Storage Room', 'IT Department', 'Faculty Office 201', 'Faculty Department', 'permanent', 'New faculty member assignment', 1, 'approved'),
-(8, 'Room 301', 'Academic Affairs', 'Room 402', 'Academic Affairs', 'relocation', 'Classroom reassignment', 1, 'approved');
 
 -- ===========================
 -- Reports & Analytics System
@@ -2714,13 +2707,6 @@ CREATE TABLE report_analytics (
     INDEX idx_calculated_date (calculated_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Sample Report Templates
-INSERT INTO report_templates (template_name, template_type, description, created_by) VALUES
-('Student Enrollment Summary', 'student', 'Summary of all student enrollments with program breakdown', 1),
-('Attendance Overview', 'attendance', 'Daily/weekly attendance summary for students and staff', 1),
-('Monthly Payroll Summary', 'payroll', 'Monthly payroll summary with deductions and benefits', 1),
-('Academic Performance Report', 'academic', 'Student academic performance analysis with GPA trends', 1);
--- ===========================
 -- SYSTEM SETTINGS MODULE
 -- ===========================
 
@@ -2801,52 +2787,137 @@ CREATE TABLE IF NOT EXISTS system_logs (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Insert Default System Settings
-INSERT INTO system_settings (setting_key, setting_value, description, category) VALUES
-('system_name', 'Nexus ERP', 'Name of the system', 'general'),
-('system_logo', '/assets/logo.png', 'Path to system logo', 'general'),
-('timezone', 'Asia/Manila', 'System timezone', 'general'),
-('date_format', 'YYYY-MM-DD', 'Default date format', 'general'),
-('time_format', '24h', 'Default time format (12h or 24h)', 'general'),
-('currency', 'PHP', 'Default currency', 'general'),
-('language', 'en', 'Default language', 'general'),
 
--- Academic Settings
-('current_academic_year', '2024-2025', 'Current academic year', 'academic'),
-('current_semester', 'First Semester', 'Current semester', 'academic'),
-('enrollment_open', 'true', 'Is enrollment currently open', 'academic'),
+/*     -- ===========================
+-- ADDITIONAL VIEWS FOR FRONTEND USAGE
+-- ===========================
 
--- Security Settings
-('session_timeout', '3600', 'Session timeout in seconds', 'security'),
-('password_min_length', '8', 'Minimum password length', 'security'),
-('max_login_attempts', '5', 'Maximum login attempts before lockout', 'security'),
-('lockout_duration', '900', 'Account lockout duration in seconds', 'security'),
+-- Faculty Announcements
+CREATE OR REPLACE VIEW faculty_announcements AS
+SELECT a.*, u.first_name, u.last_name
+FROM announcements a
+JOIN users u ON a.created_by = u.user_id
+WHERE a.target_role = 'Faculty';
 
--- Notification Settings
-('email_notifications', 'true', 'Enable email notifications', 'notifications'),
-('sms_notifications', 'false', 'Enable SMS notifications', 'notifications'),
-('notification_retention_days', '90', 'Days to retain notifications', 'notifications'),
+-- Faculty Assigned Subjects
+CREATE OR REPLACE VIEW faculty_assigned_subjects AS
+SELECT f.user_id AS faculty_user_id, c.code AS course_code, c.title AS course_title, s.section_name, ap.school_year, ap.semester
+FROM faculty_course_assignments f
+JOIN courses c ON f.course_id = c.course_id
+JOIN sections s ON f.section_id = s.section_id
+JOIN academic_periods ap ON f.period_id = ap.period_id;
 
--- Maintenance
-('maintenance_mode', 'false', 'Is system in maintenance mode', 'maintenance'),
-('backup_enabled', 'true', 'Enable automatic backups', 'maintenance'),
-('backup_frequency', 'daily', 'Backup frequency (daily, weekly, monthly)', 'maintenance');
+-- Faculty Grade Encoding
+CREATE OR REPLACE VIEW faculty_grade_encoding AS
+SELECT g.*, c.code AS course_code, c.title AS course_title, u.first_name, u.last_name
+FROM grades g
+JOIN courses c ON g.course_id = c.course_id
+JOIN users u ON g.student_user_id = u.user_id;
 
--- Insert Sample Gateway Configurations
-INSERT INTO communication_gateways (gateway_name, gateway_type, provider, configuration, is_active, is_default) VALUES
-('Default Email Gateway', 'email', 'SMTP', 
-    JSON_OBJECT(
-        'host', 'smtp.gmail.com',
-        'port', 587,
-        'secure', false,
-        'auth', JSON_OBJECT('user', '', 'pass', '')
-    ), 
-    false, true),
-    
-('Twilio SMS Gateway', 'sms', 'Twilio', 
-    JSON_OBJECT(
-        'accountSid', '',
-        'authToken', '',
-        'fromNumber', ''
-    ), 
-    false, false);
+-- Staff Library Books
+CREATE OR REPLACE VIEW library_books AS
+SELECT b.*, c.name AS category_name
+FROM library_books b
+LEFT JOIN library_categories c ON b.category_id = c.category_id;
+
+-- Staff Library Book Categories
+CREATE OR REPLACE VIEW library_book_categories AS
+SELECT * FROM library_categories;
+
+-- Staff Library Book Statistics
+CREATE OR REPLACE VIEW library_book_statistics AS
+SELECT category_id, COUNT(*) AS total_books
+FROM library_books
+GROUP BY category_id;
+
+-- Student Enlistment Available
+CREATE OR REPLACE VIEW student_enlistment_available AS
+SELECT c.*, s.section_name, ap.school_year, ap.semester
+FROM courses c
+JOIN sections s ON c.course_id = s.course_id
+JOIN academic_periods ap ON s.period_id = ap.period_id
+WHERE c.status = 'Active';
+
+-- Student Enlistment Enrolled
+CREATE OR REPLACE VIEW student_enlistment_enrolled AS
+SELECT e.student_id, c.code AS course_code, c.title AS course_title, s.section_name, ap.school_year, ap.semester
+FROM enrollments e
+JOIN courses c ON e.course_id = c.course_id
+JOIN sections s ON e.section_id = s.section_id
+JOIN academic_periods ap ON e.period_id = ap.period_id;
+
+-- HR Employee Summary
+CREATE OR REPLACE VIEW employee_summary AS
+SELECT e.*, u.first_name, u.last_name, u.email, u.phone, u.status
+FROM employee_details e
+JOIN users u ON e.user_id = u.user_id;
+
+-- HR Deduction Summary
+CREATE OR REPLACE VIEW deduction_summary AS
+SELECT d.*, u.first_name, u.last_name
+FROM deductions d
+JOIN users u ON d.employee_id = u.user_id;
+
+-- Accounting Scholarship Applications
+CREATE OR REPLACE VIEW scholarship_applications AS
+SELECT a.*, u.first_name, u.last_name, s.type_name
+FROM scholarship_applications a
+JOIN users u ON a.student_id = u.user_id
+JOIN scholarship_types s ON a.type_id = s.type_id;
+
+-- Accounting Scholarship Types
+CREATE OR REPLACE VIEW scholarship_types_view AS
+SELECT * FROM scholarship_types;
+
+-- Accounting Scholarship Applications Statistics
+CREATE OR REPLACE VIEW scholarship_applications_statistics AS
+SELECT type_id, COUNT(*) AS total_applications, SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) AS approved, SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) AS pending
+FROM scholarship_applications
+GROUP BY type_id;
+-- ===========================
+-- VIEWS FOR FRONTEND ENDPOINTS
+-- ===========================
+
+-- 1. Invoice Summary View
+CREATE OR REPLACE VIEW invoice_summary AS
+SELECT
+    s.user_id AS student_user_id,
+    s.student_number,
+    u.first_name,
+    u.last_name,
+    COUNT(i.invoice_id) AS total_invoices,
+    SUM(i.amount_due) AS total_due,
+    SUM(i.amount_paid) AS total_paid,
+    (SUM(i.amount_due) - SUM(i.amount_paid)) AS outstanding_balance
+FROM student_invoices i
+JOIN student_details s ON i.student_id = s.user_id
+JOIN users u ON s.user_id = u.user_id
+GROUP BY s.user_id, s.student_number, u.first_name, u.last_name;
+
+-- 2. Student Grades Summary View
+CREATE OR REPLACE VIEW student_grades_summary AS
+SELECT
+    g.student_user_id,
+    u.first_name,
+    u.last_name,
+    COUNT(g.grade_id) AS total_grades,
+    AVG(g.final_grade) AS average_grade,
+    MAX(g.final_grade) AS highest_grade,
+    MIN(g.final_grade) AS lowest_grade
+FROM grades g
+JOIN users u ON g.student_user_id = u.user_id
+GROUP BY g.student_user_id, u.first_name, u.last_name;
+
+-- 3. Student Enrollment Status View
+CREATE OR REPLACE VIEW student_enrollment_status AS
+SELECT
+    e.student_id,
+    u.first_name,
+    u.last_name,
+    ap.school_year,
+    ap.semester,
+    e.status AS enrollment_status,
+    e.enrollment_date
+FROM enrollments e
+JOIN users u ON e.student_id = u.user_id
+JOIN academic_periods ap ON e.period_id = ap.period_id; */

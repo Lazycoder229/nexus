@@ -43,25 +43,27 @@ import ExamSetup from "./components/pages/admin/ExamSetup";
 import GradeEntryApproval from "./components/pages/admin/GradeEntryApproval";
 import GradeComputationSetup from "./components/pages/admin/GradeComputationSetup";
 import ExamScheduleBuilder from "./components/pages/admin/ExamScheduleBuilder";
-import TuitionFeeSetup from "./components/pages/admin/TuitionFeeSetup";
-import PaymentCollection from "./components/pages/admin/PaymentCollection";
-import InvoiceManagement from "./components/pages/admin/InvoiceManagement";
-import ScholarshipFundAllocation from "./components/pages/admin/ScholarshipFundAllocation";
-import IncomeExpensesReports from "./components/pages/admin/IncomeExpensesReports";
-import EmployeeRecords from "./components/pages/admin/EmployeeRecords";
-import StaffLeave from "./components/pages/admin/StaffLeave";
-import PayslipGenerator from "./components/pages/admin/PayslipGenerator";
-import DeductionManagement from "./components/pages/admin/DeductionManagement";
-import PayrollReports from "./components/pages/admin/PayrollReports";
-import PaymentGateway from "./components/pages/admin/PaymentGateway";
-import BookCatalog from "./components/pages/admin/BookCatalog";
-import BorrowReturn from "./components/pages/admin/BorrowReturn";
-import LostDamageLogs from "./components/pages/admin/LostDamageLogs";
-import DigitalLibrary from "./components/pages/admin/DigitalLibrary";
-import ScholarshipTypeSetup from "./components/pages/admin/ScholarshipTypeSetup";
-import ApplicationForms from "./components/pages/admin/ApplicationForms";
-import BeneficiaryList from "./components/pages/admin/BeneficiaryList";
-import EligibilityScreening from "./components/pages/admin/EligibilityScreening";
+import TuitionFeeSetup from "./components/pages/accounting/TuitionFeeSetup";
+import PaymentCollection from "./components/pages/accounting/PaymentCollection";
+import InvoiceManagement from "./components/pages/accounting/InvoiceManagement";
+import ScholarshipFundAllocation from "./components/pages/accounting/ScholarshipFundAllocation";
+import IncomeExpensesReports from "./components/pages/accounting/IncomeExpensesReports";
+import EmployeeRecords from "./components/pages/hr/EmployeeRecords";
+import StaffLeave from "./components/pages/hr/StaffLeave";
+import PayslipGenerator from "./components/pages/hr/PayslipGenerator";
+import DeductionManagement from "./components/pages/hr/DeductionManagement";
+import PayrollReports from "./components/pages/hr/PayrollReports";
+import HRDashboard from "./components/pages/hr/HRDashboard";
+import HRProfile from "./components/pages/hr/HRProfile";
+import PaymentGateway from "./components/pages/accounting/PaymentGateway";
+import BookCatalog from "./components/pages/staff/BookCatalog";
+import BorrowReturn from "./components/pages/staff/BorrowReturn";
+import LostDamageLogs from "./components/pages/staff/LostDamageLogs";
+import DigitalLibrary from "./components/pages/staff/DigitalLibrary";
+import ScholarshipTypeSetup from "./components/pages/accounting/ScholarshipTypeSetup";
+import ApplicationForms from "./components/pages/accounting/ApplicationForms";
+import BeneficiaryList from "./components/pages/accounting/BeneficiaryList";
+import EligibilityScreening from "./components/pages/accounting/EligibilityScreening";
 import AnnouncementCenter from "./components/pages/admin/AnnouncementCenter";
 import EventScheduling from "./components/pages/admin/EventScheduling";
 import SchoolCalendar from "./components/pages/admin/SchoolCalendar";
@@ -105,6 +107,8 @@ import StudentAttendance from "./components/pages/student/StudentAttendance";
 import StudentCalendar from "./components/pages/student/StudentCalendar";
 import StudentAnnouncements from "./components/pages/student/StudentAnnouncements";
 import StudentCommunication from "./components/pages/student/StudentCommunication";
+import StaffDashboard from "./components/pages/staff/StaffDashboard";
+import AccountingDashboard from "./components/pages/accounting/AccountingDashboard";
 
 function AppWrapper() {
   const navigate = useNavigate();
@@ -123,6 +127,12 @@ function AppWrapper() {
       navigate("/faculty/dashboard", { replace: true });
     } else if (role === "Student") {
       navigate("/student/dashboard", { replace: true });
+    } else if (role === "Hr") {
+      navigate("/hr/dashboard", { replace: true });
+    } else if (role === "Accounting") {
+      navigate("/accounting/dashboard", { replace: true });
+    } else if (role === "Staff") {
+      navigate("/staff/dashboard", { replace: true });
     }
   };
 
@@ -189,34 +199,16 @@ function AppWrapper() {
           path="admin_syllabus_repository"
           element={<SyllabusRepository />}
         />
-        <Route
-          path="admin_library_management"
-          element={<BookCatalog />}
-        />
-        <Route
-          path="admin_borrow_return"
-          element={<BorrowReturn />}
-        />
-        <Route
-          path="admin_lost_damage_logs"
-          element={<LostDamageLogs />}
-        />
-        <Route
-          path="admin_digital_library"
-          element={<DigitalLibrary />}
-        />
+        <Route path="admin_library_management" element={<BookCatalog />} />
+        <Route path="admin_borrow_return" element={<BorrowReturn />} />
+        <Route path="admin_lost_damage_logs" element={<LostDamageLogs />} />
+        <Route path="admin_digital_library" element={<DigitalLibrary />} />
         <Route
           path="admin_scholar_type_setup"
           element={<ScholarshipTypeSetup />}
         />
-        <Route
-          path="admin_application_forms"
-          element={<ApplicationForms />}
-        />
-        <Route
-          path="admin_benefeciary_list"
-          element={<BeneficiaryList />}
-        />
+        <Route path="admin_application_forms" element={<ApplicationForms />} />
+        <Route path="admin_benefeciary_list" element={<BeneficiaryList />} />
         <Route
           path="admin_eligibility_screening"
           element={<EligibilityScreening />}
@@ -225,14 +217,8 @@ function AppWrapper() {
           path="admin_announcement_center"
           element={<AnnouncementCenter />}
         />
-        <Route
-          path="admin_event_scheduling"
-          element={<EventScheduling />}
-        />
-        <Route
-          path="admin_school_calendar"
-          element={<SchoolCalendar />}
-        />
+        <Route path="admin_event_scheduling" element={<EventScheduling />} />
+        <Route path="admin_school_calendar" element={<SchoolCalendar />} />
         <Route
           path="admin_public_event_posting"
           element={<PublicEventPosting />}
@@ -242,10 +228,7 @@ function AppWrapper() {
           element={<InventoryAssetManagement />}
         />
         <Route path="admin_general_setting" element={<GeneralSettings />} />
-        <Route
-          path="admin_email_sms_gateway"
-          element={<EmailSMSGateway />}
-        />
+        <Route path="admin_email_sms_gateway" element={<EmailSMSGateway />} />
         <Route path="admin_system_logs" element={<SystemLogs />} />
         <Route path="admin_staff_attendance" element={<StaffAttendance />} />
         <Route
@@ -302,35 +285,37 @@ function AppWrapper() {
         <Route path="dashboard" element={<StudentDashboard />} />
         <Route path="student_dashboard" element={<StudentDashboard />} />
         <Route path="student_profile" element={<StudentProfile />} />
-        
         {/* My Courses */}
         <Route path="student_courses" element={<StudentCourses />} />
-        
         {/* Academic */}
         <Route path="student_academic" element={<StudentAcademic />} />
-        
         {/* LMS */}
         <Route path="student_lms_lessons" element={<StudentLMS />} />
         <Route path="student_lms_quizzes" element={<StudentLMS />} />
         <Route path="student_lms_assignments" element={<StudentLMS />} />
-        
         {/* Attendance */}
         <Route path="student_attendance_logs" element={<StudentAttendance />} />
-        <Route path="student_attendance_records" element={<StudentAttendance />} />
-        
+        <Route
+          path="student_attendance_records"
+          element={<StudentAttendance />}
+        />
         {/* Announcements */}
         <Route path="student_feedback" element={<StudentAnnouncements />} />
-        <Route path="student_notifications" element={<StudentAnnouncements />} />
-        
+        <Route
+          path="student_notifications"
+          element={<StudentAnnouncements />}
+        />
         {/* Calendar */}
         <Route path="student_calendar_exams" element={<StudentCalendar />} />
         <Route path="student_calendar_events" element={<StudentCalendar />} />
-        
         {/* Communication */}
-        <Route path="student_communication" element={<StudentCommunication />} />
-        
+        <Route
+          path="student_communication"
+          element={<StudentCommunication />}
+        />
         {/* Finance */}
         <Route path="student_finance" element={<StudentFinance />} />
+        // ...existing code...
       </Route>
 
       {/* Faculty Routes */}
@@ -340,37 +325,134 @@ function AppWrapper() {
       >
         <Route path="dashboard" element={<FacultyDashboard />} />
         <Route path="faculty_dashboard" element={<FacultyDashboard />} />
-        
+
         {/* Profile */}
         <Route path="faculty_profile" element={<FacultyProfile />} />
-        
+
         {/* My Courses */}
-        <Route path="faculty_assigned_subjects" element={<AssignedSubjects />} />
+        <Route
+          path="faculty_assigned_subjects"
+          element={<AssignedSubjects />}
+        />
         <Route path="faculty_syllabus_upload" element={<SyllabusUpload />} />
         <Route path="faculty_student_list" element={<StudentList />} />
-        
+
         {/* Attendance */}
         <Route path="faculty_mark_attendance" element={<MarkAttendance />} />
-        <Route path="faculty_absentee_alerts" element={<FacultyAbsenteeAlerts />} />
-        
+        <Route
+          path="faculty_absentee_alerts"
+          element={<FacultyAbsenteeAlerts />}
+        />
+
         {/* Grades */}
         <Route path="faculty_grade_encoding" element={<GradeEncoding />} />
         <Route path="faculty_grade_review" element={<GradeReview />} />
-        
+
         {/* LMS */}
         <Route path="faculty_lms_materials" element={<LMSMaterials />} />
         <Route path="faculty_lms_assignments" element={<LMSAssignments />} />
         <Route path="faculty_lms_discussion" element={<LMSDiscussion />} />
-        
+
         {/* Communication */}
-        <Route path="faculty_announcements" element={<FacultyAnnouncements />} />
+        <Route
+          path="faculty_announcements"
+          element={<FacultyAnnouncements />}
+        />
         <Route path="faculty_messaging" element={<Messaging />} />
         <Route path="faculty_email_student" element={<EmailStudent />} />
-        
+
         {/* Reports */}
         <Route path="faculty_report_grades" element={<GradeReports />} />
-        <Route path="faculty_report_attendance" element={<AttendanceReports />} />
-        <Route path="faculty_report_performance" element={<ClassPerformance />} />
+        <Route
+          path="faculty_report_attendance"
+          element={<AttendanceReports />}
+        />
+        <Route
+          path="faculty_report_performance"
+          element={<ClassPerformance />}
+        />
+      </Route>
+
+      {/* Staff Routes */}
+      <Route
+        path="/staff/*"
+        element={<SharedLayout role="Staff" handleLogout={handleLogout} />}
+      >
+        <Route path="dashboard" element={<StaffDashboard />} />
+        <Route path="staff_dashboard" element={<StaffDashboard />} />
+        <Route path="staff_library_management" element={<BookCatalog />} />
+        <Route path="staff_borrow_return" element={<BorrowReturn />} />
+        <Route path="staff_lost_damage_logs" element={<LostDamageLogs />} />
+        <Route path="staff_digital_library" element={<DigitalLibrary />} />
+        {/* Add more staff routes here as needed */}
+      </Route>
+
+      {/* Accounting Routes */}
+      <Route
+        path="/accounting/*"
+        element={<SharedLayout role="Accounting" handleLogout={handleLogout} />}
+      >
+        <Route path="dashboard" element={<AccountingDashboard />} />
+        <Route path="accounting_dashboard" element={<AccountingDashboard />} />
+        <Route
+          path="accounting_tuition_fee_setup"
+          element={<TuitionFeeSetup />}
+        />
+        <Route
+          path="accounting_payment_collection"
+          element={<PaymentCollection />}
+        />
+        <Route
+          path="accounting_invoice_management"
+          element={<InvoiceManagement />}
+        />
+        <Route
+          path="accounting_scholarship_fund_allocation"
+          element={<ScholarshipFundAllocation />}
+        />
+        <Route
+          path="accounting_income_expenses"
+          element={<IncomeExpensesReports />}
+        />
+        <Route path="accounting_payment_gateway" element={<PaymentGateway />} />
+        <Route
+          path="accounting_scholar_type_setup"
+          element={<ScholarshipTypeSetup />}
+        />
+        <Route
+          path="accounting_application_forms"
+          element={<ApplicationForms />}
+        />
+        <Route
+          path="accounting_benefeciary_list"
+          element={<BeneficiaryList />}
+        />
+        <Route
+          path="accounting_eligibility_screening"
+          element={<EligibilityScreening />}
+        />
+        <Route
+          path="accounting_scholarship_fund"
+          element={<ScholarshipFundAllocation />}
+        />
+      </Route>
+
+      {/* HR Routes */}
+      <Route
+        path="/hr/*"
+        element={<SharedLayout role="HR" handleLogout={handleLogout} />}
+      >
+        <Route path="dashboard" element={<HRDashboard />} />
+        <Route path="hr_dashboard" element={<HRDashboard />} />
+        <Route path="hr_employee_records" element={<EmployeeRecords />} />
+        <Route path="hr_staff_leave" element={<StaffLeave />} />
+        <Route path="hr_payslip_generator" element={<PayslipGenerator />} />
+        <Route
+          path="hr_deduction_management"
+          element={<DeductionManagement />}
+        />
+        <Route path="hr_payroll_reports" element={<PayrollReports />} />
+        <Route path="hr_profile" element={<HRProfile />} />
       </Route>
     </Routes>
   );

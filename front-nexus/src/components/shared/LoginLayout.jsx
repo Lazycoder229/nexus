@@ -132,6 +132,12 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
       role = "Admin";
     } else if (email.toLowerCase().includes("faculty")) {
       role = "Faculty";
+    } else if (email.toLowerCase().includes("staff")) {
+      role = "Staff";
+    } else if (email.toLowerCase().includes("hr")) {
+      role = "HR";
+    } else if (email.toLowerCase().includes("accounting")) {
+      role = "Accounting";
     }
 
     const mockData = {
@@ -156,6 +162,12 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
       navigate("/faculty/dashboard");
     } else if (mockData.role === "Student") {
       navigate("/student/dashboard");
+    } else if (mockData.role === "Staff") {
+      navigate("/staff/dashboard");
+    } else if (mockData.role === "HR") {
+      navigate("/hr/dashboard");
+    } else if (mockData.role === "Accounting") {
+      navigate("/accounting/dashboard");
     } else {
       navigate("/");
     }
