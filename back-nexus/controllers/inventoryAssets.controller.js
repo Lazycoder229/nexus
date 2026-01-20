@@ -1,3 +1,25 @@
+// ...existing code...
+// ...existing code...
+
+// Place this at the end of the file after all function declarations:
+// export default {
+//   getAllAssets,
+//   getAssetById,
+//   createAsset,
+//   updateAsset,
+//   deleteAsset,
+//   getAllCategories,
+//   getTransfers,
+//   createTransfer,
+//   updateTransfer,
+//   getMaintenanceRecords,
+//   createMaintenance,
+//   updateMaintenance,
+//   getRequests,
+//   createRequest,
+//   updateRequestStatus,
+//   getAssetSummary
+// };
 import InventoryAssetsService from "../services/inventoryAssets.service.js";
 
 // ===========================
@@ -152,7 +174,9 @@ export const updateTransfer = async (req, res) => {
 
 export const createMaintenance = async (req, res) => {
   try {
-    const maintenance = await InventoryAssetsService.createMaintenance(req.body);
+    const maintenance = await InventoryAssetsService.createMaintenance(
+      req.body,
+    );
     res.status(201).json({
       success: true,
       data: maintenance,
@@ -183,7 +207,10 @@ export const getMaintenanceRecords = async (req, res) => {
 export const updateMaintenance = async (req, res) => {
   try {
     const { id } = req.params;
-    const maintenance = await InventoryAssetsService.updateMaintenance(id, req.body);
+    const maintenance = await InventoryAssetsService.updateMaintenance(
+      id,
+      req.body,
+    );
     res.status(200).json({
       success: true,
       data: maintenance,
@@ -256,4 +283,22 @@ export const getAssetSummary = async (req, res) => {
     console.error("Error fetching asset summary:", error);
     res.status(500).json({ success: false, message: error.message });
   }
+};
+
+export default {
+  getAllAssets,
+  getAssetById,
+  createAsset,
+  updateAsset,
+  deleteAsset,
+  getAllCategories,
+  getTransfers,
+  createTransfer,
+  getMaintenanceRecords,
+  createMaintenance,
+  updateMaintenance,
+  getRequests,
+  createRequest,
+  updateRequestStatus,
+  getAssetSummary,
 };

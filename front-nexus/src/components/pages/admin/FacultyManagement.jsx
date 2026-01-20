@@ -74,6 +74,7 @@ const FacultyModal = ({
     middle_name: "",
     last_name: "",
     email: "",
+    password: "",
     phone: "",
     department: "",
     position: "",
@@ -92,16 +93,18 @@ const FacultyModal = ({
         middle_name: initialData.middle_name || "",
         last_name: initialData.last_name || "",
         email: initialData.email || "",
+        password: "", // Only for add mode
         phone: initialData.phone || "",
         department: initialData.department || "",
-        position: initialData.position || "",
+        position: initialData.position_title || initialData.position || "",
         specialization: initialData.specialization || "",
         educational_attainment: initialData.educational_attainment || "",
         license_number: initialData.license_number || "",
-        date_hired:
-          initialData.date_hired || new Date().toISOString().split("T")[0],
-        employment_status: initialData.employment_status || "Active",
+        date_hired: initialData.date_hired || "",
+        employment_status:
+          initialData.status || initialData.employment_status || "Active",
         faculty_id: initialData.faculty_id,
+        user_id: initialData.user_id,
       });
     } else {
       setFormData({
@@ -110,6 +113,7 @@ const FacultyModal = ({
         middle_name: "",
         last_name: "",
         email: "",
+        password: "",
         phone: "",
         department: "",
         position: "",
@@ -143,8 +147,8 @@ const FacultyModal = ({
             {mode === "add"
               ? "Add New Faculty"
               : mode === "edit"
-              ? "Edit Faculty"
-              : "View Faculty"}
+                ? "Edit Faculty"
+                : "View Faculty"}
           </h3>
           <button onClick={onClose}>
             <X size={20} />
@@ -153,6 +157,27 @@ const FacultyModal = ({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {mode === "add" && (
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Password *
+                </label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      password: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border rounded-md"
+                  required
+                  disabled={mode === "view"}
+                  autoComplete="new-password"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium mb-1">
                 Employee ID *
@@ -267,7 +292,7 @@ const FacultyModal = ({
               >
                 <option value="">Select...</option>
                 {departments.map((dept) => (
-                  <option key={dept.value} value={dept.label}>
+                  <option key={dept.value} value={dept.value}>
                     {dept.label}
                   </option>
                 ))}
@@ -438,10 +463,11 @@ const FacultyManagement = () => {
     try {
       const res = await axios.get(`${API_BASE}/api/dept/departments`);
       const deptList = (res.data || []).map((d) => ({
-        value: d.department_id,
-        label: d.department_name,
+        value: d.id,
+        label: d.name,
       }));
       setDepartments(deptList);
+      console.log("[FacultyManagement] fetched departments:", deptList);
     } catch (err) {
       console.error("Error fetching departments:", err);
     }
@@ -466,7 +492,7 @@ const FacultyManagement = () => {
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const displayed = filtered.slice(
     (page - 1) * rowsPerPage,
-    page * rowsPerPage
+    page * rowsPerPage,
   );
 
   const handleSubmit = async (data) => {
@@ -474,7 +500,11 @@ const FacultyManagement = () => {
       if (modalMode === "add") {
         await axios.post(`${API_BASE}/api/faculty`, data);
       } else {
-        await axios.put(`${API_BASE}/api/faculty/${data.faculty_id}`, data);
+        // Use user_id for edit requests
+        await axios.put(
+          `${API_BASE}/api/faculty/${data.user_id || data.faculty_id}`,
+          data,
+        );
       }
       fetchFaculty();
       setModalOpen(false);
@@ -592,7 +622,10 @@ const FacultyManagement = () => {
               </tr>
             ) : displayed.length > 0 ? (
               displayed.map((fac) => (
-                <tr key={fac.faculty_id} className="hover:bg-slate-50">
+                <tr
+                  key={fac.faculty_id || fac.employee_id || Math.random()}
+                  className="hover:bg-slate-50"
+                >
                   <td className="px-3 py-2 text-sm">{fac.employee_id}</td>
                   <td className="px-3 py-2 text-sm">
                     {fac.first_name} {fac.last_name}

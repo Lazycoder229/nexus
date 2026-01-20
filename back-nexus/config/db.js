@@ -5,7 +5,7 @@ const db = mysql.createPool({
   host: "localhost",
   user: "nexusbcc",
   password: "plantobe",
-  database: "nexus",
+  database: "nexus6",
   waitForConnections: true,
   connectionLimit: 10, // max 10 simultaneous connections
   queueLimit: 0,

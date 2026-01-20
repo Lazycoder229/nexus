@@ -1,4 +1,5 @@
 import db from "../config/db.js";
+import bcrypt from "./bcrypt.js";
 
 const Faculty = {
   // Get all faculty members
@@ -28,7 +29,7 @@ const Faculty = {
       INNER JOIN employee_details ed ON u.user_id = ed.user_id
       WHERE u.user_id = ? AND u.role = 'Faculty'
     `,
-      [userId]
+      [userId],
     );
   },
 
@@ -41,7 +42,7 @@ const Faculty = {
       INNER JOIN employee_details ed ON u.user_id = ed.user_id
       WHERE ed.employee_id = ? AND u.role = 'Faculty'
     `,
-      [employeeId]
+      [employeeId],
     );
   },
 
@@ -57,7 +58,7 @@ const Faculty = {
       WHERE ed.department = ? AND u.role = 'Faculty'
       ORDER BY u.last_name, u.first_name
     `,
-      [department]
+      [department],
     );
   },
 
@@ -67,6 +68,10 @@ const Faculty = {
     try {
       await connection.beginTransaction();
 
+      // Hash password before insert
+      const password = facultyData.password || "";
+      const passwordHash = await bcrypt.hash(password, 10);
+
       // Insert into users table
       const [userResult] = await connection.query(
         `INSERT INTO users (email, password_hash, role, first_name, middle_name, last_name,
@@ -74,7 +79,7 @@ const Faculty = {
          VALUES (?, ?, 'Faculty', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           facultyData.email,
-          facultyData.password_hash,
+          passwordHash,
           facultyData.first_name,
           facultyData.middle_name,
           facultyData.last_name,
@@ -84,7 +89,7 @@ const Faculty = {
           facultyData.permanent_address,
           facultyData.profile_picture_url,
           facultyData.status || "Active",
-        ]
+        ],
       );
 
       const userId = userResult.insertId;
@@ -103,7 +108,7 @@ const Faculty = {
           facultyData.specialization,
           facultyData.educational_attainment,
           facultyData.license_number,
-        ]
+        ],
       );
 
       await connection.commit();
@@ -141,7 +146,7 @@ const Faculty = {
           facultyData.profile_picture_url,
           facultyData.status,
           userId,
-        ]
+        ],
       );
 
       // Update employee_details table
@@ -158,7 +163,7 @@ const Faculty = {
           facultyData.educational_attainment,
           facultyData.license_number,
           userId,
-        ]
+        ],
       );
 
       await connection.commit();
@@ -175,7 +180,7 @@ const Faculty = {
   delete: (userId) => {
     return db.query(
       "DELETE FROM users WHERE user_id = ? AND role = 'Faculty'",
-      [userId]
+      [userId],
     );
   },
 

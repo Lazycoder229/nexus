@@ -121,7 +121,7 @@ CREATE TABLE departments (
 
     FOREIGN KEY (head_user_id) REFERENCES users(user_id) ON DELETE SET NULL
 );
-
+ALTER TABLE departments ADD COLUMN status ENUM('Active','Inactive','Pending') DEFAULT 'Active';
 -- ===========================
 -- 8. Courses Table
 -- Stores all courses offered by the institution

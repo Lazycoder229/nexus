@@ -1,6 +1,6 @@
-const express = require("express");
+import express from "express";
+import inventoryController from "../controllers/inventoryAssets.controller.js";
 const router = express.Router();
-const inventoryController = require("../controllers/inventoryAssets.controller");
 
 // Asset Management Routes
 router.get("/assets", inventoryController.getAllAssets);
@@ -29,4 +29,4 @@ router.put("/requests/:id/status", inventoryController.updateRequestStatus);
 // Reports & Analytics
 router.get("/summary", inventoryController.getAssetSummary);
 
-module.exports = router;
+export default router;

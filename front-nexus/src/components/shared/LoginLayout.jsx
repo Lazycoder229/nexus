@@ -125,54 +125,6 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
       return;
     }
 
-    // 🔓 BYPASS MODE - No database validation
-    // Mock successful login based on email pattern
-    let role = "Student";
-    if (email.toLowerCase().includes("admin")) {
-      role = "Admin";
-    } else if (email.toLowerCase().includes("faculty")) {
-      role = "Faculty";
-    } else if (email.toLowerCase().includes("staff")) {
-      role = "Staff";
-    } else if (email.toLowerCase().includes("hr")) {
-      role = "HR";
-    } else if (email.toLowerCase().includes("accounting")) {
-      role = "Accounting";
-    }
-
-    const mockData = {
-      token: "mock-jwt-token-" + Date.now(),
-      role: role,
-      userId: "mock-user-" + Math.random().toString(36).substr(2, 9),
-    };
-
-    console.log("Mock Login Response:", mockData);
-
-    // Save JWT token & user info
-    localStorage.setItem("token", mockData.token);
-    localStorage.setItem("role", mockData.role);
-    localStorage.setItem("userId", mockData.userId);
-
-    alert(`Login successful! Role: ${mockData.role}`);
-
-    // Redirect based on role
-    if (mockData.role === "Admin") {
-      navigate("/admin/dashboard");
-    } else if (mockData.role === "Faculty") {
-      navigate("/faculty/dashboard");
-    } else if (mockData.role === "Student") {
-      navigate("/student/dashboard");
-    } else if (mockData.role === "Staff") {
-      navigate("/staff/dashboard");
-    } else if (mockData.role === "HR") {
-      navigate("/hr/dashboard");
-    } else if (mockData.role === "Accounting") {
-      navigate("/accounting/dashboard");
-    } else {
-      navigate("/");
-    }
-
-    /* ORIGINAL CODE - Uncomment to restore database authentication
     try {
       // 1️ Send login request
       const { data } = await axios.post(
@@ -180,7 +132,7 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
         {
           email,
           password,
-        }
+        },
       );
 
       console.log("Login Response:", data);
@@ -193,10 +145,18 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
       alert(`Login successful! Role: ${data.role}`);
 
       // 3️ Redirect based on role
-      if (data.role === "student") {
+      if (data.role === "Student") {
         navigate("/student/dashboard"); // make sure this route exists
       } else if (data.role === "Admin") {
         navigate("/admin/dashboard"); // admin route
+      } else if (data.role === "Faculty") {
+        navigate("/faculty/dashboard");
+      } else if (data.role === "Staff") {
+        navigate("/staff/dashboard");
+      } else if (data.role === "HR") {
+        navigate("/hr/dashboard");
+      } else if (data.role === "Accounting") {
+        navigate("/accounting/dashboard");
       } else {
         // fallback
         navigate("/");
@@ -210,13 +170,12 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
         alert(`Login Failed: ${error.response.data.message}`);
       } else if (error.response?.status === 400) {
         alert(
-          "Login Failed: Invalid email or password. Please check your credentials."
+          "Login Failed: Invalid email or password. Please check your credentials.",
         );
       } else {
         alert("Network error. Please try again later.");
       }
     }
-    */
   };
   return (
     <div className="flex flex-col md:flex-row w-full h-full min-h-[480px]">
@@ -425,7 +384,7 @@ const RegistrationForm = ({ onBackToLogin }) => {
     setAnimating(true);
     setTimeout(() => {
       setStep((s) =>
-        direction === "next" ? Math.min(s + 1, 3) : Math.max(s - 1, 1)
+        direction === "next" ? Math.min(s + 1, 3) : Math.max(s - 1, 1),
       );
       setAnimating(false);
     }, 250);
@@ -442,13 +401,13 @@ const RegistrationForm = ({ onBackToLogin }) => {
     try {
       const response = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/api/auth/register`,
-        formData // Make sure this matches your backend fields
+        formData, // Make sure this matches your backend fields
       );
 
       // Successful registration
       console.log("Student Registration Response:", response.data);
       alert(
-        `Registration successful! Your user ID is: ${response.data.userId}`
+        `Registration successful! Your user ID is: ${response.data.userId}`,
       );
 
       // Optional: store JWT token
@@ -516,8 +475,8 @@ const RegistrationForm = ({ onBackToLogin }) => {
                       isActive
                         ? "bg-white text-amber-600 border-white scale-110 shadow-lg"
                         : isCompleted
-                        ? "bg-amber-600 border-amber-600 text-white"
-                        : "border-amber-400/50 text-amber-200"
+                          ? "bg-amber-600 border-amber-600 text-white"
+                          : "border-amber-400/50 text-amber-200"
                     }`}
                 >
                   {isCompleted ? <Check size={14} /> : <Icon size={14} />}

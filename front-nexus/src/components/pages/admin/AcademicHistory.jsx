@@ -64,6 +64,7 @@ const HistoryModal = ({
   initialData,
   students,
   periods,
+  setLastSelectedPeriod,
 }) => {
   const [formData, setFormData] = useState({
     student_id: null,
@@ -93,6 +94,10 @@ const HistoryModal = ({
         remarks: initialData.remarks || "",
         history_id: initialData.history_id,
       });
+      console.log(
+        "[HistoryModal] initialData set, period_id:",
+        initialData.period_id,
+      );
     } else {
       setFormData({
         student_id: null,
@@ -106,6 +111,7 @@ const HistoryModal = ({
         honors: "",
         remarks: "",
       });
+      console.log("[HistoryModal] reset to blank, period_id: null");
     }
   }, [initialData]);
 
@@ -154,6 +160,12 @@ const HistoryModal = ({
                 placeholder="Select student..."
                 isDisabled={mode === "edit"}
                 required
+                menuPortalTarget={document.body} // Add this
+                menuPosition="fixed" // Add this
+                styles={{
+                  // Add this
+                  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                }}
               />
             </div>
 
@@ -161,20 +173,29 @@ const HistoryModal = ({
               <label className="block text-sm font-medium mb-1">
                 Academic Period *
               </label>
+
               <Select
                 value={
                   periods.find((p) => p.value === formData.period_id) || null
                 }
-                onChange={(selected) =>
+                onChange={(selected) => {
                   setFormData((prev) => ({
                     ...prev,
                     period_id: selected?.value || null,
-                  }))
-                }
+                  }));
+                  if (mode === "add" && setLastSelectedPeriod) {
+                    setLastSelectedPeriod(selected?.value || null);
+                  }
+                }}
                 options={periods}
                 placeholder="Select period..."
                 isDisabled={mode === "edit"}
                 required
+                menuPortalTarget={document.body}
+                menuPosition="fixed"
+                styles={{
+                  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                }}
               />
             </div>
           </div>
@@ -361,6 +382,7 @@ const AcademicHistory = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("add");
   const [currentRecord, setCurrentRecord] = useState(null);
+  const [lastSelectedPeriod, setLastSelectedPeriod] = useState(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -390,15 +412,17 @@ const AcademicHistory = () => {
     }
   };
 
+  // In AcademicHistory component, update fetchPeriods:
   const fetchPeriods = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/academic-periods`);
-      setPeriods(
-        res.data.map((p) => ({
-          value: p.period_id,
-          label: `${p.school_year} - ${p.semester}`,
-        }))
-      );
+      const periodOptions = res.data.map((p) => ({
+        value: p.period_id || p.id, // use p.id if period_id is not present
+        label: `${p.school_year} - ${p.semester}`,
+      }));
+      setPeriods(periodOptions);
+      console.log("[AcademicHistory] fetched periods:", res.data);
+      // Do NOT set lastSelectedPeriod by default; keep blank until user selects
     } catch (err) {
       console.error("Error fetching periods:", err);
     }
@@ -423,7 +447,7 @@ const AcademicHistory = () => {
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const displayed = filtered.slice(
     (page - 1) * rowsPerPage,
-    page * rowsPerPage
+    page * rowsPerPage,
   );
 
   const handleSubmit = async (data) => {
@@ -433,7 +457,7 @@ const AcademicHistory = () => {
       } else {
         await axios.put(
           `${API_BASE}/api/academic-history/${data.history_id}`,
-          data
+          data,
         );
       }
       fetchHistory();
@@ -457,7 +481,7 @@ const AcademicHistory = () => {
 
   const openModal = (mode, record = null) => {
     setModalMode(mode);
-    setCurrentRecord(record);
+    setCurrentRecord(mode === "add" ? { period_id: null } : record);
     setModalOpen(true);
   };
 
@@ -623,6 +647,7 @@ const AcademicHistory = () => {
         initialData={currentRecord}
         students={students}
         periods={periods}
+        setLastSelectedPeriod={setLastSelectedPeriod}
       />
     </div>
   );
