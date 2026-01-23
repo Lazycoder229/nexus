@@ -73,7 +73,6 @@ const SubjectSections = () => {
   const [filterPeriod, setFilterPeriod] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-
   const [formData, setFormData] = useState({
     course_id: "",
     period_id: "",
@@ -85,7 +84,6 @@ const SubjectSections = () => {
     schedule_time_end: "",
     status: "active",
   });
-
   const daysOfWeek = [
     "Monday",
     "Tuesday",
@@ -95,13 +93,11 @@ const SubjectSections = () => {
     "Saturday",
     "Sunday",
   ];
-
   useEffect(() => {
     fetchSections();
     fetchCourses();
     fetchPeriods();
   }, []);
-
   const fetchSections = async () => {
     try {
       const response = await axios.get("http://localhost:5000/api/sections");
@@ -110,45 +106,40 @@ const SubjectSections = () => {
       console.error("Error fetching sections:", error);
     }
   };
-
   const fetchCourses = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/course/courses"
+        "http://localhost:5000/api/course/courses",
       );
       setCourses(response.data);
     } catch (error) {
       console.error("Error fetching courses:", error);
     }
   };
-
   const fetchPeriods = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/academic-periods"
+        "http://localhost:5000/api/academic-periods",
       );
       setPeriods(response.data);
     } catch (error) {
       console.error("Error fetching periods:", error);
     }
   };
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
-
   const handleSelectChange = (selectedOption, field) => {
     setFormData({ ...formData, [field]: selectedOption?.value || "" });
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editMode) {
         await axios.put(
           `http://localhost:5000/api/sections/${currentSection.section_id}`,
-          formData
+          formData,
         );
       } else {
         await axios.post("http://localhost:5000/api/sections", formData);
@@ -160,7 +151,6 @@ const SubjectSections = () => {
       alert(error.response?.data?.error || "Error saving section");
     }
   };
-
   const handleEdit = (section) => {
     setCurrentSection(section);
     setFormData({
@@ -177,7 +167,6 @@ const SubjectSections = () => {
     setEditMode(true);
     setShowModal(true);
   };
-
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this section?")) {
       try {
@@ -189,7 +178,6 @@ const SubjectSections = () => {
       }
     }
   };
-
   const closeModal = () => {
     setShowModal(false);
     setEditMode(false);
@@ -206,7 +194,6 @@ const SubjectSections = () => {
       status: "active",
     });
   };
-
   // Filter sections
   const filteredSections = sections.filter((section) => {
     const matchesSearch =
@@ -214,53 +201,43 @@ const SubjectSections = () => {
       section.course_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       section.course_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       section.room?.toLowerCase().includes(searchTerm.toLowerCase());
-
     const matchesCourse =
       !filterCourse || section.course_id === filterCourse.value;
     const matchesPeriod =
       !filterPeriod || section.period_id === filterPeriod.value;
-
     return matchesSearch && matchesCourse && matchesPeriod;
   });
-
   // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredSections.slice(
     indexOfFirstItem,
-    indexOfLastItem
+    indexOfLastItem,
   );
   const totalPages = Math.ceil(filteredSections.length / itemsPerPage);
-
   const courseOptions = courses.map((course) => ({
-    value: course.course_id,
-    label: `${course.course_code} - ${course.course_title}`,
+    value: course.id,
+    label: `${course.code} - ${course.title}`,
   }));
-
   const periodOptions = periods.map((period) => ({
-    value: period.period_id,
-    label: `${period.period_name} ${period.year}`,
+    value: period.id,
+    label: `${period.semester} ${period.school_year}`,
   }));
-
-  const dayOptions = daysOfWeek.map((day) => ({ value: day, label: day }));
-
   const statusOptions = [
     { value: "active", label: "Active" },
     { value: "inactive", label: "Inactive" },
     { value: "full", label: "Full" },
   ];
-
   // Calculate statistics
   const totalSections = sections.length;
   const activeSections = sections.filter((s) => s.status === "active").length;
   const fullSections = sections.filter(
-    (s) => s.current_enrolled >= s.max_capacity
+    (s) => s.current_enrolled >= s.max_capacity,
   ).length;
   const totalStudents = sections.reduce(
     (sum, s) => sum + (s.current_enrolled || 0),
-    0
+    0,
   );
-
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
@@ -273,7 +250,6 @@ const SubjectSections = () => {
             Manage course sections, schedules, and enrollment capacity
           </p>
         </div>
-
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
@@ -289,7 +265,6 @@ const SubjectSections = () => {
               <BookOpen className="text-blue-500" size={40} />
             </div>
           </div>
-
           <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
             <div className="flex items-center justify-between">
               <div>
@@ -303,7 +278,6 @@ const SubjectSections = () => {
               <TrendingUp className="text-green-500" size={40} />
             </div>
           </div>
-
           <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
             <div className="flex items-center justify-between">
               <div>
@@ -317,7 +291,6 @@ const SubjectSections = () => {
               <AlertCircle className="text-red-500" size={40} />
             </div>
           </div>
-
           <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500">
             <div className="flex items-center justify-between">
               <div>
@@ -332,7 +305,6 @@ const SubjectSections = () => {
             </div>
           </div>
         </div>
-
         {/* Main Content */}
         <div className="space-y-3">
           {/* Controls Bar */}
@@ -354,7 +326,6 @@ const SubjectSections = () => {
                 size={14}
               />
             </div>
-
             {/* Filter & Action Buttons - RIGHT */}
             <div className="flex items-center gap-2">
               <div className="w-48">
@@ -394,7 +365,6 @@ const SubjectSections = () => {
               </button>
             </div>
           </div>
-
           {/* Table */}
           <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
@@ -404,7 +374,6 @@ const SubjectSections = () => {
                   <th className="px-4 py-2.5">Course</th>
                   <th className="px-4 py-2.5">Period</th>
                   <th className="px-4 py-2.5">Room</th>
-                  <th className="px-4 py-2.5">Schedule</th>
                   <th className="px-4 py-2.5">Capacity</th>
                   <th className="px-4 py-2.5">Status</th>
                   <th className="px-4 py-2.5 text-right">Actions</th>
@@ -434,7 +403,7 @@ const SubjectSections = () => {
                           </div>
                         </td>
                         <td className="px-4 py-2">
-                          {section.period_name} {section.year}
+                          {section.semester} {section.school_year}
                         </td>
                         <td className="px-4 py-2">
                           <div className="flex items-center gap-2">
@@ -442,25 +411,7 @@ const SubjectSections = () => {
                             {section.room || "N/A"}
                           </div>
                         </td>
-                        <td className="px-4 py-2">
-                          {section.schedule_day &&
-                          section.schedule_time_start ? (
-                            <div>
-                              <div className="font-medium">
-                                {section.schedule_day}
-                              </div>
-                              <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-xs">
-                                <Clock size={14} />
-                                {section.schedule_time_start} -{" "}
-                                {section.schedule_time_end}
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-slate-400 italic">
-                              Not set
-                            </span>
-                          )}
-                        </td>
+
                         <td className="px-4 py-2">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
@@ -476,14 +427,11 @@ const SubjectSections = () => {
                                   capacityPercentage >= 100
                                     ? "bg-red-500"
                                     : capacityPercentage >= 80
-                                    ? "bg-yellow-500"
-                                    : "bg-green-500"
+                                      ? "bg-yellow-500"
+                                      : "bg-green-500"
                                 }`}
                                 style={{
-                                  width: `${Math.min(
-                                    capacityPercentage,
-                                    100
-                                  )}%`,
+                                  width: `${Math.min(capacityPercentage, 100)}%`,
                                 }}
                               ></div>
                             </div>
@@ -513,7 +461,10 @@ const SubjectSections = () => {
                   })
                 ) : (
                   <tr>
-                    <td colSpan="8" className="p-4 text-center text-slate-500 italic">
+                    <td
+                      colSpan="8"
+                      className="p-4 text-center text-slate-500 italic"
+                    >
                       No sections found matching your search criteria.
                     </td>
                   </tr>
@@ -521,7 +472,6 @@ const SubjectSections = () => {
               </tbody>
             </table>
           </div>
-
           {/* Pagination */}
           <Pagination
             currentPage={currentPage}
@@ -531,10 +481,9 @@ const SubjectSections = () => {
           />
         </div>
       </div>
-
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0  bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
@@ -548,7 +497,6 @@ const SubjectSections = () => {
                 <X size={24} />
               </button>
             </div>
-
             {/* Modal Body */}
             <form onSubmit={handleSubmit}>
               <div className="p-6 space-y-6">
@@ -566,7 +514,7 @@ const SubjectSections = () => {
                       <Select
                         options={courseOptions}
                         value={courseOptions.find(
-                          (o) => o.value === formData.course_id
+                          (o) => o.value === formData.course_id,
                         )}
                         onChange={(option) =>
                           handleSelectChange(option, "course_id")
@@ -577,7 +525,6 @@ const SubjectSections = () => {
                         classNamePrefix="react-select"
                       />
                     </div>
-
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Academic Period <span className="text-red-500">*</span>
@@ -585,7 +532,7 @@ const SubjectSections = () => {
                       <Select
                         options={periodOptions}
                         value={periodOptions.find(
-                          (o) => o.value === formData.period_id
+                          (o) => o.value === formData.period_id,
                         )}
                         onChange={(option) =>
                           handleSelectChange(option, "period_id")
@@ -598,7 +545,6 @@ const SubjectSections = () => {
                     </div>
                   </div>
                 </div>
-
                 {/* Section Details */}
                 <div>
                   <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
@@ -620,7 +566,6 @@ const SubjectSections = () => {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
-
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Max Capacity <span className="text-red-500">*</span>
@@ -635,7 +580,6 @@ const SubjectSections = () => {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
-
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Room
@@ -649,7 +593,6 @@ const SubjectSections = () => {
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
-
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Status
@@ -657,7 +600,7 @@ const SubjectSections = () => {
                       <Select
                         options={statusOptions}
                         value={statusOptions.find(
-                          (o) => o.value === formData.status
+                          (o) => o.value === formData.status,
                         )}
                         onChange={(option) =>
                           handleSelectChange(option, "status")
@@ -669,62 +612,7 @@ const SubjectSections = () => {
                     </div>
                   </div>
                 </div>
-
-                {/* Schedule Information */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                    <Clock size={18} className="text-purple-500" />
-                    Schedule Information
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Schedule Day
-                      </label>
-                      <Select
-                        options={dayOptions}
-                        value={dayOptions.find(
-                          (o) => o.value === formData.schedule_day
-                        )}
-                        onChange={(option) =>
-                          handleSelectChange(option, "schedule_day")
-                        }
-                        placeholder="Select Day"
-                        isClearable
-                        className="react-select-container"
-                        classNamePrefix="react-select"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Start Time
-                      </label>
-                      <input
-                        type="time"
-                        name="schedule_time_start"
-                        value={formData.schedule_time_start}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        End Time
-                      </label>
-                      <input
-                        type="time"
-                        name="schedule_time_end"
-                        value={formData.schedule_time_end}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                </div>
               </div>
-
               {/* Modal Footer */}
               <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3">
                 <button

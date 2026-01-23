@@ -65,7 +65,7 @@ const AcademicCalendar = () => {
   const fetchEvents = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/academic-events"
+        "http://localhost:5000/api/academic-events",
       );
       setEvents(response.data);
     } catch (error) {
@@ -76,7 +76,7 @@ const AcademicCalendar = () => {
   const fetchPeriods = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/academic-periods"
+        "http://localhost:5000/api/academic-periods",
       );
       setPeriods(response.data);
     } catch (error) {
@@ -99,7 +99,7 @@ const AcademicCalendar = () => {
       if (editMode) {
         await axios.put(
           `http://localhost:5000/api/academic-events/${currentEvent.event_id}`,
-          formData
+          formData,
         );
       } else {
         await axios.post("http://localhost:5000/api/academic-events", formData);
@@ -177,8 +177,8 @@ const AcademicCalendar = () => {
   const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
 
   const periodOptions = periods.map((period) => ({
-    value: period.period_id,
-    label: `${period.period_name} ${period.year}`,
+    value: period.id || period.period_id,
+    label: `${period.school_year || period.year || ""} ${period.semester || period.period_name || ""}`,
   }));
 
   const getEventColor = (eventType) => {
@@ -199,13 +199,18 @@ const AcademicCalendar = () => {
   const StatusBadge = ({ type }) => {
     const eventTypeObj = eventTypes.find((t) => t.value === type);
     const colorMap = {
-      enrollment: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+      enrollment:
+        "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
       exam: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-      holiday: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-      meeting: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-      deadline: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
+      holiday:
+        "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+      meeting:
+        "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+      deadline:
+        "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
       activity: "bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300",
-      other: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
+      other:
+        "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
     };
     return (
       <span
@@ -248,7 +253,7 @@ const AcademicCalendar = () => {
   // Calculate statistics
   const totalEvents = events.length;
   const upcomingEvents = events.filter(
-    (e) => new Date(e.start_date) > new Date()
+    (e) => new Date(e.start_date) > new Date(),
   ).length;
   const thisWeekEvents = events.filter((e) => {
     const eventDate = new Date(e.start_date);
@@ -380,27 +385,13 @@ const AcademicCalendar = () => {
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-100 dark:bg-slate-700/70">
                 <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  <th className="px-4 py-2.5">
-                    Event Name
-                  </th>
-                  <th className="px-4 py-2.5">
-                    Type
-                  </th>
-                  <th className="px-4 py-2.5">
-                    Date
-                  </th>
-                  <th className="px-4 py-2.5">
-                    Period
-                  </th>
-                  <th className="px-4 py-2.5">
-                    Location
-                  </th>
-                  <th className="px-4 py-2.5">
-                    Audience
-                  </th>
-                  <th className="px-4 py-2.5 text-right">
-                    Actions
-                  </th>
+                  <th className="px-4 py-2.5">Event Name</th>
+                  <th className="px-4 py-2.5">Type</th>
+                  <th className="px-4 py-2.5">Date</th>
+                  <th className="px-4 py-2.5">Period</th>
+                  <th className="px-4 py-2.5">Location</th>
+                  <th className="px-4 py-2.5">Audience</th>
+                  <th className="px-4 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
@@ -449,8 +440,8 @@ const AcademicCalendar = () => {
                         </div>
                       </td>
                       <td className="px-4 py-2">
-                        {event.period_name
-                          ? `${event.period_name} ${event.year}`
+                        {event.school_year && event.semester
+                          ? `${event.school_year} ${event.semester}`
                           : "N/A"}
                       </td>
                       <td className="px-4 py-2">
@@ -491,7 +482,10 @@ const AcademicCalendar = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="p-4 text-center text-slate-500 italic">
+                    <td
+                      colSpan="7"
+                      className="p-4 text-center text-slate-500 italic"
+                    >
                       No events found matching your search criteria.
                     </td>
                   </tr>
@@ -560,7 +554,7 @@ const AcademicCalendar = () => {
                         <Select
                           options={eventTypes}
                           value={eventTypes.find(
-                            (o) => o.value === formData.event_type
+                            (o) => o.value === formData.event_type,
                           )}
                           onChange={(option) =>
                             handleSelectChange(option, "event_type")
@@ -578,7 +572,7 @@ const AcademicCalendar = () => {
                         <Select
                           options={periodOptions}
                           value={periodOptions.find(
-                            (o) => o.value === formData.period_id
+                            (o) => o.value === formData.period_id,
                           )}
                           onChange={(option) =>
                             handleSelectChange(option, "period_id")
@@ -657,7 +651,7 @@ const AcademicCalendar = () => {
                       <Select
                         options={audienceOptions}
                         value={audienceOptions.find(
-                          (o) => o.value === formData.target_audience
+                          (o) => o.value === formData.target_audience,
                         )}
                         onChange={(option) =>
                           handleSelectChange(option, "target_audience")

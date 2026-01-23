@@ -7,10 +7,10 @@ const SectionsModel = {
       let query = `
         SELECT 
           s.*,
-          c.course_code,
-          c.course_title,
-          ap.period_name,
-          ap.year
+          c.code AS course_code,
+          c.title AS course_title,
+          ap.school_year,
+          ap.semester
         FROM sections s
         LEFT JOIN courses c ON s.course_id = c.course_id
         LEFT JOIN academic_periods ap ON s.period_id = ap.period_id
@@ -50,15 +50,15 @@ const SectionsModel = {
       const [rows] = await pool.query(
         `SELECT 
           s.*,
-          c.course_code,
-          c.course_title,
-          ap.period_name,
-          ap.year
+          c.code AS course_code,
+          c.title AS course_title,
+          ap.school_year,
+          ap.semester
         FROM sections s
         LEFT JOIN courses c ON s.course_id = c.course_id
         LEFT JOIN academic_periods ap ON s.period_id = ap.period_id
         WHERE s.section_id = ?`,
-        [id]
+        [id],
       );
       return rows[0];
     } catch (error) {
@@ -94,7 +94,7 @@ const SectionsModel = {
           schedule_day,
           schedule_time_start,
           schedule_time_end,
-        ]
+        ],
       );
 
       return result.insertId;
@@ -135,7 +135,7 @@ const SectionsModel = {
           schedule_time_end,
           status,
           id,
-        ]
+        ],
       );
 
       return result.affectedRows > 0;
@@ -149,7 +149,7 @@ const SectionsModel = {
     try {
       const [result] = await pool.query(
         "DELETE FROM sections WHERE section_id = ?",
-        [id]
+        [id],
       );
       return result.affectedRows > 0;
     } catch (error) {
@@ -162,7 +162,7 @@ const SectionsModel = {
     try {
       const [rows] = await pool.query(
         "SELECT current_enrolled FROM sections WHERE section_id = ?",
-        [sectionId]
+        [sectionId],
       );
       return rows[0]?.current_enrolled || 0;
     } catch (error) {
@@ -178,7 +178,7 @@ const SectionsModel = {
         `UPDATE sections 
         SET current_enrolled = current_enrolled ${operator} 1 
         WHERE section_id = ?`,
-        [sectionId]
+        [sectionId],
       );
       return result.affectedRows > 0;
     } catch (error) {

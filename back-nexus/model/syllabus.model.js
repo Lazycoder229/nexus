@@ -7,10 +7,10 @@ const SyllabusModel = {
       let query = `
         SELECT 
           s.*,
-          c.course_code,
-          c.course_title,
-          ap.period_name,
-          ap.year,
+          c.code AS course_code,
+          c.title AS course_title,
+          ap.semester,
+          ap.school_year,
           u.first_name,
           u.last_name
         FROM syllabus s
@@ -53,10 +53,10 @@ const SyllabusModel = {
       const [rows] = await pool.query(
         `SELECT 
           s.*,
-          c.course_code,
-          c.course_title,
-          ap.period_name,
-          ap.year,
+          c.code AS course_code,
+          c.title AS course_title,
+          ap.semester,
+          ap.school_year,
           u.first_name,
           u.last_name
         FROM syllabus s
@@ -64,7 +64,7 @@ const SyllabusModel = {
         LEFT JOIN academic_periods ap ON s.period_id = ap.period_id
         LEFT JOIN users u ON s.uploaded_by = u.user_id
         WHERE s.syllabus_id = ?`,
-        [id]
+        [id],
       );
       return rows[0];
     } catch (error) {
@@ -99,7 +99,7 @@ const SyllabusModel = {
           file_size,
           description,
           uploaded_by,
-        ]
+        ],
       );
 
       return result.insertId;
@@ -135,7 +135,7 @@ const SyllabusModel = {
           file_size,
           description,
           id,
-        ]
+        ],
       );
 
       return result.affectedRows > 0;
@@ -149,7 +149,7 @@ const SyllabusModel = {
     try {
       const [result] = await pool.query(
         "DELETE FROM syllabus WHERE syllabus_id = ?",
-        [id]
+        [id],
       );
       return result.affectedRows > 0;
     } catch (error) {

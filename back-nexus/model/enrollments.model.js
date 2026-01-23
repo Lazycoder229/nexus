@@ -33,7 +33,7 @@ export const getAllEnrollments = async () => {
      LEFT JOIN student_details sd ON e.student_id = sd.user_id
      JOIN courses c ON e.course_id = c.course_id
      JOIN academic_periods ap ON e.period_id = ap.period_id
-     ORDER BY e.created_at DESC`
+     ORDER BY e.created_at DESC`,
   );
   return rows;
 };
@@ -64,7 +64,7 @@ export const getEnrollmentsByStudent = async (studentId) => {
      JOIN academic_periods ap ON e.period_id = ap.period_id
      WHERE e.student_id = ?
      ORDER BY e.created_at DESC`,
-    [studentId]
+    [studentId],
   );
   return rows;
 };
@@ -84,7 +84,7 @@ export const getEnrollmentById = async (id) => {
      JOIN courses c ON e.course_id = c.course_id
      JOIN academic_periods ap ON e.period_id = ap.period_id
      WHERE e.enrollment_id = ?`,
-    [id]
+    [id],
   );
   return rows[0];
 };
@@ -94,6 +94,7 @@ export const createEnrollment = async ({
   student_id,
   course_id,
   period_id,
+  section_id = null,
   year_level = null,
   enrollment_date,
   status = "Enrolled",
@@ -103,19 +104,20 @@ export const createEnrollment = async ({
 }) => {
   const [result] = await db.query(
     `INSERT INTO enrollments 
-     (student_id, course_id, period_id, year_level, enrollment_date, status, midterm_grade, final_grade, remarks)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     (student_id, course_id, period_id, section_id, year_level, enrollment_date, status, midterm_grade, final_grade, remarks)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       student_id,
       course_id,
       period_id,
+      section_id,
       year_level,
       enrollment_date,
       status,
       midterm_grade,
       final_grade,
       remarks,
-    ]
+    ],
   );
 
   return getEnrollmentById(result.insertId);
@@ -133,7 +135,7 @@ export const updateEnrollment = async (
     midterm_grade,
     final_grade,
     remarks,
-  }
+  },
 ) => {
   await db.query(
     `UPDATE enrollments 
@@ -150,7 +152,7 @@ export const updateEnrollment = async (
       final_grade,
       remarks,
       id,
-    ]
+    ],
   );
 
   return getEnrollmentById(id);
@@ -166,12 +168,12 @@ export const deleteEnrollment = async (id) => {
 export const checkEnrollmentExists = async (
   student_id,
   course_id,
-  period_id
+  period_id,
 ) => {
   const [rows] = await db.query(
     `SELECT enrollment_id FROM enrollments 
      WHERE student_id = ? AND course_id = ? AND period_id = ?`,
-    [student_id, course_id, period_id]
+    [student_id, course_id, period_id],
   );
   return rows.length > 0;
 };

@@ -74,13 +74,26 @@ const TransferModal = ({
 
   useEffect(() => {
     if (initialData) {
+      // Ensure request_date is formatted as yyyy-MM-dd for input type="date"
+      let formattedDate = "";
+      if (initialData.request_date) {
+        // Handles both ISO and other date formats
+        const d = new Date(initialData.request_date);
+        if (!isNaN(d)) {
+          formattedDate = d.toISOString().split("T")[0];
+        } else {
+          // fallback: use as is
+          formattedDate = initialData.request_date;
+        }
+      } else {
+        formattedDate = new Date().toISOString().split("T")[0];
+      }
       setFormData({
         student_id: initialData.student_id,
         current_program: initialData.current_program || "",
         target_program: initialData.target_program || "",
         reason: initialData.reason || "",
-        request_date:
-          initialData.request_date || new Date().toISOString().split("T")[0],
+        request_date: formattedDate,
         status: initialData.status || "Pending",
         transfer_id: initialData.transfer_id,
       });
@@ -307,7 +320,7 @@ const CourseTransfer = () => {
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const displayed = filtered.slice(
     (page - 1) * rowsPerPage,
-    page * rowsPerPage
+    page * rowsPerPage,
   );
 
   const handleSubmit = async (data) => {
@@ -317,7 +330,7 @@ const CourseTransfer = () => {
       } else {
         await axios.put(
           `${API_BASE}/api/course-transfers/${data.transfer_id}`,
-          data
+          data,
         );
       }
       fetchTransfers();
@@ -441,7 +454,11 @@ const CourseTransfer = () => {
                   <td className="px-3 py-2 text-sm">
                     {transfer.target_program}
                   </td>
-                  <td className="px-3 py-2 text-sm">{transfer.request_date}</td>
+                  <td className="px-3 py-2 text-sm">
+                    {transfer.request_date
+                      ? transfer.request_date.split("T")[0]
+                      : ""}
+                  </td>
                   <td className="px-3 py-2 text-sm">
                     <StatusBadge status={transfer.status} />
                   </td>

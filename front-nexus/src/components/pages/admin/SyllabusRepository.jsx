@@ -65,7 +65,7 @@ const SyllabusRepository = () => {
   const fetchCourses = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/course/courses"
+        "http://localhost:5000/api/course/courses",
       );
       setCourses(response.data);
     } catch (error) {
@@ -76,7 +76,7 @@ const SyllabusRepository = () => {
   const fetchPeriods = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/academic-periods"
+        "http://localhost:5000/api/academic-periods",
       );
       setPeriods(response.data);
     } catch (error) {
@@ -110,14 +110,23 @@ const SyllabusRepository = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    /*   // Always set uploaded_by to the logged-in user's user_id or userId
+    const user = JSON.parse(localStorage.getItem("userId"));
+    const userId = user?.user_id || user?.userId;
+    if (!userId) {
+      alert("You must be logged in to upload a syllabus.", userId);
+      return;
+    } */
+    const submitData = { ...formData, uploaded_by: formData.uploaded_by };
     try {
       if (editMode) {
         await axios.put(
           `http://localhost:5000/api/syllabus/${currentSyllabus.syllabus_id}`,
-          formData
+          submitData,
         );
       } else {
-        await axios.post("http://localhost:5000/api/syllabus", formData);
+        await axios.post("http://localhost:5000/api/syllabus", submitData);
       }
       fetchSyllabi();
       closeModal();
@@ -201,13 +210,13 @@ const SyllabusRepository = () => {
   const totalPages = Math.ceil(filteredSyllabi.length / itemsPerPage);
 
   const courseOptions = courses.map((course) => ({
-    value: course.course_id,
-    label: `${course.course_code} - ${course.course_title}`,
+    value: course.id || course.course_id,
+    label: `${course.code || course.course_code || ""} - ${course.title || course.course_title || ""}`,
   }));
 
   const periodOptions = periods.map((period) => ({
-    value: period.period_id,
-    label: `${period.period_name} ${period.year}`,
+    value: period.id || period.period_id,
+    label: `${period.school_year || period.year || ""} ${period.semester || period.period_name || ""}`,
   }));
 
   const formatFileSize = (bytes) => {
@@ -285,7 +294,9 @@ const SyllabusRepository = () => {
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div className="bg-white dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm p-4">
-            <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Total Files</p>
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+              Total Files
+            </p>
             <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 mt-1">
               {totalFiles}
             </p>
@@ -371,27 +382,13 @@ const SyllabusRepository = () => {
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-100 dark:bg-slate-700/70">
                 <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  <th className="px-4 py-2.5">
-                    File Name
-                  </th>
-                  <th className="px-4 py-2.5">
-                    Course
-                  </th>
-                  <th className="px-4 py-2.5">
-                    Period
-                  </th>
-                  <th className="px-4 py-2.5">
-                    Size
-                  </th>
-                  <th className="px-4 py-2.5">
-                    Uploaded By
-                  </th>
-                  <th className="px-4 py-2.5">
-                    Upload Date
-                  </th>
-                  <th className="px-4 py-2.5 text-right">
-                    Actions
-                  </th>
+                  <th className="px-4 py-2.5">File Name</th>
+                  <th className="px-4 py-2.5">Course</th>
+                  <th className="px-4 py-2.5">Period</th>
+                  <th className="px-4 py-2.5">Size</th>
+                  <th className="px-4 py-2.5">Uploaded By</th>
+                  <th className="px-4 py-2.5">Upload Date</th>
+                  <th className="px-4 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
@@ -403,7 +400,10 @@ const SyllabusRepository = () => {
                     >
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-2">
-                          <FileText className="text-indigo-600 dark:text-indigo-400" size={18} />
+                          <FileText
+                            className="text-indigo-600 dark:text-indigo-400"
+                            size={18}
+                          />
                           <div>
                             <div className="font-semibold text-slate-900 dark:text-white">
                               {syllabus.file_name}
@@ -426,23 +426,37 @@ const SyllabusRepository = () => {
                         </div>
                       </td>
                       <td className="px-4 py-2">
-                        {syllabus.period_name
-                          ? `${syllabus.period_name} ${syllabus.year}`
-                          : <span className="text-slate-400 dark:text-slate-500">N/A</span>}
+                        {syllabus.semester ? (
+                          `${syllabus.semester} ${syllabus.school_year}`
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500">
+                            N/A
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-2">
                         {formatFileSize(syllabus.file_size)}
                       </td>
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-1.5">
-                          <Users size={12} className="text-slate-400 dark:text-slate-500" />
-                          <span className="text-xs">{syllabus.first_name} {syllabus.last_name}</span>
+                          <Users
+                            size={12}
+                            className="text-slate-400 dark:text-slate-500"
+                          />
+                          <span className="text-xs">
+                            {syllabus.first_name} {syllabus.last_name}
+                          </span>
                         </div>
                       </td>
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-1.5">
-                          <Clock size={12} className="text-slate-400 dark:text-slate-500" />
-                          <span className="text-xs">{formatDate(syllabus.created_at)}</span>
+                          <Clock
+                            size={12}
+                            className="text-slate-400 dark:text-slate-500"
+                          />
+                          <span className="text-xs">
+                            {formatDate(syllabus.created_at)}
+                          </span>
                         </div>
                       </td>
                       <td className="px-4 py-2 text-right">
@@ -474,7 +488,10 @@ const SyllabusRepository = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="p-4 text-center text-slate-500 dark:text-slate-400 italic">
+                    <td
+                      colSpan="7"
+                      className="p-4 text-center text-slate-500 dark:text-slate-400 italic"
+                    >
                       No syllabus files found matching your search criteria.
                     </td>
                   </tr>
@@ -495,8 +512,14 @@ const SyllabusRepository = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-2 z-50 transition-opacity duration-300" onClick={closeModal}>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-2xl transform transition-transform duration-300 scale-100 border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/30 flex items-center justify-center p-2 z-50 transition-opacity duration-300"
+          onClick={closeModal}
+        >
+          <div
+            className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-2xl transform transition-transform duration-300 scale-100 border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
             <div className="sticky top-0 flex justify-between items-center px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 rounded-t-lg z-10">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">
@@ -520,7 +543,7 @@ const SyllabusRepository = () => {
                   <Select
                     options={courseOptions}
                     value={courseOptions.find(
-                      (o) => o.value === formData.course_id
+                      (o) => o.value === formData.course_id,
                     )}
                     onChange={(option) =>
                       handleSelectChange(option, "course_id")
@@ -539,7 +562,7 @@ const SyllabusRepository = () => {
                   <Select
                     options={periodOptions}
                     value={periodOptions.find(
-                      (o) => o.value === formData.period_id
+                      (o) => o.value === formData.period_id,
                     )}
                     onChange={(option) =>
                       handleSelectChange(option, "period_id")
@@ -589,7 +612,10 @@ const SyllabusRepository = () => {
                     <div className="p-3 bg-slate-100 dark:bg-slate-700/50 rounded-md border border-slate-200 dark:border-slate-600">
                       <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
                         <FileText size={16} />
-                        <span>{formData.file_name} ({formatFileSize(formData.file_size)})</span>
+                        <span>
+                          {formData.file_name} (
+                          {formatFileSize(formData.file_size)})
+                        </span>
                       </div>
                     </div>
                   </div>

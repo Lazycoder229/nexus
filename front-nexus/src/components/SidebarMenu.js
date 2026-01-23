@@ -118,11 +118,11 @@ const Menu = {
           icons: CheckSquare,
           link: "/admin/admin_faculty_evaluation",
         },
-        {
+        /*  {
           label: "Faculty Scheduling",
           icons: Calendar,
           link: "/admin/admin_faculty_scheduling",
-        },
+        }, */
       ],
     },
     {

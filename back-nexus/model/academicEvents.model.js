@@ -7,8 +7,8 @@ const AcademicEventsModel = {
       let query = `
         SELECT 
           ae.*,
-          ap.period_name,
-          ap.year
+          ap.semester,
+          ap.school_year
         FROM academic_events ae
         LEFT JOIN academic_periods ap ON ae.period_id = ap.period_id
         WHERE 1=1
@@ -46,12 +46,12 @@ const AcademicEventsModel = {
       const [rows] = await pool.query(
         `SELECT 
           ae.*,
-          ap.period_name,
-          ap.year
+          ap.semester,
+          ap.school_year
         FROM academic_events ae
         LEFT JOIN academic_periods ap ON ae.period_id = ap.period_id
         WHERE ae.event_id = ?`,
-        [id]
+        [id],
       );
       return rows[0];
     } catch (error) {
@@ -86,7 +86,7 @@ const AcademicEventsModel = {
           description,
           location,
           target_audience,
-        ]
+        ],
       );
 
       return result.insertId;
@@ -124,7 +124,7 @@ const AcademicEventsModel = {
           location,
           target_audience,
           id,
-        ]
+        ],
       );
 
       return result.affectedRows > 0;
@@ -138,7 +138,7 @@ const AcademicEventsModel = {
     try {
       const [result] = await pool.query(
         "DELETE FROM academic_events WHERE event_id = ?",
-        [id]
+        [id],
       );
       return result.affectedRows > 0;
     } catch (error) {

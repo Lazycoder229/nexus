@@ -19,21 +19,34 @@ export const getEnrollment = async (id) => {
 };
 
 // Create new enrollment
+import db from "../config/db.js";
+
 export const addEnrollment = async (data) => {
   // Check if enrollment already exists
   const exists = await enrollmentModel.checkEnrollmentExists(
     data.student_id,
     data.course_id,
-    data.period_id
+    data.period_id,
+    data.section_id, // add section_id to uniqueness check if you update the unique index
   );
 
   if (exists) {
     throw new Error(
-      "Student is already enrolled in this course for this academic period"
+      "Student is already enrolled in this course for this academic period and section",
     );
   }
 
-  return await enrollmentModel.createEnrollment(data);
+  const enrollment = await enrollmentModel.createEnrollment(data);
+
+  // Increment current_enrolled in sections table
+  if (data.section_id) {
+    await import("../model/sections.model.js").then(
+      ({ default: SectionsModel }) =>
+        SectionsModel.updateEnrollmentCount(data.section_id, true),
+    );
+  }
+
+  return enrollment;
 };
 
 // Update enrollment

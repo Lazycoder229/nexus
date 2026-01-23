@@ -12,6 +12,7 @@ const SyllabusController = {
       const syllabi = await SyllabusService.getAllSyllabi(filters);
       res.status(200).json(syllabi);
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: error.message });
     }
   },
@@ -21,6 +22,7 @@ const SyllabusController = {
       const syllabus = await SyllabusService.getSyllabusById(req.params.id);
       res.status(200).json(syllabus);
     } catch (error) {
+      console.error(error);
       res.status(404).json({ error: error.message });
     }
   },
@@ -30,6 +32,7 @@ const SyllabusController = {
       const syllabus = await SyllabusService.createSyllabus(req.body);
       res.status(201).json(syllabus);
     } catch (error) {
+      console.error(error);
       res.status(400).json({ error: error.message });
     }
   },
@@ -38,10 +41,11 @@ const SyllabusController = {
     try {
       const syllabus = await SyllabusService.updateSyllabus(
         req.params.id,
-        req.body
+        req.body,
       );
       res.status(200).json(syllabus);
     } catch (error) {
+      console.error(error);
       res.status(400).json({ error: error.message });
     }
   },
@@ -51,6 +55,7 @@ const SyllabusController = {
       const result = await SyllabusService.deleteSyllabus(req.params.id);
       res.status(200).json(result);
     } catch (error) {
+      console.error(error);
       res.status(400).json({ error: error.message });
     }
   },

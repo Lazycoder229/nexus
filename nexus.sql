@@ -1,4 +1,3 @@
-
 -- ===========================
 -- Database: Nexus
 -- ===========================
@@ -382,9 +381,6 @@ CREATE TABLE IF NOT EXISTS faculty_course_assignments (
     course_id INT NOT NULL,
     academic_period_id INT NOT NULL,
     section VARCHAR(50),
-    schedule_day VARCHAR(50),
-    schedule_time_start TIME,
-    schedule_time_end TIME,
     room VARCHAR(50),
     max_students INT,
     current_enrolled INT DEFAULT 0,
@@ -396,7 +392,14 @@ CREATE TABLE IF NOT EXISTS faculty_course_assignments (
     FOREIGN KEY (course_id) REFERENCES courses(course_id) ON DELETE CASCADE,
     FOREIGN KEY (academic_period_id) REFERENCES academic_periods(period_id) ON DELETE CASCADE
 );
-
+CREATE TABLE faculty_assignment_schedules (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  assignment_id INT NOT NULL,
+  schedule_day VARCHAR(50),
+  schedule_time_start TIME,
+  schedule_time_end TIME,
+  FOREIGN KEY (assignment_id) REFERENCES faculty_course_assignments(assignment_id) ON DELETE CASCADE
+);
 -- ===========================
 -- 18. Faculty Advisory Assignments Table
 -- Faculty advisors for students
@@ -418,7 +421,8 @@ CREATE TABLE IF NOT EXISTS faculty_advisory_assignments (
     FOREIGN KEY (program_id) REFERENCES programs(program_id) ON DELETE SET NULL,
     FOREIGN KEY (academic_period_id) REFERENCES academic_periods(period_id) ON DELETE CASCADE
 );
-
+ALTER TABLE faculty_advisory_assignments
+ADD COLUMN advisory_type VARCHAR(50) DEFAULT 'Academic' AFTER student_id;
 -- ===========================
 -- 19. Faculty Evaluations Table
 -- Faculty performance evaluations
@@ -2921,3 +2925,22 @@ SELECT
 FROM enrollments e
 JOIN users u ON e.student_id = u.user_id
 JOIN academic_periods ap ON e.period_id = ap.period_id; */
+
+-- Migration: Add year_level column to enrollments table
+-- Purpose: Track which academic year (1st-4th Year) students are in when enrolling
+
+ALTER TABLE enrollments 
+ADD COLUMN year_level VARCHAR(20) AFTER period_id;
+
+-- Optional: Add comment to the column
+ALTER TABLE enrollments 
+MODIFY COLUMN year_level VARCHAR(20) COMMENT 'Student year level: 1st Year, 2nd Year, 3rd Year, 4th Year';
+-- Migration: Add section_id to enrollments table
+ALTER TABLE enrollments ADD COLUMN section_id INT NULL AFTER enrollment_id;
+ALTER TABLE enrollments ADD CONSTRAINT fk_enrollments_section FOREIGN KEY (section_id) REFERENCES sections(section_id) ON DELETE SET NULL;
+
+
+UPDATE syllabus
+SET uploaded_by = NULL
+WHERE uploaded_by IS NOT NULL
+  AND uploaded_by NOT IN (SELECT user_id FROM users);

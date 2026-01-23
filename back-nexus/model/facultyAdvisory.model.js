@@ -3,9 +3,11 @@ import db from "../config/db.js";
 const FacultyAdvisory = {
   getAll: () => {
     return db.query(`
-      SELECT faa.*,
-             f.first_name as faculty_first_name, f.last_name as faculty_last_name, fed.employee_id,
-             s.first_name as student_first_name, s.last_name as student_last_name,
+      SELECT faa.*, 
+             CONCAT(f.first_name, ' ', f.last_name) AS faculty_name, 
+             CONCAT(s.first_name, ' ', s.last_name) AS student_name, 
+             faa.advisory_type,
+             fed.employee_id,
              p.name as program_name, p.code as program_code,
              ap.school_year, ap.semester
       FROM faculty_advisory_assignments faa
@@ -32,7 +34,7 @@ const FacultyAdvisory = {
       WHERE faa.faculty_user_id = ? AND faa.status = 'active'
       ORDER BY s.last_name, s.first_name
     `,
-      [facultyUserId]
+      [facultyUserId],
     );
   },
 
@@ -52,7 +54,7 @@ const FacultyAdvisory = {
       WHERE faa.student_id = ? AND faa.status = 'active'
       ORDER BY faa.created_at DESC
     `,
-      [studentId]
+      [studentId],
     );
   },
 
@@ -72,7 +74,7 @@ const FacultyAdvisory = {
       INNER JOIN academic_periods ap ON faa.academic_period_id = ap.period_id
       WHERE faa.advisory_id = ?
     `,
-      [advisoryId]
+      [advisoryId],
     );
   },
 
@@ -91,7 +93,7 @@ const FacultyAdvisory = {
         advisoryData.assignment_date || new Date(),
         advisoryData.status || "active",
         advisoryData.notes,
-      ]
+      ],
     );
   },
 
@@ -110,14 +112,14 @@ const FacultyAdvisory = {
         advisoryData.status,
         advisoryData.notes,
         advisoryId,
-      ]
+      ],
     );
   },
 
   delete: (advisoryId) => {
     return db.query(
       "DELETE FROM faculty_advisory_assignments WHERE advisory_id = ?",
-      [advisoryId]
+      [advisoryId],
     );
   },
 
@@ -128,7 +130,7 @@ const FacultyAdvisory = {
       FROM faculty_advisory_assignments
       WHERE faculty_user_id = ? AND academic_period_id = ? AND status = 'active'
     `,
-      [facultyUserId, academicPeriodId]
+      [facultyUserId, academicPeriodId],
     );
   },
 
@@ -147,7 +149,7 @@ const FacultyAdvisory = {
       AND e.period_id = ?
       GROUP BY u.user_id
     `,
-      [academicPeriodId, academicPeriodId]
+      [academicPeriodId, academicPeriodId],
     );
   },
 };

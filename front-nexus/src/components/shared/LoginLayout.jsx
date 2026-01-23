@@ -141,6 +141,11 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
       localStorage.setItem("userId", data.userId);
+      // Also store a user object for compatibility with SyllabusRepository
+      localStorage.setItem(
+        "user",
+        JSON.stringify({ user_id: data.userId, role: data.role }),
+      );
 
       alert(`Login successful! Role: ${data.role}`);
 

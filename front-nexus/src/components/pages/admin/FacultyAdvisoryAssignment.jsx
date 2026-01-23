@@ -48,14 +48,20 @@ const AdvisoryModal = ({
   faculty,
   students,
   periods,
+  programs,
+  resetTrigger,
 }) => {
-  const [formData, setFormData] = useState({
+  const initialFormState = {
     faculty_id: null,
     student_id: null,
     period_id: null,
     advisory_type: "Academic",
     notes: "",
-  });
+    program_id: null,
+    year_level: "",
+  };
+  const [formData, setFormData] = useState(initialFormState);
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
     if (initialData) {
@@ -63,32 +69,41 @@ const AdvisoryModal = ({
         faculty_id: initialData.faculty_id,
         student_id: initialData.student_id,
         period_id: initialData.period_id,
+        program_id: initialData.program_id || null,
+        year_level: initialData.year_level || "",
         advisory_type: initialData.advisory_type || "Academic",
         notes: initialData.notes || "",
         advisory_id: initialData.advisory_id,
       });
     } else {
-      setFormData({
-        faculty_id: null,
-        student_id: null,
-        period_id: null,
-        advisory_type: "Academic",
-        notes: "",
-      });
+      setFormData(initialFormState);
     }
-  }, [initialData]);
+  }, [initialData, isOpen, resetTrigger]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    // UI validation for required fields
+    if (!formData.faculty_id || !formData.student_id || !formData.period_id) {
+      setFormError(
+        "Please select a faculty advisor, student, and academic period.",
+      );
+      return;
+    }
+    setFormError("");
+    onSubmit(formData, () => setFormData(initialFormState));
   };
 
   if (!isOpen) return null;
 
+  const handleClose = () => {
+    setFormData(initialFormState);
+    onClose();
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
         className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 m-4"
@@ -100,19 +115,31 @@ const AdvisoryModal = ({
               ? "New Advisory Assignment"
               : "Edit Advisory Assignment"}
           </h3>
-          <button onClick={onClose}>
+          <button onClick={handleClose}>
             <X size={20} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {formError && (
+            <div className="text-red-600 text-sm mb-2">{formError}</div>
+          )}
           <div>
             <label className="block text-sm font-medium mb-1">
               Faculty Advisor *
             </label>
+            {/* Debug output for faculty select */}
+            {console.log(
+              "faculty_id:",
+              formData.faculty_id,
+              "faculty options:",
+              faculty,
+            )}
             <Select
               value={
-                faculty.find((f) => f.value === formData.faculty_id) || null
+                faculty.find(
+                  (f) => String(f.value) === String(formData.faculty_id),
+                ) || null
               }
               onChange={(selected) =>
                 setFormData((prev) => ({
@@ -160,6 +187,45 @@ const AdvisoryModal = ({
               options={periods}
               placeholder="Select period..."
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Program</label>
+            <Select
+              value={
+                programs.find((p) => p.value === formData.program_id) || null
+              }
+              onChange={(selected) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  program_id: selected?.value || null,
+                }))
+              }
+              options={programs}
+              placeholder="Select program..."
+              isClearable
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Year Level</label>
+            <select
+              value={formData.year_level}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  year_level: e.target.value,
+                }))
+              }
+              className="w-full px-3 py-2 border rounded-md"
+            >
+              <option value="">Select year level...</option>
+              <option value="1st Year">1st Year</option>
+              <option value="2nd Year">2nd Year</option>
+              <option value="3rd Year">3rd Year</option>
+              <option value="4th Year">4th Year</option>
+              <option value="5th Year">5th Year</option>
+            </select>
           </div>
 
           <div>
@@ -223,6 +289,19 @@ const FacultyAdvisoryAssignment = () => {
   const [students, setStudents] = useState([]);
   const [periods, setPeriods] = useState([]);
   const [search, setSearch] = useState("");
+  const [programs, setPrograms] = useState([]);
+  const fetchPrograms = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/programs`);
+      const programList = (res.data || []).map((p) => ({
+        value: p.id || p.program_id,
+        label: `${p.code} - ${p.name}`,
+      }));
+      setPrograms(programList);
+    } catch (err) {
+      console.error("Error fetching programs:", err);
+    }
+  };
   const [filterFaculty, setFilterFaculty] = useState(null);
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(10);
@@ -245,7 +324,7 @@ const FacultyAdvisoryAssignment = () => {
     try {
       const res = await axios.get(`${API_BASE}/api/faculty`);
       const facultyList = (res.data || []).map((f) => ({
-        value: f.faculty_id,
+        value: f.user_id || f.faculty_id || f.id, // Use the correct property for ID
         label: `${f.first_name} ${f.last_name} (${f.employee_id})`,
       }));
       setFaculty(facultyList);
@@ -289,6 +368,7 @@ const FacultyAdvisoryAssignment = () => {
     fetchFaculty();
     fetchStudents();
     fetchPeriods();
+    fetchPrograms();
   }, []);
 
   const filtered = advisories.filter((a) => {
@@ -302,17 +382,27 @@ const FacultyAdvisoryAssignment = () => {
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const displayed = filtered.slice(
     (page - 1) * rowsPerPage,
-    page * rowsPerPage
+    page * rowsPerPage,
   );
 
   const handleSubmit = async (data) => {
+    // Map faculty_id to faculty_user_id for backend compatibility
+    const submitData = {
+      ...data,
+      faculty_user_id: data.faculty_id,
+      academic_period_id: data.period_id,
+      program_id: data.program_id,
+      year_level: data.year_level,
+    };
+    delete submitData.faculty_id;
+    delete submitData.period_id;
     try {
       if (modalMode === "add") {
-        await axios.post(`${API_BASE}/api/faculty-advisory`, data);
+        await axios.post(`${API_BASE}/api/faculty-advisory`, submitData);
       } else {
         await axios.put(
           `${API_BASE}/api/faculty-advisory/${data.advisory_id}`,
-          data
+          submitData,
         );
       }
       fetchAdvisories();
@@ -321,7 +411,7 @@ const FacultyAdvisoryAssignment = () => {
     } catch (err) {
       console.error("Error saving advisory:", err);
       alert(
-        err.response?.data?.message || "Failed to save advisory assignment"
+        err.response?.data?.message || "Failed to save advisory assignment",
       );
     }
   };
@@ -482,12 +572,17 @@ const FacultyAdvisoryAssignment = () => {
           setModalOpen(false);
           setCurrentRecord(null);
         }}
-        onSubmit={handleSubmit}
+        onSubmit={(data, resetForm) => {
+          handleSubmit(data);
+          if (resetForm) resetForm();
+        }}
         mode={modalMode}
         initialData={currentRecord}
         faculty={faculty}
         students={students}
         periods={periods}
+        programs={programs}
+        resetTrigger={modalOpen === false}
       />
     </div>
   );

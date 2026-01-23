@@ -69,6 +69,7 @@ const EnrollmentModal = ({
     student_id: null,
     course_id: null,
     period_id: null,
+    section_id: null,
     year_level: "",
     enrollment_date: new Date().toISOString().split("T")[0],
     status: "Enrolled",
@@ -76,6 +77,40 @@ const EnrollmentModal = ({
     final_grade: "",
     remarks: "",
   });
+  const [sections, setSections] = useState([]);
+  const [loadingSections, setLoadingSections] = useState(false);
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+  // Fetch sections when course or period changes
+  useEffect(() => {
+    const fetchSections = async () => {
+      if (!formData.course_id || !formData.period_id) {
+        setSections([]);
+        setFormData((prev) => ({ ...prev, section_id: null }));
+        return;
+      }
+      setLoadingSections(true);
+      try {
+        const res = await axios.get(`${API_BASE}/api/sections`, {
+          params: {
+            course_id: formData.course_id,
+            period_id: formData.period_id,
+          },
+        });
+        setSections(
+          (res.data || []).map((s) => ({
+            value: s.section_id,
+            label: `${s.section_name} (${s.current_enrolled || 0}/${s.max_capacity})`,
+          })),
+        );
+      } catch (err) {
+        setSections([]);
+      }
+      setLoadingSections(false);
+    };
+    fetchSections();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.course_id, formData.period_id]);
 
   useEffect(() => {
     if (initialData) {
@@ -83,6 +118,7 @@ const EnrollmentModal = ({
         student_id: initialData.student_id,
         course_id: initialData.course_id,
         period_id: initialData.period_id,
+        section_id: initialData.section_id || null,
         year_level: initialData.year_level || "",
         enrollment_date:
           initialData.enrollment_date || new Date().toISOString().split("T")[0],
@@ -97,6 +133,7 @@ const EnrollmentModal = ({
         student_id: null,
         course_id: null,
         period_id: null,
+        section_id: null,
         year_level: "",
         enrollment_date: new Date().toISOString().split("T")[0],
         status: "Enrolled",
@@ -195,6 +232,30 @@ const EnrollmentModal = ({
           </div>
 
           <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Section *
+              </label>
+              <Select
+                value={
+                  sections.find((s) => s.value === formData.section_id) || null
+                }
+                onChange={(selected) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    section_id: selected?.value || null,
+                  }))
+                }
+                options={sections}
+                placeholder={
+                  loadingSections ? "Loading..." : "Select section..."
+                }
+                isDisabled={
+                  !formData.course_id || !formData.period_id || loadingSections
+                }
+                required
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium mb-1">
                 Year Level *
@@ -426,7 +487,7 @@ const EnrollmentRecords = () => {
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const displayed = filtered.slice(
     (page - 1) * rowsPerPage,
-    page * rowsPerPage
+    page * rowsPerPage,
   );
 
   const handleSubmit = async (data) => {
@@ -436,7 +497,7 @@ const EnrollmentRecords = () => {
       } else {
         await axios.put(
           `${API_BASE}/api/enrollments/${data.enrollment_id}`,
-          data
+          data,
         );
       }
       fetchEnrollments();

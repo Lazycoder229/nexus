@@ -3,9 +3,10 @@ import db from "../config/db.js";
 const FacultyEvaluation = {
   getAll: () => {
     return db.query(`
-      SELECT fe.*,
-             f.first_name as faculty_first_name, f.last_name as faculty_last_name, fed.employee_id,
-             ev.first_name as evaluator_first_name, ev.last_name as evaluator_last_name,
+      SELECT fe.*, 
+             CONCAT(f.first_name, ' ', f.last_name) AS faculty_name, 
+             CONCAT(ev.first_name, ' ', ev.last_name) AS evaluator_name, 
+             fed.employee_id,
              c.code as course_code, c.title as course_title,
              ap.school_year, ap.semester
       FROM faculty_evaluations fe
@@ -32,7 +33,7 @@ const FacultyEvaluation = {
       WHERE fe.faculty_user_id = ?
       ORDER BY fe.evaluation_date DESC
     `,
-      [facultyUserId]
+      [facultyUserId],
     );
   },
 
@@ -52,7 +53,7 @@ const FacultyEvaluation = {
       INNER JOIN academic_periods ap ON fe.academic_period_id = ap.period_id
       WHERE fe.evaluation_id = ?
     `,
-      [evaluationId]
+      [evaluationId],
     );
   },
 
@@ -69,7 +70,7 @@ const FacultyEvaluation = {
       WHERE fe.academic_period_id = ?
       ORDER BY f.last_name, f.first_name
     `,
-      [periodId]
+      [periodId],
     );
   },
 
@@ -107,7 +108,7 @@ const FacultyEvaluation = {
         evaluationData.comments,
         evaluationData.recommendations,
         evaluationData.status || "draft",
-      ]
+      ],
     );
   },
 
@@ -147,7 +148,7 @@ const FacultyEvaluation = {
         evaluationData.recommendations,
         evaluationData.status,
         evaluationId,
-      ]
+      ],
     );
   },
 

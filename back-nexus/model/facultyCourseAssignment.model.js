@@ -4,10 +4,10 @@ const FacultyCourseAssignment = {
   // Get all course assignments
   getAll: () => {
     return db.query(`
-      SELECT fca.*, 
-             u.first_name, u.last_name, ed.employee_id,
-             c.code as course_code, c.title as course_title, c.units,
-             ap.school_year, ap.semester, ap.status as period_status
+            SELECT fca.*, 
+              CONCAT(u.first_name, ' ', u.last_name) AS faculty_name, u.first_name, u.last_name, ed.employee_id,
+              c.code as course_code, c.title as course_title, c.units,
+              ap.school_year, ap.semester, ap.status as period_status
       FROM faculty_course_assignments fca
       INNER JOIN users u ON fca.faculty_user_id = u.user_id
       INNER JOIN employee_details ed ON u.user_id = ed.user_id
@@ -21,16 +21,19 @@ const FacultyCourseAssignment = {
   getByFacultyId: (facultyUserId) => {
     return db.query(
       `
-      SELECT fca.*, 
-             c.code as course_code, c.title as course_title, c.units,
-             ap.school_year, ap.semester
-      FROM faculty_course_assignments fca
-      INNER JOIN courses c ON fca.course_id = c.course_id
-      INNER JOIN academic_periods ap ON fca.academic_period_id = ap.period_id
-      WHERE fca.faculty_user_id = ?
-      ORDER BY ap.school_year DESC, ap.semester DESC
+            SELECT fca.*, 
+              CONCAT(u.first_name, ' ', u.last_name) AS faculty_name, u.first_name, u.last_name, ed.employee_id,
+              c.code as course_code, c.title as course_title, c.units,
+              ap.school_year, ap.semester
+            FROM faculty_course_assignments fca
+            INNER JOIN users u ON fca.faculty_user_id = u.user_id
+            INNER JOIN employee_details ed ON u.user_id = ed.user_id
+            INNER JOIN courses c ON fca.course_id = c.course_id
+            INNER JOIN academic_periods ap ON fca.academic_period_id = ap.period_id
+            WHERE fca.faculty_user_id = ?
+            ORDER BY ap.school_year DESC, ap.semester DESC
     `,
-      [facultyUserId]
+      [facultyUserId],
     );
   },
 
@@ -38,17 +41,17 @@ const FacultyCourseAssignment = {
   getByAcademicPeriod: (periodId) => {
     return db.query(
       `
-      SELECT fca.*, 
-             u.first_name, u.last_name, ed.employee_id,
-             c.code as course_code, c.title as course_title, c.units
-      FROM faculty_course_assignments fca
-      INNER JOIN users u ON fca.faculty_user_id = u.user_id
-      INNER JOIN employee_details ed ON u.user_id = ed.user_id
-      INNER JOIN courses c ON fca.course_id = c.course_id
-      WHERE fca.academic_period_id = ?
-      ORDER BY c.code, fca.section
+            SELECT fca.*, 
+              CONCAT(u.first_name, ' ', u.last_name) AS faculty_name, u.first_name, u.last_name, ed.employee_id,
+              c.code as course_code, c.title as course_title, c.units
+            FROM faculty_course_assignments fca
+            INNER JOIN users u ON fca.faculty_user_id = u.user_id
+            INNER JOIN employee_details ed ON u.user_id = ed.user_id
+            INNER JOIN courses c ON fca.course_id = c.course_id
+            WHERE fca.academic_period_id = ?
+            ORDER BY c.code, fca.section
     `,
-      [periodId]
+      [periodId],
     );
   },
 
@@ -56,18 +59,18 @@ const FacultyCourseAssignment = {
   getById: (assignmentId) => {
     return db.query(
       `
-      SELECT fca.*, 
-             u.first_name, u.last_name, u.email, ed.employee_id,
-             c.code as course_code, c.title as course_title, c.units,
-             ap.school_year, ap.semester
-      FROM faculty_course_assignments fca
-      INNER JOIN users u ON fca.faculty_user_id = u.user_id
-      INNER JOIN employee_details ed ON u.user_id = ed.user_id
-      INNER JOIN courses c ON fca.course_id = c.course_id
-      INNER JOIN academic_periods ap ON fca.academic_period_id = ap.period_id
-      WHERE fca.assignment_id = ?
+            SELECT fca.*, 
+              CONCAT(u.first_name, ' ', u.last_name) AS faculty_name, u.first_name, u.last_name, u.email, ed.employee_id,
+              c.code as course_code, c.title as course_title, c.units,
+              ap.school_year, ap.semester
+            FROM faculty_course_assignments fca
+            INNER JOIN users u ON fca.faculty_user_id = u.user_id
+            INNER JOIN employee_details ed ON u.user_id = ed.user_id
+            INNER JOIN courses c ON fca.course_id = c.course_id
+            INNER JOIN academic_periods ap ON fca.academic_period_id = ap.period_id
+            WHERE fca.assignment_id = ?
     `,
-      [assignmentId]
+      [assignmentId],
     );
   },
 
@@ -92,7 +95,7 @@ const FacultyCourseAssignment = {
         assignmentData.current_enrolled || 0,
         assignmentData.assignment_status || "active",
         assignmentData.assigned_date || new Date(),
-      ]
+      ],
     );
   },
 
@@ -117,7 +120,7 @@ const FacultyCourseAssignment = {
         assignmentData.current_enrolled,
         assignmentData.assignment_status,
         assignmentId,
-      ]
+      ],
     );
   },
 
@@ -125,7 +128,7 @@ const FacultyCourseAssignment = {
   delete: (assignmentId) => {
     return db.query(
       "DELETE FROM faculty_course_assignments WHERE assignment_id = ?",
-      [assignmentId]
+      [assignmentId],
     );
   },
 
@@ -136,7 +139,7 @@ const FacultyCourseAssignment = {
     scheduleDay,
     timeStart,
     timeEnd,
-    excludeAssignmentId = null
+    excludeAssignmentId = null,
   ) => {
     let query = `
       SELECT * FROM faculty_course_assignments

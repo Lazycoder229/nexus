@@ -28,7 +28,7 @@ import FacultyManagement from "./components/pages/admin/FacultyManagement";
 import FacultyAssignCourse from "./components/pages/admin/FacultyAssignCourse";
 import FacultyAdvisoryAssignment from "./components/pages/admin/FacultyAdvisoryAssignment";
 import FacultyEvaluation from "./components/pages/admin/FacultyEvaluation";
-import FacultyScheduling from "./components/pages/admin/FacultyScheduling";
+/* import FacultyScheduling from "./components/pages/admin/FacultyScheduling"; */
 import SubjectSections from "./components/pages/admin/SubjectSections";
 import TimetableBuilder from "./components/pages/admin/TimetableBuilder";
 import AcademicCalendar from "./components/pages/admin/AcademicCalendar";
@@ -183,10 +183,10 @@ function AppWrapper() {
           path="admin_faculty_evaluation"
           element={<FacultyEvaluation />}
         />
-        <Route
+        {/*   <Route
           path="admin_faculty_scheduling"
           element={<FacultyScheduling />}
-        />
+        /> */}
         <Route path="admin_subject_sections" element={<SubjectSections />} />
         <Route path="admin_timetable" element={<TimetableBuilder />} />
         <Route path="admin_academic_calendar" element={<AcademicCalendar />} />

@@ -137,8 +137,8 @@ const EvaluationModal = ({
             {mode === "add"
               ? "New Faculty Evaluation"
               : mode === "edit"
-              ? "Edit Evaluation"
-              : "View Evaluation"}
+                ? "Edit Evaluation"
+                : "View Evaluation"}
           </h3>
           <button onClick={onClose}>
             <X size={20} />
@@ -306,7 +306,7 @@ const FacultyEvaluation = () => {
     try {
       const res = await axios.get(`${API_BASE}/api/faculty`);
       const facultyList = (res.data || []).map((f) => ({
-        value: f.faculty_id,
+        value: f.user_id || f.faculty_id || f.id, // Use user_id for select value
         label: `${f.first_name} ${f.last_name}`,
       }));
       setFaculty(facultyList);
@@ -361,17 +361,28 @@ const FacultyEvaluation = () => {
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const displayed = filtered.slice(
     (page - 1) * rowsPerPage,
-    page * rowsPerPage
+    page * rowsPerPage,
   );
 
   const handleSubmit = async (data) => {
+    // Map fields for backend compatibility
+    const submitData = {
+      ...data,
+      faculty_user_id: data.faculty_id,
+      evaluator_id: data.student_id,
+      evaluator_type: "student",
+      academic_period_id: data.period_id,
+    };
+    delete submitData.faculty_id;
+    delete submitData.student_id;
+    delete submitData.period_id;
     try {
       if (modalMode === "add") {
-        await axios.post(`${API_BASE}/api/faculty-evaluations`, data);
+        await axios.post(`${API_BASE}/api/faculty-evaluations`, submitData);
       } else {
         await axios.put(
           `${API_BASE}/api/faculty-evaluations/${data.evaluation_id}`,
-          data
+          submitData,
         );
       }
       fetchEvaluations();
