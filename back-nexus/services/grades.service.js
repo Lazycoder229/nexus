@@ -31,6 +31,19 @@ const GradesService = {
         throw new Error("Missing required fields");
       }
 
+      // Check if grade already exists for this student, course, and period
+      const existingGrades = await GradesModel.getAllGrades({
+        student_user_id: gradeData.student_user_id,
+        course_id: gradeData.course_id,
+        period_id: gradeData.period_id,
+      });
+
+      if (existingGrades.length > 0) {
+        throw new Error(
+          "A grade already exists for this student, course, and academic period. Please edit the existing grade instead.",
+        );
+      }
+
       const gradeId = await GradesModel.createGrade(gradeData);
       return await GradesModel.getGradeById(gradeId);
     } catch (error) {

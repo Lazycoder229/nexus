@@ -1,8 +1,20 @@
 import { useState, useEffect } from "react";
-import { FileText, Plus, Edit, Trash2, BookOpen, Calendar, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import Select from "react-select";
+import {
+  FileText,
+  Plus,
+  Edit,
+  Trash2,
+  BookOpen,
+  Calendar,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 const ExamSetup = () => {
   const [exams, setExams] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -29,6 +41,7 @@ const ExamSetup = () => {
 
   useEffect(() => {
     fetchExams();
+    fetchCourses();
   }, []);
 
   const fetchExams = async () => {
@@ -36,7 +49,7 @@ const ExamSetup = () => {
       setLoading(true);
       const queryParams = new URLSearchParams(filters);
       const response = await fetch(
-        `http://localhost:5000/api/exams?${queryParams}`
+        `http://localhost:5000/api/exams?${queryParams}`,
       );
       const data = await response.json();
       if (data.success) {
@@ -46,6 +59,18 @@ const ExamSetup = () => {
       console.error("Error fetching exams:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/course/courses");
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setCourses(data);
+      }
+    } catch (error) {
+      console.error("Error fetching courses:", error);
     }
   };
 
@@ -111,12 +136,20 @@ const ExamSetup = () => {
         : "http://localhost:5000/api/exams";
       const method = editingExam ? "PUT" : "POST";
 
+      // Get logged-in user ID from localStorage
+      const userId = localStorage.getItem("userId");
+
+      // Include created_by for new exams
+      const submitData = editingExam
+        ? formData
+        : { ...formData, created_by: userId };
+
       const response = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
 
       const data = await response.json();
@@ -134,7 +167,7 @@ const ExamSetup = () => {
       try {
         const response = await fetch(
           `http://localhost:5000/api/exams/${examId}`,
-          { method: "DELETE" }
+          { method: "DELETE" },
         );
         const data = await response.json();
         if (data.success) {
@@ -148,17 +181,22 @@ const ExamSetup = () => {
 
   const getStatusBadge = (status) => {
     const statusColors = {
-      draft: "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300",
-      scheduled: "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400",
-      ongoing: "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400",
-      completed: "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400",
+      draft:
+        "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300",
+      scheduled:
+        "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400",
+      ongoing:
+        "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400",
+      completed:
+        "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400",
       cancelled: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400",
     };
 
     return (
       <span
         className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-          statusColors[status] || "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300"
+          statusColors[status] ||
+          "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300"
         }`}
       >
         {status}
@@ -169,16 +207,20 @@ const ExamSetup = () => {
   const getExamTypeBadge = (type) => {
     const typeColors = {
       quiz: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400",
-      midterm: "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400",
+      midterm:
+        "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400",
       final: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400",
-      practical: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-400",
-      project: "bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-400",
+      practical:
+        "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-400",
+      project:
+        "bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-400",
     };
 
     return (
       <span
         className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-          typeColors[type] || "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300"
+          typeColors[type] ||
+          "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300"
         }`}
       >
         {type}
@@ -189,142 +231,240 @@ const ExamSetup = () => {
   return (
     <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
       <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
-      {/* Header */}
-      <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <FileText size={24} className="text-indigo-600" />
-          Exam Setup
-        </h2>
-        <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-          Data Integrity: Online
-        </span>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <p className="text-sm text-slate-600 dark:text-slate-400">Total Exams</p>
-          <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">245</p>
-        </div>
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <p className="text-sm text-slate-600 dark:text-slate-400">Scheduled</p>
-          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">32</p>
-        </div>
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <p className="text-sm text-slate-600 dark:text-slate-400">Ongoing</p>
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400">8</p>
-        </div>
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <p className="text-sm text-slate-600 dark:text-slate-400">Completed</p>
-          <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">205</p>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Search Input - LEFT */}
-        <div className="relative flex-grow max-w-xs">
-          <input
-            type="text"
-            placeholder="Search exams..."
-            value={filters.search}
-            onChange={(e) =>
-              setFilters({ ...filters, search: e.target.value })
-            }
-            className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
-          />
-          <Search
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-            size={14}
-          />
+        {/* Header */}
+        <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <FileText size={24} className="text-indigo-600" />
+            Exam Setup
+          </h2>
+          <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+            Data Integrity: Online
+          </span>
         </div>
 
-        {/* Filters - RIGHT */}
-        <div className="flex items-center gap-2">
-          <select
-            value={filters.exam_type}
-            onChange={(e) =>
-              setFilters({ ...filters, exam_type: e.target.value })
-            }
-            className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-40"
-          >
-            <option value="">All Exam Types</option>
-            <option value="quiz">Quiz</option>
-            <option value="midterm">Midterm</option>
-            <option value="final">Final</option>
-            <option value="practical">Practical</option>
-            <option value="project">Project</option>
-          </select>
-          <select
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-32"
-          >
-            <option value="">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="scheduled">Scheduled</option>
-            <option value="ongoing">Ongoing</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <button
-            onClick={() => handleOpenModal()}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-sm border shadow-md shadow-indigo-500/30"
-          >
-            <Plus size={14} />
-            Create New Exam
-          </button>
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Total Exams
+            </p>
+            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+              245
+            </p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Scheduled
+            </p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              32
+            </p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Ongoing
+            </p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+              8
+            </p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Completed
+            </p>
+            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+              205
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Exams Table */}
-      <div>
-        <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-100">Exam List</h2>
-        <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
-          <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-            <thead className="bg-slate-100 dark:bg-slate-700/70">
-              <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                <th className="px-4 py-2.5">
-                  Exam Name
-                </th>
-                <th className="px-4 py-2.5">
-                  Course
-                </th>
-                <th className="px-4 py-2.5">
-                  Type
-                </th>
-                <th className="px-4 py-2.5">
-                  Total Points
-                </th>
-                <th className="px-4 py-2.5">
-                  Duration
-                </th>
-                <th className="px-4 py-2.5">
-                  Status
-                </th>
-                <th className="px-4 py-2.5">
-                  Created By
-                </th>
-                <th className="px-4 py-2.5 w-1/12 text-right">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
-              {(() => {
-                if (loading) {
-                  return (
-                    <tr>
-                      <td
-                        colSpan={8}
-                        className="p-4 text-center text-slate-500 italic"
-                      >
-                        Loading...
+        {/* Filters */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Search Input - LEFT */}
+          <div className="relative flex-grow max-w-xs">
+            <input
+              type="text"
+              placeholder="Search exams..."
+              value={filters.search}
+              onChange={(e) =>
+                setFilters({ ...filters, search: e.target.value })
+              }
+              className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
+            />
+            <Search
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+              size={14}
+            />
+          </div>
+
+          {/* Filters - RIGHT */}
+          <div className="flex items-center gap-2">
+            <select
+              value={filters.exam_type}
+              onChange={(e) =>
+                setFilters({ ...filters, exam_type: e.target.value })
+              }
+              className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-40"
+            >
+              <option value="">All Exam Types</option>
+              <option value="quiz">Quiz</option>
+              <option value="midterm">Midterm</option>
+              <option value="final">Final</option>
+              <option value="practical">Practical</option>
+              <option value="project">Project</option>
+            </select>
+            <select
+              value={filters.status}
+              onChange={(e) =>
+                setFilters({ ...filters, status: e.target.value })
+              }
+              className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-32"
+            >
+              <option value="">All Status</option>
+              <option value="draft">Draft</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="ongoing">Ongoing</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <button
+              onClick={() => handleOpenModal()}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-sm border shadow-md shadow-indigo-500/30"
+            >
+              <Plus size={14} />
+              Create New Exam
+            </button>
+          </div>
+        </div>
+
+        {/* Exams Table */}
+        <div>
+          <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-100">
+            Exam List
+          </h2>
+          <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-100 dark:bg-slate-700/70">
+                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  <th className="px-4 py-2.5">Exam Name</th>
+                  <th className="px-4 py-2.5">Course</th>
+                  <th className="px-4 py-2.5">Type</th>
+                  <th className="px-4 py-2.5">Total Points</th>
+                  <th className="px-4 py-2.5">Duration</th>
+                  <th className="px-4 py-2.5">Status</th>
+                  <th className="px-4 py-2.5">Created By</th>
+                  <th className="px-4 py-2.5 w-1/12 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
+                {(() => {
+                  if (loading) {
+                    return (
+                      <tr>
+                        <td
+                          colSpan={8}
+                          className="p-4 text-center text-slate-500 italic"
+                        >
+                          Loading...
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  const searchTerm = filters.search.toLowerCase();
+                  const filtered = exams.filter((exam) => {
+                    const matchesSearch =
+                      exam.exam_name?.toLowerCase().includes(searchTerm) ||
+                      exam.course_code?.toLowerCase().includes(searchTerm) ||
+                      exam.exam_type?.toLowerCase().includes(searchTerm);
+                    return matchesSearch;
+                  });
+
+                  const startIndex = (currentPage - 1) * itemsPerPage;
+                  const paginatedData = filtered.slice(
+                    startIndex,
+                    startIndex + itemsPerPage,
+                  );
+
+                  if (paginatedData.length === 0) {
+                    return (
+                      <tr>
+                        <td
+                          colSpan={8}
+                          className="p-4 text-center text-slate-500 italic"
+                        >
+                          No exams found matching your search criteria.
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return paginatedData.map((exam) => (
+                    <tr
+                      key={exam.exam_id}
+                      className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150"
+                    >
+                      <td className="px-4 py-2 font-medium">
+                        {exam.exam_name}
+                      </td>
+                      <td className="px-4 py-2">{exam.course_code}</td>
+                      <td className="px-4 py-2">
+                        {getExamTypeBadge(exam.exam_type)}
+                      </td>
+                      <td className="px-4 py-2">{exam.total_points}</td>
+                      <td className="px-4 py-2">
+                        {exam.exam_duration
+                          ? `${exam.exam_duration} mins`
+                          : "N/A"}
+                      </td>
+                      <td className="px-4 py-2">
+                        {getStatusBadge(exam.status)}
+                      </td>
+                      <td className="px-4 py-2">
+                        {exam.creator_first_name} {exam.creator_last_name}
+                      </td>
+                      <td className="px-4 py-2 text-right space-x-2">
+                        <button
+                          onClick={() => handleOpenModal(exam)}
+                          className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                          title="Edit"
+                        >
+                          <Edit size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(exam.exam_id)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </td>
                     </tr>
-                  );
-                }
+                  ));
+                })()}
+              </tbody>
+            </table>
+          </div>
 
+          {/* Pagination */}
+          <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
+            <span className="text-xs sm:text-sm">
+              Page <span className="font-semibold">{currentPage}</span> of{" "}
+              <span className="font-semibold">
+                {(() => {
+                  const searchTerm = filters.search.toLowerCase();
+                  const filtered = exams.filter((exam) => {
+                    const matchesSearch =
+                      exam.exam_name?.toLowerCase().includes(searchTerm) ||
+                      exam.course_code?.toLowerCase().includes(searchTerm) ||
+                      exam.exam_type?.toLowerCase().includes(searchTerm);
+                    return matchesSearch;
+                  });
+                  return Math.ceil(filtered.length / itemsPerPage) || 1;
+                })()}
+              </span>{" "}
+              | Total Records:{" "}
+              {(() => {
                 const searchTerm = filters.search.toLowerCase();
                 const filtered = exams.filter((exam) => {
                   const matchesSearch =
@@ -333,371 +473,345 @@ const ExamSetup = () => {
                     exam.exam_type?.toLowerCase().includes(searchTerm);
                   return matchesSearch;
                 });
+                return filtered.length;
+              })()}
+            </span>
+            <div className="flex gap-1 mt-2 sm:mt-0">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="p-1.5 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                <ChevronLeft
+                  size={16}
+                  className="text-slate-600 dark:text-slate-400"
+                />
+              </button>
+              {(() => {
+                const searchTerm = filters.search.toLowerCase();
+                const filtered = exams.filter((exam) => {
+                  const matchesSearch =
+                    exam.exam_name?.toLowerCase().includes(searchTerm) ||
+                    exam.course_code?.toLowerCase().includes(searchTerm) ||
+                    exam.exam_type?.toLowerCase().includes(searchTerm);
+                  return matchesSearch;
+                });
+                const totalPages =
+                  Math.ceil(filtered.length / itemsPerPage) || 1;
 
-                const startIndex = (currentPage - 1) * itemsPerPage;
-                const paginatedData = filtered.slice(startIndex, startIndex + itemsPerPage);
-
-                if (paginatedData.length === 0) {
-                  return (
-                    <tr>
-                      <td
-                        colSpan={8}
-                        className="p-4 text-center text-slate-500 italic"
-                      >
-                        No exams found matching your search criteria.
-                      </td>
-                    </tr>
-                  );
-                }
-
-                return paginatedData.map((exam) => (
-                  <tr key={exam.exam_id} className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150">
-                    <td className="px-4 py-2 font-medium">
-                      {exam.exam_name}
-                    </td>
-                    <td className="px-4 py-2">
-                      {exam.course_code}
-                    </td>
-                    <td className="px-4 py-2">
-                      {getExamTypeBadge(exam.exam_type)}
-                    </td>
-                    <td className="px-4 py-2">
-                      {exam.total_points}
-                    </td>
-                    <td className="px-4 py-2">
-                      {exam.exam_duration
-                        ? `${exam.exam_duration} mins`
-                        : "N/A"}
-                    </td>
-                    <td className="px-4 py-2">
-                      {getStatusBadge(exam.status)}
-                    </td>
-                    <td className="px-4 py-2">
-                      {exam.creator_first_name} {exam.creator_last_name}
-                    </td>
-                    <td className="px-4 py-2 text-right space-x-2">
-                      <button
-                        onClick={() => handleOpenModal(exam)}
-                        className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
-                        title="Edit"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(exam.exam_id)}
-                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
-                        title="Delete"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
+                return [...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                      currentPage === i + 1
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
                 ));
               })()}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
-          <span className="text-xs sm:text-sm">
-            Page <span className="font-semibold">{currentPage}</span> of{" "}
-            <span className="font-semibold">{(() => {
-              const searchTerm = filters.search.toLowerCase();
-              const filtered = exams.filter((exam) => {
-                const matchesSearch =
-                  exam.exam_name?.toLowerCase().includes(searchTerm) ||
-                  exam.course_code?.toLowerCase().includes(searchTerm) ||
-                  exam.exam_type?.toLowerCase().includes(searchTerm);
-                return matchesSearch;
-              });
-              return Math.ceil(filtered.length / itemsPerPage) || 1;
-            })()}</span> | Total Records:{" "}
-            {(() => {
-              const searchTerm = filters.search.toLowerCase();
-              const filtered = exams.filter((exam) => {
-                const matchesSearch =
-                  exam.exam_name?.toLowerCase().includes(searchTerm) ||
-                  exam.course_code?.toLowerCase().includes(searchTerm) ||
-                  exam.exam_type?.toLowerCase().includes(searchTerm);
-                return matchesSearch;
-              });
-              return filtered.length;
-            })()}
-          </span>
-          <div className="flex gap-1 mt-2 sm:mt-0">
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="p-1.5 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-            >
-              <ChevronLeft size={16} className="text-slate-600 dark:text-slate-400" />
-            </button>
-            {(() => {
-              const searchTerm = filters.search.toLowerCase();
-              const filtered = exams.filter((exam) => {
-                const matchesSearch =
-                  exam.exam_name?.toLowerCase().includes(searchTerm) ||
-                  exam.course_code?.toLowerCase().includes(searchTerm) ||
-                  exam.exam_type?.toLowerCase().includes(searchTerm);
-                return matchesSearch;
-              });
-              const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-              
-              return [...Array(totalPages)].map((_, i) => (
-                <button
-                  key={i + 1}
-                  onClick={() => setCurrentPage(i + 1)}
-                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                    currentPage === i + 1
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              ));
-            })()}
-            <button
-              onClick={() => {
-                const searchTerm = filters.search.toLowerCase();
-                const filtered = exams.filter((exam) => {
-                  const matchesSearch =
-                    exam.exam_name?.toLowerCase().includes(searchTerm) ||
-                    exam.course_code?.toLowerCase().includes(searchTerm) ||
-                    exam.exam_type?.toLowerCase().includes(searchTerm);
-                  return matchesSearch;
-                });
-                const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-                setCurrentPage(Math.min(totalPages, currentPage + 1));
-              }}
-              disabled={(() => {
-                const searchTerm = filters.search.toLowerCase();
-                const filtered = exams.filter((exam) => {
-                  const matchesSearch =
-                    exam.exam_name?.toLowerCase().includes(searchTerm) ||
-                    exam.course_code?.toLowerCase().includes(searchTerm) ||
-                    exam.exam_type?.toLowerCase().includes(searchTerm);
-                  return matchesSearch;
-                });
-                const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-                return currentPage === totalPages;
-              })()}
-              className="p-1.5 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-            >
-              <ChevronRight size={16} className="text-slate-600 dark:text-slate-400" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Exam Modal */}
-      {showModal && (
-        <div
-          className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
-          onClick={handleCloseModal}
-        >
-          <div
-            className="bg-white dark:bg-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200 dark:border-slate-700"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Sticky Header */}
-            <div className="sticky top-0 bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600 px-6 py-4 rounded-t-lg">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-                  {editingExam ? "Edit Exam" : "Create New Exam"}
-                </h2>
-                <button
-                  onClick={handleCloseModal}
-                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                >
-                  <Plus size={24} className="rotate-45" />
-                </button>
-              </div>
+              <button
+                onClick={() => {
+                  const searchTerm = filters.search.toLowerCase();
+                  const filtered = exams.filter((exam) => {
+                    const matchesSearch =
+                      exam.exam_name?.toLowerCase().includes(searchTerm) ||
+                      exam.course_code?.toLowerCase().includes(searchTerm) ||
+                      exam.exam_type?.toLowerCase().includes(searchTerm);
+                    return matchesSearch;
+                  });
+                  const totalPages =
+                    Math.ceil(filtered.length / itemsPerPage) || 1;
+                  setCurrentPage(Math.min(totalPages, currentPage + 1));
+                }}
+                disabled={(() => {
+                  const searchTerm = filters.search.toLowerCase();
+                  const filtered = exams.filter((exam) => {
+                    const matchesSearch =
+                      exam.exam_name?.toLowerCase().includes(searchTerm) ||
+                      exam.course_code?.toLowerCase().includes(searchTerm) ||
+                      exam.exam_type?.toLowerCase().includes(searchTerm);
+                    return matchesSearch;
+                  });
+                  const totalPages =
+                    Math.ceil(filtered.length / itemsPerPage) || 1;
+                  return currentPage === totalPages;
+                })()}
+                className="p-1.5 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                <ChevronRight
+                  size={16}
+                  className="text-slate-600 dark:text-slate-400"
+                />
+              </button>
             </div>
-
-            {/* Form Wrapper */}
-            <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-              {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                      Exam Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.exam_name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, exam_name: e.target.value })
-                      }
-                      required
-                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                      Course ID
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.course_id}
-                      onChange={(e) =>
-                        setFormData({ ...formData, course_id: e.target.value })
-                      }
-                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                      Exam Type *
-                    </label>
-                    <select
-                      value={formData.exam_type}
-                      onChange={(e) =>
-                        setFormData({ ...formData, exam_type: e.target.value })
-                      }
-                      required
-                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
-                    >
-                      <option value="quiz">Quiz</option>
-                      <option value="midterm">Midterm</option>
-                      <option value="final">Final</option>
-                      <option value="practical">Practical</option>
-                      <option value="project">Project</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                      Exam Date
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.exam_date}
-                      onChange={(e) =>
-                        setFormData({ ...formData, exam_date: e.target.value })
-                      }
-                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                      Exam Time
-                    </label>
-                    <input
-                      type="time"
-                      value={formData.exam_time}
-                      onChange={(e) =>
-                        setFormData({ ...formData, exam_time: e.target.value })
-                      }
-                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                      Duration (minutes)
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.exam_duration}
-                      onChange={(e) =>
-                        setFormData({ ...formData, exam_duration: e.target.value })
-                      }
-                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                      Total Points
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.total_points}
-                      onChange={(e) =>
-                        setFormData({ ...formData, total_points: e.target.value })
-                      }
-                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                      Passing Score
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.passing_score}
-                      onChange={(e) =>
-                        setFormData({ ...formData, passing_score: e.target.value })
-                      }
-                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                      Status *
-                    </label>
-                    <select
-                      value={formData.status}
-                      onChange={(e) =>
-                        setFormData({ ...formData, status: e.target.value })
-                      }
-                      required
-                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
-                    >
-                      <option value="draft">Draft</option>
-                      <option value="scheduled">Scheduled</option>
-                      <option value="ongoing">Ongoing</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
-
-                  <div className="col-span-2">
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                      Instructions
-                    </label>
-                    <textarea
-                      value={formData.instructions}
-                      onChange={(e) =>
-                        setFormData({ ...formData, instructions: e.target.value })
-                      }
-                      rows={4}
-                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Sticky Footer */}
-              <div className="sticky bottom-0 bg-slate-50 dark:bg-slate-700 border-t border-slate-200 dark:border-slate-600 px-6 py-4 rounded-b-lg">
-                <div className="flex gap-3 justify-end">
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors text-sm font-medium"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-500 transition-colors text-sm font-medium"
-                  >
-                    {editingExam ? "Update Exam" : "Create Exam"}
-                  </button>
-                </div>
-              </div>
-            </form>
           </div>
         </div>
-      )}
+
+        {/* Exam Modal */}
+        {showModal && (
+          <div
+            className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+            onClick={handleCloseModal}
+          >
+            <div
+              className="bg-white dark:bg-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200 dark:border-slate-700"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Sticky Header */}
+              <div className="sticky top-0 bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600 px-6 py-4 rounded-t-lg">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                    {editingExam ? "Edit Exam" : "Create New Exam"}
+                  </h2>
+                  <button
+                    onClick={handleCloseModal}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                  >
+                    <Plus size={24} className="rotate-45" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Form Wrapper */}
+              <form
+                onSubmit={handleSubmit}
+                className="flex flex-col flex-1 overflow-hidden"
+              >
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                        Exam Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.exam_name}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            exam_name: e.target.value,
+                          })
+                        }
+                        required
+                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                        Course ID
+                      </label>
+                      <Select
+                        options={courses.map((course) => ({
+                          value: course.id,
+                          label: `${course.code} - ${course.title}`,
+                        }))}
+                        value={
+                          formData.course_id
+                            ? {
+                                value: formData.course_id,
+                                label: courses.find(
+                                  (c) => c.id === formData.course_id,
+                                )
+                                  ? `${courses.find((c) => c.id === formData.course_id).code} - ${courses.find((c) => c.id === formData.course_id).title}`
+                                  : "",
+                              }
+                            : null
+                        }
+                        onChange={(option) =>
+                          setFormData({
+                            ...formData,
+                            course_id: option?.value || "",
+                          })
+                        }
+                        className="text-sm"
+                        placeholder="Select course..."
+                        isClearable
+                        styles={{
+                          control: (base) => ({
+                            ...base,
+                            minHeight: "38px",
+                            borderColor: "rgb(203 213 225)",
+                            "&:hover": { borderColor: "rgb(148 163 184)" },
+                          }),
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                        Exam Type *
+                      </label>
+                      <select
+                        value={formData.exam_type}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            exam_type: e.target.value,
+                          })
+                        }
+                        required
+                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                      >
+                        <option value="quiz">Quiz</option>
+                        <option value="midterm">Midterm</option>
+                        <option value="final">Final</option>
+                        <option value="practical">Practical</option>
+                        <option value="project">Project</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                        Exam Date
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.exam_date}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            exam_date: e.target.value,
+                          })
+                        }
+                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                        Exam Time
+                      </label>
+                      <input
+                        type="time"
+                        value={formData.exam_time}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            exam_time: e.target.value,
+                          })
+                        }
+                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                        Duration (minutes)
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.exam_duration}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            exam_duration: e.target.value,
+                          })
+                        }
+                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                        Total Points
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.total_points}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            total_points: e.target.value,
+                          })
+                        }
+                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                        Passing Score
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.passing_score}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            passing_score: e.target.value,
+                          })
+                        }
+                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                        Status *
+                      </label>
+                      <select
+                        value={formData.status}
+                        onChange={(e) =>
+                          setFormData({ ...formData, status: e.target.value })
+                        }
+                        required
+                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                      >
+                        <option value="draft">Draft</option>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="ongoing">Ongoing</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                        Instructions
+                      </label>
+                      <textarea
+                        value={formData.instructions}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            instructions: e.target.value,
+                          })
+                        }
+                        rows={4}
+                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sticky Footer */}
+                <div className="sticky bottom-0 bg-slate-50 dark:bg-slate-700 border-t border-slate-200 dark:border-slate-600 px-6 py-4 rounded-b-lg">
+                  <div className="flex gap-3 justify-end">
+                    <button
+                      type="button"
+                      onClick={handleCloseModal}
+                      className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors text-sm font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-500 transition-colors text-sm font-medium"
+                    >
+                      {editingExam ? "Update Exam" : "Create Exam"}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

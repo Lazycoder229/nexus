@@ -6,10 +6,10 @@ const ExamsModel = {
     let query = `
       SELECT 
         e.*,
-        c.course_code,
-        c.course_name,
+        c.code AS course_code,
+        c.title AS course_name,
         s.section_name,
-        ap.year,
+        ap.school_year,
         ap.semester,
         u.first_name AS creator_first_name,
         u.last_name AS creator_last_name
@@ -59,10 +59,10 @@ const ExamsModel = {
     const query = `
       SELECT 
         e.*,
-        c.course_code,
-        c.course_name,
+        c.code AS course_code,
+        c.title AS course_name,
         s.section_name,
-        ap.year,
+        ap.school_year,
         ap.semester
       FROM exams e
       LEFT JOIN courses c ON e.course_id = c.course_id

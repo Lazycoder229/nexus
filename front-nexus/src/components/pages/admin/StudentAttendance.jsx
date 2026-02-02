@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Select from "react-select";
 import {
   Users,
   BookOpen,
@@ -25,14 +26,17 @@ const StudentAttendance = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // Dropdown data
+  const [students, setStudents] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [periods, setPeriods] = useState([]);
+
   const [formData, setFormData] = useState({
     student_id: "",
-    student_name: "",
-    student_number: "",
     course_id: "",
-    course_code: "",
     section_id: "",
-    section_name: "",
+    period_id: "",
     attendance_date: new Date().toISOString().split("T")[0],
     time_in: "",
     status: "present",
@@ -41,7 +45,93 @@ const StudentAttendance = () => {
 
   useEffect(() => {
     fetchAttendanceRecords();
+    fetchStudents();
+    fetchCourses();
+    fetchSections();
+    fetchPeriods();
   }, []);
+
+  const fetchStudents = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/enrollments");
+      const data = await response.json();
+      console.log("Enrollments data:", data);
+      if (Array.isArray(data)) {
+        // Group by student to avoid duplicates
+        const uniqueStudents = data.reduce((acc, enrollment) => {
+          if (!acc.find((s) => s.student_id === enrollment.student_id)) {
+            acc.push({
+              student_id: enrollment.student_id,
+              student_number: enrollment.student_number,
+              student_name: enrollment.student_name,
+            });
+          }
+          return acc;
+        }, []);
+        console.log("Unique students:", uniqueStudents);
+        setStudents(uniqueStudents);
+      }
+    } catch (error) {
+      console.error("Error fetching students:", error);
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/course/courses");
+      const data = await response.json();
+      console.log("Courses raw response:", data);
+      console.log("Is array:", Array.isArray(data));
+      console.log("Data type:", typeof data);
+
+      // Handle both wrapped and unwrapped responses
+      let coursesArray = [];
+      if (Array.isArray(data)) {
+        coursesArray = data;
+      } else if (data.success && Array.isArray(data.data)) {
+        coursesArray = data.data;
+      } else if (data.data && Array.isArray(data.data)) {
+        coursesArray = data.data;
+      }
+
+      console.log("Courses array:", coursesArray);
+      console.log("Courses count:", coursesArray.length);
+      if (coursesArray.length > 0) {
+        console.log("First course:", coursesArray[0]);
+      }
+      setCourses(coursesArray);
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+    }
+  };
+
+  const fetchSections = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/sections");
+      const data = await response.json();
+      console.log("Sections data:", data);
+      if (Array.isArray(data)) {
+        setSections(data);
+      }
+    } catch (error) {
+      console.error("Error fetching sections:", error);
+    }
+  };
+
+  const fetchPeriods = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/academic-periods",
+      );
+      const data = await response.json();
+      console.log("Periods data:", data);
+      if (Array.isArray(data)) {
+        setPeriods(data);
+      }
+    } catch (error) {
+      console.error("Error fetching periods:", error);
+    }
+  };
 
   const fetchAttendanceRecords = async () => {
     try {
@@ -52,7 +142,7 @@ const StudentAttendance = () => {
       if (statusFilter !== "all") params.append("status", statusFilter);
 
       const response = await fetch(
-        `http://localhost:5000/api/student-attendance?${params}`
+        `http://localhost:5000/api/student-attendance?${params}`,
       );
       const data = await response.json();
       if (data.success) {
@@ -68,6 +158,21 @@ const StudentAttendance = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Prepare data with correct field names for backend
+      const submitData = {
+        student_id: formData.student_id,
+        course_id: formData.course_id || null,
+        section_id: formData.section_id || null,
+        period_id: formData.period_id,
+        attendance_date: formData.attendance_date,
+        time_in: formData.time_in || null,
+        status: formData.status,
+        attendance_method: "manual",
+        remarks: formData.notes || null,
+      };
+
+      console.log("Submitting attendance data:", submitData);
+
       const url = selectedRecord
         ? `http://localhost:5000/api/student-attendance/${selectedRecord.attendance_id}`
         : "http://localhost:5000/api/student-attendance";
@@ -76,25 +181,40 @@ const StudentAttendance = () => {
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
 
       const data = await response.json();
+      console.log("Response:", data);
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || data.message || "Failed to save attendance",
+        );
+      }
+
       if (data.success || data.attendance_id) {
+        alert("Attendance saved successfully!");
         fetchAttendanceRecords();
         handleCloseModal();
       }
     } catch (error) {
       console.error("Error saving attendance:", error);
+      alert(`Error: ${error.message}`);
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this attendance record?")) {
+    if (
+      window.confirm("Are you sure you want to delete this attendance record?")
+    ) {
       try {
-        const response = await fetch(`http://localhost:5000/api/student-attendance/${id}`, {
-          method: "DELETE",
-        });
+        const response = await fetch(
+          `http://localhost:5000/api/student-attendance/${id}`,
+          {
+            method: "DELETE",
+          },
+        );
         if (response.ok) {
           fetchAttendanceRecords();
         }
@@ -127,12 +247,9 @@ const StudentAttendance = () => {
     setSelectedRecord(null);
     setFormData({
       student_id: "",
-      student_name: "",
-      student_number: "",
       course_id: "",
-      course_code: "",
       section_id: "",
-      section_name: "",
+      period_id: "",
       attendance_date: new Date().toISOString().split("T")[0],
       time_in: "",
       status: "present",
@@ -142,10 +259,12 @@ const StudentAttendance = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      present: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      present:
+        "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
       absent: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
       late: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-      excused: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      excused:
+        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
     };
     return colors[status] || colors.present;
   };
@@ -158,7 +277,8 @@ const StudentAttendance = () => {
       record.course_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.section_name?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || record.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "all" || record.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
@@ -193,44 +313,72 @@ const StudentAttendance = () => {
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Total Students</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">1,248</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">
+                  Total Students
+                </p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                  1,248
+                </p>
               </div>
               <div className="bg-indigo-100 dark:bg-indigo-900/30 p-3 rounded-lg">
-                <Users className="text-indigo-600 dark:text-indigo-400" size={24} />
+                <Users
+                  className="text-indigo-600 dark:text-indigo-400"
+                  size={24}
+                />
               </div>
             </div>
           </div>
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Present Today</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">1,156</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">
+                  Present Today
+                </p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                  1,156
+                </p>
               </div>
               <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
-                <CalendarCheck className="text-green-600 dark:text-green-400" size={24} />
+                <CalendarCheck
+                  className="text-green-600 dark:text-green-400"
+                  size={24}
+                />
               </div>
             </div>
           </div>
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Absent</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">72</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">
+                  Absent
+                </p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                  72
+                </p>
               </div>
               <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-lg">
-                <CalendarCheck className="text-red-600 dark:text-red-400" size={24} />
+                <CalendarCheck
+                  className="text-red-600 dark:text-red-400"
+                  size={24}
+                />
               </div>
             </div>
           </div>
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Late</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">20</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">
+                  Late
+                </p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                  20
+                </p>
               </div>
               <div className="bg-yellow-100 dark:bg-yellow-900/30 p-3 rounded-lg">
-                <BookOpen className="text-yellow-600 dark:text-yellow-400" size={24} />
+                <BookOpen
+                  className="text-yellow-600 dark:text-yellow-400"
+                  size={24}
+                />
               </div>
             </div>
           </div>
@@ -315,7 +463,10 @@ const StudentAttendance = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
               {currentRecords.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                  <td
+                    colSpan="9"
+                    className="px-4 py-8 text-center text-slate-500 dark:text-slate-400"
+                  >
                     No attendance records found
                   </td>
                 </tr>
@@ -325,20 +476,28 @@ const StudentAttendance = () => {
                     key={record.attendance_id}
                     className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150"
                   >
-                    <td className="px-4 py-2 font-semibold">{record.student_name}</td>
+                    <td className="px-4 py-2 font-semibold">
+                      {record.student_name}
+                    </td>
                     <td className="px-4 py-2">{record.student_number}</td>
                     <td className="px-4 py-2">{record.course_code}</td>
-                    <td className="px-4 py-2">{record.section_name || "N/A"}</td>
+                    <td className="px-4 py-2">
+                      {record.section_name || "N/A"}
+                    </td>
                     <td className="px-4 py-2">
                       {new Date(record.attendance_date).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-2">{record.time_in || "N/A"}</td>
                     <td className="px-4 py-2">
-                      <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(record.status)}`}>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(record.status)}`}
+                      >
                         {record.status}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-xs">{record.marked_by_name || "System"}</td>
+                    <td className="px-4 py-2 text-xs">
+                      {record.marked_by_name || "System"}
+                    </td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
@@ -368,8 +527,8 @@ const StudentAttendance = () => {
         <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
           <span className="text-xs sm:text-sm">
             Page <span className="font-semibold">{currentPage}</span> of{" "}
-            <span className="font-semibold">{totalPages || 1}</span> | Total Records:{" "}
-            {filteredRecords.length}
+            <span className="font-semibold">{totalPages || 1}</span> | Total
+            Records: {filteredRecords.length}
           </span>
           <div className="flex gap-1 items-center mt-2 sm:mt-0">
             <button
@@ -383,7 +542,9 @@ const StudentAttendance = () => {
               {currentPage}
             </span>
             <button
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
               disabled={currentPage === totalPages}
               className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
             >
@@ -395,11 +556,11 @@ const StudentAttendance = () => {
 
       {/* Modal */}
       {showModal && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/30 flex items-center justify-center p-2 z-50 transition-opacity duration-300"
           onClick={handleCloseModal}
         >
-          <div 
+          <div
             className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-2xl transform transition-transform duration-300 scale-100 border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -416,66 +577,136 @@ const StudentAttendance = () => {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Student Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.student_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, student_name: e.target.value })
-                    }
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Student Number *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.student_number}
-                    onChange={(e) =>
-                      setFormData({ ...formData, student_number: e.target.value })
-                    }
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Student *
+                </label>
+                <Select
+                  options={students.map((student) => ({
+                    value: student.student_id,
+                    label: `${student.student_name} (${student.student_number})`,
+                  }))}
+                  value={
+                    formData.student_id
+                      ? {
+                          value: formData.student_id,
+                          label: students.find(
+                            (s) => s.student_id === formData.student_id,
+                          )
+                            ? `${students.find((s) => s.student_id === formData.student_id).student_name} (${students.find((s) => s.student_id === formData.student_id).student_number})`
+                            : "",
+                        }
+                      : null
+                  }
+                  onChange={(option) =>
+                    setFormData({
+                      ...formData,
+                      student_id: option?.value || "",
+                    })
+                  }
+                  className="text-sm"
+                  placeholder="Select student..."
+                  isClearable
+                  required
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Course Code *
+                    Academic Period *
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.course_code}
-                    onChange={(e) =>
-                      setFormData({ ...formData, course_code: e.target.value })
+                  <Select
+                    options={periods.map((period) => ({
+                      value: period.id,
+                      label: `${period.school_year} - ${period.semester}`,
+                    }))}
+                    value={
+                      formData.period_id
+                        ? {
+                            value: formData.period_id,
+                            label: periods.find(
+                              (p) => p.id === formData.period_id,
+                            )
+                              ? `${periods.find((p) => p.id === formData.period_id).school_year} - ${periods.find((p) => p.id === formData.period_id).semester}`
+                              : "",
+                          }
+                        : null
                     }
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                    placeholder="e.g., CS101"
+                    onChange={(option) =>
+                      setFormData({
+                        ...formData,
+                        period_id: option?.value || "",
+                      })
+                    }
+                    className="text-sm"
+                    placeholder="Select period..."
+                    isClearable
+                    required
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Section
+                    Course
                   </label>
-                  <input
-                    type="text"
-                    value={formData.section_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, section_name: e.target.value })
+                  <Select
+                    options={courses.map((course) => ({
+                      value: course.id,
+                      label: `${course.code} - ${course.title}`,
+                    }))}
+                    value={
+                      formData.course_id
+                        ? {
+                            value: formData.course_id,
+                            label: courses.find(
+                              (c) => c.id === formData.course_id,
+                            )
+                              ? `${courses.find((c) => c.id === formData.course_id).code} - ${courses.find((c) => c.id === formData.course_id).title}`
+                              : "",
+                          }
+                        : null
                     }
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                    placeholder="e.g., Section A"
+                    onChange={(option) =>
+                      setFormData({
+                        ...formData,
+                        course_id: option?.value || "",
+                      })
+                    }
+                    className="text-sm"
+                    placeholder="Select course..."
+                    isClearable
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Section
+                </label>
+                <Select
+                  options={sections.map((section) => ({
+                    value: section.section_id,
+                    label: section.section_name,
+                  }))}
+                  value={
+                    formData.section_id
+                      ? {
+                          value: formData.section_id,
+                          label:
+                            sections.find(
+                              (s) => s.section_id === formData.section_id,
+                            )?.section_name || "",
+                        }
+                      : null
+                  }
+                  onChange={(option) =>
+                    setFormData({
+                      ...formData,
+                      section_id: option?.value || "",
+                    })
+                  }
+                  className="text-sm"
+                  placeholder="Select section..."
+                  isClearable
+                />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -487,7 +718,10 @@ const StudentAttendance = () => {
                     required
                     value={formData.attendance_date}
                     onChange={(e) =>
-                      setFormData({ ...formData, attendance_date: e.target.value })
+                      setFormData({
+                        ...formData,
+                        attendance_date: e.target.value,
+                      })
                     }
                     className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                   />

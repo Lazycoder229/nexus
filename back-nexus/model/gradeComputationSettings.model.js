@@ -6,10 +6,10 @@ const GradeComputationSettingsModel = {
     let query = `
       SELECT 
         gcs.*,
-        c.course_code,
-        c.course_name,
+        c.code AS course_code,
+        c.title AS course_name,
         s.section_name,
-        ap.year,
+        ap.school_year,
         ap.semester,
         u.first_name AS creator_first_name,
         u.last_name AS creator_last_name
@@ -54,10 +54,10 @@ const GradeComputationSettingsModel = {
     const query = `
       SELECT 
         gcs.*,
-        c.course_code,
-        c.course_name,
+        c.code AS course_code,
+        c.title AS course_name,
         s.section_name,
-        ap.year,
+        ap.school_year,
         ap.semester
       FROM grade_computation_settings gcs
       INNER JOIN courses c ON gcs.course_id = c.course_id

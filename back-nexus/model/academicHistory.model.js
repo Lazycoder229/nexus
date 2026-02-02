@@ -13,7 +13,7 @@ export const getAllAcademicHistory = async () => {
      JOIN users u ON ah.student_id = u.user_id
      LEFT JOIN student_details sd ON ah.student_id = sd.user_id
      JOIN academic_periods ap ON ah.period_id = ap.period_id
-     ORDER BY ah.created_at DESC`
+     ORDER BY ah.created_at DESC`,
   );
   return rows;
 };
@@ -26,7 +26,7 @@ export const getHistoryByStudent = async (studentId) => {
      JOIN academic_periods ap ON ah.period_id = ap.period_id
      WHERE ah.student_id = ?
      ORDER BY ap.start_date DESC`,
-    [studentId]
+    [studentId],
   );
   return rows;
 };
@@ -43,7 +43,7 @@ export const getHistoryById = async (id) => {
      LEFT JOIN student_details sd ON ah.student_id = sd.user_id
      JOIN academic_periods ap ON ah.period_id = ap.period_id
      WHERE ah.history_id = ?`,
-    [id]
+    [id],
   );
   return rows[0];
 };
@@ -66,7 +66,7 @@ export const createHistory = async (data) => {
       data.academic_status || "Regular",
       data.honors,
       data.remarks,
-    ]
+    ],
   );
   return getHistoryById(result.insertId);
 };
@@ -88,7 +88,7 @@ export const updateHistory = async (id, data) => {
       data.honors,
       data.remarks,
       id,
-    ]
+    ],
   );
   return getHistoryById(id);
 };
@@ -103,7 +103,7 @@ export const deleteHistory = async (id) => {
 export const checkHistoryExists = async (studentId, periodId) => {
   const [rows] = await db.query(
     `SELECT history_id FROM academic_history WHERE student_id = ? AND period_id = ?`,
-    [studentId, periodId]
+    [studentId, periodId],
   );
   return rows.length > 0;
 };

@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Select from "react-select";
-import { Calendar, Clock, MapPin, User, BookOpen, Users, Search, Filter, Plus, X, Save, Edit2 } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  BookOpen,
+  Users,
+  Search,
+  Filter,
+  Plus,
+  X,
+  Save,
+  Edit2,
+} from "lucide-react";
 
 const TimetableBuilder = () => {
   const [sections, setSections] = useState([]);
@@ -15,8 +28,8 @@ const TimetableBuilder = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingSection, setEditingSection] = useState(null);
   const [formData, setFormData] = useState({
-    course_id: "",
-    year_level: "",
+    course_id: null,
+    year_level: null,
     section_id: "",
     schedule_day: "Monday",
     schedule_time_start: "",
@@ -58,6 +71,7 @@ const TimetableBuilder = () => {
   const fetchSections = async () => {
     try {
       const response = await axios.get("http://localhost:5000/api/sections");
+      console.log("Sections data:", response.data);
       setSections(response.data);
     } catch (error) {
       console.error("Error fetching sections:", error);
@@ -67,7 +81,7 @@ const TimetableBuilder = () => {
   const fetchPeriods = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/academic-periods"
+        "http://localhost:5000/api/academic-periods",
       );
       setPeriods(response.data);
     } catch (error) {
@@ -78,8 +92,9 @@ const TimetableBuilder = () => {
   const fetchCourses = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/course/courses"
+        "http://localhost:5000/api/course/courses",
       );
+      console.log("Courses data:", response.data);
       setCourses(response.data);
     } catch (error) {
       console.error("Error fetching courses:", error);
@@ -102,14 +117,21 @@ const TimetableBuilder = () => {
       section.course_title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       section.section_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       section.room?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesPeriod && matchesCourse && matchesYearLevel && matchesDay && matchesSearch && section.schedule_time_start;
+    return (
+      matchesPeriod &&
+      matchesCourse &&
+      matchesYearLevel &&
+      matchesDay &&
+      matchesSearch &&
+      section.schedule_time_start
+    );
   });
 
   // Group sections by Course → Year Level → Section
   const groupedSections = filteredSections.reduce((acc, section) => {
     const courseKey = `${section.course_code} - ${section.course_title}`;
-    const yearLevel = section.year_level || 'N/A';
-    
+    const yearLevel = section.year_level || "N/A";
+
     if (!acc[courseKey]) {
       acc[courseKey] = {};
     }
@@ -135,16 +157,17 @@ const TimetableBuilder = () => {
   }));
 
   const courseOptions = courses.map((course) => ({
-    value: course.course_id,
-    label: `${course.course_code} - ${course.course_title}`,
+    value: course.id || course.course_id,
+    label: `${course.code || "N/A"} - ${course.title || "N/A"}`,
   }));
+  console.log("Course options:", courseOptions);
 
   const yearLevelOptions = [
-    { value: 1, label: '1st Year' },
-    { value: 2, label: '2nd Year' },
-    { value: 3, label: '3rd Year' },
-    { value: 4, label: '4th Year' },
-    { value: 5, label: '5th Year' },
+    { value: 1, label: "1st Year" },
+    { value: 2, label: "2nd Year" },
+    { value: 3, label: "3rd Year" },
+    { value: 4, label: "4th Year" },
+    { value: 5, label: "5th Year" },
   ];
 
   const handleOpenModal = (section = null) => {
@@ -162,8 +185,8 @@ const TimetableBuilder = () => {
     } else {
       setEditingSection(null);
       setFormData({
-        course_id: "",
-        year_level: "",
+        course_id: null,
+        year_level: null,
         section_id: "",
         schedule_day: "Monday",
         schedule_time_start: "",
@@ -178,8 +201,8 @@ const TimetableBuilder = () => {
     setShowModal(false);
     setEditingSection(null);
     setFormData({
-      course_id: "",
-      year_level: "",
+      course_id: null,
+      year_level: null,
       section_id: "",
       schedule_day: "Monday",
       schedule_time_start: "",
@@ -203,22 +226,46 @@ const TimetableBuilder = () => {
         return;
       }
 
-      await axios.put(
-        `http://localhost:5000/api/sections/${formData.section_id}`,
-        {
-          schedule_day: formData.schedule_day,
-          schedule_time_start: formData.schedule_time_start,
-          schedule_time_end: formData.schedule_time_end,
-          room: formData.room,
-        }
+      // Get the current section data
+      const currentSection = sections.find(
+        (s) => s.section_id === formData.section_id,
       );
 
+      if (!currentSection) {
+        alert("Section not found");
+        return;
+      }
+
+      const updateData = {
+        course_id: currentSection.course_id,
+        period_id: currentSection.period_id,
+        section_name: currentSection.section_name,
+        max_capacity: currentSection.max_capacity,
+        status: currentSection.status || "active",
+        schedule_day: formData.schedule_day,
+        schedule_time_start: formData.schedule_time_start,
+        schedule_time_end: formData.schedule_time_end,
+        room: formData.room,
+      };
+
+      console.log("Saving schedule with data:", updateData);
+
+      const response = await axios.put(
+        `http://localhost:5000/api/sections/${formData.section_id}`,
+        updateData,
+      );
+
+      console.log("Save response:", response);
       alert("Schedule saved successfully!");
       handleCloseModal();
       fetchSections();
     } catch (error) {
       console.error("Error saving schedule:", error);
-      alert("Failed to save schedule");
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+      alert(
+        `Failed to save schedule: ${error.response?.data?.error || error.message}`,
+      );
     }
   };
 
@@ -252,7 +299,10 @@ const TimetableBuilder = () => {
                   {filteredSections.length}
                 </p>
               </div>
-              <BookOpen className="text-indigo-600 dark:text-indigo-400" size={28} />
+              <BookOpen
+                className="text-indigo-600 dark:text-indigo-400"
+                size={28}
+              />
             </div>
           </div>
 
@@ -265,7 +315,7 @@ const TimetableBuilder = () => {
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                   {
                     timeSlots.filter(
-                      (t) => getSectionsForTimeSlot(t).length > 0
+                      (t) => getSectionsForTimeSlot(t).length > 0,
                     ).length
                   }
                 </p>
@@ -283,11 +333,14 @@ const TimetableBuilder = () => {
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                   {filteredSections.reduce(
                     (sum, s) => sum + s.current_enrolled,
-                    0
+                    0,
                   )}
                 </p>
               </div>
-              <Users className="text-purple-600 dark:text-purple-400" size={28} />
+              <Users
+                className="text-purple-600 dark:text-purple-400"
+                size={28}
+              />
             </div>
           </div>
         </div>
@@ -373,12 +426,16 @@ const TimetableBuilder = () => {
         {/* Timetable Grid - Grouped by Course → Year → Section */}
         <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
-            <Calendar className="text-indigo-600 dark:text-indigo-400" size={24} />
+            <Calendar
+              className="text-indigo-600 dark:text-indigo-400"
+              size={24}
+            />
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">
               {selectedDay} Schedule
             </h3>
             <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
-              {filteredSections.length} {filteredSections.length === 1 ? 'class' : 'classes'}
+              {filteredSections.length}{" "}
+              {filteredSections.length === 1 ? "class" : "classes"}
             </span>
           </div>
 
@@ -387,11 +444,17 @@ const TimetableBuilder = () => {
               Object.entries(groupedSections)
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([courseKey, yearLevels]) => (
-                  <div key={courseKey} className="border border-slate-200 dark:border-slate-700 rounded-md overflow-hidden">
+                  <div
+                    key={courseKey}
+                    className="border border-slate-200 dark:border-slate-700 rounded-md overflow-hidden"
+                  >
                     {/* Course Header */}
                     <div className="bg-indigo-100 dark:bg-indigo-900/30 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
                       <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                        <BookOpen size={16} className="text-indigo-600 dark:text-indigo-400" />
+                        <BookOpen
+                          size={16}
+                          className="text-indigo-600 dark:text-indigo-400"
+                        />
                         {courseKey}
                       </h4>
                     </div>
@@ -400,23 +463,31 @@ const TimetableBuilder = () => {
                     <div className="divide-y divide-slate-200 dark:divide-slate-700">
                       {Object.entries(yearLevels)
                         .sort(([a], [b]) => {
-                          if (a === 'N/A') return 1;
-                          if (b === 'N/A') return -1;
+                          if (a === "N/A") return 1;
+                          if (b === "N/A") return -1;
                           return parseInt(a) - parseInt(b);
                         })
                         .map(([yearLevel, sections]) => (
-                          <div key={yearLevel} className="bg-white dark:bg-slate-800">
+                          <div
+                            key={yearLevel}
+                            className="bg-white dark:bg-slate-800"
+                          >
                             {/* Year Level Header */}
                             <div className="bg-slate-50 dark:bg-slate-900/50 px-4 py-2">
                               <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                Year {yearLevel === 'N/A' ? 'Level Not Set' : yearLevel}
+                                Year{" "}
+                                {yearLevel === "N/A"
+                                  ? "Level Not Set"
+                                  : yearLevel}
                               </span>
                             </div>
 
                             {/* Sections Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
                               {sections
-                                .sort((a, b) => a.section_name.localeCompare(b.section_name))
+                                .sort((a, b) =>
+                                  a.section_name.localeCompare(b.section_name),
+                                )
                                 .map((section, index) => {
                                   const colors = [
                                     "border-l-indigo-500 dark:border-l-indigo-600 bg-indigo-50 dark:bg-indigo-900/20",
@@ -426,7 +497,8 @@ const TimetableBuilder = () => {
                                     "border-l-pink-500 dark:border-l-pink-600 bg-pink-50 dark:bg-pink-900/20",
                                     "border-l-cyan-500 dark:border-l-cyan-600 bg-cyan-50 dark:bg-cyan-900/20",
                                   ];
-                                  const colorClass = colors[index % colors.length];
+                                  const colorClass =
+                                    colors[index % colors.length];
 
                                   return (
                                     <div
@@ -447,7 +519,8 @@ const TimetableBuilder = () => {
                                         <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
                                           <Clock size={12} />
                                           <span>
-                                            {section.schedule_time_start} - {section.schedule_time_end}
+                                            {section.schedule_time_start} -{" "}
+                                            {section.schedule_time_end}
                                           </span>
                                         </div>
                                         {section.room && (
@@ -459,7 +532,8 @@ const TimetableBuilder = () => {
                                         <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
                                           <Users size={12} />
                                           <span>
-                                            {section.current_enrolled}/{section.max_capacity} students
+                                            {section.current_enrolled}/
+                                            {section.max_capacity} students
                                           </span>
                                         </div>
                                       </div>
@@ -479,7 +553,10 @@ const TimetableBuilder = () => {
                 ))
             ) : (
               <div className="text-center py-12">
-                <Calendar size={48} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                <Calendar
+                  size={48}
+                  className="text-slate-300 dark:text-slate-600 mx-auto mb-3"
+                />
                 <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">
                   No classes scheduled for {selectedDay}
                 </p>
@@ -519,21 +596,32 @@ const TimetableBuilder = () => {
                   <Select
                     options={courseOptions}
                     value={
-                      formData.course_id
-                        ? courseOptions.find((c) => c.value === formData.course_id)
-                        : null
+                      courseOptions.find(
+                        (c) => c.value === formData.course_id,
+                      ) || null
                     }
                     onChange={(option) => {
-                      setFormData((prev) => ({ 
-                        ...prev, 
-                        course_id: option?.value || "",
-                        section_id: "" // Reset section when course changes
-                      }));
+                      console.log("Selected course option:", option);
+                      const courseId = option ? option.value : null;
+                      console.log("Course ID to set:", courseId);
+                      setFormData((prev) => {
+                        const newData = {
+                          ...prev,
+                          course_id: courseId,
+                          section_id: "", // Reset section when course changes
+                        };
+                        console.log(
+                          "New formData after course selection:",
+                          newData,
+                        );
+                        return newData;
+                      });
                     }}
                     placeholder="Select a course"
                     isDisabled={!!editingSection}
                     className="text-sm"
                     classNamePrefix="react-select"
+                    isClearable
                   />
                 </div>
 
@@ -545,21 +633,23 @@ const TimetableBuilder = () => {
                   <Select
                     options={yearLevelOptions}
                     value={
-                      formData.year_level
-                        ? yearLevelOptions.find((y) => y.value === formData.year_level)
-                        : null
+                      yearLevelOptions.find(
+                        (y) => y.value === formData.year_level,
+                      ) || null
                     }
                     onChange={(option) => {
-                      setFormData((prev) => ({ 
-                        ...prev, 
-                        year_level: option?.value || "",
-                        section_id: "" // Reset section when year level changes
+                      console.log("Selected year level:", option);
+                      setFormData((prev) => ({
+                        ...prev,
+                        year_level: option ? option.value : null,
+                        section_id: "", // Reset section when year level changes
                       }));
                     }}
                     placeholder="Select year level"
                     isDisabled={!!editingSection}
                     className="text-sm"
                     classNamePrefix="react-select"
+                    isClearable
                   />
                 </div>
 
@@ -569,31 +659,51 @@ const TimetableBuilder = () => {
                     Section <span className="text-red-500">*</span>
                   </label>
                   <Select
-                    options={sections
-                      .filter((s) => {
-                        const matchesCourse = !formData.course_id || s.course_id === formData.course_id;
-                        const matchesYear = !formData.year_level || s.year_level === formData.year_level;
-                        return matchesCourse && matchesYear;
-                      })
-                      .map((s) => ({
+                    options={(() => {
+                      const filtered = sections.filter((s) => {
+                        const matchesCourse =
+                          formData.course_id === null ||
+                          Number(s.course_id) === Number(formData.course_id);
+                        // Sections don't have year_level, so we only filter by course
+                        console.log(
+                          `Section ${s.section_id}: course match=${matchesCourse}`,
+                          s,
+                        );
+                        return matchesCourse;
+                      });
+                      console.log("Filtered sections:", filtered);
+                      console.log("Current formData:", formData);
+                      return filtered.map((s) => ({
                         value: s.section_id,
-                        label: `${s.course_code} - ${s.section_name}`,
-                      }))}
-                    value={
-                      formData.section_id
-                        ? {
-                            value: formData.section_id,
-                            label: sections.find((s) => s.section_id === formData.section_id)
-                              ? `${sections.find((s) => s.section_id === formData.section_id).course_code} - ${sections.find((s) => s.section_id === formData.section_id).section_name}`
-                              : "",
-                          }
-                        : null
+                        label: s.section_name || `Section ${s.section_id}`,
+                      }));
+                    })()}
+                    value={(() => {
+                      if (!formData.section_id) return null;
+                      const section = sections.find(
+                        (s) => s.section_id === formData.section_id,
+                      );
+                      if (!section) return null;
+                      return {
+                        value: section.section_id,
+                        label:
+                          section.section_name ||
+                          `Section ${section.section_id}`,
+                      };
+                    })()}
+                    onChange={(option) => {
+                      console.log("Selected section:", option);
+                      setFormData((prev) => ({
+                        ...prev,
+                        section_id: option ? option.value : "",
+                      }));
+                    }}
+                    placeholder={
+                      formData.course_id !== null
+                        ? "Select a section"
+                        : "Select course first"
                     }
-                    onChange={(option) =>
-                      setFormData((prev) => ({ ...prev, section_id: option?.value || "" }))
-                    }
-                    placeholder={formData.course_id && formData.year_level ? "Select a section" : "Select course and year first"}
-                    isDisabled={!!editingSection || !formData.course_id || !formData.year_level}
+                    isDisabled={!!editingSection || formData.course_id === null}
                     className="text-sm"
                     classNamePrefix="react-select"
                   />

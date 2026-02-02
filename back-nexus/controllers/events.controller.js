@@ -21,22 +21,28 @@ const EventsController = {
 
   create: async (req, res) => {
     try {
-      const user = JSON.parse(req.headers.user || '{}');
-      req.body.created_by = user.user_id;
+      console.log("Creating event with data:", req.body);
+      const userId = req.body.created_by || (req.headers.user ? JSON.parse(req.headers.user).user_id : null);
+      req.body.created_by = userId;
       const id = await EventsService.createEvent(req.body);
+      console.log("Event created successfully with ID:", id);
       res.status(201).json({ event_id: id, message: "Event created successfully" });
     } catch (error) {
+      console.error("Error creating event:", error.message);
       res.status(400).json({ error: error.message });
     }
   },
 
   update: async (req, res) => {
     try {
-      const user = JSON.parse(req.headers.user || '{}');
-      req.body.updated_by = user.user_id;
+      console.log("Updating event:", req.params.id, req.body);
+      const userId = req.body.updated_by || (req.headers.user ? JSON.parse(req.headers.user).user_id : null);
+      if (userId) req.body.updated_by = userId;
       await EventsService.updateEvent(req.params.id, req.body);
+      console.log("Event updated successfully");
       res.json({ message: "Event updated successfully" });
     } catch (error) {
+      console.error("Error updating event:", error.message);
       res.status(400).json({ error: error.message });
     }
   },

@@ -64,7 +64,7 @@ const GradeManagement = () => {
     try {
       const response = await axios.get("http://localhost:5000/api/users");
       const studentsList = response.data.filter(
-        (user) => user.role === "Student"
+        (user) => user.role === "Student",
       );
       setStudents(studentsList);
     } catch (error) {
@@ -75,7 +75,7 @@ const GradeManagement = () => {
   const fetchCourses = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/course/courses"
+        "http://localhost:5000/api/course/courses",
       );
       setCourses(response.data);
     } catch (error) {
@@ -86,7 +86,7 @@ const GradeManagement = () => {
   const fetchPeriods = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/academic-periods"
+        "http://localhost:5000/api/academic-periods",
       );
       setPeriods(response.data);
     } catch (error) {
@@ -122,7 +122,7 @@ const GradeManagement = () => {
       const finalGrade = calculateFinalGrade(
         name === "prelim_grade" ? value : updatedData.prelim_grade,
         name === "midterm_grade" ? value : updatedData.midterm_grade,
-        name === "finals_grade" ? value : updatedData.finals_grade
+        name === "finals_grade" ? value : updatedData.finals_grade,
       );
       updatedData.final_grade = finalGrade;
       updatedData.remarks = getRemarks(finalGrade);
@@ -141,9 +141,29 @@ const GradeManagement = () => {
       if (editMode) {
         await axios.put(
           `http://localhost:5000/api/grades/${currentGrade.grade_id}`,
-          formData
+          formData,
         );
       } else {
+        // Check if a grade already exists for this combination
+        const existingGrade = grades.find(
+          (g) =>
+            g.student_user_id === formData.student_user_id &&
+            g.course_id === formData.course_id &&
+            g.period_id === formData.period_id,
+        );
+
+        if (existingGrade) {
+          const confirmEdit = window.confirm(
+            `A grade already exists for this student in this course and period.\n\nWould you like to edit the existing grade instead?`,
+          );
+          if (confirmEdit) {
+            handleEdit(existingGrade);
+            return;
+          } else {
+            return;
+          }
+        }
+
         await axios.post("http://localhost:5000/api/grades", formData);
       }
       fetchGrades();
@@ -191,7 +211,7 @@ const GradeManagement = () => {
           `http://localhost:5000/api/grades/${gradeId}/approve`,
           {
             approved_by: user.user_id,
-          }
+          },
         );
         fetchGrades();
       } catch (error) {
@@ -243,17 +263,18 @@ const GradeManagement = () => {
 
   const studentOptions = students.map((student) => ({
     value: student.user_id,
-    label: `${student.student_id} - ${student.first_name} ${student.last_name}`,
+    label:
+      `${student.student_id || student.user_id || "N/A"} - ${student.first_name || ""} ${student.last_name || ""}`.trim(),
   }));
 
   const courseOptions = courses.map((course) => ({
-    value: course.course_id,
-    label: `${course.course_code} - ${course.course_title}`,
+    value: course.id || course.course_id,
+    label: `${course.code || "N/A"} - ${course.title || "N/A"}`,
   }));
 
   const periodOptions = periods.map((period) => ({
-    value: period.period_id,
-    label: `${period.period_name} ${period.year}`,
+    value: period.period_id || period.id,
+    label: `${period.school_year || period.period_name || "N/A"} - ${period.semester || period.year || "N/A"}`,
   }));
 
   const statusOptions = [
@@ -274,9 +295,12 @@ const GradeManagement = () => {
   // Helper Components
   const StatusBadge = ({ status }) => {
     const colorMap = {
-      draft: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
-      submitted: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
-      approved: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+      draft:
+        "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
+      submitted:
+        "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300",
+      approved:
+        "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
     };
     return (
       <span
@@ -361,23 +385,39 @@ const GradeManagement = () => {
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-sm text-slate-600 dark:text-slate-400">Total Grades</p>
-            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{totalGrades}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Total Grades
+            </p>
+            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+              {totalGrades}
+            </p>
           </div>
 
           <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-sm text-slate-600 dark:text-slate-400">Approved</p>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">{approvedGrades}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Approved
+            </p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+              {approvedGrades}
+            </p>
           </div>
 
           <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-sm text-slate-600 dark:text-slate-400">Passed Students</p>
-            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{passedStudents}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Passed Students
+            </p>
+            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+              {passedStudents}
+            </p>
           </div>
 
           <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-sm text-slate-600 dark:text-slate-400">Average Grade</p>
-            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{averageGrade}</p>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Average Grade
+            </p>
+            <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+              {averageGrade}
+            </p>
           </div>
         </div>
 
@@ -454,36 +494,16 @@ const GradeManagement = () => {
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-100 dark:bg-slate-700/70">
                 <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  <th className="px-4 py-2.5">
-                    Student
-                  </th>
-                  <th className="px-4 py-2.5">
-                    Course
-                  </th>
-                  <th className="px-4 py-2.5">
-                    Period
-                  </th>
-                  <th className="px-4 py-2.5 text-center">
-                    Prelim
-                  </th>
-                  <th className="px-4 py-2.5 text-center">
-                    Midterm
-                  </th>
-                  <th className="px-4 py-2.5 text-center">
-                    Finals
-                  </th>
-                  <th className="px-4 py-2.5 text-center">
-                    Final Grade
-                  </th>
-                  <th className="px-4 py-2.5 text-center">
-                    Remarks
-                  </th>
-                  <th className="px-4 py-2.5 text-center">
-                    Status
-                  </th>
-                  <th className="px-4 py-2.5 text-right">
-                    Actions
-                  </th>
+                  <th className="px-4 py-2.5">Student</th>
+                  <th className="px-4 py-2.5">Course</th>
+                  <th className="px-4 py-2.5">Period</th>
+                  <th className="px-4 py-2.5 text-center">Prelim</th>
+                  <th className="px-4 py-2.5 text-center">Midterm</th>
+                  <th className="px-4 py-2.5 text-center">Finals</th>
+                  <th className="px-4 py-2.5 text-center">Final Grade</th>
+                  <th className="px-4 py-2.5 text-center">Remarks</th>
+                  <th className="px-4 py-2.5 text-center">Status</th>
+                  <th className="px-4 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
@@ -583,7 +603,10 @@ const GradeManagement = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="10" className="p-4 text-center text-slate-500 dark:text-slate-400 italic">
+                    <td
+                      colSpan="10"
+                      className="p-4 text-center text-slate-500 dark:text-slate-400 italic"
+                    >
                       No grades found matching your search criteria.
                     </td>
                   </tr>
@@ -604,8 +627,14 @@ const GradeManagement = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-2 z-50 transition-opacity duration-300" onClick={closeModal}>
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-4xl transform transition-transform duration-300 scale-100 border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/30 flex items-center justify-center p-2 z-50 transition-opacity duration-300"
+          onClick={closeModal}
+        >
+          <div
+            className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-4xl transform transition-transform duration-300 scale-100 border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
             <div className="sticky top-0 flex justify-between items-center px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 rounded-t-lg z-10">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">
@@ -629,7 +658,7 @@ const GradeManagement = () => {
                   <Select
                     options={studentOptions}
                     value={studentOptions.find(
-                      (o) => o.value === formData.student_user_id
+                      (o) => o.value === formData.student_user_id,
                     )}
                     onChange={(option) =>
                       handleSelectChange(option, "student_user_id")
@@ -651,7 +680,7 @@ const GradeManagement = () => {
                   <Select
                     options={courseOptions}
                     value={courseOptions.find(
-                      (o) => o.value === formData.course_id
+                      (o) => o.value === formData.course_id,
                     )}
                     onChange={(option) =>
                       handleSelectChange(option, "course_id")
@@ -671,7 +700,7 @@ const GradeManagement = () => {
                   <Select
                     options={periodOptions}
                     value={periodOptions.find(
-                      (o) => o.value === formData.period_id
+                      (o) => o.value === formData.period_id,
                     )}
                     onChange={(option) =>
                       handleSelectChange(option, "period_id")
@@ -685,7 +714,9 @@ const GradeManagement = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Prelim Grade</label>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Prelim Grade
+                  </label>
                   <input
                     type="number"
                     name="prelim_grade"
@@ -700,7 +731,9 @@ const GradeManagement = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Midterm Grade</label>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Midterm Grade
+                  </label>
                   <input
                     type="number"
                     name="midterm_grade"
@@ -715,7 +748,9 @@ const GradeManagement = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Finals Grade</label>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Finals Grade
+                  </label>
                   <input
                     type="number"
                     name="finals_grade"
@@ -730,7 +765,9 @@ const GradeManagement = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Final Grade (Auto-calculated)</label>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Final Grade (Auto-calculated)
+                  </label>
                   <input
                     type="text"
                     name="final_grade"
@@ -742,7 +779,9 @@ const GradeManagement = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Remarks (Auto-generated)</label>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Remarks (Auto-generated)
+                  </label>
                   <input
                     type="text"
                     name="remarks"
@@ -753,11 +792,13 @@ const GradeManagement = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Status
+                  </label>
                   <Select
                     options={statusOptions}
                     value={statusOptions.find(
-                      (o) => o.value === formData.status
+                      (o) => o.value === formData.status,
                     )}
                     onChange={(option) => handleSelectChange(option, "status")}
                     placeholder="Select Status"

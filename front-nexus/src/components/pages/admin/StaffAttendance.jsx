@@ -15,6 +15,7 @@ import {
 
 const StaffAttendance = () => {
   const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [staffMembers, setStaffMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -40,6 +41,7 @@ const StaffAttendance = () => {
 
   useEffect(() => {
     fetchAttendanceRecords();
+    fetchStaffMembers();
   }, []);
 
   const fetchAttendanceRecords = async () => {
@@ -51,7 +53,7 @@ const StaffAttendance = () => {
       if (statusFilter !== "all") params.append("status", statusFilter);
 
       const response = await fetch(
-        `http://localhost:5000/api/staff-attendance?${params}`
+        `http://localhost:5000/api/staff-attendance?${params}`,
       );
       const data = await response.json();
       if (data.success) {
@@ -64,9 +66,51 @@ const StaffAttendance = () => {
     }
   };
 
+  const fetchStaffMembers = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/users");
+      const users = await response.json();
+      // Filter for staff, faculty, admin, HR, accounting roles
+      const staff = users.filter((user) =>
+        ["Staff", "Faculty", "Admin", "HR", "Accounting"].includes(user.role),
+      );
+      setStaffMembers(staff);
+    } catch (error) {
+      console.error("Error fetching staff members:", error);
+    }
+  };
+
+  const handleStaffSelect = (e) => {
+    const selectedStaff = staffMembers.find(
+      (staff) => staff.user_id === parseInt(e.target.value),
+    );
+    if (selectedStaff) {
+      setFormData({
+        ...formData,
+        staff_id: selectedStaff.user_id,
+        staff_name: `${selectedStaff.first_name} ${selectedStaff.last_name}`,
+        employee_id: selectedStaff.employee_id || "",
+        department: selectedStaff.department || "",
+      });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Prepare data with correct field names for backend
+      const submitData = {
+        user_id: formData.staff_id, // Backend expects user_id
+        attendance_date: formData.attendance_date,
+        time_in: formData.time_in || null,
+        time_out: formData.time_out || null,
+        status: formData.status,
+        attendance_method: formData.attendance_method,
+        remarks: formData.notes || null,
+      };
+
+      console.log("Submitting attendance data:", submitData);
+
       const url = selectedRecord
         ? `http://localhost:5000/api/staff-attendance/${selectedRecord.attendance_id}`
         : "http://localhost:5000/api/staff-attendance";
@@ -75,25 +119,40 @@ const StaffAttendance = () => {
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
 
       const data = await response.json();
+      console.log("Response:", data);
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || data.message || "Failed to save attendance",
+        );
+      }
+
       if (data.success || data.attendance_id) {
+        alert("Attendance saved successfully!");
         fetchAttendanceRecords();
         handleCloseModal();
       }
     } catch (error) {
       console.error("Error saving attendance:", error);
+      alert(`Error: ${error.message}`);
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this attendance record?")) {
+    if (
+      window.confirm("Are you sure you want to delete this attendance record?")
+    ) {
       try {
-        const response = await fetch(`http://localhost:5000/api/staff-attendance/${id}`, {
-          method: "DELETE",
-        });
+        const response = await fetch(
+          `http://localhost:5000/api/staff-attendance/${id}`,
+          {
+            method: "DELETE",
+          },
+        );
         if (response.ok) {
           fetchAttendanceRecords();
         }
@@ -139,11 +198,14 @@ const StaffAttendance = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      present: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      present:
+        "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
       absent: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
       late: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-      "half-day": "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-      "on-leave": "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400",
+      "half-day":
+        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      "on-leave":
+        "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400",
     };
     return colors[status] || colors.present;
   };
@@ -155,7 +217,8 @@ const StaffAttendance = () => {
       record.employee_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.department?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || record.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "all" || record.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
@@ -190,44 +253,72 @@ const StaffAttendance = () => {
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Total Staff</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">128</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">
+                  Total Staff
+                </p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                  128
+                </p>
               </div>
               <div className="bg-indigo-100 dark:bg-indigo-900/30 p-3 rounded-lg">
-                <Users className="text-indigo-600 dark:text-indigo-400" size={24} />
+                <Users
+                  className="text-indigo-600 dark:text-indigo-400"
+                  size={24}
+                />
               </div>
             </div>
           </div>
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Present Today</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">115</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">
+                  Present Today
+                </p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                  115
+                </p>
               </div>
               <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
-                <CalendarCheck className="text-green-600 dark:text-green-400" size={24} />
+                <CalendarCheck
+                  className="text-green-600 dark:text-green-400"
+                  size={24}
+                />
               </div>
             </div>
           </div>
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Absent</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">8</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">
+                  Absent
+                </p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                  8
+                </p>
               </div>
               <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-lg">
-                <CalendarCheck className="text-red-600 dark:text-red-400" size={24} />
+                <CalendarCheck
+                  className="text-red-600 dark:text-red-400"
+                  size={24}
+                />
               </div>
             </div>
           </div>
           <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">On Leave</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">5</p>
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">
+                  On Leave
+                </p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                  5
+                </p>
               </div>
               <div className="bg-slate-100 dark:bg-slate-900/30 p-3 rounded-lg">
-                <Clock className="text-slate-600 dark:text-slate-400" size={24} />
+                <Clock
+                  className="text-slate-600 dark:text-slate-400"
+                  size={24}
+                />
               </div>
             </div>
           </div>
@@ -313,7 +404,10 @@ const StaffAttendance = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
               {currentRecords.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                  <td
+                    colSpan="9"
+                    className="px-4 py-8 text-center text-slate-500 dark:text-slate-400"
+                  >
                     No attendance records found
                   </td>
                 </tr>
@@ -323,7 +417,9 @@ const StaffAttendance = () => {
                     key={record.attendance_id}
                     className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150"
                   >
-                    <td className="px-4 py-2 font-semibold">{record.staff_name}</td>
+                    <td className="px-4 py-2 font-semibold">
+                      {record.staff_name}
+                    </td>
                     <td className="px-4 py-2">{record.employee_id}</td>
                     <td className="px-4 py-2">{record.department}</td>
                     <td className="px-4 py-2">
@@ -332,11 +428,15 @@ const StaffAttendance = () => {
                     <td className="px-4 py-2">{record.time_in || "N/A"}</td>
                     <td className="px-4 py-2">{record.time_out || "N/A"}</td>
                     <td className="px-4 py-2">
-                      <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(record.status)}`}>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(record.status)}`}
+                      >
                         {record.status.replace("-", " ")}
                       </span>
                     </td>
-                    <td className="px-4 py-2 capitalize text-xs">{record.attendance_method}</td>
+                    <td className="px-4 py-2 capitalize text-xs">
+                      {record.attendance_method}
+                    </td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
@@ -366,8 +466,8 @@ const StaffAttendance = () => {
         <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
           <span className="text-xs sm:text-sm">
             Page <span className="font-semibold">{currentPage}</span> of{" "}
-            <span className="font-semibold">{totalPages || 1}</span> | Total Records:{" "}
-            {filteredRecords.length}
+            <span className="font-semibold">{totalPages || 1}</span> | Total
+            Records: {filteredRecords.length}
           </span>
           <div className="flex gap-1 items-center mt-2 sm:mt-0">
             <button
@@ -381,7 +481,9 @@ const StaffAttendance = () => {
               {currentPage}
             </span>
             <button
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
               disabled={currentPage === totalPages}
               className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
             >
@@ -393,11 +495,11 @@ const StaffAttendance = () => {
 
       {/* Modal */}
       {showModal && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/30 flex items-center justify-center p-2 z-50 transition-opacity duration-300"
           onClick={handleCloseModal}
         >
-          <div 
+          <div
             className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-2xl transform transition-transform duration-300 scale-100 border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -414,48 +516,49 @@ const StaffAttendance = () => {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-4 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Staff Name *
+                </label>
+                <select
+                  required
+                  value={formData.staff_id}
+                  onChange={handleStaffSelect}
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                >
+                  <option value="">Select Staff Member</option>
+                  {staffMembers.map((staff) => (
+                    <option key={staff.user_id} value={staff.user_id}>
+                      {staff.first_name} {staff.last_name} - {staff.role}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Staff Name *
+                    Employee ID
                   </label>
                   <input
                     type="text"
-                    required
-                    value={formData.staff_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, staff_name: e.target.value })
-                    }
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    value={formData.employee_id}
+                    readOnly
+                    className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-600 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm"
+                    placeholder="Auto-filled"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Employee ID *
+                    Department
                   </label>
                   <input
                     type="text"
-                    required
-                    value={formData.employee_id}
-                    onChange={(e) =>
-                      setFormData({ ...formData, employee_id: e.target.value })
-                    }
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    value={formData.department}
+                    readOnly
+                    className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-600 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm"
+                    placeholder="Auto-filled"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Department
-                </label>
-                <input
-                  type="text"
-                  value={formData.department}
-                  onChange={(e) =>
-                    setFormData({ ...formData, department: e.target.value })
-                  }
-                  className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
@@ -467,7 +570,10 @@ const StaffAttendance = () => {
                     required
                     value={formData.attendance_date}
                     onChange={(e) =>
-                      setFormData({ ...formData, attendance_date: e.target.value })
+                      setFormData({
+                        ...formData,
+                        attendance_date: e.target.value,
+                      })
                     }
                     className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                   />
@@ -527,7 +633,10 @@ const StaffAttendance = () => {
                     required
                     value={formData.attendance_method}
                     onChange={(e) =>
-                      setFormData({ ...formData, attendance_method: e.target.value })
+                      setFormData({
+                        ...formData,
+                        attendance_method: e.target.value,
+                      })
                     }
                     className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                   >

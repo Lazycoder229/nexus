@@ -9,14 +9,15 @@ const GradesModel = {
           g.*,
           u.first_name,
           u.last_name,
-          u.student_id,
-          c.course_code,
-          c.course_title,
+          sd.student_number AS student_id,
+          c.code AS course_code,
+          c.title AS course_title,
           c.units,
-          ap.period_name,
-          ap.year
+          ap.school_year AS period_name,
+          ap.semester AS year
         FROM grades g
         LEFT JOIN users u ON g.student_user_id = u.user_id
+        LEFT JOIN student_details sd ON u.user_id = sd.user_id
         LEFT JOIN courses c ON g.course_id = c.course_id
         LEFT JOIN academic_periods ap ON g.period_id = ap.period_id
         WHERE 1=1
@@ -60,18 +61,19 @@ const GradesModel = {
           g.*,
           u.first_name,
           u.last_name,
-          u.student_id,
-          c.course_code,
-          c.course_title,
+          sd.student_number AS student_id,
+          c.code AS course_code,
+          c.title AS course_title,
           c.units,
-          ap.period_name,
-          ap.year
+          ap.school_year AS period_name,
+          ap.semester AS year
         FROM grades g
         LEFT JOIN users u ON g.student_user_id = u.user_id
+        LEFT JOIN student_details sd ON u.user_id = sd.user_id
         LEFT JOIN courses c ON g.course_id = c.course_id
         LEFT JOIN academic_periods ap ON g.period_id = ap.period_id
         WHERE g.grade_id = ?`,
-        [id]
+        [id],
       );
       return rows[0];
     } catch (error) {
@@ -109,7 +111,7 @@ const GradesModel = {
           final_grade || null,
           remarks || null,
           status || "draft",
-        ]
+        ],
       );
 
       return result.insertId;
@@ -143,7 +145,7 @@ const GradesModel = {
           remarks,
           status,
           id,
-        ]
+        ],
       );
 
       return result.affectedRows > 0;
@@ -157,7 +159,7 @@ const GradesModel = {
     try {
       const [result] = await pool.query(
         "DELETE FROM grades WHERE grade_id = ?",
-        [id]
+        [id],
       );
       return result.affectedRows > 0;
     } catch (error) {
@@ -172,7 +174,7 @@ const GradesModel = {
         `UPDATE grades 
         SET status = 'approved', approved_by = ?, approved_date = NOW()
         WHERE grade_id = ?`,
-        [approvedBy, id]
+        [approvedBy, id],
       );
       return result.affectedRows > 0;
     } catch (error) {

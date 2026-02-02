@@ -8,8 +8,8 @@ const ExamSchedulesModel = {
         es.*,
         e.exam_name,
         e.exam_type,
-        c.course_code,
-        c.course_name,
+        c.code AS course_code,
+        c.title AS course_name,
         s.section_name,
         u.first_name AS proctor_first_name,
         u.last_name AS proctor_last_name
@@ -63,8 +63,8 @@ const ExamSchedulesModel = {
         e.exam_type,
         e.total_points,
         e.exam_duration,
-        c.course_code,
-        c.course_name,
+        c.code AS course_code,
+        c.title AS course_name,
         s.section_name
       FROM exam_schedules es
       INNER JOIN exams e ON es.exam_id = e.exam_id
@@ -173,7 +173,7 @@ const ExamSchedulesModel = {
     examDate,
     startTime,
     endTime,
-    excludeScheduleId = null
+    excludeScheduleId = null,
   ) => {
     let query = `
       SELECT schedule_id

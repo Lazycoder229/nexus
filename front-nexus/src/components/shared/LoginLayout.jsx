@@ -117,53 +117,6 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [useMock, setUseMock] = useState(true); // Toggle for mock data
-
-  // Mock users for all roles
-  const mockUsers = [
-    {
-      email: "student@uni.edu",
-      password: "student123",
-      role: "Student",
-      userId: "stu-001",
-      token: "mock-token-student",
-    },
-    {
-      email: "admin@uni.edu",
-      password: "admin123",
-      role: "Admin",
-      userId: "adm-001",
-      token: "mock-token-admin",
-    },
-    {
-      email: "faculty@uni.edu",
-      password: "faculty123",
-      role: "Faculty",
-      userId: "fac-001",
-      token: "mock-token-faculty",
-    },
-    {
-      email: "staff@uni.edu",
-      password: "staff123",
-      role: "Staff",
-      userId: "stf-001",
-      token: "mock-token-staff",
-    },
-    {
-      email: "hr@uni.edu",
-      password: "hr123",
-      role: "HR",
-      userId: "hr-001",
-      token: "mock-token-hr",
-    },
-    {
-      email: "accounting@uni.edu",
-      password: "accounting123",
-      role: "Accounting",
-      userId: "acc-001",
-      token: "mock-token-accounting",
-    },
-  ];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -173,46 +126,8 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
       return;
     }
 
-    if (useMock) {
-      // Use mock data for login
-      const user = mockUsers.find(
-        (u) => u.email === email && u.password === password,
-      );
-      if (user) {
-        localStorage.setItem("token", user.token);
-        localStorage.setItem("role", user.role);
-        localStorage.setItem("userId", user.userId);
-        localStorage.setItem(
-          "user",
-          JSON.stringify({ user_id: user.userId, role: user.role }),
-        );
-        alert(`Mock login successful! Role: ${user.role}`);
-        // Simulate navigation
-        if (user.role === "Student") {
-          navigate("/student/dashboard");
-        } else if (user.role === "Admin") {
-          navigate("/admin/dashboard");
-        } else if (user.role === "Faculty") {
-          navigate("/faculty/dashboard");
-        } else if (user.role === "Staff") {
-          navigate("/staff/dashboard");
-        } else if (user.role === "HR") {
-          navigate("/hr/dashboard");
-        } else if (user.role === "Accounting") {
-          navigate("/accounting/dashboard");
-        } else {
-          navigate("/");
-        }
-      } else {
-        alert("Mock Login Failed: Invalid email or password.");
-      }
-      return;
-    }
-
-    // --- Original login logic below (commented out) ---
-    /*
     try {
-      // 1️ Send login request
+      // Send login request
       const { data } = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/api/auth/login`,
         {
@@ -223,7 +138,7 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
 
       console.log("Login Response:", data);
 
-      // 2️Save JWT token & user info
+      // Save JWT token & user info
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
       localStorage.setItem("userId", data.userId);
@@ -235,11 +150,11 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
 
       alert(`Login successful! Role: ${data.role}`);
 
-      // 3️ Redirect based on role
+      // Redirect based on role
       if (data.role === "Student") {
-        navigate("/student/dashboard"); // make sure this route exists
+        navigate("/student/dashboard");
       } else if (data.role === "Admin") {
-        navigate("/admin/dashboard"); // admin route
+        navigate("/admin/dashboard");
       } else if (data.role === "Faculty") {
         navigate("/faculty/dashboard");
       } else if (data.role === "Staff") {
@@ -249,7 +164,6 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
       } else if (data.role === "Accounting") {
         navigate("/accounting/dashboard");
       } else {
-        // fallback
         navigate("/");
       }
     } catch (error) {
@@ -267,44 +181,9 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
         alert("Network error. Please try again later.");
       }
     }
-    */
   };
   return (
     <div className="flex flex-col md:flex-row w-full h-full min-h-[480px]">
-      {/* MOCK LOGIN INFO */}
-      <div className="w-full bg-yellow-50 text-yellow-900 text-xs p-2 mb-2 rounded shadow border border-yellow-200">
-        <b>Mock Login Enabled</b> (for testing):
-        <br />
-        <ul className="list-disc ml-4">
-          <li>
-            Student: <b>student@uni.edu</b> / <b>student123</b>
-          </li>
-          <li>
-            Admin: <b>admin@uni.edu</b> / <b>admin123</b>
-          </li>
-          <li>
-            Faculty: <b>faculty@uni.edu</b> / <b>faculty123</b>
-          </li>
-          <li>
-            Staff: <b>staff@uni.edu</b> / <b>staff123</b>
-          </li>
-          <li>
-            HR: <b>hr@uni.edu</b> / <b>hr123</b>
-          </li>
-          <li>
-            Accounting: <b>accounting@uni.edu</b> / <b>accounting123</b>
-          </li>
-        </ul>
-        <label className="inline-flex items-center mt-2">
-          <input
-            type="checkbox"
-            checked={useMock}
-            onChange={(e) => setUseMock(e.target.checked)}
-            className="mr-1"
-          />
-          Use mock login
-        </label>
-      </div>
       {/* LEFT SIDEBAR (Deep Academic Blue/Indigo) */}
       <div className="w-full md:w-1/3 bg-gradient-to-br from-blue-800 to-indigo-900 p-6 md:p-8 flex flex-col justify-between text-white relative overflow-hidden">
         {/* Background pattern */}

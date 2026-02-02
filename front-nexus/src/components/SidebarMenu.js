@@ -213,7 +213,7 @@ const Menu = {
         },
       ],
     },
-
+/* 
     {
       title: "Learning Management",
       icons: BookOpen,
@@ -221,7 +221,7 @@ const Menu = {
         { label: "Manage Room", icons: Home, link: "/admin_manage_room" },
       ],
     },
-
+ */
     {
       title: "Events & Communication",
       icons: Bell,

@@ -1,8 +1,8 @@
 import db from "../config/db.js";
 
 const AnnouncementsModel = {
-  getAllAnnouncements: (filters = {}) => {
-    return new Promise((resolve, reject) => {
+  getAllAnnouncements: async (filters = {}) => {
+    try {
       let query = `
         SELECT a.*, 
                CONCAT(u.first_name, ' ', u.last_name) as creator_name
@@ -39,15 +39,16 @@ const AnnouncementsModel = {
 
       query += " ORDER BY a.is_pinned DESC, a.publish_date DESC";
 
-      db.query(query, params, (err, results) => {
-        if (err) return reject(err);
-        resolve(results);
-      });
-    });
+      const [results] = await db.query(query, params);
+      return results;
+    } catch (err) {
+      console.error("getAllAnnouncements error:", err);
+      throw err;
+    }
   },
 
-  getAnnouncementById: (id) => {
-    return new Promise((resolve, reject) => {
+  getAnnouncementById: async (id) => {
+    try {
       const query = `
         SELECT a.*, 
                CONCAT(u.first_name, ' ', u.last_name) as creator_name
@@ -55,51 +56,70 @@ const AnnouncementsModel = {
         LEFT JOIN users u ON a.created_by = u.user_id
         WHERE a.announcement_id = ?
       `;
-      db.query(query, [id], (err, results) => {
-        if (err) return reject(err);
-        resolve(results[0]);
-      });
-    });
+      const [results] = await db.query(query, [id]);
+      return results[0];
+    } catch (err) {
+      console.error("getAnnouncementById error:", err);
+      throw err;
+    }
   },
 
-  createAnnouncement: (data) => {
-    return new Promise((resolve, reject) => {
+  createAnnouncement: async (data) => {
+    try {
+      console.log("MODEL createAnnouncement - Data received:", data);
+
+      // Clean up empty strings to null
+      const cleanData = Object.keys(data).reduce((acc, key) => {
+        acc[key] = data[key] === "" ? null : data[key];
+        return acc;
+      }, {});
+
+      console.log("MODEL createAnnouncement - Cleaned data:", cleanData);
+
       const query = "INSERT INTO announcements SET ?";
-      db.query(query, data, (err, results) => {
-        if (err) return reject(err);
-        resolve(results);
-      });
-    });
+      console.log("MODEL createAnnouncement - Executing query...");
+
+      const [results] = await db.query(query, cleanData);
+      console.log("MODEL createAnnouncement - Success:", results);
+      return results;
+    } catch (err) {
+      console.error("MODEL createAnnouncement - SQL Error:", err);
+      throw err;
+    }
   },
 
-  updateAnnouncement: (id, data) => {
-    return new Promise((resolve, reject) => {
+  updateAnnouncement: async (id, data) => {
+    try {
       const query = "UPDATE announcements SET ? WHERE announcement_id = ?";
-      db.query(query, [data, id], (err, results) => {
-        if (err) return reject(err);
-        resolve(results);
-      });
-    });
+      const [results] = await db.query(query, [data, id]);
+      return results;
+    } catch (err) {
+      console.error("updateAnnouncement error:", err);
+      throw err;
+    }
   },
 
-  deleteAnnouncement: (id) => {
-    return new Promise((resolve, reject) => {
+  deleteAnnouncement: async (id) => {
+    try {
       const query = "DELETE FROM announcements WHERE announcement_id = ?";
-      db.query(query, [id], (err, results) => {
-        if (err) return reject(err);
-        resolve(results);
-      });
-    });
+      const [results] = await db.query(query, [id]);
+      return results;
+    } catch (err) {
+      console.error("deleteAnnouncement error:", err);
+      throw err;
+    }
   },
 
-  incrementViews: (id) => {
-    return new Promise((resolve, reject) => {
-      const query = "UPDATE announcements SET views_count = views_count + 1 WHERE announcement_id = ?";
-      db.query(query, [id], (err, results) => {
-        if (err) return reject(err);
-        resolve(results);
-      });
-    });
+  incrementViews: async (id) => {
+    try {
+      const query =
+        "UPDATE announcements SET views_count = views_count + 1 WHERE announcement_id = ?";
+      const [results] = await db.query(query, [id]);
+      return results;
+    } catch (err) {
+      console.error("incrementViews error:", err);
+      throw err;
+    }
   },
 
   getStatistics: () => {
@@ -110,12 +130,30 @@ const AnnouncementsModel = {
           SUM(CASE WHEN status = 'Published' THEN 1 ELSE 0 END) as published_count,
           SUM(CASE WHEN status = 'Draft' THEN 1 ELSE 0 END) as draft_count,
           SUM(CASE WHEN priority = 'Urgent' THEN 1 ELSE 0 END) as urgent_count,
-          SUM(views_count) as total_views
+          COALESCE(SUM(views_count), 0) as total_views
         FROM announcements
       `;
       db.query(query, (err, results) => {
-        if (err) return reject(err);
-        resolve(results[0]);
+        if (err) {
+          console.error("Statistics SQL error:", err);
+          // Return default stats if query fails
+          return resolve({
+            total_announcements: 0,
+            published_count: 0,
+            draft_count: 0,
+            urgent_count: 0,
+            total_views: 0,
+          });
+        }
+        resolve(
+          results[0] || {
+            total_announcements: 0,
+            published_count: 0,
+            draft_count: 0,
+            urgent_count: 0,
+            total_views: 0,
+          },
+        );
       });
     });
   },

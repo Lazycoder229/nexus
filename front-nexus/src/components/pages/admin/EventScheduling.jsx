@@ -20,7 +20,7 @@ const EventScheduling = () => {
     event_type: "academic",
     start_date: "",
     end_date: "",
-    location: "",
+    venue: "",
     organizer: "",
     max_participants: "",
     status: "scheduled",
@@ -48,6 +48,14 @@ const EventScheduling = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const userId = parseInt(localStorage.getItem("userId"));
+      const payload = {
+        ...formData,
+        created_by: userId
+      };
+      
+      console.log("Submitting event payload:", payload);
+      
       const url = selectedEvent
         ? `http://localhost:5000/api/events/scheduling/${selectedEvent.event_id}`
         : "http://localhost:5000/api/events/scheduling";
@@ -57,13 +65,18 @@ const EventScheduling = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
+      console.log("Server response:", data);
+      
       if (data.success || data.event_id) {
         fetchEvents();
         handleCloseModal();
+      } else {
+        console.error("Save failed:", data);
+        alert(`Error: ${data.error || "Failed to save event"}`);
       }
     } catch (error) {
       console.error("Error saving event:", error);
@@ -93,7 +106,7 @@ const EventScheduling = () => {
       event_type: event.event_type,
       start_date: event.start_date?.split("T")[0] || "",
       end_date: event.end_date?.split("T")[0] || "",
-      location: event.location || "",
+      venue: event.venue || "",
       organizer: event.organizer || "",
       max_participants: event.max_participants || "",
       status: event.status,
@@ -110,7 +123,7 @@ const EventScheduling = () => {
       event_type: "academic",
       start_date: "",
       end_date: "",
-      location: "",
+      venue: "",
       organizer: "",
       max_participants: "",
       status: "scheduled",
@@ -220,7 +233,7 @@ const EventScheduling = () => {
                 .filter(event => 
                   (filters.search === "" || 
                     event.event_name?.toLowerCase().includes(filters.search.toLowerCase()) ||
-                    event.location?.toLowerCase().includes(filters.search.toLowerCase()) ||
+                    event.venue?.toLowerCase().includes(filters.search.toLowerCase()) ||
                     event.organizer?.toLowerCase().includes(filters.search.toLowerCase()))
                 )
                 .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
@@ -267,7 +280,7 @@ const EventScheduling = () => {
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1">
                       <MapPin size={12} className="text-slate-400" />
-                      <span className="text-xs">{event.location || "N/A"}</span>
+                      <span className="text-xs">{event.venue || "N/A"}</span>
                     </div>
                   </td>
                   <td className="px-4 py-2">
@@ -435,10 +448,10 @@ const EventScheduling = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Start Date *
+                    Start Date & Time *
                   </label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     required
                     value={formData.start_date}
                     onChange={(e) =>
@@ -449,10 +462,10 @@ const EventScheduling = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    End Date
+                    End Date & Time
                   </label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     value={formData.end_date}
                     onChange={(e) =>
                       setFormData({ ...formData, end_date: e.target.value })
@@ -467,9 +480,9 @@ const EventScheduling = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.location}
+                  value={formData.venue}
                   onChange={(e) =>
-                    setFormData({ ...formData, location: e.target.value })
+                    setFormData({ ...formData, venue: e.target.value })
                   }
                   className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                 />

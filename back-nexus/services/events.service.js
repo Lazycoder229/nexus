@@ -15,13 +15,22 @@ const EventsService = {
 
   createEvent: async (data) => {
     // Validation
-    if (!data.event_name || !data.start_date || !data.end_date) {
-      throw new Error("Event name, start date, and end date are required");
+    if (!data.event_name || !data.start_date) {
+      throw new Error("Event name and start date are required");
     }
 
-    // Validate dates
-    if (new Date(data.start_date) > new Date(data.end_date)) {
-      throw new Error("Start date cannot be after end date");
+    // Validate dates if end_date is provided
+    if (data.end_date && data.start_date) {
+      const startDate = new Date(data.start_date);
+      const endDate = new Date(data.end_date);
+      
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        throw new Error("Invalid date format");
+      }
+      
+      if (startDate > endDate) {
+        throw new Error(`Start date (${startDate.toISOString()}) cannot be after end date (${endDate.toISOString()})`);
+      }
     }
 
     // Generate event code if not provided
