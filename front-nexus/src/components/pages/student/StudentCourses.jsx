@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { BookOpen, Plus, Search, ChevronLeft, ChevronRight, Calendar, Users, CheckCircle, XCircle, Clock, MapPin, AlertCircle, Info, Download, Printer, FileText, GraduationCap, ArrowRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 const StudentCourses = () => {
-  const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState("enlistment");
 
   // Enlistment state
@@ -121,7 +120,6 @@ const StudentCourses = () => {
   const currentSubjects = filteredSubjects.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const filteredTimetable = selectedDay === "all" ? timetable : timetable.filter(t => t.day === selectedDay);
 
   const groupedByDay = days.reduce((acc, day) => {
     acc[day] = timetable.filter(t => t.day === day).sort((a, b) => a.start_time.localeCompare(b.start_time));
@@ -187,32 +185,7 @@ const StudentCourses = () => {
         {activeTab === "enlistment" ? (
           // Subject Enlistment Tab
           <div className="space-y-4">
-            {/* Enrollment Call-to-Action Banner */}
-            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg p-6 text-white shadow-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-start gap-4">
-                  <div className="bg-white/20 rounded-full p-3">
-                    <GraduationCap size={32} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold mb-2">Ready to Enroll?</h3>
-                    <p className="text-sm text-indigo-100 mb-1">
-                      Browse available subjects, check prerequisites, and enroll online
-                    </p>
-                    <p className="text-xs text-indigo-200">
-                      Complete your enrollment in just a few clicks
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => navigate('/student/student_academic')}
-                  className="flex items-center gap-2 bg-white text-indigo-600 hover:bg-indigo-50 px-6 py-3 rounded-lg font-bold text-sm transition-all shadow-md hover:shadow-lg"
-                >
-                  Go to Enrollment
-                  <ArrowRight size={18} />
-                </button>
-              </div>
-            </div>
+           
 
             {/* Enrollment Status Banner */}
             {enrollmentStatus && (

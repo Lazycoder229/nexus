@@ -3,6 +3,7 @@ import {
   createStudentUser,
   createEmployeeUser,
   findUserByEmail,
+  findUserById,
   getAllUsers,
   updateStudentUser,
   updateEmployeeUser,
@@ -12,6 +13,11 @@ import {
 // Get all users
 export const getAllUsersService = async () => {
   return await getAllUsers();
+};
+
+// Get user by ID
+export const getUserByIdService = async (userId) => {
+  return await findUserById(userId);
 };
 
 // Register student
@@ -27,7 +33,7 @@ export const registerStudentService = async (studentData) => {
     !studentData.studentNumber
   ) {
     throw new Error(
-      "Email, password, first name, last name, and student number are required"
+      "Email, password, first name, last name, and student number are required",
     );
   }
 
@@ -57,7 +63,7 @@ export const registerEmployeeService = async (employeeData) => {
   // Validate required fields
   if (!email || !password || !firstName || !lastName || !employeeId) {
     throw new Error(
-      "Email, password, first name, last name, and employee ID are required"
+      "Email, password, first name, last name, and employee ID are required",
     );
   }
 

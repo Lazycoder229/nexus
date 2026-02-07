@@ -1,6 +1,7 @@
 import express from "express";
 import {
   getAllUsers,
+  getUserById,
   registerStudent,
   registerEmployee,
   loginUser,
@@ -13,6 +14,9 @@ const router = express.Router();
 
 // Get all users
 router.get("/users", getAllUsers);
+
+// Get user by ID
+router.get("/users/:userId", getUserById);
 
 // Register student
 router.post("/users/student", registerStudent);

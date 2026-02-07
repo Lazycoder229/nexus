@@ -30,6 +30,11 @@ const FacultyCourseAssignmentService = {
     try {
       const [assignments] =
         await FacultyCourseAssignment.getByFacultyId(facultyUserId);
+      console.log(
+        "Backend assignments fetched for facultyUserId:",
+        facultyUserId,
+        assignments,
+      );
       const assignmentsWithSchedules = await Promise.all(
         assignments.map(async (a) => {
           const [schedules] = await FacultyAssignmentSchedule.getByAssignmentId(

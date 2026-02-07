@@ -99,6 +99,7 @@ import StudentDashboard from "./components/pages/student/StudentDashboard";
 import StudentProfile from "./components/pages/student/StudentProfile";
 import StudentCourses from "./components/pages/student/StudentCourses";
 import StudentAcademic from "./components/pages/student/StudentAcademic";
+import StudentEnrollment from "./components/pages/student/StudentEnrollment";
 import StudentFinance from "./components/pages/student/StudentFinance";
 import StudentFinanceBalance from "./components/pages/student/StudentFinanceBalance";
 import StudentFinanceReceipts from "./components/pages/student/StudentFinanceReceipts";
@@ -289,6 +290,8 @@ function AppWrapper() {
         <Route path="student_courses" element={<StudentCourses />} />
         {/* Academic */}
         <Route path="student_academic" element={<StudentAcademic />} />
+        {/* Enrollment */}
+        <Route path="student_enrollment" element={<StudentEnrollment />} />
         {/* LMS */}
         <Route path="student_lms_lessons" element={<StudentLMS />} />
         <Route path="student_lms_quizzes" element={<StudentLMS />} />
@@ -334,7 +337,7 @@ function AppWrapper() {
           path="faculty_assigned_subjects"
           element={<AssignedSubjects />}
         />
-        <Route path="faculty_syllabus_upload" element={<SyllabusUpload />} />
+        <Route path="faculty_syllabus_upload" element={<SyllabusRepository />} />
         <Route path="faculty_student_list" element={<StudentList />} />
 
         {/* Attendance */}

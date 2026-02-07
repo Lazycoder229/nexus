@@ -33,7 +33,7 @@ export const getAssignmentsByFacultyId = async (req, res) => {
     const result =
       await FacultyCourseAssignmentService.getAssignmentsByFacultyId(facultyId);
     if (result.success) {
-      res.status(200).json(result.data);
+      res.status(200).json(result); // Return the whole result object
     } else {
       res.status(500).json({ message: result.message });
     }
@@ -41,13 +41,12 @@ export const getAssignmentsByFacultyId = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 export const getAssignmentsByAcademicPeriod = async (req, res) => {
   try {
     const { periodId } = req.params;
     const result =
       await FacultyCourseAssignmentService.getAssignmentsByAcademicPeriod(
-        periodId
+        periodId,
       );
     if (result.success) {
       res.status(200).json(result.data);
@@ -62,7 +61,7 @@ export const getAssignmentsByAcademicPeriod = async (req, res) => {
 export const createAssignment = async (req, res) => {
   try {
     const result = await FacultyCourseAssignmentService.createAssignment(
-      req.body
+      req.body,
     );
     if (result.success) {
       res.status(201).json({ message: result.message, data: result.data });
@@ -79,7 +78,7 @@ export const updateAssignment = async (req, res) => {
     const { id } = req.params;
     const result = await FacultyCourseAssignmentService.updateAssignment(
       id,
-      req.body
+      req.body,
     );
     if (result.success) {
       res.status(200).json({ message: result.message });

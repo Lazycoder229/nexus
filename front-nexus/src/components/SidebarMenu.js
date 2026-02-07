@@ -213,7 +213,7 @@ const Menu = {
         },
       ],
     },
-/* 
+    /* 
     {
       title: "Learning Management",
       icons: BookOpen,
@@ -231,7 +231,7 @@ const Menu = {
           icons: Bell,
           link: "/admin/admin_announcement_center",
         },
-        {
+        /*  {
           label: "Event Scheduling",
           icons: CalendarCheck,
           link: "/admin/admin_event_scheduling",
@@ -245,10 +245,10 @@ const Menu = {
           label: "Public Event Posting",
           icons: Mail,
           link: "/admin/admin_public_event_posting",
-        },
+        }, */
       ],
     },
-    {
+    /*  {
       title: "Inventory Management",
       icons: ClipboardList,
       submenu: [
@@ -258,7 +258,7 @@ const Menu = {
           link: "/admin/admin_inventory_asset_management",
         },
       ],
-    },
+    }, */
     {
       title: "Report & Analytics",
       icons: ReportIcon,
@@ -339,11 +339,11 @@ const Menu = {
           icons: FileText,
           link: "/faculty/faculty_syllabus_upload",
         },
-        {
+        /*    {
           label: "Student List",
           icons: Users,
           link: "/faculty/faculty_student_list",
-        },
+        }, */
       ],
     },
     {
@@ -461,11 +461,17 @@ const Menu = {
 
       path: "/student/student_courses",
     },
-    {
+    /* {
       title: "Academic",
       icons: GraduationCap,
 
       path: "/student/student_academic",
+    }, */
+    {
+      title: "Enrollment",
+      icons: FileText,
+
+      path: "/student/student_enrollment",
     },
     {
       title: "LMS",

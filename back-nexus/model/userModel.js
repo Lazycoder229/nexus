@@ -6,6 +6,38 @@ export const findUserByEmail = async (email) => {
   // console.log("findUserByEmail result:", rows);
   return rows[0];
 };
+
+export const findUserById = async (userId) => {
+  const [rows] = await db.query(
+    `
+    SELECT 
+      u.*,
+      s.student_number,
+      s.course,
+      s.major,
+      s.year_level,
+      s.previous_school,
+      s.mailing_address,
+      s.father_name,
+      s.mother_name,
+      s.parent_phone,
+      e.employee_id,
+      e.position_title,
+      e.department,
+      e.date_hired,
+      e.specialization,
+      e.educational_attainment,
+      e.license_number,
+      e.access_level
+    FROM users u
+    LEFT JOIN student_details s ON u.user_id = s.user_id
+    LEFT JOIN employee_details e ON u.user_id = e.user_id
+    WHERE u.user_id = ?
+  `,
+    [userId],
+  );
+  return rows[0];
+};
 // Fetch all users with their student or employee details
 export const getAllUsers = async () => {
   const [rows] = await db.query(`
@@ -83,7 +115,7 @@ export const createStudentUser = async (userData) => {
         phone || null,
         permanentAddress || null,
         profilePictureUrl || null,
-      ]
+      ],
     );
 
     const userId = userResult.insertId;
@@ -105,7 +137,7 @@ export const createStudentUser = async (userData) => {
         fatherName,
         motherName,
         parentPhone,
-      ]
+      ],
     );
 
     // Commit transaction
@@ -169,7 +201,7 @@ export const createEmployeeUser = async (userData) => {
         permanentAddress || null,
         profilePictureUrl || null,
         status,
-      ]
+      ],
     );
 
     const userId = userResult.insertId;
@@ -190,7 +222,7 @@ export const createEmployeeUser = async (userData) => {
         educationalAttainment || null,
         licenseNumber || null,
         accessLevel || null,
-      ]
+      ],
     );
 
     await connection.commit();
@@ -279,7 +311,7 @@ export const updateStudentUser = async (userId, userData) => {
         motherName,
         parentPhone,
         userId,
-      ]
+      ],
     );
 
     await connection.commit();
@@ -364,7 +396,7 @@ export const updateEmployeeUser = async (userId, userData) => {
         licenseNumber || null,
         accessLevel || null,
         userId,
-      ]
+      ],
     );
 
     await connection.commit();
