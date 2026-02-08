@@ -245,9 +245,9 @@ const AssignedSubjects = () => {
       setLoadingStudents(true);
       const token = localStorage.getItem("token");
 
-      // TODO: Replace with your actual API endpoint for fetching students
+      // Use the actual API endpoint for fetching students by assignment
       const response = await axios.get(
-        `${API_BASE}/api/faculty-assignments/${assignmentId}/students`,
+        `${API_BASE}/api/enrollments/assignment/${assignmentId}/students`,
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         },
@@ -257,25 +257,7 @@ const AssignedSubjects = () => {
       setLoadingStudents(false);
     } catch (error) {
       console.error("Error fetching students:", error);
-      // For demo purposes, setting mock data
-      setStudents([
-        {
-          id: 1,
-          student_id: "2021-00001",
-          name: "John Doe",
-          email: "john.doe@example.com",
-          phone: "+63 912 345 6789",
-          status: "enrolled",
-        },
-        {
-          id: 2,
-          student_id: "2021-00002",
-          name: "Jane Smith",
-          email: "jane.smith@example.com",
-          phone: "+63 923 456 7890",
-          status: "enrolled",
-        },
-      ]);
+      setStudents([]);
       setLoadingStudents(false);
     }
   };
@@ -402,9 +384,8 @@ const AssignedSubjects = () => {
                   <p className="text-sm opacity-90">Section {course.section}</p>
                 </div>
                 <div
-                  className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    course.status === "active" ? "bg-green-400" : "bg-gray-400"
-                  }`}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold ${course.status === "active" ? "bg-green-400" : "bg-gray-400"
+                    }`}
                 >
                   {course.status.toUpperCase()}
                 </div>
@@ -572,11 +553,10 @@ const AssignedSubjects = () => {
                   <span className="font-semibold">Status</span>
                 </div>
                 <span
-                  className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                    selectedCourse.status === "active"
+                  className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${selectedCourse.status === "active"
                       ? "bg-green-100 text-green-800"
                       : "bg-gray-100 text-gray-800"
-                  }`}
+                    }`}
                 >
                   {selectedCourse.status.toUpperCase()}
                 </span>
@@ -717,11 +697,10 @@ const AssignedSubjects = () => {
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <span
-                              className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                student.status === "enrolled"
+                              className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${student.status === "enrolled"
                                   ? "bg-green-100 text-green-800"
                                   : "bg-gray-100 text-gray-800"
-                              }`}
+                                }`}
                             >
                               {student.status}
                             </span>

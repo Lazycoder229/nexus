@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { Mail, Send, User, Search } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentEmailFaculty = () => {
   const [faculty, setFaculty] = useState([]);
@@ -18,9 +21,15 @@ const StudentEmailFaculty = () => {
 
   const fetchFaculty = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/faculty");
-      const data = await response.json();
-      if (data.success) setFaculty(data.data);
+      const response = await axios.get(`${API_BASE}/api/faculty`);
+      const facultyData = response.data || [];
+      setFaculty(facultyData.map(f => ({
+        faculty_id: f.id || f.faculty_id || f.user_id,
+        name: f.name || `${f.first_name || ''} ${f.last_name || ''}`.trim(),
+        department: f.department || 'N/A',
+        subject: f.subject || 'N/A',
+        email: f.email,
+      })));
     } catch (error) {
       console.error("Error fetching faculty:", error);
     }
@@ -29,16 +38,14 @@ const StudentEmailFaculty = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://localhost:5000/api/student/email/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+      await axios.post(`${API_BASE}/api/messages`, {
+        receiver_id: formData.to_faculty_id,
+        subject: formData.subject,
+        content: formData.message,
       });
-      if (response.ok) {
-        setShowCompose(false);
-        setFormData({ to_faculty_id: "", subject: "", message: "" });
-        alert("Email sent successfully!");
-      }
+      setShowCompose(false);
+      setFormData({ to_faculty_id: "", subject: "", message: "" });
+      alert("Email sent successfully!");
     } catch (error) {
       console.error("Error sending email:", error);
     }

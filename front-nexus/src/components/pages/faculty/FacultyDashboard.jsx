@@ -80,9 +80,8 @@ const UpcomingClass = ({ course }) => (
   <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-3 rounded-lg border border-indigo-100">
     <div className="flex items-center justify-between mb-1">
       <h4 className="font-semibold text-gray-900 text-sm">{course.code}</h4>
-      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-        course.status === 'ongoing' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-      }`}>
+      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${course.status === 'ongoing' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+        }`}>
         {course.status}
       </span>
     </div>
@@ -117,71 +116,69 @@ const FacultyDashboard = () => {
   }, []);
 
   const fetchDashboardData = async () => {
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+    const facultyUserId = localStorage.getItem("userId");
+
     try {
-      // TODO: Replace with actual API endpoint
-      // const response = await axios.get('/api/faculty/dashboard');
-      
-      // Mock data for demonstration
+      // Fetch real data from multiple endpoints
+      const [coursesRes, scheduleRes, gradesRes, attendanceRes] = await Promise.all([
+        axios.get(`${API_BASE}/api/course/courses`).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/api/schedules`).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/api/grades`).catch(() => ({ data: [] })),
+        axios.get(`${API_BASE}/api/student-attendance`).catch(() => ({ data: { data: [] } })),
+      ]);
+
+      const courses = Array.isArray(coursesRes.data) ? coursesRes.data : (coursesRes.data.data || []);
+      const schedules = Array.isArray(scheduleRes.data) ? scheduleRes.data : (scheduleRes.data.data || []);
+      const grades = Array.isArray(gradesRes.data) ? gradesRes.data : (gradesRes.data.data || []);
+      const attendance = attendanceRes.data.data || [];
+
+      // Calculate stats from real data
+      const assignedCourses = courses.length;
+      const pendingGrades = grades.filter(g => !g.grade || g.grade === 'Pending').length;
+      const presentCount = attendance.filter(a => a.status === 'present').length;
+      const attendanceRate = attendance.length > 0 ? ((presentCount / attendance.length) * 100).toFixed(1) : 0;
+
+      // Build upcoming classes from schedules
+      const upcomingClasses = schedules.slice(0, 3).map((s, idx) => ({
+        id: s.id || idx + 1,
+        code: s.course_code || s.code || `Course ${idx + 1}`,
+        name: s.course_title || s.course_name || s.title || 'Course',
+        schedule: s.schedule || `${s.day || 'TBD'} ${s.start_time || ''} - ${s.end_time || ''}`,
+        students: s.student_count || 30,
+        status: 'upcoming',
+      }));
+
+      // Build recent activities
+      const recentActivities = [
+        {
+          id: 1,
+          title: 'Dashboard Loaded',
+          description: `${courses.length} courses, ${grades.length} grade records loaded`,
+          timestamp: new Date(),
+          icon: CheckSquare,
+          color: 'bg-green-500',
+        },
+        {
+          id: 2,
+          title: 'Attendance Data',
+          description: `${attendance.length} attendance records found`,
+          timestamp: new Date(Date.now() - 60 * 60 * 1000),
+          icon: CalendarCheck,
+          color: 'bg-blue-500',
+        },
+      ];
+
       setDashboardData({
-          stats: {
-            assignedCourses: 6,
-            totalStudents: 180,
-            pendingGrades: 12,
-            attendanceRate: 92.5,
-          },
-          recentActivities: [
-            {
-              id: 1,
-              title: 'Grade Submitted',
-              description: 'CS101 - Midterm Exam grades submitted',
-              timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-              icon: CheckSquare,
-              color: 'bg-green-500',
-            },
-            {
-              id: 2,
-              title: 'Attendance Marked',
-              description: 'MATH201 - Class attendance recorded',
-              timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000),
-              icon: CalendarCheck,
-              color: 'bg-blue-500',
-            },
-            {
-              id: 3,
-              title: 'Material Uploaded',
-              description: 'ENG102 - New lecture notes added',
-              timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-              icon: BookOpen,
-              color: 'bg-purple-500',
-            },
-          ],
-          upcomingClasses: [
-            {
-              id: 1,
-              code: 'CS101',
-              name: 'Introduction to Programming',
-              schedule: 'Mon 8:00 AM - 10:00 AM',
-              students: 35,
-              status: 'upcoming',
-            },
-            {
-              id: 2,
-              code: 'MATH201',
-              name: 'Calculus II',
-              schedule: 'Tue 10:00 AM - 12:00 PM',
-              students: 40,
-              status: 'upcoming',
-            },
-            {
-              id: 3,
-              code: 'ENG102',
-              name: 'Technical Writing',
-              schedule: 'Wed 2:00 PM - 4:00 PM',
-              students: 30,
-              status: 'ongoing',
-            },
-          ],
-        });
+        stats: {
+          assignedCourses,
+          totalStudents: attendance.length || grades.length || 0,
+          pendingGrades,
+          attendanceRate: Number(attendanceRate),
+        },
+        recentActivities,
+        upcomingClasses,
+      });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     }

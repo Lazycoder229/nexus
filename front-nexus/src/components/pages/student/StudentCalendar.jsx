@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { Calendar as CalendarIcon, FileText, Clock, MapPin, Users, BookOpen } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentCalendar = () => {
   const [activeTab, setActiveTab] = useState("exams");
@@ -26,21 +29,49 @@ const StudentCalendar = () => {
 
   const fetchExams = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/calendar/exams");
-      const data = await response.json();
-      if (data.success) setExams(data.data);
+      // Use events/calendar endpoint for exams
+      const response = await axios.get(`${API_BASE}/api/events/calendar`);
+      const data = response.data || [];
+      // Filter exam-type events
+      const examEvents = data.filter(e => e.type === 'exam' || e.event_type === 'exam');
+      setExams(examEvents.map(e => ({
+        exam_id: e.id || e.event_id,
+        subject_name: e.title || e.subject_name,
+        title: e.description || 'Exam',
+        exam_type: e.exam_type || 'midterm',
+        exam_date: e.date || e.event_date,
+        start_time: e.start_time,
+        end_time: e.end_time,
+        room: e.location || e.room,
+        description: e.notes || e.description,
+      })));
     } catch (error) {
       console.error("Error fetching exams:", error);
+      setExams([]);
     }
   };
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/calendar/events");
-      const data = await response.json();
-      if (data.success) setEvents(data.data);
+      const response = await axios.get(`${API_BASE}/api/events/calendar`);
+      const data = response.data || [];
+      // Filter non-exam events
+      const calendarEvents = data.filter(e => e.type !== 'exam' && e.event_type !== 'exam');
+      setEvents(calendarEvents.map(e => ({
+        event_id: e.id || e.event_id,
+        title: e.title,
+        description: e.content || e.description,
+        event_type: e.event_type || e.type || 'academic',
+        event_date: e.date || e.event_date,
+        start_time: e.start_time,
+        end_time: e.end_time,
+        location: e.location,
+        target_audience: e.target_audience || 'All Students',
+        registration_required: e.registration_required || false,
+      })));
     } catch (error) {
       console.error("Error fetching events:", error);
+      setEvents([]);
     }
   };
 
@@ -96,11 +127,10 @@ const StudentCalendar = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${
-                  activeTab === tab.id
+                className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${activeTab === tab.id
                     ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20"
                     : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                }`}
+                  }`}
               >
                 <Icon size={16} />
                 {tab.label}
@@ -153,7 +183,7 @@ const StudentCalendar = () => {
                           <div>
                             <p className="text-xs text-slate-500 dark:text-slate-400">Time</p>
                             <p className="font-semibold text-slate-900 dark:text-white">
-                              {exam.start_time && new Date(`2000-01-01T${exam.start_time}`).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - 
+                              {exam.start_time && new Date(`2000-01-01T${exam.start_time}`).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} -
                               {exam.end_time && new Date(`2000-01-01T${exam.end_time}`).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </p>
                           </div>

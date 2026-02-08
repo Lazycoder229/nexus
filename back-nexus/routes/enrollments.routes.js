@@ -7,6 +7,7 @@ import {
   createEnrollment,
   updateEnrollment,
   deleteEnrollment,
+  getStudentsByAssignment,
 } from "../controllers/enrollments.controller.js";
 
 const router = express.Router();
@@ -17,5 +18,8 @@ router.get("/enrollments/:id", getEnrollmentById);
 router.post("/enrollments", createEnrollment);
 router.put("/enrollments/:id", updateEnrollment);
 router.delete("/enrollments/:id", deleteEnrollment);
+
+// Get students by faculty assignment ID - MUST be before export
+router.get('/enrollments/assignment/:assignmentId/students', getStudentsByAssignment);
 
 export default router;

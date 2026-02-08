@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { Download, FileText, Calendar, Search } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const PayrollReports = () => {
   const [payrollSetups, setPayrollSetups] = useState([]);
   const [selectedSetup, setSelectedSetup] = useState(null);
@@ -23,7 +25,7 @@ const PayrollReports = () => {
 
   const fetchPayrollSetups = async () => {
     try {
-      const response = await axios.get("/api/payroll/setups");
+      const response = await axios.get(`${API_BASE}/api/payroll/setups`);
       setPayrollSetups(response.data.data || []);
     } catch (error) {
       console.error("Error fetching payroll setups:", error);
@@ -39,7 +41,7 @@ const PayrollReports = () => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `/api/payroll/summary/${selectedSetup}`,
+        `${API_BASE}/api/payroll/summary/${selectedSetup}`,
         {
           params: { report_type: reportType },
         }
@@ -65,9 +67,8 @@ const PayrollReports = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `payroll_${reportType}_${
-      new Date().toISOString().split("T")[0]
-    }.csv`;
+    a.download = `payroll_${reportType}_${new Date().toISOString().split("T")[0]
+      }.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };

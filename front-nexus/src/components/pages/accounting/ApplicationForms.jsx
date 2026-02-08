@@ -3,6 +3,8 @@ import axios from "axios";
 import Select from "react-select";
 import { Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, FileText, User, Calendar } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const ApplicationForms = () => {
   const [applications, setApplications] = useState([]);
   const [scholarshipTypes, setScholarshipTypes] = useState([]);
@@ -41,7 +43,7 @@ const ApplicationForms = () => {
       const params = new URLSearchParams();
       if (filterStatus) params.append("status", filterStatus);
       if (searchTerm) params.append("search", searchTerm);
-      const response = await axios.get(`http://localhost:5000/api/scholarships/applications?${params}`);
+      const response = await axios.get(`${API_BASE}/api/scholarships/applications?${params}`);
       setApplications(response.data);
     } catch (error) {
       console.error("Error fetching applications:", error);
@@ -50,7 +52,7 @@ const ApplicationForms = () => {
 
   const fetchScholarshipTypes = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/scholarships/types?status=Active");
+      const response = await axios.get(`${API_BASE}/api/scholarships/types?status=Active`);
       setScholarshipTypes(response.data);
     } catch (error) {
       console.error("Error fetching scholarship types:", error);
@@ -59,7 +61,7 @@ const ApplicationForms = () => {
 
   const fetchStudents = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/users");
+      const response = await axios.get(`${API_BASE}/api/users`);
       setStudents(response.data.filter(u => u.role === 'Student'));
     } catch (error) {
       console.error("Error fetching students:", error);
@@ -68,7 +70,7 @@ const ApplicationForms = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/scholarships/applications/statistics");
+      const response = await axios.get(`${API_BASE}/api/scholarships/applications/statistics`);
       setStatistics(response.data);
     } catch (error) {
       console.error("Error fetching statistics:", error);
@@ -88,9 +90,9 @@ const ApplicationForms = () => {
     e.preventDefault();
     try {
       if (currentApp) {
-        await axios.put(`http://localhost:5000/api/scholarships/applications/${currentApp.application_id}`, formData);
+        await axios.put(`${API_BASE}/api/scholarships/applications/${currentApp.application_id}`, formData);
       } else {
-        await axios.post("http://localhost:5000/api/scholarships/applications", formData);
+        await axios.post(`${API_BASE}/api/scholarships/applications`, formData);
       }
       fetchApplications();
       fetchStatistics();
@@ -122,7 +124,7 @@ const ApplicationForms = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this application?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/scholarships/applications/${id}`);
+        await axios.delete(`${API_BASE}/api/scholarships/applications/${id}`);
         fetchApplications();
         fetchStatistics();
       } catch (error) {

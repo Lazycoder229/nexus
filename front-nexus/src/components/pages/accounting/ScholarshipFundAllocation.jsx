@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { Plus, Edit, Trash2, Award, DollarSign, Users, Search, ChevronLeft, ChevronRight } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const ScholarshipFundAllocation = () => {
   const [programs, setPrograms] = useState([]);
   const [allocations, setAllocations] = useState([]);
@@ -64,7 +66,7 @@ const ScholarshipFundAllocation = () => {
 
   const fetchPrograms = async () => {
     try {
-      const response = await axios.get("/api/scholarships/programs", {
+      const response = await axios.get(`${API_BASE}/api/scholarships/programs`, {
         params: filters,
       });
       setPrograms(response.data.data || []);
@@ -75,7 +77,7 @@ const ScholarshipFundAllocation = () => {
 
   const fetchAllocations = async () => {
     try {
-      const response = await axios.get("/api/scholarships/allocations", {
+      const response = await axios.get(`${API_BASE}/api/scholarships/allocations`, {
         params: filters,
       });
       setAllocations(response.data.data || []);
@@ -89,11 +91,11 @@ const ScholarshipFundAllocation = () => {
     try {
       if (programForm.scholarship_id) {
         await axios.put(
-          `/api/scholarships/programs/${programForm.scholarship_id}`,
+          `${API_BASE}/api/scholarships/programs/${programForm.scholarship_id}`,
           programForm
         );
       } else {
-        await axios.post("/api/scholarships/programs", programForm);
+        await axios.post(`${API_BASE}/api/scholarships/programs`, programForm);
       }
       setShowProgramModal(false);
       resetProgramForm();
@@ -110,11 +112,11 @@ const ScholarshipFundAllocation = () => {
     try {
       if (allocationForm.allocation_id) {
         await axios.put(
-          `/api/scholarships/allocations/${allocationForm.allocation_id}`,
+          `${API_BASE}/api/scholarships/allocations/${allocationForm.allocation_id}`,
           allocationForm
         );
       } else {
-        await axios.post("/api/scholarships/allocations", allocationForm);
+        await axios.post(`${API_BASE}/api/scholarships/allocations`, allocationForm);
       }
       setShowAllocationModal(false);
       resetAllocationForm();
@@ -130,7 +132,7 @@ const ScholarshipFundAllocation = () => {
   const handleDeleteProgram = async (id) => {
     if (window.confirm("Delete this scholarship program?")) {
       try {
-        await axios.delete(`/api/scholarships/programs/${id}`);
+        await axios.delete(`${API_BASE}/api/scholarships/programs/${id}`);
         fetchPrograms();
       } catch (error) {
         console.error("Error deleting program:", error);
@@ -141,7 +143,7 @@ const ScholarshipFundAllocation = () => {
   const handleDeleteAllocation = async (id) => {
     if (window.confirm("Delete this allocation?")) {
       try {
-        await axios.delete(`/api/scholarships/allocations/${id}`);
+        await axios.delete(`${API_BASE}/api/scholarships/allocations/${id}`);
         fetchAllocations();
         fetchPrograms();
       } catch (error) {
@@ -153,7 +155,7 @@ const ScholarshipFundAllocation = () => {
   const handleApprove = async (id) => {
     if (window.confirm("Approve this scholarship allocation?")) {
       try {
-        await axios.patch(`/api/scholarships/allocations/${id}/approve`);
+        await axios.patch(`${API_BASE}/api/scholarships/allocations/${id}/approve`);
         fetchAllocations();
         fetchPrograms();
       } catch (error) {
@@ -392,7 +394,7 @@ const ScholarshipFundAllocation = () => {
               {(() => {
                 const searchTerm = filters.search.toLowerCase();
                 const filtered = allocations.filter((allocation) => {
-                  const matchesSearch = 
+                  const matchesSearch =
                     allocation.student_name?.toLowerCase().includes(searchTerm) ||
                     allocation.student_number?.toLowerCase().includes(searchTerm) ||
                     allocation.scholarship_name?.toLowerCase().includes(searchTerm);
@@ -436,15 +438,14 @@ const ScholarshipFundAllocation = () => {
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">
                       <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          allocation.disbursement_status === "Disbursed"
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${allocation.disbursement_status === "Disbursed"
                             ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
                             : allocation.disbursement_status === "Approved"
-                            ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400"
-                            : allocation.disbursement_status === "Cancelled"
-                            ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                            : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-                        }`}
+                              ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400"
+                              : allocation.disbursement_status === "Cancelled"
+                                ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                                : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                          }`}
                       >
                         {allocation.disbursement_status}
                       </span>
@@ -494,7 +495,7 @@ const ScholarshipFundAllocation = () => {
             <span className="font-semibold">{(() => {
               const searchTerm = filters.search.toLowerCase();
               const filtered = allocations.filter((allocation) => {
-                const matchesSearch = 
+                const matchesSearch =
                   allocation.student_name?.toLowerCase().includes(searchTerm) ||
                   allocation.student_number?.toLowerCase().includes(searchTerm) ||
                   allocation.scholarship_name?.toLowerCase().includes(searchTerm);
@@ -505,7 +506,7 @@ const ScholarshipFundAllocation = () => {
             {(() => {
               const searchTerm = filters.search.toLowerCase();
               const filtered = allocations.filter((allocation) => {
-                const matchesSearch = 
+                const matchesSearch =
                   allocation.student_name?.toLowerCase().includes(searchTerm) ||
                   allocation.student_number?.toLowerCase().includes(searchTerm) ||
                   allocation.scholarship_name?.toLowerCase().includes(searchTerm);
@@ -525,23 +526,22 @@ const ScholarshipFundAllocation = () => {
             {(() => {
               const searchTerm = filters.search.toLowerCase();
               const filtered = allocations.filter((allocation) => {
-                const matchesSearch = 
+                const matchesSearch =
                   allocation.student_name?.toLowerCase().includes(searchTerm) ||
                   allocation.student_number?.toLowerCase().includes(searchTerm) ||
                   allocation.scholarship_name?.toLowerCase().includes(searchTerm);
                 return matchesSearch;
               });
               const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-              
+
               return [...Array(totalPages)].map((_, i) => (
                 <button
                   key={i + 1}
                   onClick={() => setCurrentPage(i + 1)}
-                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                    currentPage === i + 1
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${currentPage === i + 1
                       ? "bg-indigo-600 text-white border-indigo-600"
                       : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                  }`}
+                    }`}
                 >
                   {i + 1}
                 </button>
@@ -551,7 +551,7 @@ const ScholarshipFundAllocation = () => {
               onClick={() => {
                 const searchTerm = filters.search.toLowerCase();
                 const filtered = allocations.filter((allocation) => {
-                  const matchesSearch = 
+                  const matchesSearch =
                     allocation.student_name?.toLowerCase().includes(searchTerm) ||
                     allocation.student_number?.toLowerCase().includes(searchTerm) ||
                     allocation.scholarship_name?.toLowerCase().includes(searchTerm);
@@ -563,7 +563,7 @@ const ScholarshipFundAllocation = () => {
               disabled={(() => {
                 const searchTerm = filters.search.toLowerCase();
                 const filtered = allocations.filter((allocation) => {
-                  const matchesSearch = 
+                  const matchesSearch =
                     allocation.student_name?.toLowerCase().includes(searchTerm) ||
                     allocation.student_number?.toLowerCase().includes(searchTerm) ||
                     allocation.scholarship_name?.toLowerCase().includes(searchTerm);

@@ -3,6 +3,8 @@ import axios from "axios";
 import Select from "react-select";
 import { Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, CheckSquare, AlertTriangle, TrendingUp } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const EligibilityScreening = () => {
   const [screenings, setScreenings] = useState([]);
   const [applications, setApplications] = useState([]);
@@ -47,7 +49,7 @@ const EligibilityScreening = () => {
       const params = new URLSearchParams();
       if (filterStatus) params.append("screening_status", filterStatus);
       if (searchTerm) params.append("search", searchTerm);
-      const response = await axios.get(`http://localhost:5000/api/scholarships/screening?${params}`);
+      const response = await axios.get(`${API_BASE}/api/scholarships/screening?${params}`);
       setScreenings(response.data);
     } catch (error) {
       console.error("Error fetching screenings:", error);
@@ -56,7 +58,7 @@ const EligibilityScreening = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/scholarships/screening/statistics");
+      const response = await axios.get(`${API_BASE}/api/scholarships/screening/statistics`);
       setStatistics(response.data);
     } catch (error) {
       console.error("Error fetching statistics:", error);
@@ -65,7 +67,7 @@ const EligibilityScreening = () => {
 
   const fetchApplications = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/scholarships/applications");
+      const response = await axios.get(`${API_BASE}/api/scholarships/applications`);
       setApplications(response.data);
     } catch (error) {
       console.error("Error fetching applications:", error);
@@ -85,9 +87,9 @@ const EligibilityScreening = () => {
     e.preventDefault();
     try {
       if (currentScreening) {
-        await axios.put(`http://localhost:5000/api/scholarships/screening/${currentScreening.screening_id}`, formData);
+        await axios.put(`${API_BASE}/api/scholarships/screening/${currentScreening.screening_id}`, formData);
       } else {
-        await axios.post("http://localhost:5000/api/scholarships/screening", formData);
+        await axios.post(`${API_BASE}/api/scholarships/screening`, formData);
       }
       fetchScreenings();
       fetchStatistics();
@@ -127,7 +129,7 @@ const EligibilityScreening = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this screening?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/scholarships/screening/${id}`);
+        await axios.delete(`${API_BASE}/api/scholarships/screening/${id}`);
         fetchScreenings();
         fetchStatistics();
       } catch (error) {

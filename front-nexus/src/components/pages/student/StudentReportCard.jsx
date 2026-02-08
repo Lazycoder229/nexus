@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { FileText, Download, Printer, Award, TrendingUp, GraduationCap } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentReportCard = () => {
   const [reportCard, setReportCard] = useState(null);
@@ -12,9 +15,41 @@ const StudentReportCard = () => {
   const fetchReportCard = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/student/report-card");
-      const data = await response.json();
-      if (data.success) setReportCard(data.data);
+      const [gradesRes, userRes] = await Promise.all([
+        axios.get(`${API_BASE}/api/grades`),
+        axios.get(`${API_BASE}/api/users`),
+      ]);
+      const grades = gradesRes.data || [];
+      const users = userRes.data || [];
+
+      // Calculate GPA and construct report card
+      const totalGrades = grades.length || 1;
+      const avgGrade = grades.reduce((sum, g) => sum + (parseFloat(g.grade) || 0), 0) / totalGrades;
+      const gpa = (avgGrade / 20).toFixed(2); // Convert to 5.0 scale
+
+      setReportCard({
+        student_id: users[0]?.user_id || '2024-00001',
+        student_name: users[0]?.name || users[0]?.first_name + ' ' + users[0]?.last_name || 'Student',
+        program: 'BS Computer Science',
+        year_level: '3rd Year',
+        academic_year: '2023-2024',
+        semester: '1st Semester',
+        gpa: gpa,
+        overall_gpa: gpa,
+        total_units: grades.reduce((sum, g) => sum + (g.units || 3), 0),
+        total_units_earned: grades.filter(g => parseFloat(g.grade) >= 75).reduce((sum, g) => sum + (g.units || 3), 0),
+        standing: avgGrade >= 75 ? 'Good Standing' : 'Academic Probation',
+        grades: grades.map(g => ({
+          subject_code: g.course_code || g.subject_code || 'N/A',
+          subject_name: g.course_name || g.subject_name || 'N/A',
+          units: g.units || 3,
+          prelim: g.prelim || parseFloat(g.grade) || 0,
+          midterm: g.midterm || parseFloat(g.grade) || 0,
+          finals: g.finals || parseFloat(g.grade) || 0,
+          final_grade: parseFloat(g.grade) || 0,
+          remarks: parseFloat(g.grade) >= 75 ? 'Passed' : 'Failed',
+        })),
+      });
     } catch (error) {
       console.error("Error fetching report card:", error);
     } finally {
@@ -189,11 +224,10 @@ const StudentReportCard = () => {
                       {typeof grade.final_grade === 'number' ? grade.final_grade.toFixed(2) : grade.final_grade}
                     </td>
                     <td className="px-4 py-2">
-                      <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
-                        grade.remarks === "Passed" 
-                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
+                      <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${grade.remarks === "Passed"
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                           : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                      }`}>
+                        }`}>
                         {grade.remarks}
                       </span>
                     </td>

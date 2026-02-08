@@ -11,6 +11,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const PaymentCollection = () => {
   const [payments, setPayments] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -59,7 +61,7 @@ const PaymentCollection = () => {
 
   const fetchPayments = async () => {
     try {
-      const response = await axios.get("/api/payments", { params: filters });
+      const response = await axios.get(`${API_BASE}/api/payments`, { params: filters });
       setPayments(response.data.data || []);
     } catch (error) {
       console.error("Error fetching payments:", error);
@@ -68,7 +70,7 @@ const PaymentCollection = () => {
 
   const fetchSummary = async () => {
     try {
-      const response = await axios.get("/api/payments/summary", {
+      const response = await axios.get(`${API_BASE}/api/payments/summary`, {
         params: {
           start_date: filters.start_date,
           end_date: filters.end_date,
@@ -83,8 +85,8 @@ const PaymentCollection = () => {
   const fetchInvoices = async (studentId = null) => {
     try {
       const url = studentId
-        ? `/api/invoices/student/${studentId}`
-        : "/api/invoices";
+        ? `${API_BASE}/api/invoices/student/${studentId}`
+        : `${API_BASE}/api/invoices`;
       const response = await axios.get(url, {
         params: { status: "Pending,Partially Paid" },
       });
@@ -106,7 +108,7 @@ const PaymentCollection = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("/api/payments", formData);
+      await axios.post(`${API_BASE}/api/payments`, formData);
       setShowModal(false);
       resetForm();
       fetchPayments();
@@ -121,7 +123,7 @@ const PaymentCollection = () => {
   const handleVerify = async (id) => {
     if (window.confirm("Verify this payment?")) {
       try {
-        await axios.patch(`/api/payments/${id}/verify`);
+        await axios.patch(`${API_BASE}/api/payments/${id}/verify`);
         fetchPayments();
       } catch (error) {
         console.error("Error verifying payment:", error);
@@ -312,7 +314,7 @@ const PaymentCollection = () => {
             {(() => {
               const searchTerm = filters.search.toLowerCase();
               const filtered = payments.filter((payment) => {
-                const matchesSearch = 
+                const matchesSearch =
                   payment.payment_reference?.toLowerCase().includes(searchTerm) ||
                   payment.student_name?.toLowerCase().includes(searchTerm) ||
                   payment.student_number?.toLowerCase().includes(searchTerm) ||
@@ -361,13 +363,12 @@ const PaymentCollection = () => {
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap">
                     <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        payment.payment_status === "Verified"
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${payment.payment_status === "Verified"
                           ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
                           : payment.payment_status === "Pending"
-                          ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-                          : "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400"
-                      }`}
+                            ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                            : "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400"
+                        }`}
                     >
                       {payment.payment_status}
                     </span>
@@ -406,7 +407,7 @@ const PaymentCollection = () => {
           <span className="font-semibold">{(() => {
             const searchTerm = filters.search.toLowerCase();
             const filtered = payments.filter((payment) => {
-              const matchesSearch = 
+              const matchesSearch =
                 payment.payment_reference?.toLowerCase().includes(searchTerm) ||
                 payment.student_name?.toLowerCase().includes(searchTerm) ||
                 payment.student_number?.toLowerCase().includes(searchTerm) ||
@@ -418,7 +419,7 @@ const PaymentCollection = () => {
           {(() => {
             const searchTerm = filters.search.toLowerCase();
             const filtered = payments.filter((payment) => {
-              const matchesSearch = 
+              const matchesSearch =
                 payment.payment_reference?.toLowerCase().includes(searchTerm) ||
                 payment.student_name?.toLowerCase().includes(searchTerm) ||
                 payment.student_number?.toLowerCase().includes(searchTerm) ||
@@ -439,7 +440,7 @@ const PaymentCollection = () => {
           {(() => {
             const searchTerm = filters.search.toLowerCase();
             const filtered = payments.filter((payment) => {
-              const matchesSearch = 
+              const matchesSearch =
                 payment.payment_reference?.toLowerCase().includes(searchTerm) ||
                 payment.student_name?.toLowerCase().includes(searchTerm) ||
                 payment.student_number?.toLowerCase().includes(searchTerm) ||
@@ -447,16 +448,15 @@ const PaymentCollection = () => {
               return matchesSearch;
             });
             const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-            
+
             return [...Array(totalPages)].map((_, i) => (
               <button
                 key={i + 1}
                 onClick={() => setCurrentPage(i + 1)}
-                className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                  currentPage === i + 1
+                className={`px-3 py-1.5 text-xs rounded border transition-colors ${currentPage === i + 1
                     ? "bg-indigo-600 text-white border-indigo-600"
                     : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                }`}
+                  }`}
               >
                 {i + 1}
               </button>
@@ -466,7 +466,7 @@ const PaymentCollection = () => {
             onClick={() => {
               const searchTerm = filters.search.toLowerCase();
               const filtered = payments.filter((payment) => {
-                const matchesSearch = 
+                const matchesSearch =
                   payment.payment_reference?.toLowerCase().includes(searchTerm) ||
                   payment.student_name?.toLowerCase().includes(searchTerm) ||
                   payment.student_number?.toLowerCase().includes(searchTerm) ||
@@ -479,7 +479,7 @@ const PaymentCollection = () => {
             disabled={(() => {
               const searchTerm = filters.search.toLowerCase();
               const filtered = payments.filter((payment) => {
-                const matchesSearch = 
+                const matchesSearch =
                   payment.payment_reference?.toLowerCase().includes(searchTerm) ||
                   payment.student_name?.toLowerCase().includes(searchTerm) ||
                   payment.student_number?.toLowerCase().includes(searchTerm) ||

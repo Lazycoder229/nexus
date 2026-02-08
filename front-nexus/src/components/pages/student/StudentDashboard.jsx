@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import {
   LayoutDashboard,
   BookOpen,
@@ -15,6 +16,8 @@ import {
   DollarSign,
 } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const StudentDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [upcomingClasses, setUpcomingClasses] = useState([]);
@@ -29,24 +32,64 @@ const StudentDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [dashRes, classRes, gradeRes, announcementRes] = await Promise.all([
-        fetch("http://localhost:5000/api/student/dashboard/summary"),
-        fetch("http://localhost:5000/api/student/dashboard/upcoming-classes"),
-        fetch("http://localhost:5000/api/student/dashboard/recent-grades"),
-        fetch("http://localhost:5000/api/student/dashboard/announcements"),
+      // Fetch from real backend endpoints
+      const [enrollmentsRes, gradesRes, attendanceRes, announcementsRes, invoicesRes] = await Promise.all([
+        axios.get(`${API_BASE}/api/enrollments`),
+        axios.get(`${API_BASE}/api/grades`),
+        axios.get(`${API_BASE}/api/student-attendance`),
+        axios.get(`${API_BASE}/api/events/announcements`),
+        axios.get(`${API_BASE}/api/invoices`),
       ]);
 
-      const [dashData, classData, gradeData, announcementData] = await Promise.all([
-        dashRes.json(),
-        classRes.json(),
-        gradeRes.json(),
-        announcementRes.json(),
-      ]);
+      // Aggregate dashboard data from real endpoints
+      const enrollments = enrollmentsRes.data || [];
+      const grades = gradesRes.data || [];
+      const attendance = attendanceRes.data || [];
+      const announcementsData = announcementsRes.data || [];
+      const invoices = invoicesRes.data || [];
 
-      if (dashData.success) setDashboardData(dashData.data);
-      if (classData.success) setUpcomingClasses(classData.data);
-      if (gradeData.success) setRecentGrades(gradeData.data);
-      if (announcementData.success) setAnnouncements(announcementData.data);
+      // Calculate dashboard summary
+      const totalPresent = attendance.filter(a => a.status === 'present').length;
+      const totalRecords = attendance.length || 1;
+      const attendanceRate = Math.round((totalPresent / totalRecords) * 100);
+
+      const pendingBalance = invoices
+        .filter(inv => inv.status === 'pending' || inv.status === 'unpaid')
+        .reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+
+      setDashboardData({
+        enrolled_subjects: enrollments.length,
+        current_gpa: grades.length > 0 ? (grades.reduce((sum, g) => sum + (parseFloat(g.grade) || 0), 0) / grades.length).toFixed(2) : "0.00",
+        attendance_rate: attendanceRate,
+        pending_balance: pendingBalance.toLocaleString(),
+        pending_assignments: 0,
+        upcoming_exams: 0,
+        completed_units: enrollments.reduce((sum, e) => sum + (e.units || 0), 0),
+      });
+
+      // Set recent grades
+      setRecentGrades(grades.slice(0, 5).map(g => ({
+        subject: g.course_name || g.subject_name || 'N/A',
+        assessment: g.assessment_type || 'Final',
+        grade: g.grade || g.final_grade || 'N/A',
+      })));
+
+      // Set announcements
+      setAnnouncements(announcementsData.slice(0, 5).map(a => ({
+        title: a.title,
+        message: a.content || a.message,
+        date: new Date(a.created_at).toLocaleDateString(),
+      })));
+
+      // Set upcoming classes (from enrollments/schedules)
+      setUpcomingClasses(enrollments.slice(0, 3).map(e => ({
+        subject_name: e.course_name || e.subject_name || 'N/A',
+        room: e.room || 'TBA',
+        instructor: e.instructor_name || 'TBA',
+        time: e.schedule || 'TBA',
+        duration: e.duration || '2 hours',
+      })));
+
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {

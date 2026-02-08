@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { Receipt, Download, Eye, Printer, Search, ChevronLeft, ChevronRight, Plus, Calendar, CreditCard } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentFinanceReceipts = () => {
   const [receipts, setReceipts] = useState([]);
@@ -15,9 +18,17 @@ const StudentFinanceReceipts = () => {
 
   const fetchReceipts = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/finance/receipts");
-      const data = await response.json();
-      if (data.success) setReceipts(data.data);
+      const response = await axios.get(`${API_BASE}/api/payments`);
+      const payments = response.data || [];
+      setReceipts(payments.map(p => ({
+        receipt_id: p.id || p.payment_id,
+        receipt_number: `REC-${String(p.id || p.payment_id).padStart(6, '0')}`,
+        payment_date: p.payment_date || p.created_at,
+        description: p.description || 'Tuition Payment',
+        payment_method: p.payment_method || 'Cash',
+        amount: p.amount,
+        status: p.status || 'paid',
+      })));
     } catch (error) {
       console.error("Error fetching receipts:", error);
     }

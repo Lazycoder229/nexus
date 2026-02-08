@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const EmailStudent = () => {
   const [loading, setLoading] = useState(false);
   const [students, setStudents] = useState([]);
@@ -47,7 +49,7 @@ const EmailStudent = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `http://localhost:5000/api/faculty/${userId}/students`
+        `${API_BASE}/api/faculty/${userId}/students`
       );
 
       if (response.data.success) {
@@ -62,7 +64,7 @@ const EmailStudent = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `http://localhost:5000/api/faculty/${userId}/sections`
+        `${API_BASE}/api/faculty/${userId}/sections`
       );
 
       if (response.data.success) {
@@ -77,7 +79,7 @@ const EmailStudent = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `http://localhost:5000/api/faculty/${userId}/courses`
+        `${API_BASE}/api/faculty/${userId}/courses`
       );
 
       if (response.data.success) {
@@ -92,7 +94,7 @@ const EmailStudent = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `http://localhost:5000/api/emails/sent/${userId}`
+        `${API_BASE}/api/emails/sent/${userId}`
       );
 
       if (response.data.success) {
@@ -133,7 +135,7 @@ const EmailStudent = () => {
 
     try {
       const userId = localStorage.getItem("userId");
-      
+
       let recipients = [];
       if (emailData.recipient_type === "individual") {
         recipients = selectedStudents;
@@ -146,7 +148,7 @@ const EmailStudent = () => {
       };
 
       const response = await axios.post(
-        "http://localhost:5000/api/emails/send",
+        `${API_BASE}/api/emails/send`,
         payload
       );
 
@@ -238,13 +240,12 @@ const EmailStudent = () => {
                           {email.subject}
                         </h3>
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            email.priority === "urgent"
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${email.priority === "urgent"
                               ? "bg-red-100 text-red-800"
                               : email.priority === "high"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-blue-100 text-blue-800"
-                          }`}
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-blue-100 text-blue-800"
+                            }`}
                         >
                           {email.priority}
                         </span>
@@ -291,11 +292,10 @@ const EmailStudent = () => {
                   onClick={() =>
                     setEmailData({ ...emailData, recipient_type: "individual" })
                   }
-                  className={`p-4 border-2 rounded-lg text-center transition ${
-                    emailData.recipient_type === "individual"
+                  className={`p-4 border-2 rounded-lg text-center transition ${emailData.recipient_type === "individual"
                       ? "border-indigo-600 bg-indigo-50"
                       : "border-gray-300 hover:border-indigo-300"
-                  }`}
+                    }`}
                 >
                   <User className="w-6 h-6 mx-auto mb-2 text-indigo-600" />
                   <span className="text-sm font-medium">Individual</span>
@@ -305,11 +305,10 @@ const EmailStudent = () => {
                   onClick={() =>
                     setEmailData({ ...emailData, recipient_type: "section" })
                   }
-                  className={`p-4 border-2 rounded-lg text-center transition ${
-                    emailData.recipient_type === "section"
+                  className={`p-4 border-2 rounded-lg text-center transition ${emailData.recipient_type === "section"
                       ? "border-indigo-600 bg-indigo-50"
                       : "border-gray-300 hover:border-indigo-300"
-                  }`}
+                    }`}
                 >
                   <Users className="w-6 h-6 mx-auto mb-2 text-indigo-600" />
                   <span className="text-sm font-medium">Section</span>
@@ -319,11 +318,10 @@ const EmailStudent = () => {
                   onClick={() =>
                     setEmailData({ ...emailData, recipient_type: "course" })
                   }
-                  className={`p-4 border-2 rounded-lg text-center transition ${
-                    emailData.recipient_type === "course"
+                  className={`p-4 border-2 rounded-lg text-center transition ${emailData.recipient_type === "course"
                       ? "border-indigo-600 bg-indigo-50"
                       : "border-gray-300 hover:border-indigo-300"
-                  }`}
+                    }`}
                 >
                   <FileText className="w-6 h-6 mx-auto mb-2 text-indigo-600" />
                   <span className="text-sm font-medium">Course</span>
@@ -333,11 +331,10 @@ const EmailStudent = () => {
                   onClick={() =>
                     setEmailData({ ...emailData, recipient_type: "all" })
                   }
-                  className={`p-4 border-2 rounded-lg text-center transition ${
-                    emailData.recipient_type === "all"
+                  className={`p-4 border-2 rounded-lg text-center transition ${emailData.recipient_type === "all"
                       ? "border-indigo-600 bg-indigo-50"
                       : "border-gray-300 hover:border-indigo-300"
-                  }`}
+                    }`}
                 >
                   <Users className="w-6 h-6 mx-auto mb-2 text-indigo-600" />
                   <span className="text-sm font-medium">All Students</span>
@@ -372,7 +369,7 @@ const EmailStudent = () => {
                       <input
                         type="checkbox"
                         checked={selectedStudents.includes(student.id)}
-                        onChange={() => {}}
+                        onChange={() => { }}
                         className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                       />
                       <div className="flex-1">
@@ -561,13 +558,12 @@ const EmailStudent = () => {
                 <div>
                   <span className="font-medium text-gray-900">Priority:</span>{" "}
                   <span
-                    className={`px-2 py-1 rounded-full text-xs ${
-                      selectedEmail.priority === "urgent"
+                    className={`px-2 py-1 rounded-full text-xs ${selectedEmail.priority === "urgent"
                         ? "bg-red-100 text-red-800"
                         : selectedEmail.priority === "high"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-blue-100 text-blue-800"
-                    }`}
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-blue-100 text-blue-800"
+                      }`}
                   >
                     {selectedEmail.priority}
                   </span>

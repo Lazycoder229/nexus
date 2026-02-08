@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { BookOpen, Plus, Search, ChevronLeft, ChevronRight, Calendar, Users, CheckCircle, XCircle, Clock, MapPin, AlertCircle, Info, Download, Printer, FileText, GraduationCap, ArrowRight } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentCourses = () => {
 
@@ -32,9 +35,14 @@ const StudentCourses = () => {
 
   const fetchEnrollmentStatus = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/enrollment/status");
-      const data = await response.json();
-      if (data.success) setEnrollmentStatus(data.data);
+      const response = await axios.get(`${API_BASE}/api/enrollments`);
+      const enrollments = response.data || [];
+      setEnrollmentStatus({
+        isOpen: true,
+        message: 'Enrollment is currently open',
+        maxUnits: 24,
+        currentUnits: enrollments.reduce((sum, e) => sum + (e.units || 0), 0),
+      });
     } catch (error) {
       console.error("Error fetching enrollment status:", error);
     }
@@ -42,13 +50,33 @@ const StudentCourses = () => {
 
   const fetchEnlistmentData = async () => {
     try {
-      const [availableRes, enrolledRes] = await Promise.all([
-        fetch("http://localhost:5000/api/student/enlistment/available"),
-        fetch("http://localhost:5000/api/student/enlistment/enrolled"),
+      const [coursesRes, enrolledRes] = await Promise.all([
+        axios.get(`${API_BASE}/api/course/courses`),
+        axios.get(`${API_BASE}/api/enrollments`),
       ]);
-      const [availableData, enrolledData] = await Promise.all([availableRes.json(), enrolledRes.json()]);
-      if (availableData.success) setAvailableSubjects(availableData.data);
-      if (enrolledData.success) setEnrolledSubjects(enrolledData.data);
+      const courses = coursesRes.data || [];
+      const enrolled = enrolledRes.data || [];
+      setAvailableSubjects(courses.map(c => ({
+        subject_id: c.id || c.course_id,
+        subject_code: c.course_code || c.code,
+        subject_name: c.course_name || c.name,
+        units: c.units || 3,
+        schedule: c.schedule || 'TBA',
+        instructor: c.instructor_name || 'TBA',
+        capacity: c.capacity || 40,
+        enrolled: c.enrolled_count || 0,
+        year_level: c.year_level,
+        semester: c.semester,
+        prerequisites: c.prerequisites,
+      })));
+      setEnrolledSubjects(enrolled.map(e => ({
+        enrollment_id: e.id || e.enrollment_id,
+        subject_id: e.course_id,
+        subject_code: e.course_code,
+        subject_name: e.course_name,
+        units: e.units || 3,
+        schedule: e.schedule || 'TBA',
+      })));
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -56,9 +84,17 @@ const StudentCourses = () => {
 
   const fetchTimetable = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/timetable");
-      const data = await response.json();
-      if (data.success) setTimetable(data.data);
+      const response = await axios.get(`${API_BASE}/api/schedules`);
+      const schedules = response.data || [];
+      setTimetable(schedules.map(s => ({
+        day: s.day || 'Monday',
+        subject_name: s.course_name || s.subject_name,
+        subject_code: s.course_code || s.subject_code,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        room: s.room || s.location || 'TBA',
+        instructor: s.instructor_name,
+      })));
     } catch (error) {
       console.error("Error fetching timetable:", error);
     }
@@ -71,17 +107,13 @@ const StudentCourses = () => {
 
   const confirmEnlist = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/enlistment/enroll", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject_id: selectedSubject.subject_id }),
+      await axios.post(`${API_BASE}/api/enrollments`, {
+        course_id: selectedSubject.subject_id,
       });
-      if (response.ok) {
-        fetchEnlistmentData();
-        fetchEnrollmentStatus();
-        setShowConfirmModal(false);
-        setSelectedSubject(null);
-      }
+      fetchEnlistmentData();
+      fetchEnrollmentStatus();
+      setShowConfirmModal(false);
+      setSelectedSubject(null);
     } catch (error) {
       console.error("Error enlisting:", error);
     }
@@ -89,15 +121,11 @@ const StudentCourses = () => {
 
   const handleDrop = async (enrollmentId) => {
     if (!confirm("Are you sure you want to drop this subject?")) return;
-    
+
     try {
-      const response = await fetch(`http://localhost:5000/api/student/enlistment/${enrollmentId}`, {
-        method: "DELETE",
-      });
-      if (response.ok) {
-        fetchEnlistmentData();
-        fetchEnrollmentStatus();
-      }
+      await axios.delete(`${API_BASE}/api/enrollments/${enrollmentId}`);
+      fetchEnlistmentData();
+      fetchEnrollmentStatus();
     } catch (error) {
       console.error("Error dropping:", error);
     }
@@ -168,11 +196,10 @@ const StudentCourses = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${
-                  activeTab === tab.id
+                className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${activeTab === tab.id
                     ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
                     : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-300"
-                }`}
+                  }`}
               >
                 <Icon size={16} />
                 {tab.label}
@@ -185,15 +212,14 @@ const StudentCourses = () => {
         {activeTab === "enlistment" ? (
           // Subject Enlistment Tab
           <div className="space-y-4">
-           
+
 
             {/* Enrollment Status Banner */}
             {enrollmentStatus && (
-              <div className={`rounded-lg p-4 border ${
-                enrollmentStatus.isOpen 
+              <div className={`rounded-lg p-4 border ${enrollmentStatus.isOpen
                   ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                   : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
-              }`}>
+                }`}>
                 <div className="flex items-start gap-3">
                   {enrollmentStatus.isOpen ? (
                     <CheckCircle size={20} className="text-green-600 mt-0.5" />
@@ -218,10 +244,10 @@ const StudentCourses = () => {
                           Units: {enrolledSubjects.reduce((sum, s) => sum + (s.units || 0), 0)} / {enrollmentStatus.maxUnits}
                         </span>
                         <div className="flex-1 max-w-xs bg-slate-200 dark:bg-slate-700 rounded-full h-2">
-                          <div 
+                          <div
                             className="bg-indigo-600 h-2 rounded-full transition-all"
-                            style={{ 
-                              width: `${Math.min((enrolledSubjects.reduce((sum, s) => sum + (s.units || 0), 0) / enrollmentStatus.maxUnits) * 100, 100)}%` 
+                            style={{
+                              width: `${Math.min((enrolledSubjects.reduce((sum, s) => sum + (s.units || 0), 0) / enrollmentStatus.maxUnits) * 100, 100)}%`
                             }}
                           />
                         </div>
@@ -421,11 +447,10 @@ const StudentCourses = () => {
             <div className="flex gap-2 overflow-x-auto pb-2">
               <button
                 onClick={() => setSelectedDay("all")}
-                className={`px-4 py-2 rounded-md font-medium text-sm whitespace-nowrap ${
-                  selectedDay === "all"
+                className={`px-4 py-2 rounded-md font-medium text-sm whitespace-nowrap ${selectedDay === "all"
                     ? "bg-indigo-600 text-white"
                     : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                }`}
+                  }`}
               >
                 All Days
               </button>
@@ -433,11 +458,10 @@ const StudentCourses = () => {
                 <button
                   key={day}
                   onClick={() => setSelectedDay(day)}
-                  className={`px-4 py-2 rounded-md font-medium text-sm whitespace-nowrap ${
-                    selectedDay === day
+                  className={`px-4 py-2 rounded-md font-medium text-sm whitespace-nowrap ${selectedDay === day
                       ? "bg-indigo-600 text-white"
                       : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                  }`}
+                    }`}
                 >
                   {day}
                 </button>
@@ -546,7 +570,7 @@ const StudentCourses = () => {
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Prerequisites Required</p>
                     <div className="flex flex-wrap gap-1">
                       {selectedSubject.prerequisites.map((prereq, index) => (
-                        <span 
+                        <span
                           key={index}
                           className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-1 rounded"
                         >

@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
-import { 
-  DollarSign, 
-  Plus, 
-  Search, 
-  ChevronLeft, 
-  ChevronRight, 
-  Receipt, 
-  CreditCard, 
-  Calendar, 
-  Download, 
-  CheckCircle, 
+import axios from "axios";
+import {
+  DollarSign,
+  Plus,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Receipt,
+  CreditCard,
+  Calendar,
+  Download,
+  CheckCircle,
   AlertCircle,
   Clock,
   FileText,
@@ -19,6 +20,8 @@ import {
   Eye,
   Printer
 } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentFinance = () => {
   const [activeTab, setActiveTab] = useState("balance");
@@ -68,11 +71,16 @@ const StudentFinance = () => {
 
   const fetchBalance = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/finance/balance");
-      const data = await response.json();
-      if (data.success) {
-        setBalance(data.data);
-      }
+      const response = await axios.get(`${API_BASE}/api/invoices`);
+      const invoices = response.data || [];
+      // Calculate balance from invoices
+      const totalTuition = invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+      const totalPaid = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+      setBalance({
+        total_tuition: totalTuition,
+        total_paid: totalPaid,
+        remaining_balance: totalTuition - totalPaid,
+      });
     } catch (error) {
       console.error("Error fetching balance:", error);
     }
@@ -80,11 +88,16 @@ const StudentFinance = () => {
 
   const fetchPaymentSchedule = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/finance/payment-schedule");
-      const data = await response.json();
-      if (data.success) {
-        setPaymentSchedule(data.data);
-      }
+      const response = await axios.get(`${API_BASE}/api/invoices`);
+      const invoices = response.data || [];
+      setPaymentSchedule(invoices.map(inv => ({
+        schedule_id: inv.id || inv.invoice_id,
+        due_date: inv.due_date,
+        description: inv.description || 'Tuition Fee',
+        amount: inv.amount,
+        paid_amount: inv.status === 'paid' ? inv.amount : 0,
+        status: inv.status,
+      })));
     } catch (error) {
       console.error("Error fetching payment schedule:", error);
     }
@@ -92,11 +105,18 @@ const StudentFinance = () => {
 
   const fetchReceipts = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/finance/receipts");
-      const data = await response.json();
-      if (data.success) {
-        setReceipts(data.data);
-      }
+      const response = await axios.get(`${API_BASE}/api/payments`);
+      const paymentsData = response.data || [];
+      setReceipts(paymentsData.map(p => ({
+        receipt_id: p.id || p.payment_id,
+        receipt_number: p.receipt_number || `RCP-${p.id}`,
+        payment_date: p.payment_date || p.created_at,
+        description: p.description || 'Payment',
+        payment_method: p.payment_method || 'cash',
+        amount: p.amount,
+        status: p.status || 'paid',
+        semester: p.semester,
+      })));
     } catch (error) {
       console.error("Error fetching receipts:", error);
     }
@@ -104,11 +124,18 @@ const StudentFinance = () => {
 
   const fetchPayments = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/finance/payments");
-      const data = await response.json();
-      if (data.success) {
-        setPayments(data.data);
-      }
+      const response = await axios.get(`${API_BASE}/api/payments`);
+      const paymentsData = response.data || [];
+      setPayments(paymentsData.map(p => ({
+        payment_id: p.id || p.payment_id,
+        reference_number: p.reference_number,
+        payment_date: p.payment_date || p.created_at,
+        payment_method: p.payment_method || 'cash',
+        amount: p.amount,
+        status: p.status || 'paid',
+        processed_by: p.processed_by,
+        notes: p.notes,
+      })));
     } catch (error) {
       console.error("Error fetching payments:", error);
     }
@@ -116,11 +143,29 @@ const StudentFinance = () => {
 
   const fetchSummary = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/finance/summary");
-      const data = await response.json();
-      if (data.success) {
-        setSummary(data.data);
-      }
+      const [invoicesRes, paymentsRes] = await Promise.all([
+        axios.get(`${API_BASE}/api/invoices`),
+        axios.get(`${API_BASE}/api/payments`),
+      ]);
+      const invoices = invoicesRes.data || [];
+      const paymentsData = paymentsRes.data || [];
+
+      const totalTuition = invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+      const totalPaid = paymentsData.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+      setSummary({
+        total_payments: paymentsData.length,
+        total_amount_paid: totalPaid,
+        outstanding_balance: totalTuition - totalPaid,
+        total_tuition: totalTuition,
+        payment_progress: totalTuition > 0 ? Math.round((totalPaid / totalTuition) * 100) : 0,
+        by_payment_method: Object.values(paymentsData.reduce((acc, p) => {
+          const method = p.payment_method || 'cash';
+          if (!acc[method]) acc[method] = { payment_method: method, total_amount: 0 };
+          acc[method].total_amount += parseFloat(p.amount) || 0;
+          return acc;
+        }, {})),
+      });
     } catch (error) {
       console.error("Error fetching summary:", error);
     }
@@ -172,21 +217,12 @@ const StudentFinance = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const url = "http://localhost:5000/api/student/finance/payments";
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          student_id: 1, // TODO: Get from auth
-        }),
+      await axios.post(`${API_BASE}/api/payments`, {
+        ...formData,
+        student_id: 1, // TODO: Get from auth
       });
-
-      const data = await response.json();
-      if (data.success) {
-        fetchData();
-        handleCloseModal();
-      }
+      fetchData();
+      handleCloseModal();
     } catch (error) {
       console.error("Error submitting payment:", error);
     }
@@ -300,11 +336,10 @@ const StudentFinance = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20"
-                    : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                }`}
+                className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${activeTab === tab.id
+                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20"
+                  : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                  }`}
               >
                 <Icon size={16} />
                 {tab.label}

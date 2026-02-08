@@ -84,6 +84,37 @@ const lmsDiscussionsController = {
     }
   },
 
+  // Get discussions for a student based on their enrolled courses
+  getByStudent: async (req, res) => {
+    try {
+      const { student_id, academic_period_id } = req.query;
+
+      if (!student_id || !academic_period_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Student ID and Academic Period ID are required",
+        });
+      }
+
+      const discussions = await LMSDiscussions.getByStudent(
+        student_id,
+        academic_period_id
+      );
+
+      res.status(200).json({
+        success: true,
+        discussions,
+      });
+    } catch (error) {
+      console.error("Error fetching student discussions:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch discussions",
+        error: error.message,
+      });
+    }
+  },
+
   // Get discussion by ID
   getById: async (req, res) => {
     try {

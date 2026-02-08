@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { MessageCircle, Bell, Star, Send, Filter, CheckCircle, AlertCircle } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentAnnouncements = () => {
   const [activeTab, setActiveTab] = useState("notifications");
@@ -32,9 +35,18 @@ const StudentAnnouncements = () => {
 
   const fetchNotifications = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/notifications");
-      const data = await response.json();
-      if (data.success) setNotifications(data.data);
+      const response = await axios.get(`${API_BASE}/api/events/announcements`);
+      const data = response.data || [];
+      // Transform announcements to notification format
+      setNotifications(data.map(item => ({
+        notification_id: item.id || item.announcement_id,
+        title: item.title,
+        message: item.content || item.message,
+        type: item.type || 'announcement',
+        priority: item.priority || 'medium',
+        is_read: item.is_read || false,
+        created_at: item.created_at,
+      })));
     } catch (error) {
       console.error("Error fetching notifications:", error);
     }
@@ -42,28 +54,22 @@ const StudentAnnouncements = () => {
 
   const fetchFeedback = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/feedback");
-      const data = await response.json();
-      if (data.success) setFeedbackList(data.data);
+      const response = await axios.get(`${API_BASE}/api/feedback`);
+      const data = response.data || [];
+      setFeedbackList(data);
     } catch (error) {
       console.error("Error fetching feedback:", error);
+      setFeedbackList([]);
     }
   };
 
   const handleSubmitFeedback = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://localhost:5000/api/student/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(feedbackForm),
-      });
-      const data = await response.json();
-      if (data.success) {
-        alert("Feedback submitted successfully!");
-        setFeedbackForm({ category: "", rating: 5, message: "" });
-        fetchFeedback();
-      }
+      await axios.post(`${API_BASE}/api/feedback`, feedbackForm);
+      alert("Feedback submitted successfully!");
+      setFeedbackForm({ category: "", rating: 5, message: "" });
+      fetchFeedback();
     } catch (error) {
       console.error("Error submitting feedback:", error);
       alert("Failed to submit feedback");
@@ -72,9 +78,7 @@ const StudentAnnouncements = () => {
 
   const markAsRead = async (notificationId) => {
     try {
-      await fetch(`http://localhost:5000/api/student/notifications/${notificationId}/read`, {
-        method: "PUT",
-      });
+      await axios.put(`${API_BASE}/api/events/announcements/${notificationId}/read`);
       fetchNotifications();
     } catch (error) {
       console.error("Error marking notification as read:", error);
@@ -130,11 +134,10 @@ const StudentAnnouncements = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${
-                  activeTab === tab.id
+                className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${activeTab === tab.id
                     ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20"
                     : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                }`}
+                  }`}
               >
                 <Icon size={16} />
                 {tab.label}
@@ -155,31 +158,28 @@ const StudentAnnouncements = () => {
             <div className="flex gap-2">
               <button
                 onClick={() => setFilter("all")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  filter === "all"
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === "all"
                     ? "bg-indigo-600 text-white"
                     : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600"
-                }`}
+                  }`}
               >
                 All ({notifications.length})
               </button>
               <button
                 onClick={() => setFilter("unread")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  filter === "unread"
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === "unread"
                     ? "bg-indigo-600 text-white"
                     : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600"
-                }`}
+                  }`}
               >
                 Unread ({notifications.filter((n) => !n.is_read).length})
               </button>
               <button
                 onClick={() => setFilter("read")}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  filter === "read"
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === "read"
                     ? "bg-indigo-600 text-white"
                     : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600"
-                }`}
+                  }`}
               >
                 Read ({notifications.filter((n) => n.is_read).length})
               </button>
@@ -198,11 +198,10 @@ const StudentAnnouncements = () => {
                   return (
                     <div
                       key={notification.notification_id}
-                      className={`bg-white dark:bg-slate-800 rounded-lg border p-4 hover:shadow-md transition-shadow ${
-                        notification.is_read
+                      className={`bg-white dark:bg-slate-800 rounded-lg border p-4 hover:shadow-md transition-shadow ${notification.is_read
                           ? "border-slate-200 dark:border-slate-700"
                           : "border-indigo-300 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-900/10"
-                      }`}
+                        }`}
                     >
                       <div className="flex gap-3">
                         <div className={`flex-shrink-0 ${color}`}>
@@ -275,9 +274,8 @@ const StudentAnnouncements = () => {
                         key={star}
                         type="button"
                         onClick={() => setFeedbackForm({ ...feedbackForm, rating: star })}
-                        className={`p-2 transition-colors ${
-                          star <= feedbackForm.rating ? "text-yellow-500" : "text-slate-300 dark:text-slate-600"
-                        }`}
+                        className={`p-2 transition-colors ${star <= feedbackForm.rating ? "text-yellow-500" : "text-slate-300 dark:text-slate-600"
+                          }`}
                       >
                         <Star size={24} fill={star <= feedbackForm.rating ? "currentColor" : "none"} />
                       </button>
@@ -316,7 +314,7 @@ const StudentAnnouncements = () => {
                 ) : (
                   feedbackList.map((feedback) => (
                     <div
-                      key={feedback.feedback_id}
+                      key={feedback.feedback_id || feedback.id}
                       className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600"
                     >
                       <div className="flex items-start justify-between mb-2">
@@ -335,7 +333,7 @@ const StudentAnnouncements = () => {
                       </div>
                       <p className="text-sm text-slate-700 dark:text-slate-300 mb-2">{feedback.message}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {new Date(feedback.submitted_at).toLocaleDateString()}
+                        {new Date(feedback.submitted_at || feedback.created_at).toLocaleDateString()}
                       </p>
                       {feedback.response && (
                         <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-600">

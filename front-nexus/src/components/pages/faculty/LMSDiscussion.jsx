@@ -17,8 +17,11 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const LMSDiscussion = () => {
   const [discussions, setDiscussions] = useState([]);
+  const [facultyAssignments, setFacultyAssignments] = useState([]);
   const [selectedDiscussion, setSelectedDiscussion] = useState(null);
   const [replies, setReplies] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -37,7 +40,22 @@ const LMSDiscussion = () => {
 
   useEffect(() => {
     fetchDiscussions();
+    fetchFacultyAssignments();
   }, []);
+
+  const fetchFacultyAssignments = async () => {
+    try {
+      const userId = localStorage.getItem("userId");
+      const response = await axios.get(
+        `${API_BASE}/api/faculty-assignments/faculty/${userId}`
+      );
+      if (response.data.success) {
+        setFacultyAssignments(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching faculty assignments:", error);
+    }
+  };
 
   const fetchDiscussions = async () => {
     setLoading(true);
@@ -46,7 +64,7 @@ const LMSDiscussion = () => {
       const academicPeriodId = localStorage.getItem("currentAcademicPeriod") || 1;
 
       const response = await axios.get(
-        `http://localhost:5000/api/lms/discussions/faculty`,
+        `${API_BASE}/api/lms/discussions/faculty`,
         {
           params: {
             faculty_id: userId,
@@ -68,7 +86,7 @@ const LMSDiscussion = () => {
   const fetchReplies = async (discussionId) => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/lms/discussions/${discussionId}/replies`
+        `${API_BASE}/api/lms/discussions/${discussionId}/replies`
       );
 
       if (response.data.success) {
@@ -102,7 +120,7 @@ const LMSDiscussion = () => {
       };
 
       const response = await axios.post(
-        "http://localhost:5000/api/lms/discussions",
+        `${API_BASE}/api/lms/discussions`,
         discussionData
       );
 
@@ -129,7 +147,7 @@ const LMSDiscussion = () => {
       const userId = localStorage.getItem("userId");
 
       const response = await axios.post(
-        "http://localhost:5000/api/lms/discussions/replies",
+        `${API_BASE}/api/lms/discussions/replies`,
         {
           discussion_id: selectedDiscussion.id,
           user_id: userId,
@@ -154,7 +172,7 @@ const LMSDiscussion = () => {
 
     try {
       const response = await axios.delete(
-        `http://localhost:5000/api/lms/discussions/${id}`
+        `${API_BASE}/api/lms/discussions/${id}`
       );
 
       if (response.data.success) {
@@ -170,7 +188,7 @@ const LMSDiscussion = () => {
   const handleTogglePin = async (discussion) => {
     try {
       const response = await axios.put(
-        `http://localhost:5000/api/lms/discussions/${discussion.id}`,
+        `${API_BASE}/api/lms/discussions/${discussion.id}`,
         {
           is_pinned: !discussion.is_pinned,
         }
@@ -188,7 +206,7 @@ const LMSDiscussion = () => {
     try {
       const userId = localStorage.getItem("userId");
 
-      await axios.post("http://localhost:5000/api/lms/discussions/like", {
+      await axios.post(`${API_BASE}/api/lms/discussions/like`, {
         discussion_id: discussionId,
         user_id: userId,
       });
@@ -302,11 +320,10 @@ const LMSDiscussion = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleTogglePin(discussion)}
-                      className={`p-2 rounded-lg transition ${
-                        discussion.is_pinned
-                          ? "bg-indigo-100 text-indigo-600"
-                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                      }`}
+                      className={`p-2 rounded-lg transition ${discussion.is_pinned
+                        ? "bg-indigo-100 text-indigo-600"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}
                       title={discussion.is_pinned ? "Unpin" : "Pin"}
                     >
                       <Pin className="w-5 h-5" />
@@ -414,30 +431,48 @@ const LMSDiscussion = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Course ID *
+                    Course *
                   </label>
-                  <input
-                    type="number"
+                  <select
                     name="course_id"
                     value={formData.course_id}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                      handleInputChange(e);
+                      setFormData(prev => ({ ...prev, section_id: "" }));
+                    }}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Select Course</option>
+                    {[...new Map(facultyAssignments.map(item => [item.course_id, item])).values()].map((assignment) => (
+                      <option key={assignment.course_id} value={assignment.course_id}>
+                        {assignment.course_code} - {assignment.course_title}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Section ID *
+                    Section *
                   </label>
-                  <input
-                    type="number"
+                  <select
                     name="section_id"
                     value={formData.section_id}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
+                    disabled={!formData.course_id}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
+                  >
+                    <option value="">Select Section</option>
+                    {facultyAssignments
+                      .filter((a) => a.course_id === parseInt(formData.course_id))
+                      .map((assignment) => (
+                        <option key={assignment.section_id} value={assignment.section_id}>
+                          {assignment.section}
+                        </option>
+                      ))}
+                  </select>
                 </div>
               </div>
 

@@ -38,15 +38,15 @@ const LMSDiscussions = {
     const query = `
       SELECT 
         ld.*,
-        c.course_name,
-        c.course_code,
+        c.title as course_name,
+        c.code as course_code,
         CONCAT(u.first_name, ' ', u.last_name) as author_name,
         u.role as author_role,
         COUNT(DISTINCT ldr.id) as reply_count,
         MAX(ldr.created_at) as last_reply_at
       FROM lms_discussions ld
-      LEFT JOIN courses c ON ld.course_id = c.id
-      LEFT JOIN users u ON ld.faculty_id = u.id
+      LEFT JOIN courses c ON ld.course_id = c.course_id
+      LEFT JOIN users u ON ld.faculty_id = u.user_id
       LEFT JOIN lms_discussion_replies ldr ON ld.id = ldr.discussion_id
       WHERE ld.section_id = ? AND ld.academic_period_id = ?
       GROUP BY ld.id
@@ -62,14 +62,14 @@ const LMSDiscussions = {
     const query = `
       SELECT 
         ld.*,
-        c.course_name,
-        c.course_code,
+        c.title as course_name,
+        c.code as course_code,
         s.section_name,
         COUNT(DISTINCT ldr.id) as reply_count,
         MAX(ldr.created_at) as last_reply_at
       FROM lms_discussions ld
-      LEFT JOIN courses c ON ld.course_id = c.id
-      LEFT JOIN sections s ON ld.section_id = s.id
+      LEFT JOIN courses c ON ld.course_id = c.course_id
+      LEFT JOIN sections s ON ld.section_id = s.section_id
       LEFT JOIN lms_discussion_replies ldr ON ld.id = ldr.discussion_id
       WHERE ld.faculty_id = ? AND ld.academic_period_id = ?
       GROUP BY ld.id
@@ -80,20 +80,51 @@ const LMSDiscussions = {
     return rows;
   },
 
+  // Get discussions for a student based on their enrolled courses
+  getByStudent: async (student_id, academic_period_id) => {
+    const query = `
+      SELECT 
+        ld.*,
+        c.code as course_code,
+        c.title as course_name,
+        s.section_name,
+        CONCAT(u.first_name, ' ', u.last_name) as author_name,
+        u.role as author_role,
+        COUNT(DISTINCT ldr.id) as reply_count,
+        MAX(ldr.created_at) as last_reply_at
+      FROM lms_discussions ld
+      INNER JOIN enrollments e ON ld.course_id = e.course_id 
+        AND ld.academic_period_id = e.period_id
+      LEFT JOIN courses c ON ld.course_id = c.course_id
+      LEFT JOIN sections s ON ld.section_id = s.section_id
+      LEFT JOIN users u ON ld.faculty_id = u.user_id
+      LEFT JOIN lms_discussion_replies ldr ON ld.id = ldr.discussion_id
+      WHERE e.student_id = ? 
+        AND e.period_id = ? 
+        AND e.status = 'Enrolled'
+        AND ld.status = 'active'
+      GROUP BY ld.id
+      ORDER BY ld.is_pinned DESC, ld.created_at DESC
+    `;
+
+    const [rows] = await db.query(query, [student_id, academic_period_id]);
+    return rows;
+  },
+
   // Get discussion by ID
   getById: async (id) => {
     const query = `
       SELECT 
         ld.*,
-        c.course_name,
-        c.course_code,
+        c.title as course_name,
+        c.code as course_code,
         s.section_name,
         CONCAT(u.first_name, ' ', u.last_name) as author_name,
         u.role as author_role
       FROM lms_discussions ld
-      LEFT JOIN courses c ON ld.course_id = c.id
-      LEFT JOIN sections s ON ld.section_id = s.id
-      LEFT JOIN users u ON ld.faculty_id = u.id
+      LEFT JOIN courses c ON ld.course_id = c.course_id
+      LEFT JOIN sections s ON ld.section_id = s.section_id
+      LEFT JOIN users u ON ld.faculty_id = u.user_id
       WHERE ld.id = ?
     `;
 

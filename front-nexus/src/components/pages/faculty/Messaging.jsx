@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const Messaging = () => {
   const [conversations, setConversations] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -46,7 +48,7 @@ const Messaging = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `http://localhost:5000/api/messages/conversations/${userId}`
+        `${API_BASE}/api/messages/conversations/${userId}`
       );
 
       if (response.data.success) {
@@ -61,14 +63,14 @@ const Messaging = () => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/messages/conversation/${conversationId}`
+        `${API_BASE}/api/messages/conversation/${conversationId}`
       );
 
       if (response.data.success) {
         setMessages(response.data.messages);
         // Mark as read
         await axios.put(
-          `http://localhost:5000/api/messages/read/${conversationId}`
+          `${API_BASE}/api/messages/read/${conversationId}`
         );
       }
     } catch (error) {
@@ -82,7 +84,7 @@ const Messaging = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `http://localhost:5000/api/faculty/${userId}/students`
+        `${API_BASE}/api/faculty/${userId}/students`
       );
 
       if (response.data.success) {
@@ -99,7 +101,7 @@ const Messaging = () => {
 
     try {
       const userId = localStorage.getItem("userId");
-      const response = await axios.post("http://localhost:5000/api/messages", {
+      const response = await axios.post(`${API_BASE}/api/messages`, {
         sender_id: userId,
         recipient_id: selectedConversation.other_user_id,
         conversation_id: selectedConversation.id,
@@ -123,7 +125,7 @@ const Messaging = () => {
 
     try {
       const userId = localStorage.getItem("userId");
-      const response = await axios.post("http://localhost:5000/api/messages/new", {
+      const response = await axios.post(`${API_BASE}/api/messages/new`, {
         sender_id: userId,
         ...newMessageData,
       });
@@ -154,7 +156,7 @@ const Messaging = () => {
 
     try {
       const response = await axios.delete(
-        `http://localhost:5000/api/messages/conversation/${conversationId}`
+        `${API_BASE}/api/messages/conversation/${conversationId}`
       );
 
       if (response.data.success) {
@@ -242,9 +244,8 @@ const Messaging = () => {
                 <div
                   key={conv.id}
                   onClick={() => setSelectedConversation(conv)}
-                  className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition ${
-                    selectedConversation?.id === conv.id ? "bg-indigo-50" : ""
-                  }`}
+                  className={`p-4 border-b cursor-pointer hover:bg-gray-50 transition ${selectedConversation?.id === conv.id ? "bg-indigo-50" : ""
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
@@ -328,17 +329,15 @@ const Messaging = () => {
                         className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[70%] rounded-lg p-3 ${
-                            isOwn
+                          className={`max-w-[70%] rounded-lg p-3 ${isOwn
                               ? "bg-indigo-600 text-white"
                               : "bg-white text-gray-900"
-                          }`}
+                            }`}
                         >
                           <p className="text-sm">{message.message}</p>
                           <p
-                            className={`text-xs mt-1 ${
-                              isOwn ? "text-indigo-200" : "text-gray-500"
-                            }`}
+                            className={`text-xs mt-1 ${isOwn ? "text-indigo-200" : "text-gray-500"
+                              }`}
                           >
                             {formatTime(message.created_at)}
                           </p>

@@ -1,5 +1,59 @@
 // controllers/courses.controller.js
 import * as CourseService from "../services/courses.service.js";
+const CoursesController = {
+  async getAllCourses(req, res) {
+    try {
+      const courses = await pool.query(`
+        SELECT 
+          course_id,
+          code,
+          title,
+          description,
+          credits,
+          department
+        FROM courses
+        WHERE status = 'active'
+        ORDER BY code ASC
+      `);
+
+      res.status(200).json({
+        success: true,
+        data: courses[0],
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+
+  async getCourseById(req, res) {
+    try {
+      const [course] = await pool.query(
+        "SELECT * FROM courses WHERE course_id = ?",
+        [req.params.id],
+      );
+
+      if (!course[0]) {
+        return res.status(404).json({
+          success: false,
+          message: "Course not found",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: course[0],
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+};
 
 // GET all courses
 export const getAllCourses = async (req, res) => {

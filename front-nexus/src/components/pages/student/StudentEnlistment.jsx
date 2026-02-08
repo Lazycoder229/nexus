@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { BookOpen, Plus, Search, ChevronLeft, ChevronRight, Calendar, Users, CheckCircle, XCircle, Clock } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentEnlistment = () => {
   const [availableSubjects, setAvailableSubjects] = useState([]);
@@ -14,13 +17,34 @@ const StudentEnlistment = () => {
 
   const fetchData = async () => {
     try {
-      const [availableRes, enrolledRes] = await Promise.all([
-        fetch("http://localhost:5000/api/student/enlistment/available"),
-        fetch("http://localhost:5000/api/student/enlistment/enrolled"),
+      const [coursesRes, enrollmentsRes] = await Promise.all([
+        axios.get(`${API_BASE}/api/course/courses`),
+        axios.get(`${API_BASE}/api/enrollments`),
       ]);
-      const [availableData, enrolledData] = await Promise.all([availableRes.json(), enrolledRes.json()]);
-      if (availableData.success) setAvailableSubjects(availableData.data);
-      if (enrolledData.success) setEnrolledSubjects(enrolledData.data);
+      const courses = coursesRes.data || [];
+      const enrollments = enrollmentsRes.data || [];
+
+      // Map courses to available subjects
+      setAvailableSubjects(courses.map(c => ({
+        subject_id: c.id || c.course_id,
+        subject_code: c.course_code || c.code,
+        subject_name: c.course_name || c.name,
+        units: c.credits || c.units || 3,
+        schedule: c.schedule || 'TBA',
+        instructor: c.instructor_name || c.instructor || 'TBA',
+        available_slots: c.available_slots || 30,
+        max_capacity: c.max_capacity || 40,
+      })));
+
+      // Map enrollments to enrolled subjects
+      setEnrolledSubjects(enrollments.map(e => ({
+        enrollment_id: e.id || e.enrollment_id,
+        subject_code: e.course_code || 'N/A',
+        subject_name: e.course_name || 'N/A',
+        units: e.units || 3,
+        schedule: e.schedule || 'TBA',
+        instructor: e.instructor || 'TBA',
+      })));
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -28,12 +52,8 @@ const StudentEnlistment = () => {
 
   const handleEnlist = async (subjectId) => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/enlistment/enroll", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject_id: subjectId }),
-      });
-      if (response.ok) fetchData();
+      await axios.post(`${API_BASE}/api/enrollments`, { course_id: subjectId });
+      fetchData();
     } catch (error) {
       console.error("Error enlisting:", error);
     }
@@ -41,10 +61,8 @@ const StudentEnlistment = () => {
 
   const handleDrop = async (enrollmentId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/student/enlistment/${enrollmentId}`, {
-        method: "DELETE",
-      });
-      if (response.ok) fetchData();
+      await axios.delete(`${API_BASE}/api/enrollments/${enrollmentId}`);
+      fetchData();
     } catch (error) {
       console.error("Error dropping:", error);
     }

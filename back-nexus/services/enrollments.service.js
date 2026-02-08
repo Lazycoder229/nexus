@@ -64,3 +64,8 @@ export const removeEnrollment = async (id) => {
 
   return await enrollmentModel.deleteEnrollment(id);
 };
+
+// Get enrolled students by faculty assignment ID
+export const listStudentsByAssignment = async (assignmentId) => {
+  return await enrollmentModel.getStudentsByAssignment(assignmentId);
+};

@@ -23,13 +23,15 @@ const EventsService = {
     if (data.end_date && data.start_date) {
       const startDate = new Date(data.start_date);
       const endDate = new Date(data.end_date);
-      
+
       if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
         throw new Error("Invalid date format");
       }
-      
+
       if (startDate > endDate) {
-        throw new Error(`Start date (${startDate.toISOString()}) cannot be after end date (${endDate.toISOString()})`);
+        throw new Error(
+          `Start date (${startDate.toISOString()}) cannot be after end date (${endDate.toISOString()})`,
+        );
       }
     }
 
@@ -74,9 +76,9 @@ const EventsService = {
       const endDate = new Date(data.end_date || existing.end_date);
 
       if (now >= startDate && now <= endDate) {
-        data.status = 'Ongoing';
+        data.status = "Ongoing";
       } else if (now > endDate) {
-        data.status = 'Completed';
+        data.status = "Completed";
       }
     }
 

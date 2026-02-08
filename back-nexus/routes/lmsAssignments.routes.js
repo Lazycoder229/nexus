@@ -9,6 +9,9 @@ router.post("/", lmsAssignmentsController.create);
 // Get assignments by faculty
 router.get("/faculty", lmsAssignmentsController.getByFaculty);
 
+// Get assignments for a student (filtered by enrolled courses)
+router.get("/student", lmsAssignmentsController.getByStudent);
+
 // Get assignments by section
 router.get("/section", lmsAssignmentsController.getBySection);
 

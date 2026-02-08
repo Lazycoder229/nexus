@@ -19,8 +19,11 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const LMSAssignments = () => {
   const [assignments, setAssignments] = useState([]);
+  const [facultyAssignments, setFacultyAssignments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
@@ -51,7 +54,22 @@ const LMSAssignments = () => {
 
   useEffect(() => {
     fetchAssignments();
+    fetchFacultyAssignments();
   }, []);
+
+  const fetchFacultyAssignments = async () => {
+    try {
+      const userId = localStorage.getItem("userId");
+      const response = await axios.get(
+        `${API_BASE}/api/faculty-assignments/faculty/${userId}`
+      );
+      if (response.data.success) {
+        setFacultyAssignments(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching faculty assignments:", error);
+    }
+  };
 
   const fetchAssignments = async () => {
     setLoading(true);
@@ -60,7 +78,7 @@ const LMSAssignments = () => {
       const academicPeriodId = localStorage.getItem("currentAcademicPeriod") || 1;
 
       const response = await axios.get(
-        `http://localhost:5000/api/lms/assignments/faculty`,
+        `${API_BASE}/api/lms/assignments/faculty`,
         {
           params: {
             faculty_id: userId,
@@ -82,7 +100,7 @@ const LMSAssignments = () => {
   const fetchSubmissions = async (assignmentId) => {
     try {
       const response = await axios.get(
-        `http://localhost:5000/api/lms/assignments/${assignmentId}/submissions`
+        `${API_BASE}/api/lms/assignments/${assignmentId}/submissions`
       );
 
       if (response.data.success) {
@@ -116,7 +134,7 @@ const LMSAssignments = () => {
       };
 
       const response = await axios.post(
-        "http://localhost:5000/api/lms/assignments",
+        `${API_BASE}/api/lms/assignments`,
         assignmentData
       );
 
@@ -141,7 +159,7 @@ const LMSAssignments = () => {
       const userId = localStorage.getItem("userId");
 
       const response = await axios.put(
-        `http://localhost:5000/api/lms/assignments/submissions/${selectedSubmission.id}/grade`,
+        `${API_BASE}/api/lms/assignments/submissions/${selectedSubmission.id}/grade`,
         {
           ...gradeData,
           graded_by: userId,
@@ -166,7 +184,7 @@ const LMSAssignments = () => {
 
     try {
       const response = await axios.delete(
-        `http://localhost:5000/api/lms/assignments/${id}`
+        `${API_BASE}/api/lms/assignments/${id}`
       );
 
       if (response.data.success) {
@@ -269,31 +287,28 @@ const LMSAssignments = () => {
       <div className="mb-6 flex gap-4 border-b">
         <button
           onClick={() => setActiveTab("all")}
-          className={`pb-3 px-4 font-medium transition ${
-            activeTab === "all"
-              ? "border-b-2 border-indigo-600 text-indigo-600"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
+          className={`pb-3 px-4 font-medium transition ${activeTab === "all"
+            ? "border-b-2 border-indigo-600 text-indigo-600"
+            : "text-gray-600 hover:text-gray-900"
+            }`}
         >
           All Assignments
         </button>
         <button
           onClick={() => setActiveTab("active")}
-          className={`pb-3 px-4 font-medium transition ${
-            activeTab === "active"
-              ? "border-b-2 border-indigo-600 text-indigo-600"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
+          className={`pb-3 px-4 font-medium transition ${activeTab === "active"
+            ? "border-b-2 border-indigo-600 text-indigo-600"
+            : "text-gray-600 hover:text-gray-900"
+            }`}
         >
           Active
         </button>
         <button
           onClick={() => setActiveTab("past")}
-          className={`pb-3 px-4 font-medium transition ${
-            activeTab === "past"
-              ? "border-b-2 border-indigo-600 text-indigo-600"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
+          className={`pb-3 px-4 font-medium transition ${activeTab === "past"
+            ? "border-b-2 border-indigo-600 text-indigo-600"
+            : "text-gray-600 hover:text-gray-900"
+            }`}
         >
           Past Due
         </button>
@@ -518,30 +533,48 @@ const LMSAssignments = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Course ID *
+                    Course *
                   </label>
-                  <input
-                    type="number"
+                  <select
                     name="course_id"
                     value={formData.course_id}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                      handleInputChange(e);
+                      setFormData(prev => ({ ...prev, section_id: "" }));
+                    }}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Select Course</option>
+                    {[...new Map(facultyAssignments.map(item => [item.course_id, item])).values()].map((assignment) => (
+                      <option key={assignment.course_id} value={assignment.course_id}>
+                        {assignment.course_code} - {assignment.course_title}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Section ID *
+                    Section *
                   </label>
-                  <input
-                    type="number"
+                  <select
                     name="section_id"
                     value={formData.section_id}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
+                    disabled={!formData.course_id}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
+                  >
+                    <option value="">Select Section</option>
+                    {facultyAssignments
+                      .filter((a) => a.course_id === parseInt(formData.course_id))
+                      .map((assignment) => (
+                        <option key={assignment.section_id} value={assignment.section_id}>
+                          {assignment.section}
+                        </option>
+                      ))}
+                  </select>
                 </div>
               </div>
 
@@ -628,11 +661,10 @@ const LMSAssignments = () => {
                           </p>
                         </div>
                         <span
-                          className={`px-3 py-1 rounded-full text-sm ${
-                            submission.status === "graded"
-                              ? "bg-green-100 text-green-600"
-                              : "bg-yellow-100 text-yellow-600"
-                          }`}
+                          className={`px-3 py-1 rounded-full text-sm ${submission.status === "graded"
+                            ? "bg-green-100 text-green-600"
+                            : "bg-yellow-100 text-yellow-600"
+                            }`}
                         >
                           {submission.status}
                         </span>

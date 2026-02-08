@@ -9,7 +9,8 @@ const DigitalLibraryController = {
         search: req.query.search,
       };
 
-      const resources = await DigitalLibraryService.getAllDigitalResources(filters);
+      const resources =
+        await DigitalLibraryService.getAllDigitalResources(filters);
       res.status(200).json(resources);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -18,7 +19,9 @@ const DigitalLibraryController = {
 
   getDigitalResourceById: async (req, res) => {
     try {
-      const resource = await DigitalLibraryService.getDigitalResourceById(req.params.id);
+      const resource = await DigitalLibraryService.getDigitalResourceById(
+        req.params.id,
+      );
       res.status(200).json(resource);
     } catch (error) {
       res.status(404).json({ error: error.message });
@@ -27,7 +30,9 @@ const DigitalLibraryController = {
 
   createDigitalResource: async (req, res) => {
     try {
-      const resource = await DigitalLibraryService.createDigitalResource(req.body);
+      const resource = await DigitalLibraryService.createDigitalResource(
+        req.body,
+      );
       res.status(201).json(resource);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -38,7 +43,7 @@ const DigitalLibraryController = {
     try {
       const resource = await DigitalLibraryService.updateDigitalResource(
         req.params.id,
-        req.body
+        req.body,
       );
       res.status(200).json(resource);
     } catch (error) {
@@ -48,7 +53,9 @@ const DigitalLibraryController = {
 
   deleteDigitalResource: async (req, res) => {
     try {
-      const result = await DigitalLibraryService.deleteDigitalResource(req.params.id);
+      const result = await DigitalLibraryService.deleteDigitalResource(
+        req.params.id,
+      );
       res.status(200).json(result);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -57,7 +64,9 @@ const DigitalLibraryController = {
 
   incrementViewCount: async (req, res) => {
     try {
-      const result = await DigitalLibraryService.incrementViewCount(req.params.id);
+      const result = await DigitalLibraryService.incrementViewCount(
+        req.params.id,
+      );
       res.status(200).json(result);
     } catch (error) {
       res.status(400).json({ error: error.message });
@@ -66,7 +75,9 @@ const DigitalLibraryController = {
 
   incrementDownloadCount: async (req, res) => {
     try {
-      const result = await DigitalLibraryService.incrementDownloadCount(req.params.id);
+      const result = await DigitalLibraryService.incrementDownloadCount(
+        req.params.id,
+      );
       res.status(200).json(result);
     } catch (error) {
       res.status(400).json({ error: error.message });

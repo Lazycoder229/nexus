@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { GraduationCap, TrendingUp, Award, ChevronDown, ChevronUp } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentGrades = () => {
   const [grades, setGrades] = useState([]);
@@ -12,24 +15,35 @@ const StudentGrades = () => {
 
   const fetchGrades = async () => {
     try {
-      const [gradesRes, summaryRes] = await Promise.all([
-        fetch("http://localhost:5000/api/student/grades"),
-        fetch("http://localhost:5000/api/student/grades/summary"),
-      ]);
-      const [gradesData, summaryData] = await Promise.all([gradesRes.json(), summaryRes.json()]);
-      if (gradesData.success) {
-        const grouped = gradesData.data.reduce((acc, grade) => {
-          const key = `${grade.academic_year} - ${grade.semester}`;
-          if (!acc[key]) acc[key] = [];
-          acc[key].push(grade);
-          return acc;
-        }, {});
-        setGrades(grouped);
-        const initialExpanded = {};
-        Object.keys(grouped).forEach(key => initialExpanded[key] = true);
-        setExpandedSemesters(initialExpanded);
-      }
-      if (summaryData.success) setSummary(summaryData.data);
+      const response = await axios.get(`${API_BASE}/api/grades`);
+      const gradesData = response.data || [];
+      const grouped = gradesData.reduce((acc, grade) => {
+        const key = `${grade.academic_year || 'Current'} - ${grade.semester || 'Semester'}`;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push({
+          subject_code: grade.course_code || grade.subject_code,
+          subject_name: grade.course_name || grade.subject_name,
+          units: grade.units || 3,
+          prelim: grade.prelim_grade,
+          midterm: grade.midterm_grade,
+          finals: grade.final_grade,
+          final_grade: grade.grade || grade.final_grade,
+          remarks: parseFloat(grade.grade) >= 75 ? 'Passed' : 'Failed',
+        });
+        return acc;
+      }, {});
+      setGrades(grouped);
+      const initialExpanded = {};
+      Object.keys(grouped).forEach(key => initialExpanded[key] = true);
+      setExpandedSemesters(initialExpanded);
+      // Calculate summary from grades
+      const totalGrades = gradesData.length || 1;
+      const avgGpa = gradesData.reduce((sum, g) => sum + (parseFloat(g.grade) || 0), 0) / totalGrades;
+      setSummary({
+        overall_gpa: avgGpa.toFixed(2),
+        completed_units: gradesData.reduce((sum, g) => sum + (g.units || 0), 0),
+        current_semester_gpa: avgGpa.toFixed(2),
+      });
     } catch (error) {
       console.error("Error fetching grades:", error);
     }
@@ -86,7 +100,7 @@ const StudentGrades = () => {
                 </div>
                 {expandedSemesters[semester] ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
               </button>
-              
+
               {expandedSemesters[semester] && (
                 <div className="overflow-x-auto border-t border-slate-200 dark:border-slate-700">
                   <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
@@ -115,11 +129,10 @@ const StudentGrades = () => {
                             {grade.final_grade || "-"}
                           </td>
                           <td className="px-4 py-2">
-                            <span className={`px-2 py-0.5 text-xs rounded-full ${
-                              grade.remarks === "Passed" 
-                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
+                            <span className={`px-2 py-0.5 text-xs rounded-full ${grade.remarks === "Passed"
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                                 : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                            }`}>
+                              }`}>
                               {grade.remarks || "Pending"}
                             </span>
                           </td>

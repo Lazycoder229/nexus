@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const AttendanceReports = () => {
   const [loading, setLoading] = useState(false);
   const [sections, setSections] = useState([]);
@@ -59,7 +61,7 @@ const AttendanceReports = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `http://localhost:5000/api/faculty/${userId}/sections`
+        `${API_BASE}/api/faculty/${userId}/sections`
       );
 
       if (response.data.success) {
@@ -74,7 +76,7 @@ const AttendanceReports = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `http://localhost:5000/api/faculty/${userId}/courses`
+        `${API_BASE}/api/faculty/${userId}/courses`
       );
 
       if (response.data.success) {
@@ -90,7 +92,7 @@ const AttendanceReports = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `http://localhost:5000/api/reports/attendance`,
+        `${API_BASE}/api/reports/attendance`,
         {
           params: {
             faculty_id: userId,
@@ -123,7 +125,7 @@ const AttendanceReports = () => {
     });
 
     window.open(
-      `http://localhost:5000/api/reports/attendance/export?${params}`,
+      `${API_BASE}/api/reports/attendance/export?${params}`,
       "_blank"
     );
   };

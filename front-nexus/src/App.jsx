@@ -348,7 +348,7 @@ function AppWrapper() {
         />
 
         {/* Grades */}
-        <Route path="faculty_grade_encoding" element={<GradeEncoding />} />
+        <Route path="faculty_grade_encoding" element={<GradeManagement />} />
         <Route path="faculty_grade_review" element={<GradeReview />} />
 
         {/* LMS */}

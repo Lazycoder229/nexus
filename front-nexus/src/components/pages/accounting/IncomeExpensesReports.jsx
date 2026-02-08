@@ -13,6 +13,8 @@ import {
   Search,
 } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const IncomeExpensesReports = () => {
   const [transactions, setTransactions] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -88,7 +90,7 @@ const IncomeExpensesReports = () => {
 
   const fetchTransactions = async () => {
     try {
-      const response = await axios.get("/api/income-expenses", {
+      const response = await axios.get(`${API_BASE}/api/income-expenses`, {
         params: filters,
       });
       setTransactions(response.data.data || []);
@@ -99,7 +101,7 @@ const IncomeExpensesReports = () => {
 
   const fetchSummary = async () => {
     try {
-      const response = await axios.get("/api/income-expenses/summary", {
+      const response = await axios.get(`${API_BASE}/api/income-expenses/summary`, {
         params: {
           start_date: filters.start_date,
           end_date: filters.end_date,
@@ -122,11 +124,11 @@ const IncomeExpensesReports = () => {
     try {
       if (formData.transaction_id) {
         await axios.put(
-          `/api/income-expenses/${formData.transaction_id}`,
+          `${API_BASE}/api/income-expenses/${formData.transaction_id}`,
           formData
         );
       } else {
-        await axios.post("/api/income-expenses", formData);
+        await axios.post(`${API_BASE}/api/income-expenses`, formData);
       }
       setShowModal(false);
       resetForm();
@@ -146,7 +148,7 @@ const IncomeExpensesReports = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Delete this transaction?")) {
       try {
-        await axios.delete(`/api/income-expenses/${id}`);
+        await axios.delete(`${API_BASE}/api/income-expenses/${id}`);
         fetchTransactions();
         fetchSummary();
       } catch (error) {
@@ -191,7 +193,7 @@ const IncomeExpensesReports = () => {
             </p>
           </div>
         </div>
-       {/*  <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+        {/*  <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span>Data Integrity: Online</span>
@@ -228,9 +230,8 @@ const IncomeExpensesReports = () => {
             <div>
               <p className="text-sm text-slate-600 dark:text-slate-400">Net Income</p>
               <p
-                className={`text-2xl font-bold ${
-                  netIncome >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                }`}
+                className={`text-2xl font-bold ${netIncome >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                  }`}
               >
                 ₱{netIncome.toLocaleString()}
               </p>
@@ -418,11 +419,10 @@ const IncomeExpensesReports = () => {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span
-                        className={`px-2 py-1 text-xs rounded-full font-medium ${
-                          transaction.transaction_type === "Income"
+                        className={`px-2 py-1 text-xs rounded-full font-medium ${transaction.transaction_type === "Income"
                             ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
                             : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
-                        }`}
+                          }`}
                       >
                         {transaction.transaction_type}
                       </span>
@@ -440,11 +440,10 @@ const IncomeExpensesReports = () => {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span
-                        className={`font-semibold text-sm ${
-                          transaction.transaction_type === "Income"
+                        className={`font-semibold text-sm ${transaction.transaction_type === "Income"
                             ? "text-green-600 dark:text-green-400"
                             : "text-red-600 dark:text-red-400"
-                        }`}
+                          }`}
                       >
                         {transaction.transaction_type === "Income" ? "+" : "-"}₱
                         {parseFloat(transaction.amount).toLocaleString()}
@@ -478,42 +477,68 @@ const IncomeExpensesReports = () => {
 
       {/* Pagination */}
       <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
-          <span className="text-xs sm:text-sm">
-            Page <span className="font-semibold">{currentPage}</span> of{" "}
-            <span className="font-semibold">{(() => {
-              const searchTerm = filters.search.toLowerCase();
-              const filtered = transactions.filter((transaction) => {
-                const matchesSearch =
-                  transaction.category?.toLowerCase().includes(searchTerm) ||
-                  transaction.department?.toLowerCase().includes(searchTerm) ||
-                  transaction.description?.toLowerCase().includes(searchTerm) ||
-                  transaction.reference_number?.toLowerCase().includes(searchTerm);
-                return matchesSearch;
-              });
-              return Math.ceil(filtered.length / itemsPerPage) || 1;
-            })()}</span> | Total Records:{" "}
-            {(() => {
-              const searchTerm = filters.search.toLowerCase();
-              const filtered = transactions.filter((transaction) => {
-                const matchesSearch =
-                  transaction.category?.toLowerCase().includes(searchTerm) ||
-                  transaction.department?.toLowerCase().includes(searchTerm) ||
-                  transaction.description?.toLowerCase().includes(searchTerm) ||
-                  transaction.reference_number?.toLowerCase().includes(searchTerm);
-                return matchesSearch;
-              });
-              return filtered.length;
-            })()}
-          </span>
-          <div className="flex gap-1 mt-2 sm:mt-0">
-            <button
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="p-1.5 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-            >
-              <ChevronLeft size={16} className="text-slate-600 dark:text-slate-400" />
-            </button>
-            {(() => {
+        <span className="text-xs sm:text-sm">
+          Page <span className="font-semibold">{currentPage}</span> of{" "}
+          <span className="font-semibold">{(() => {
+            const searchTerm = filters.search.toLowerCase();
+            const filtered = transactions.filter((transaction) => {
+              const matchesSearch =
+                transaction.category?.toLowerCase().includes(searchTerm) ||
+                transaction.department?.toLowerCase().includes(searchTerm) ||
+                transaction.description?.toLowerCase().includes(searchTerm) ||
+                transaction.reference_number?.toLowerCase().includes(searchTerm);
+              return matchesSearch;
+            });
+            return Math.ceil(filtered.length / itemsPerPage) || 1;
+          })()}</span> | Total Records:{" "}
+          {(() => {
+            const searchTerm = filters.search.toLowerCase();
+            const filtered = transactions.filter((transaction) => {
+              const matchesSearch =
+                transaction.category?.toLowerCase().includes(searchTerm) ||
+                transaction.department?.toLowerCase().includes(searchTerm) ||
+                transaction.description?.toLowerCase().includes(searchTerm) ||
+                transaction.reference_number?.toLowerCase().includes(searchTerm);
+              return matchesSearch;
+            });
+            return filtered.length;
+          })()}
+        </span>
+        <div className="flex gap-1 mt-2 sm:mt-0">
+          <button
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            className="p-1.5 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+          >
+            <ChevronLeft size={16} className="text-slate-600 dark:text-slate-400" />
+          </button>
+          {(() => {
+            const searchTerm = filters.search.toLowerCase();
+            const filtered = transactions.filter((transaction) => {
+              const matchesSearch =
+                transaction.category?.toLowerCase().includes(searchTerm) ||
+                transaction.department?.toLowerCase().includes(searchTerm) ||
+                transaction.description?.toLowerCase().includes(searchTerm) ||
+                transaction.reference_number?.toLowerCase().includes(searchTerm);
+              return matchesSearch;
+            });
+            const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+
+            return [...Array(totalPages)].map((_, i) => (
+              <button
+                key={i + 1}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`px-3 py-1.5 text-xs rounded border transition-colors ${currentPage === i + 1
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  }`}
+              >
+                {i + 1}
+              </button>
+            ));
+          })()}
+          <button
+            onClick={() => {
               const searchTerm = filters.search.toLowerCase();
               const filtered = transactions.filter((transaction) => {
                 const matchesSearch =
@@ -524,54 +549,27 @@ const IncomeExpensesReports = () => {
                 return matchesSearch;
               });
               const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-              
-              return [...Array(totalPages)].map((_, i) => (
-                <button
-                  key={i + 1}
-                  onClick={() => setCurrentPage(i + 1)}
-                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                    currentPage === i + 1
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              ));
+              setCurrentPage(Math.min(totalPages, currentPage + 1));
+            }}
+            disabled={(() => {
+              const searchTerm = filters.search.toLowerCase();
+              const filtered = transactions.filter((transaction) => {
+                const matchesSearch =
+                  transaction.category?.toLowerCase().includes(searchTerm) ||
+                  transaction.department?.toLowerCase().includes(searchTerm) ||
+                  transaction.description?.toLowerCase().includes(searchTerm) ||
+                  transaction.reference_number?.toLowerCase().includes(searchTerm);
+                return matchesSearch;
+              });
+              const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+              return currentPage === totalPages;
             })()}
-            <button
-              onClick={() => {
-                const searchTerm = filters.search.toLowerCase();
-                const filtered = transactions.filter((transaction) => {
-                  const matchesSearch =
-                    transaction.category?.toLowerCase().includes(searchTerm) ||
-                    transaction.department?.toLowerCase().includes(searchTerm) ||
-                    transaction.description?.toLowerCase().includes(searchTerm) ||
-                    transaction.reference_number?.toLowerCase().includes(searchTerm);
-                  return matchesSearch;
-                });
-                const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-                setCurrentPage(Math.min(totalPages, currentPage + 1));
-              }}
-              disabled={(() => {
-                const searchTerm = filters.search.toLowerCase();
-                const filtered = transactions.filter((transaction) => {
-                  const matchesSearch =
-                    transaction.category?.toLowerCase().includes(searchTerm) ||
-                    transaction.department?.toLowerCase().includes(searchTerm) ||
-                    transaction.description?.toLowerCase().includes(searchTerm) ||
-                    transaction.reference_number?.toLowerCase().includes(searchTerm);
-                  return matchesSearch;
-                });
-                const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-                return currentPage === totalPages;
-              })()}
-              className="p-1.5 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-            >
-              <ChevronRight size={16} className="text-slate-600 dark:text-slate-400" />
-            </button>
-          </div>
+            className="p-1.5 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+          >
+            <ChevronRight size={16} className="text-slate-600 dark:text-slate-400" />
+          </button>
         </div>
+      </div>
 
       {/* Modal */}
       {showModal && (
@@ -635,15 +633,15 @@ const IncomeExpensesReports = () => {
                       <option value="">Select Category</option>
                       {formData.transaction_type === "Income"
                         ? incomeCategories.map((cat) => (
-                            <option key={cat} value={cat}>
-                              {cat}
-                            </option>
-                          ))
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))
                         : expenseCategories.map((cat) => (
-                            <option key={cat} value={cat}>
-                              {cat}
-                            </option>
-                          ))}
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
                     </select>
                   </div>
                   <div>

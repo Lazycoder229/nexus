@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { Calendar, Clock, MapPin, Users, BookOpen } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentTimetable = () => {
   const [timetable, setTimetable] = useState([]);
@@ -11,9 +14,17 @@ const StudentTimetable = () => {
 
   const fetchTimetable = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/timetable");
-      const data = await response.json();
-      if (data.success) setTimetable(data.data);
+      const response = await axios.get(`${API_BASE}/api/schedules`);
+      const schedules = response.data || [];
+      setTimetable(schedules.map(s => ({
+        day: s.day || 'Monday',
+        subject_name: s.course_name || s.subject_name,
+        subject_code: s.course_code || s.subject_code,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        room: s.room || s.location || 'TBA',
+        instructor: s.instructor_name || s.instructor || 'TBA',
+      })));
     } catch (error) {
       console.error("Error fetching timetable:", error);
     }
@@ -41,11 +52,10 @@ const StudentTimetable = () => {
         <div className="flex gap-2 overflow-x-auto pb-2">
           <button
             onClick={() => setSelectedDay("all")}
-            className={`px-4 py-2 rounded-md font-medium text-sm whitespace-nowrap ${
-              selectedDay === "all"
+            className={`px-4 py-2 rounded-md font-medium text-sm whitespace-nowrap ${selectedDay === "all"
                 ? "bg-indigo-600 text-white"
                 : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-            }`}
+              }`}
           >
             All Days
           </button>
@@ -53,11 +63,10 @@ const StudentTimetable = () => {
             <button
               key={day}
               onClick={() => setSelectedDay(day)}
-              className={`px-4 py-2 rounded-md font-medium text-sm whitespace-nowrap ${
-                selectedDay === day
+              className={`px-4 py-2 rounded-md font-medium text-sm whitespace-nowrap ${selectedDay === day
                   ? "bg-indigo-600 text-white"
                   : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-              }`}
+                }`}
             >
               {day}
             </button>

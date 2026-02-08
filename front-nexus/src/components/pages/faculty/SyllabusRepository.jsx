@@ -17,6 +17,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const SyllabusRepository = () => {
   const [syllabi, setSyllabi] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -55,7 +57,7 @@ const SyllabusRepository = () => {
 
   const fetchSyllabi = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/syllabus");
+      const response = await axios.get(`${API_BASE}/api/syllabus`);
       setSyllabi(response.data);
     } catch (error) {
       console.error("Error fetching syllabi:", error);
@@ -65,7 +67,7 @@ const SyllabusRepository = () => {
   const fetchCourses = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/course/courses",
+        `${API_BASE}/api/course/courses`,
       );
       setCourses(response.data);
     } catch (error) {
@@ -76,7 +78,7 @@ const SyllabusRepository = () => {
   const fetchPeriods = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/academic-periods",
+        `${API_BASE}/api/academic-periods`,
       );
       setPeriods(response.data);
     } catch (error) {
@@ -122,11 +124,11 @@ const SyllabusRepository = () => {
     try {
       if (editMode) {
         await axios.put(
-          `http://localhost:5000/api/syllabus/${currentSyllabus.syllabus_id}`,
+          `${API_BASE}/api/syllabus/${currentSyllabus.syllabus_id}`,
           submitData,
         );
       } else {
-        await axios.post("http://localhost:5000/api/syllabus", submitData);
+        await axios.post(`${API_BASE}/api/syllabus`, submitData);
       }
       fetchSyllabi();
       closeModal();
@@ -155,7 +157,7 @@ const SyllabusRepository = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this syllabus?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/syllabus/${id}`);
+        await axios.delete(`${API_BASE}/api/syllabus/${id}`);
         fetchSyllabi();
       } catch (error) {
         console.error("Error deleting syllabus:", error);

@@ -47,14 +47,14 @@ const LMSAssignments = {
     const query = `
       SELECT 
         la.*,
-        c.course_name,
-        c.course_code,
+        c.title as course_name,
+        c.code as course_code,
         s.section_name,
         COUNT(DISTINCT las.student_id) as submission_count,
         COUNT(DISTINCT CASE WHEN las.status = 'graded' THEN las.student_id END) as graded_count
       FROM lms_assignments la
-      LEFT JOIN courses c ON la.course_id = c.id
-      LEFT JOIN sections s ON la.section_id = s.id
+      LEFT JOIN courses c ON la.course_id = c.course_id
+      LEFT JOIN sections s ON la.section_id = s.section_id
       LEFT JOIN lms_assignment_submissions las ON la.id = las.assignment_id
       WHERE la.faculty_id = ? AND la.academic_period_id = ?
       GROUP BY la.id
@@ -70,12 +70,12 @@ const LMSAssignments = {
     const query = `
       SELECT 
         la.*,
-        c.course_name,
-        c.course_code,
+        c.title as course_name,
+        c.code as course_code,
         CONCAT(u.first_name, ' ', u.last_name) as faculty_name
       FROM lms_assignments la
-      LEFT JOIN courses c ON la.course_id = c.id
-      LEFT JOIN users u ON la.faculty_id = u.id
+      LEFT JOIN courses c ON la.course_id = c.course_id
+      LEFT JOIN users u ON la.faculty_id = u.user_id
       WHERE la.section_id = ? AND la.academic_period_id = ?
       ORDER BY la.due_date ASC
     `;
@@ -84,19 +84,49 @@ const LMSAssignments = {
     return rows;
   },
 
+  // Get assignments for a student based on their enrolled courses
+  getByStudent: async (student_id, academic_period_id) => {
+    const query = `
+      SELECT DISTINCT
+        la.*,
+        c.code as course_code,
+        c.title as course_name,
+        s.section_name,
+        CONCAT(u.first_name, ' ', u.last_name) as faculty_name,
+        las.id as submission_id,
+        las.status as submission_status,
+        las.score as submission_score,
+        las.submitted_at
+      FROM lms_assignments la
+      INNER JOIN enrollments e ON la.course_id = e.course_id 
+        AND la.academic_period_id = e.period_id
+      LEFT JOIN courses c ON la.course_id = c.course_id
+      LEFT JOIN sections s ON la.section_id = s.section_id
+      LEFT JOIN users u ON la.faculty_id = u.user_id
+      LEFT JOIN lms_assignment_submissions las ON la.id = las.assignment_id AND las.student_id = ?
+      WHERE e.student_id = ? 
+        AND e.period_id = ? 
+        AND e.status = 'Enrolled'
+        AND la.status = 'active'
+      ORDER BY la.due_date ASC
+    `;
+    const [rows] = await db.query(query, [student_id, student_id, academic_period_id]);
+    return rows;
+  },
+
   // Get assignment by ID
   getById: async (id) => {
     const query = `
       SELECT 
         la.*,
-        c.course_name,
-        c.course_code,
+        c.title as course_name,
+        c.code as course_code,
         s.section_name,
         CONCAT(u.first_name, ' ', u.last_name) as faculty_name
       FROM lms_assignments la
-      LEFT JOIN courses c ON la.course_id = c.id
-      LEFT JOIN sections s ON la.section_id = s.id
-      LEFT JOIN users u ON la.faculty_id = u.id
+      LEFT JOIN courses c ON la.course_id = c.course_id
+      LEFT JOIN sections s ON la.section_id = s.section_id
+      LEFT JOIN users u ON la.faculty_id = u.user_id
       WHERE la.id = ?
     `;
 
@@ -173,10 +203,10 @@ const LMSAssignments = {
       SELECT 
         las.*,
         CONCAT(u.first_name, ' ', u.last_name) as student_name,
-        u.student_id,
+        u.user_id as student_id,
         u.email
       FROM lms_assignment_submissions las
-      LEFT JOIN users u ON las.student_id = u.id
+      LEFT JOIN users u ON las.student_id = u.user_id
       WHERE las.assignment_id = ?
       ORDER BY las.submitted_at DESC
     `;

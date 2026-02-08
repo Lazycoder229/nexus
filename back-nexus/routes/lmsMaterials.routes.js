@@ -9,6 +9,9 @@ router.post("/", lmsMaterialsController.create);
 // Get materials by faculty
 router.get("/faculty", lmsMaterialsController.getByFaculty);
 
+// Get materials for a student (filtered by enrolled courses)
+router.get("/student", lmsMaterialsController.getByStudent);
+
 // Get materials by section
 router.get("/section", lmsMaterialsController.getBySection);
 

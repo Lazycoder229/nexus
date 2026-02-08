@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const ClassPerformance = () => {
   const [loading, setLoading] = useState(false);
   const [sections, setSections] = useState([]);
@@ -44,7 +46,7 @@ const ClassPerformance = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `http://localhost:5000/api/faculty/${userId}/sections`
+        `${API_BASE}/api/faculty/${userId}/sections`
       );
 
       if (response.data.success) {
@@ -59,7 +61,7 @@ const ClassPerformance = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `http://localhost:5000/api/faculty/${userId}/courses`
+        `${API_BASE}/api/faculty/${userId}/courses`
       );
 
       if (response.data.success) {
@@ -75,7 +77,7 @@ const ClassPerformance = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `http://localhost:5000/api/reports/performance`,
+        `${API_BASE}/api/reports/performance`,
         {
           params: {
             faculty_id: userId,
@@ -108,7 +110,7 @@ const ClassPerformance = () => {
     });
 
     window.open(
-      `http://localhost:5000/api/reports/performance/export?${params}`,
+      `${API_BASE}/api/reports/performance/export?${params}`,
       "_blank"
     );
   };

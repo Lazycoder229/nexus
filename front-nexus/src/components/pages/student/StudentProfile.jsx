@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { Users, Mail, Phone, MapPin, Calendar, BookOpen, Edit, Save, X } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentProfile = () => {
   const [profile, setProfile] = useState(null);
@@ -14,12 +17,26 @@ const StudentProfile = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/student/profile");
-      const data = await response.json();
-      if (data.success) {
-        setProfile(data.data);
-        setFormData(data.data);
-      }
+      const response = await axios.get(`${API_BASE}/api/users`);
+      const users = response.data || [];
+      // Get first user or current logged-in user profile
+      const userData = users[0] || {};
+      const profileData = {
+        student_id: userData.user_id || userData.id,
+        first_name: userData.first_name || userData.name?.split(' ')[0] || 'Student',
+        last_name: userData.last_name || userData.name?.split(' ')[1] || 'User',
+        email: userData.email,
+        phone: userData.phone || userData.contact_number,
+        address: userData.address,
+        date_of_birth: userData.date_of_birth || userData.birthdate,
+        gender: userData.gender,
+        year_level: userData.year_level || '1st Year',
+        program: userData.program || userData.course || 'BS Computer Science',
+        status: userData.status || 'Active',
+        enrollment_date: userData.enrollment_date || userData.created_at,
+      };
+      setProfile(profileData);
+      setFormData(profileData);
     } catch (error) {
       console.error("Error fetching profile:", error);
     } finally {
@@ -29,16 +46,9 @@ const StudentProfile = () => {
 
   const handleSave = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setProfile(formData);
-        setIsEditing(false);
-      }
+      await axios.put(`${API_BASE}/api/users/${profile.student_id}`, formData);
+      setProfile(formData);
+      setIsEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);
     }

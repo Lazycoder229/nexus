@@ -14,6 +14,8 @@ import {
   Search,
 } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const PaymentGateway = () => {
   const [gateways, setGateways] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -72,7 +74,7 @@ const PaymentGateway = () => {
 
   const fetchGateways = async () => {
     try {
-      const response = await axios.get("/api/payment-gateway/config");
+      const response = await axios.get(`${API_BASE}/api/payment-gateway/config`);
       setGateways(response.data.data || []);
     } catch (error) {
       console.error("Error fetching gateways:", error);
@@ -81,7 +83,7 @@ const PaymentGateway = () => {
 
   const fetchTransactions = async () => {
     try {
-      const response = await axios.get("/api/payment-gateway/transactions", {
+      const response = await axios.get(`${API_BASE}/api/payment-gateway/transactions`, {
         params: filters,
       });
       setTransactions(response.data.data || []);
@@ -92,7 +94,7 @@ const PaymentGateway = () => {
 
   const fetchSummary = async () => {
     try {
-      const response = await axios.get("/api/payment-gateway/summary", {
+      const response = await axios.get(`${API_BASE}/api/payment-gateway/summary`, {
         params: {
           start_date: filters.start_date,
           end_date: filters.end_date,
@@ -110,11 +112,11 @@ const PaymentGateway = () => {
     try {
       if (gatewayForm.gateway_id) {
         await axios.put(
-          `/api/payment-gateway/config/${gatewayForm.gateway_id}`,
+          `${API_BASE}/api/payment-gateway/config/${gatewayForm.gateway_id}`,
           gatewayForm
         );
       } else {
-        await axios.post("/api/payment-gateway/config", gatewayForm);
+        await axios.post(`${API_BASE}/api/payment-gateway/config`, gatewayForm);
       }
       setShowGatewayModal(false);
       resetGatewayForm();
@@ -134,7 +136,7 @@ const PaymentGateway = () => {
   const handleDeleteGateway = async (id) => {
     if (window.confirm("Delete this gateway configuration?")) {
       try {
-        await axios.delete(`/api/payment-gateway/config/${id}`);
+        await axios.delete(`${API_BASE}/api/payment-gateway/config/${id}`);
         fetchGateways();
       } catch (error) {
         console.error("Error deleting gateway:", error);
@@ -144,7 +146,7 @@ const PaymentGateway = () => {
 
   const handleVerifyTransaction = async (id) => {
     try {
-      await axios.post(`/api/payment-gateway/transactions/${id}/verify`);
+      await axios.post(`${API_BASE}/api/payment-gateway/transactions/${id}/verify`);
       fetchTransactions();
       fetchSummary();
       alert("Transaction verified!");
@@ -175,240 +177,238 @@ const PaymentGateway = () => {
   return (
     <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
       <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
-      {/* Header */}
-      <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <CreditCard size={24} className="text-indigo-600" />
-          Payment Gateway
-        </h2>
-        <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-          Data Integrity: Online
-        </span>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <p className="text-sm text-slate-600 dark:text-slate-400">Total Processed</p>
-          <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-            ₱{parseFloat(summary.total_amount || 0).toLocaleString()}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <p className="text-sm text-slate-600 dark:text-slate-400">Successful</p>
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-            ₱{parseFloat(summary.successful_amount || 0).toLocaleString()}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <p className="text-sm text-slate-600 dark:text-slate-400">Failed</p>
-          <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-            ₱{parseFloat(summary.failed_amount || 0).toLocaleString()}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <p className="text-sm text-slate-600 dark:text-slate-400">Transactions</p>
-          <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-            {summary.total_transactions || 0}
-          </p>
-        </div>
-      </div>
-
-      {/* Gateway Configurations */}
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <Settings className="text-indigo-600 dark:text-indigo-400" />
-            Gateway Configurations
+        {/* Header */}
+        <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <CreditCard size={24} className="text-indigo-600" />
+            Payment Gateway
           </h2>
-          <button
-            onClick={() => {
-              resetGatewayForm();
-              setShowGatewayModal(true);
-            }}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-sm border shadow-md shadow-indigo-500/30"
-          >
-            <Plus size={14} />
-            Add Gateway
-          </button>
+          <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+            Data Integrity: Online
+          </span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {gateways.map((gateway) => (
-            <div
-              key={gateway.gateway_id}
-              className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow"
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Total Processed</p>
+            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+              ₱{parseFloat(summary.total_amount || 0).toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Successful</p>
+            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+              ₱{parseFloat(summary.successful_amount || 0).toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Failed</p>
+            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+              ₱{parseFloat(summary.failed_amount || 0).toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Transactions</p>
+            <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+              {summary.total_transactions || 0}
+            </p>
+          </div>
+        </div>
+
+        {/* Gateway Configurations */}
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <Settings className="text-indigo-600 dark:text-indigo-400" />
+              Gateway Configurations
+            </h2>
+            <button
+              onClick={() => {
+                resetGatewayForm();
+                setShowGatewayModal(true);
+              }}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-sm border shadow-md shadow-indigo-500/30"
             >
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="text-indigo-600 dark:text-indigo-400" size={24} />
-                  <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">{gateway.gateway_name}</h3>
+              <Plus size={14} />
+              Add Gateway
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {gateways.map((gateway) => (
+              <div
+                key={gateway.gateway_id}
+                className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="text-indigo-600 dark:text-indigo-400" size={24} />
+                    <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100">{gateway.gateway_name}</h3>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => handleEditGateway(gateway)}
+                      className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                    >
+                      <Edit size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteGateway(gateway.gateway_id)}
+                      className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => handleEditGateway(gateway)}
-                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
-                  >
-                    <Edit size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteGateway(gateway.gateway_id)}
-                    className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">Status:</span>
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full font-medium ${gateway.is_active
+                          ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
+                          : "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300"
+                        }`}
+                    >
+                      {gateway.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">Mode:</span>
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full font-medium ${gateway.is_test_mode
+                          ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
+                          : "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-400"
+                        }`}
+                    >
+                      {gateway.is_test_mode ? "Test" : "Live"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600 dark:text-slate-400">Transaction Fee:</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-100">
+                      {gateway.transaction_fee_percentage}% + ₱
+                      {parseFloat(gateway.fixed_transaction_fee).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600 dark:text-slate-400">Merchant ID:</span>
+                    <span className="font-mono text-xs truncate max-w-[150px] text-slate-800 dark:text-slate-100">
+                      {gateway.merchant_id || "N/A"}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Status:</span>
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full font-medium ${
-                      gateway.is_active
-                        ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
-                        : "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300"
-                    }`}
-                  >
-                    {gateway.is_active ? "Active" : "Inactive"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Mode:</span>
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full font-medium ${
-                      gateway.is_test_mode
-                        ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
-                        : "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-400"
-                    }`}
-                  >
-                    {gateway.is_test_mode ? "Test" : "Live"}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">Transaction Fee:</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-100">
-                    {gateway.transaction_fee_percentage}% + ₱
-                    {parseFloat(gateway.fixed_transaction_fee).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">Merchant ID:</span>
-                  <span className="font-mono text-xs truncate max-w-[150px] text-slate-800 dark:text-slate-100">
-                    {gateway.merchant_id || "N/A"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Search Input - LEFT */}
-        <div className="relative flex-grow max-w-xs">
-          <input
-            type="text"
-            placeholder="Search transactions..."
-            value={filters.search}
-            onChange={(e) => {
-              setFilters({ ...filters, search: e.target.value });
-              setCurrentPage(1);
-            }}
-            className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
-          />
-          <Search
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-            size={14}
-          />
-        </div>
-
-        {/* Filters - RIGHT */}
-        <div className="flex items-center gap-2">
-          <select
-            value={filters.gateway_name}
-            onChange={(e) => {
-              setFilters({ ...filters, gateway_name: e.target.value });
-              setCurrentPage(1);
-            }}
-            className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-40"
-          >
-            <option value="">All Gateways</option>
-            {gatewayProviders.map((provider) => (
-              <option key={provider} value={provider}>
-                {provider}
-              </option>
             ))}
-          </select>
-          <select
-            value={filters.transaction_status}
-            onChange={(e) => {
-              setFilters({ ...filters, transaction_status: e.target.value });
-              setCurrentPage(1);
-            }}
-            className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-32"
-          >
-            <option value="">All Status</option>
-            {transactionStatuses.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-          <input
-            type="date"
-            value={filters.start_date}
-            onChange={(e) => {
-              setFilters({ ...filters, start_date: e.target.value });
-              setCurrentPage(1);
-            }}
-            placeholder="Start Date"
-            className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-36"
-          />
-          <input
-            type="date"
-            value={filters.end_date}
-            onChange={(e) => {
-              setFilters({ ...filters, end_date: e.target.value });
-              setCurrentPage(1);
-            }}
-            placeholder="End Date"
-            className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-36"
-          />
+          </div>
         </div>
-      </div>
 
-      {/* Transactions Table */}
-      <div>
-        <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-100">Transaction History</h2>
-        <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
-          <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-            <thead className="bg-slate-100 dark:bg-slate-700/70">
-              <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                <th className="px-4 py-2.5">
-                  Transaction ID
-                </th>
-                <th className="px-4 py-2.5">
-                  Student
-                </th>
-                <th className="px-4 py-2.5">
-                  Gateway
-                </th>
-                <th className="px-4 py-2.5">
-                  Amount
-                </th>
-                <th className="px-4 py-2.5">
-                  Date
-                </th>
-                <th className="px-4 py-2.5">
-                  Status
-                </th>
-                <th className="px-4 py-2.5 w-1/12 text-right">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
-              {(() => {
+        {/* Filters */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Search Input - LEFT */}
+          <div className="relative flex-grow max-w-xs">
+            <input
+              type="text"
+              placeholder="Search transactions..."
+              value={filters.search}
+              onChange={(e) => {
+                setFilters({ ...filters, search: e.target.value });
+                setCurrentPage(1);
+              }}
+              className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
+            />
+            <Search
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+              size={14}
+            />
+          </div>
+
+          {/* Filters - RIGHT */}
+          <div className="flex items-center gap-2">
+            <select
+              value={filters.gateway_name}
+              onChange={(e) => {
+                setFilters({ ...filters, gateway_name: e.target.value });
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-40"
+            >
+              <option value="">All Gateways</option>
+              {gatewayProviders.map((provider) => (
+                <option key={provider} value={provider}>
+                  {provider}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filters.transaction_status}
+              onChange={(e) => {
+                setFilters({ ...filters, transaction_status: e.target.value });
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-32"
+            >
+              <option value="">All Status</option>
+              {transactionStatuses.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+            <input
+              type="date"
+              value={filters.start_date}
+              onChange={(e) => {
+                setFilters({ ...filters, start_date: e.target.value });
+                setCurrentPage(1);
+              }}
+              placeholder="Start Date"
+              className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-36"
+            />
+            <input
+              type="date"
+              value={filters.end_date}
+              onChange={(e) => {
+                setFilters({ ...filters, end_date: e.target.value });
+                setCurrentPage(1);
+              }}
+              placeholder="End Date"
+              className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-36"
+            />
+          </div>
+        </div>
+
+        {/* Transactions Table */}
+        <div>
+          <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-100">Transaction History</h2>
+          <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-100 dark:bg-slate-700/70">
+                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  <th className="px-4 py-2.5">
+                    Transaction ID
+                  </th>
+                  <th className="px-4 py-2.5">
+                    Student
+                  </th>
+                  <th className="px-4 py-2.5">
+                    Gateway
+                  </th>
+                  <th className="px-4 py-2.5">
+                    Amount
+                  </th>
+                  <th className="px-4 py-2.5">
+                    Date
+                  </th>
+                  <th className="px-4 py-2.5">
+                    Status
+                  </th>
+                  <th className="px-4 py-2.5 w-1/12 text-right">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
+                {(() => {
                   const searchTerm = filters.search.toLowerCase();
                   const filtered = transactions.filter((transaction) => {
                     const matchesSearch =
@@ -472,18 +472,17 @@ const PaymentGateway = () => {
                           )}
                           {(transaction.transaction_status === "Pending" ||
                             transaction.transaction_status === "Processing") && (
-                            <Clock size={16} className="text-yellow-600 dark:text-yellow-400" />
-                          )}
+                              <Clock size={16} className="text-yellow-600 dark:text-yellow-400" />
+                            )}
                           <span
-                            className={`px-2 py-1 text-xs rounded-full font-medium ${
-                              transaction.transaction_status === "Success"
+                            className={`px-2 py-1 text-xs rounded-full font-medium ${transaction.transaction_status === "Success"
                                 ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
                                 : transaction.transaction_status === "Failed"
-                                ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
-                                : transaction.transaction_status === "Refunded"
-                                ? "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400"
-                                : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
-                            }`}
+                                  ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
+                                  : transaction.transaction_status === "Refunded"
+                                    ? "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400"
+                                    : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
+                              }`}
                           >
                             {transaction.transaction_status}
                           </span>
@@ -557,16 +556,15 @@ const PaymentGateway = () => {
                 return matchesSearch;
               });
               const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-              
+
               return [...Array(totalPages)].map((_, i) => (
                 <button
                   key={i + 1}
                   onClick={() => setCurrentPage(i + 1)}
-                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                    currentPage === i + 1
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${currentPage === i + 1
                       ? "bg-indigo-600 text-white border-indigo-600"
                       : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                  }`}
+                    }`}
                 >
                   {i + 1}
                 </button>
@@ -682,7 +680,7 @@ const PaymentGateway = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     API Key *
@@ -700,7 +698,7 @@ const PaymentGateway = () => {
                     className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     API Secret *
@@ -718,7 +716,7 @@ const PaymentGateway = () => {
                     className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
@@ -755,7 +753,7 @@ const PaymentGateway = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                     Webhook URL
@@ -772,7 +770,7 @@ const PaymentGateway = () => {
                     className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
@@ -807,7 +805,7 @@ const PaymentGateway = () => {
                     />
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2 pt-2">
                   <input
                     type="checkbox"
@@ -828,7 +826,7 @@ const PaymentGateway = () => {
                     Gateway Active
                   </label>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"

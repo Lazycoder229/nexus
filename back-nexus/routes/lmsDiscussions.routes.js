@@ -12,6 +12,9 @@ router.get("/section", lmsDiscussionsController.getBySection);
 // Get discussions by faculty
 router.get("/faculty", lmsDiscussionsController.getByFaculty);
 
+// Get discussions for a student (filtered by enrolled courses)
+router.get("/student", lmsDiscussionsController.getByStudent);
+
 // Get discussion by ID
 router.get("/:id", lmsDiscussionsController.getById);
 

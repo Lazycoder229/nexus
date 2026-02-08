@@ -53,6 +53,37 @@ const lmsAssignmentsController = {
     }
   },
 
+  // Get assignments for a student based on their enrolled courses
+  getByStudent: async (req, res) => {
+    try {
+      const { student_id, academic_period_id } = req.query;
+
+      if (!student_id || !academic_period_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Student ID and Academic Period ID are required",
+        });
+      }
+
+      const assignments = await LMSAssignments.getByStudent(
+        student_id,
+        academic_period_id
+      );
+
+      res.status(200).json({
+        success: true,
+        assignments,
+      });
+    } catch (error) {
+      console.error("Error fetching student assignments:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch assignments",
+        error: error.message,
+      });
+    }
+  },
+
   // Get assignments by section
   getBySection: async (req, res) => {
     try {

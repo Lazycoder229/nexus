@@ -61,11 +61,11 @@ const Menu = {
       title: "Student Managemnet",
       icons: Users,
       submenu: [
-        {
+        /*  {
           label: "Manage Student",
           icons: Users,
           link: "/admin/admin_student_management",
-        },
+        }, */
         { label: "Admission", icons: FileText, link: "/admin/admin_admission" },
         {
           label: "Enrollment Records",
@@ -82,11 +82,11 @@ const Menu = {
           icons: CalendarCheck,
           link: "/admin/admin_academic_history",
         },
-        {
+        /* {
           label: "ID Generator",
           icons: FileText,
           link: "/admin/admin_id_generator",
-        },
+        }, */
         {
           label: "Clearance Processing",
           icons: CheckSquare,
@@ -161,7 +161,7 @@ const Menu = {
         },
       ],
     },
-    {
+    /*  {
       title: "Attendance Management",
       icons: CalendarCheck,
       submenu: [
@@ -186,7 +186,7 @@ const Menu = {
           link: "/admin/admin_absentee",
         },
       ],
-    },
+    }, */
     {
       title: "Examination & Grading",
       icons: FileText,
@@ -196,11 +196,11 @@ const Menu = {
           icons: FileText,
           link: "/admin/admin_exam_setup",
         },
-        {
+        /*  {
           label: "Grade Entry Approval",
           icons: CheckSquare,
           link: "/admin/admin_grade_entry",
-        },
+        }, */
         {
           label: "Grade Computation Setup",
           icons: FileText,
@@ -371,11 +371,11 @@ const Menu = {
           icons: FileText,
           link: "/faculty/faculty_grade_encoding",
         },
-        {
+        /*  {
           label: "Grade Review",
           icons: CheckSquare,
           link: "/faculty/faculty_grade_review",
-        },
+        }, */
       ],
     },
     {

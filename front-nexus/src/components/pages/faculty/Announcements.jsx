@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const Announcements = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -46,7 +48,7 @@ const Announcements = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `http://localhost:5000/api/announcements/faculty/${userId}`
+        `${API_BASE}/api/announcements/faculty/${userId}`
       );
 
       if (response.data.success) {
@@ -81,12 +83,12 @@ const Announcements = () => {
       let response;
       if (editMode && selectedAnnouncement) {
         response = await axios.put(
-          `http://localhost:5000/api/announcements/${selectedAnnouncement.id}`,
+          `${API_BASE}/api/announcements/${selectedAnnouncement.id}`,
           announcementData
         );
       } else {
         response = await axios.post(
-          "http://localhost:5000/api/announcements",
+          `${API_BASE}/api/announcements`,
           announcementData
         );
       }
@@ -134,7 +136,7 @@ const Announcements = () => {
 
     try {
       const response = await axios.delete(
-        `http://localhost:5000/api/announcements/${id}`
+        `${API_BASE}/api/announcements/${id}`
       );
 
       if (response.data.success) {
@@ -261,9 +263,8 @@ const Announcements = () => {
           {filteredAnnouncements.map((announcement) => (
             <div
               key={announcement.id}
-              className={`bg-white rounded-xl shadow-md hover:shadow-lg transition overflow-hidden ${
-                announcement.is_pinned ? "border-l-4 border-indigo-600" : ""
-              }`}
+              className={`bg-white rounded-xl shadow-md hover:shadow-lg transition overflow-hidden ${announcement.is_pinned ? "border-l-4 border-indigo-600" : ""
+                }`}
             >
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
@@ -511,8 +512,8 @@ const Announcements = () => {
                   {loading
                     ? "Posting..."
                     : editMode
-                    ? "Update Announcement"
-                    : "Post Announcement"}
+                      ? "Update Announcement"
+                      : "Post Announcement"}
                 </button>
               </div>
             </form>

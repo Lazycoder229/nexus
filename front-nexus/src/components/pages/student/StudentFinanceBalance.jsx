@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { DollarSign, Download, Eye, Printer, Search, ChevronLeft, ChevronRight, Receipt, Calendar } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentFinanceBalance = () => {
   const [balance, setBalance] = useState(null);
@@ -16,18 +19,27 @@ const StudentFinanceBalance = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [balanceRes, scheduleRes] = await Promise.all([
-        fetch("http://localhost:5000/api/student/finance/balance"),
-        fetch("http://localhost:5000/api/student/finance/payment-schedule"),
-      ]);
+      const response = await axios.get(`${API_BASE}/api/invoices`);
+      const invoices = response.data || [];
 
-      const [balanceData, scheduleData] = await Promise.all([
-        balanceRes.json(),
-        scheduleRes.json(),
-      ]);
+      // Calculate balance from invoices
+      const totalTuition = invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+      const totalPaid = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
 
-      if (balanceData.success) setBalance(balanceData.data);
-      if (scheduleData.success) setPaymentSchedule(scheduleData.data);
+      setBalance({
+        total_tuition: totalTuition,
+        total_paid: totalPaid,
+        remaining_balance: totalTuition - totalPaid,
+      });
+
+      setPaymentSchedule(invoices.map(inv => ({
+        schedule_id: inv.id || inv.invoice_id,
+        due_date: inv.due_date,
+        description: inv.description || 'Tuition Fee',
+        amount: inv.amount,
+        paid_amount: inv.status === 'paid' ? inv.amount : 0,
+        status: inv.status,
+      })));
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {

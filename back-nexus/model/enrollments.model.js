@@ -177,3 +177,27 @@ export const checkEnrollmentExists = async (
   );
   return rows.length > 0;
 };
+
+// Get enrolled students by faculty assignment ID
+export const getStudentsByAssignment = async (assignmentId) => {
+  const [rows] = await db.query(
+    `SELECT 
+        e.enrollment_id,
+        e.student_id,
+        sd.student_number AS student_id,
+        CONCAT(u.first_name, ' ', u.last_name) AS name,
+        u.email,
+        u.phone AS phone,
+        e.status
+     FROM enrollments e
+     JOIN faculty_course_assignments fca ON e.course_id = fca.course_id 
+         AND e.period_id = fca.academic_period_id
+     JOIN sections s ON e.section_id = s.section_id AND s.section_name = fca.section
+     JOIN users u ON e.student_id = u.user_id
+     LEFT JOIN student_details sd ON e.student_id = sd.user_id
+     WHERE fca.assignment_id = ?
+     ORDER BY sd.student_number ASC`,
+    [assignmentId],
+  );
+  return rows;
+};

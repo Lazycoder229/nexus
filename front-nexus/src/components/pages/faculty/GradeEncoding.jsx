@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { FileText, Users, Save, Search, ChevronLeft, ChevronRight } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const GradeEncoding = () => {
   const [loading, setLoading] = useState(false);
   const [courses, setCourses] = useState([]);
@@ -19,39 +21,47 @@ const GradeEncoding = () => {
 
   const fetchCoursesAndStudents = async () => {
     setLoading(true);
-    // TODO: Replace with actual API
-    const mockCourses = [
-      { id: 1, code: 'CS101', name: 'Introduction to Programming', section: 'A' },
-      { id: 2, code: 'CS102', name: 'Data Structures', section: 'B' },
-      { id: 3, code: 'MATH201', name: 'Calculus II', section: 'A' },
-    ];
-    setCourses(mockCourses);
+    try {
+      // Fetch courses from API
+      const coursesRes = await axios.get(`${API_BASE}/api/course/courses`);
+      const coursesData = Array.isArray(coursesRes.data) ? coursesRes.data : (coursesRes.data.data || []);
+      const mappedCourses = coursesData.map(c => ({
+        id: c.course_id || c.id,
+        code: c.code || c.course_code,
+        name: c.title || c.name || c.course_name,
+        section: c.section || 'A',
+      }));
+      setCourses(mappedCourses);
 
-    // Fetch all students from all courses
-    const mockStudents = [
-      { id: 1, studentId: '2024-00001', firstName: 'John', lastName: 'Doe', courseId: 1, course: 'CS101' },
-      { id: 2, studentId: '2024-00002', firstName: 'Jane', lastName: 'Smith', courseId: 1, course: 'CS101' },
-      { id: 3, studentId: '2024-00003', firstName: 'Michael', lastName: 'Johnson', courseId: 2, course: 'CS102' },
-      { id: 4, studentId: '2024-00004', firstName: 'Sarah', lastName: 'Williams', courseId: 2, course: 'CS102' },
-      { id: 5, studentId: '2024-00005', firstName: 'David', lastName: 'Brown', courseId: 3, course: 'MATH201' },
-      { id: 6, studentId: '2024-00006', firstName: 'Emily', lastName: 'Davis', courseId: 1, course: 'CS101' },
-      { id: 7, studentId: '2024-00007', firstName: 'Robert', lastName: 'Miller', courseId: 3, course: 'MATH201' },
-    ];
-    
-    setStudents(mockStudents);
-    
-    // Initialize grades
-    const initialGrades = {};
-    mockStudents.forEach(student => {
-      initialGrades[student.id] = {
-        quiz: '',
-        assignment: '',
-        exam: '',
-        project: ''
-      };
-    });
-    setGrades(initialGrades);
-    setLoading(false);
+      // Fetch students/enrollments from API
+      const studentsRes = await axios.get(`${API_BASE}/api/enrollments`);
+      const enrollmentsData = studentsRes.data.data || studentsRes.data || [];
+      const mappedStudents = enrollmentsData.map((e, idx) => ({
+        id: e.enrollment_id || e.student_id || e.user_id || idx + 1,
+        studentId: e.student_number || e.student_id || `STU-${idx + 1}`,
+        firstName: e.first_name || e.student_name?.split(' ')[0] || 'Student',
+        lastName: e.last_name || e.student_name?.split(' ')[1] || '',
+        courseId: e.course_id,
+        course: e.course_code || mappedCourses.find(c => c.id === e.course_id)?.code || 'N/A',
+      }));
+      setStudents(mappedStudents);
+
+      // Initialize grades
+      const initialGrades = {};
+      mappedStudents.forEach(student => {
+        initialGrades[student.id] = {
+          quiz: '',
+          assignment: '',
+          exam: '',
+          project: ''
+        };
+      });
+      setGrades(initialGrades);
+    } catch (error) {
+      console.error('Error fetching courses and students:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGradeChange = (studentId, component, value) => {
@@ -70,10 +80,10 @@ const GradeEncoding = () => {
   const calculateAverage = (studentId) => {
     const studentGrades = grades[studentId];
     if (!studentGrades) return '-';
-    
+
     const values = Object.values(studentGrades).filter(v => v !== '').map(Number);
     if (values.length === 0) return '-';
-    
+
     const sum = values.reduce((a, b) => a + b, 0);
     return (sum / values.length).toFixed(2);
   };
@@ -87,7 +97,7 @@ const GradeEncoding = () => {
 
     try {
       setLoading(true);
-      
+
       const gradeData = studentIds.map(studentId => ({
         studentId: studentId,
         assessment: selectedAssessment,
@@ -96,31 +106,31 @@ const GradeEncoding = () => {
         courseId: selectedCourse || null,
       }));
 
-      // TODO: Replace with actual API
-      // await axios.post('/api/faculty/grades/save', {
-      //   assessment: selectedAssessment,
-      //   grades: gradeData
-      // });
+      // Save grades to API
+      await axios.post(`${API_BASE}/api/grades`, {
+        assessment: selectedAssessment,
+        grades: gradeData
+      });
 
       alert('Grades saved successfully!');
-      setLoading(false);
     } catch (error) {
       console.error('Error saving grades:', error);
       alert('Failed to save grades');
+    } finally {
       setLoading(false);
     }
   };
 
   // Filter students based on search and course
   const filteredStudents = students.filter(student => {
-    const matchesSearch = 
+    const matchesSearch =
       student.studentId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.course.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesCourse = !selectedCourse || student.courseId === parseInt(selectedCourse);
-    
+
     return matchesSearch && matchesCourse;
   });
 

@@ -18,18 +18,15 @@ export const getAllEnrollments = async (req, res) => {
 export const getEnrollmentsByStudent = async (req, res) => {
   try {
     const { studentId } = req.params;
-    const enrollments = await enrollmentService.listEnrollmentsByStudent(
-      studentId
-    );
+    const enrollments =
+      await enrollmentService.listEnrollmentsByStudent(studentId);
     res.json(enrollments);
   } catch (err) {
     console.error(err);
-    res
-      .status(500)
-      .json({
-        message: "Failed to fetch student enrollments",
-        error: err.message,
-      });
+    res.status(500).json({
+      message: "Failed to fetch student enrollments",
+      error: err.message,
+    });
   }
 };
 
@@ -77,5 +74,22 @@ export const deleteEnrollment = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(400).json({ message: err.message });
+  }
+};
+
+// Get enrolled students by faculty assignment ID
+export const getStudentsByAssignment = async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+    const students =
+      await enrollmentService.listStudentsByAssignment(assignmentId);
+    res.json({ success: true, data: students });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch students for assignment",
+      error: err.message,
+    });
   }
 };

@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { Plus, Edit, Trash2, Search, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const InvoiceManagement = () => {
   const [invoices, setInvoices] = useState([]);
   const [periods, setPeriods] = useState([]);
@@ -43,7 +45,7 @@ const InvoiceManagement = () => {
 
   const fetchInvoices = async () => {
     try {
-      const response = await axios.get("/api/invoices", { params: filters });
+      const response = await axios.get(`${API_BASE}/api/invoices`, { params: filters });
       setInvoices(response.data.data || []);
     } catch (error) {
       console.error("Error fetching invoices:", error);
@@ -52,7 +54,7 @@ const InvoiceManagement = () => {
 
   const fetchSummary = async () => {
     try {
-      const response = await axios.get("/api/invoices/summary", {
+      const response = await axios.get(`${API_BASE}/api/invoices/summary`, {
         params: { academic_period_id: filters.academic_period_id },
       });
       setSummary(response.data.data || {});
@@ -63,7 +65,7 @@ const InvoiceManagement = () => {
 
   const fetchPeriods = async () => {
     try {
-      const response = await axios.get("/api/academic-periods");
+      const response = await axios.get(`${API_BASE}/api/academic-periods`);
       setPeriods(response.data.data || []);
     } catch (error) {
       console.error("Error fetching periods:", error);
@@ -108,9 +110,9 @@ const InvoiceManagement = () => {
       };
 
       if (formData.invoice_id) {
-        await axios.put(`/api/invoices/${formData.invoice_id}`, invoiceData);
+        await axios.put(`${API_BASE}/api/invoices/${formData.invoice_id}`, invoiceData);
       } else {
-        await axios.post("/api/invoices", invoiceData);
+        await axios.post(`${API_BASE}/api/invoices`, invoiceData);
       }
       setShowModal(false);
       resetForm();
@@ -130,7 +132,7 @@ const InvoiceManagement = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this invoice?")) {
       try {
-        await axios.delete(`/api/invoices/${id}`);
+        await axios.delete(`${API_BASE}/api/invoices/${id}`);
         fetchInvoices();
         fetchSummary();
       } catch (error) {
@@ -308,7 +310,7 @@ const InvoiceManagement = () => {
             {(() => {
               const searchTerm = filters.search.toLowerCase();
               const filtered = invoices.filter((invoice) => {
-                const matchesSearch = 
+                const matchesSearch =
                   invoice.invoice_number?.toLowerCase().includes(searchTerm) ||
                   invoice.student_name?.toLowerCase().includes(searchTerm) ||
                   invoice.student_number?.toLowerCase().includes(searchTerm);
@@ -356,15 +358,14 @@ const InvoiceManagement = () => {
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap">
                     <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        invoice.status === "Paid"
+                      className={`px-2 py-1 text-xs font-medium rounded-full ${invoice.status === "Paid"
                           ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
                           : invoice.status === "Partially Paid"
-                          ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-                          : invoice.status === "Overdue"
-                          ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                          : "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300"
-                      }`}
+                            ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                            : invoice.status === "Overdue"
+                              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                              : "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300"
+                        }`}
                     >
                       {invoice.status}
                     </span>
@@ -401,7 +402,7 @@ const InvoiceManagement = () => {
           <span className="font-semibold">{(() => {
             const searchTerm = filters.search.toLowerCase();
             const filtered = invoices.filter((invoice) => {
-              const matchesSearch = 
+              const matchesSearch =
                 invoice.invoice_number?.toLowerCase().includes(searchTerm) ||
                 invoice.student_name?.toLowerCase().includes(searchTerm) ||
                 invoice.student_number?.toLowerCase().includes(searchTerm);
@@ -412,7 +413,7 @@ const InvoiceManagement = () => {
           {(() => {
             const searchTerm = filters.search.toLowerCase();
             const filtered = invoices.filter((invoice) => {
-              const matchesSearch = 
+              const matchesSearch =
                 invoice.invoice_number?.toLowerCase().includes(searchTerm) ||
                 invoice.student_name?.toLowerCase().includes(searchTerm) ||
                 invoice.student_number?.toLowerCase().includes(searchTerm);
@@ -432,23 +433,22 @@ const InvoiceManagement = () => {
           {(() => {
             const searchTerm = filters.search.toLowerCase();
             const filtered = invoices.filter((invoice) => {
-              const matchesSearch = 
+              const matchesSearch =
                 invoice.invoice_number?.toLowerCase().includes(searchTerm) ||
                 invoice.student_name?.toLowerCase().includes(searchTerm) ||
                 invoice.student_number?.toLowerCase().includes(searchTerm);
               return matchesSearch;
             });
             const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
-            
+
             return [...Array(totalPages)].map((_, i) => (
               <button
                 key={i + 1}
                 onClick={() => setCurrentPage(i + 1)}
-                className={`px-3 py-1.5 text-xs rounded border transition-colors ${
-                  currentPage === i + 1
+                className={`px-3 py-1.5 text-xs rounded border transition-colors ${currentPage === i + 1
                     ? "bg-indigo-600 text-white border-indigo-600"
                     : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                }`}
+                  }`}
               >
                 {i + 1}
               </button>
@@ -458,7 +458,7 @@ const InvoiceManagement = () => {
             onClick={() => {
               const searchTerm = filters.search.toLowerCase();
               const filtered = invoices.filter((invoice) => {
-                const matchesSearch = 
+                const matchesSearch =
                   invoice.invoice_number?.toLowerCase().includes(searchTerm) ||
                   invoice.student_name?.toLowerCase().includes(searchTerm) ||
                   invoice.student_number?.toLowerCase().includes(searchTerm);
@@ -470,7 +470,7 @@ const InvoiceManagement = () => {
             disabled={(() => {
               const searchTerm = filters.search.toLowerCase();
               const filtered = invoices.filter((invoice) => {
-                const matchesSearch = 
+                const matchesSearch =
                   invoice.invoice_number?.toLowerCase().includes(searchTerm) ||
                   invoice.student_name?.toLowerCase().includes(searchTerm) ||
                   invoice.student_number?.toLowerCase().includes(searchTerm);

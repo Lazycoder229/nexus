@@ -44,13 +44,13 @@ const LMSMaterials = {
     const query = `
       SELECT 
         lm.*,
-        c.course_name,
-        c.course_code,
+        c.title as course_name,
+        c.code as course_code,
         s.section_name,
         COUNT(DISTINCT lmv.student_id) as view_count
       FROM lms_materials lm
-      LEFT JOIN courses c ON lm.course_id = c.id
-      LEFT JOIN sections s ON lm.section_id = s.id
+      LEFT JOIN courses c ON lm.course_id = c.course_id
+      LEFT JOIN sections s ON lm.section_id = s.section_id
       LEFT JOIN lms_material_views lmv ON lm.id = lmv.material_id
       WHERE lm.faculty_id = ? AND lm.academic_period_id = ?
       GROUP BY lm.id
@@ -66,12 +66,12 @@ const LMSMaterials = {
     const query = `
       SELECT 
         lm.*,
-        c.course_name,
-        c.course_code,
+        c.title as course_name,
+        c.code as course_code,
         CONCAT(u.first_name, ' ', u.last_name) as faculty_name
       FROM lms_materials lm
-      LEFT JOIN courses c ON lm.course_id = c.id
-      LEFT JOIN users u ON lm.faculty_id = u.id
+      LEFT JOIN courses c ON lm.course_id = c.course_id
+      LEFT JOIN users u ON lm.faculty_id = u.user_id
       WHERE lm.section_id = ? AND lm.academic_period_id = ?
       ORDER BY lm.created_at DESC
     `;
@@ -80,19 +80,46 @@ const LMSMaterials = {
     return rows;
   },
 
+  // Get materials for a student based on their enrolled courses
+  getByStudent: async (student_id, academic_period_id) => {
+    const query = `
+      SELECT DISTINCT
+        lm.*,
+        c.code as course_code,
+        c.title as course_name,
+        s.section_name,
+        CONCAT(u.first_name, ' ', u.last_name) as faculty_name,
+        CASE WHEN lmv.id IS NOT NULL THEN 1 ELSE 0 END as is_viewed
+      FROM lms_materials lm
+      INNER JOIN enrollments e ON lm.course_id = e.course_id 
+        AND lm.academic_period_id = e.period_id
+      LEFT JOIN courses c ON lm.course_id = c.course_id
+      LEFT JOIN sections s ON lm.section_id = s.section_id
+      LEFT JOIN users u ON lm.faculty_id = u.user_id
+      LEFT JOIN lms_material_views lmv ON lm.id = lmv.material_id AND lmv.student_id = ?
+      WHERE e.student_id = ? 
+        AND e.period_id = ? 
+        AND e.status = 'Enrolled'
+      ORDER BY lm.created_at DESC
+    `;
+
+    const [rows] = await db.query(query, [student_id, student_id, academic_period_id]);
+    return rows;
+  },
+
   // Get material by ID
   getById: async (id) => {
     const query = `
       SELECT 
         lm.*,
-        c.course_name,
-        c.course_code,
+        c.title as course_name,
+        c.code as course_code,
         s.section_name,
         CONCAT(u.first_name, ' ', u.last_name) as faculty_name
       FROM lms_materials lm
-      LEFT JOIN courses c ON lm.course_id = c.id
-      LEFT JOIN sections s ON lm.section_id = s.id
-      LEFT JOIN users u ON lm.faculty_id = u.id
+      LEFT JOIN courses c ON lm.course_id = c.course_id
+      LEFT JOIN sections s ON lm.section_id = s.section_id
+      LEFT JOIN users u ON lm.faculty_id = u.user_id
       WHERE lm.id = ?
     `;
 

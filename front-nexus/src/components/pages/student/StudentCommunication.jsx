@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import { MessageCircle, Send, Search, User, Mail } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentCommunication = () => {
   const [activeTab, setActiveTab] = useState("chat");
@@ -39,9 +42,21 @@ const StudentCommunication = () => {
   // Chat functions
   const fetchConversations = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/chat/conversations");
-      const data = await response.json();
-      if (data.success) setConversations(data.data);
+      const response = await axios.get(`${API_BASE}/api/messages`);
+      const msgs = response.data || [];
+      const convMap = {};
+      msgs.forEach(m => {
+        const key = m.sender_id || m.receiver_id || 'unknown';
+        if (!convMap[key]) {
+          convMap[key] = {
+            conversation_id: key,
+            name: m.sender_name || m.receiver_name || 'User',
+            last_message: m.content || m.message,
+            unread_count: 0,
+          };
+        }
+      });
+      setConversations(Object.values(convMap));
     } catch (error) {
       console.error("Error fetching conversations:", error);
     }
@@ -49,9 +64,14 @@ const StudentCommunication = () => {
 
   const fetchMessages = async (conversationId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/student/chat/messages/${conversationId}`);
-      const data = await response.json();
-      if (data.success) setMessages(data.data);
+      const response = await axios.get(`${API_BASE}/api/messages`);
+      const msgs = response.data || [];
+      setMessages(msgs.map(m => ({
+        message_id: m.id || m.message_id,
+        message: m.content || m.message,
+        is_sender: m.is_sender || false,
+        sent_at: m.created_at || m.sent_at,
+      })));
     } catch (error) {
       console.error("Error fetching messages:", error);
     }
@@ -62,18 +82,12 @@ const StudentCommunication = () => {
     if (!newMessage.trim()) return;
 
     try {
-      const response = await fetch("http://localhost:5000/api/student/chat/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          conversation_id: selectedConversation.conversation_id,
-          message: newMessage,
-        }),
+      await axios.post(`${API_BASE}/api/messages`, {
+        conversation_id: selectedConversation.conversation_id,
+        content: newMessage,
       });
-      if (response.ok) {
-        fetchMessages(selectedConversation.conversation_id);
-        setNewMessage("");
-      }
+      fetchMessages(selectedConversation.conversation_id);
+      setNewMessage("");
     } catch (error) {
       console.error("Error sending message:", error);
     }
@@ -82,9 +96,15 @@ const StudentCommunication = () => {
   // Email functions
   const fetchFaculty = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/student/faculty");
-      const data = await response.json();
-      if (data.success) setFaculty(data.data);
+      const response = await axios.get(`${API_BASE}/api/faculty`);
+      const facultyData = response.data || [];
+      setFaculty(facultyData.map(f => ({
+        faculty_id: f.id || f.faculty_id || f.user_id,
+        name: f.name || `${f.first_name || ''} ${f.last_name || ''}`.trim(),
+        department: f.department || 'N/A',
+        subject: f.subject || 'N/A',
+        email: f.email,
+      })));
     } catch (error) {
       console.error("Error fetching faculty:", error);
     }
@@ -93,16 +113,14 @@ const StudentCommunication = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://localhost:5000/api/student/email/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+      await axios.post(`${API_BASE}/api/messages`, {
+        receiver_id: formData.to_faculty_id,
+        subject: formData.subject,
+        content: formData.message,
       });
-      if (response.ok) {
-        setShowCompose(false);
-        setFormData({ to_faculty_id: "", subject: "", message: "" });
-        alert("Email sent successfully!");
-      }
+      setShowCompose(false);
+      setFormData({ to_faculty_id: "", subject: "", message: "" });
+      alert("Email sent successfully!");
     } catch (error) {
       console.error("Error sending email:", error);
     }
@@ -151,11 +169,10 @@ const StudentCommunication = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${
-                  activeTab === tab.id
+                className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${activeTab === tab.id
                     ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
                     : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-300"
-                }`}
+                  }`}
               >
                 <Icon size={16} />
                 {tab.label}
@@ -194,9 +211,8 @@ const StudentCommunication = () => {
                     <div
                       key={conv.conversation_id}
                       onClick={() => setSelectedConversation(conv)}
-                      className={`p-3 border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 ${
-                        selectedConversation?.conversation_id === conv.conversation_id ? "bg-indigo-50 dark:bg-indigo-900/20" : ""
-                      }`}
+                      className={`p-3 border-b border-slate-200 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 ${selectedConversation?.conversation_id === conv.conversation_id ? "bg-indigo-50 dark:bg-indigo-900/20" : ""
+                        }`}
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold">
@@ -238,11 +254,10 @@ const StudentCommunication = () => {
                         key={msg.message_id}
                         className={`flex ${msg.is_sender ? "justify-end" : "justify-start"}`}
                       >
-                        <div className={`max-w-xs lg:max-w-md p-3 rounded-lg ${
-                          msg.is_sender 
-                            ? "bg-indigo-600 text-white" 
+                        <div className={`max-w-xs lg:max-w-md p-3 rounded-lg ${msg.is_sender
+                            ? "bg-indigo-600 text-white"
                             : "bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white"
-                        }`}>
+                          }`}>
                           <p className="text-sm">{msg.message}</p>
                           <p className={`text-xs mt-1 ${msg.is_sender ? "text-indigo-200" : "text-slate-500 dark:text-slate-400"}`}>
                             {new Date(msg.sent_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}

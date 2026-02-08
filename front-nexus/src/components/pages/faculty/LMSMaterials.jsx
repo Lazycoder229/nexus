@@ -19,8 +19,11 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const LMSMaterials = () => {
   const [materials, setMaterials] = useState([]);
+  const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -41,7 +44,22 @@ const LMSMaterials = () => {
 
   useEffect(() => {
     fetchMaterials();
+    fetchAssignments();
   }, []);
+
+  const fetchAssignments = async () => {
+    try {
+      const userId = localStorage.getItem("userId");
+      const response = await axios.get(
+        `${API_BASE}/api/faculty-assignments/faculty/${userId}`
+      );
+      if (response.data.success) {
+        setAssignments(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching assignments:", error);
+    }
+  };
 
   const fetchMaterials = async () => {
     setLoading(true);
@@ -50,7 +68,7 @@ const LMSMaterials = () => {
       const academicPeriodId = localStorage.getItem("currentAcademicPeriod") || 1;
 
       const response = await axios.get(
-        `http://localhost:5000/api/lms/materials/faculty`,
+        `${API_BASE}/api/lms/materials/faculty`,
         {
           params: {
             faculty_id: userId,
@@ -102,7 +120,7 @@ const LMSMaterials = () => {
       };
 
       const response = await axios.post(
-        "http://localhost:5000/api/lms/materials",
+        `${API_BASE}/api/lms/materials`,
         materialData
       );
 
@@ -127,7 +145,7 @@ const LMSMaterials = () => {
 
     try {
       const response = await axios.delete(
-        `http://localhost:5000/api/lms/materials/${id}`
+        `${API_BASE}/api/lms/materials/${id}`
       );
 
       if (response.data.success) {
@@ -416,30 +434,48 @@ const LMSMaterials = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Course ID *
+                    Course *
                   </label>
-                  <input
-                    type="number"
+                  <select
                     name="course_id"
                     value={formData.course_id}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                      handleInputChange(e);
+                      setFormData(prev => ({ ...prev, section_id: "" }));
+                    }}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Select Course</option>
+                    {[...new Map(assignments.map(item => [item.course_id, item])).values()].map((assignment) => (
+                      <option key={assignment.course_id} value={assignment.course_id}>
+                        {assignment.course_code} - {assignment.course_title}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Section ID *
+                    Section *
                   </label>
-                  <input
-                    type="number"
+                  <select
                     name="section_id"
                     value={formData.section_id}
                     onChange={handleInputChange}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  />
+                    disabled={!formData.course_id}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
+                  >
+                    <option value="">Select Section</option>
+                    {assignments
+                      .filter((a) => a.course_id === parseInt(formData.course_id))
+                      .map((assignment) => (
+                        <option key={assignment.section_id} value={assignment.section_id}>
+                          {assignment.section}
+                        </option>
+                      ))}
+                  </select>
                 </div>
               </div>
 

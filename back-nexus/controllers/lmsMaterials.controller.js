@@ -53,6 +53,41 @@ const lmsMaterialsController = {
     }
   },
 
+  // Get materials for a student based on their enrolled courses
+  getByStudent: async (req, res) => {
+    try {
+      const { student_id, academic_period_id } = req.query;
+
+      console.log('[DEBUG StudentLMS] Fetching materials with params:', { student_id, academic_period_id });
+
+      if (!student_id || !academic_period_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Student ID and Academic Period ID are required",
+        });
+      }
+
+      const materials = await LMSMaterials.getByStudent(
+        student_id,
+        academic_period_id
+      );
+
+      console.log('[DEBUG StudentLMS] Found', materials.length, 'materials for student', student_id);
+
+      res.status(200).json({
+        success: true,
+        materials,
+      });
+    } catch (error) {
+      console.error("Error fetching student materials:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch materials",
+        error: error.message,
+      });
+    }
+  },
+
   // Get materials by section
   getBySection: async (req, res) => {
     try {

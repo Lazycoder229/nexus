@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { Plus, Edit, Trash2, DollarSign, FileText, Search, ChevronLeft, ChevronRight } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const PayslipGenerator = () => {
   const [activeTab, setActiveTab] = useState("setups");
   const [payrollSetups, setPayrollSetups] = useState([]);
@@ -9,7 +11,7 @@ const PayslipGenerator = () => {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showPayslipModal, setShowPayslipModal] = useState(false);
   const [selectedSetup, setSelectedSetup] = useState(null);
-  
+
   // Pagination states
   const [setupCurrentPage, setSetupCurrentPage] = useState(1);
   const [payslipCurrentPage, setPayslipCurrentPage] = useState(1);
@@ -58,7 +60,7 @@ const PayslipGenerator = () => {
 
   const fetchPayrollSetups = async () => {
     try {
-      const response = await axios.get("/api/payroll/setups");
+      const response = await axios.get(`${API_BASE}/api/payroll/setups`);
       setPayrollSetups(response.data.data || []);
     } catch (error) {
       console.error("Error fetching payroll setups:", error);
@@ -68,7 +70,7 @@ const PayslipGenerator = () => {
   const fetchPayslips = async (setupId) => {
     try {
       const response = await axios.get(
-        `/api/payroll/payslips?setup_id=${setupId}`
+        `${API_BASE}/api/payroll/payslips?setup_id=${setupId}`
       );
       setPayslips(response.data.data || []);
     } catch (error) {
@@ -89,8 +91,8 @@ const PayslipGenerator = () => {
     if (name === "employee_id" && value) {
       try {
         const [employeeRes, deductionsRes] = await Promise.all([
-          axios.get(`/api/employees/${value}`),
-          axios.get(`/api/deductions?employee_id=${value}&status=Active`)
+          axios.get(`${API_BASE}/api/employees/${value}`),
+          axios.get(`${API_BASE}/api/deductions?employee_id=${value}&status=Active`)
         ]);
 
         const employee = employeeRes.data.data;
@@ -98,7 +100,7 @@ const PayslipGenerator = () => {
 
         // Calculate deductions
         let sss = 0, philhealth = 0, pagibig = 0, loan = 0, other = 0;
-        
+
         deductions.forEach(deduction => {
           const amount = parseFloat(deduction.amount || 0);
           switch (deduction.deduction_type) {
@@ -143,11 +145,11 @@ const PayslipGenerator = () => {
     try {
       if (setupFormData.setup_id) {
         await axios.put(
-          `/api/payroll/setups/${setupFormData.setup_id}`,
+          `${API_BASE}/api/payroll/setups/${setupFormData.setup_id}`,
           setupFormData
         );
       } else {
-        await axios.post("/api/payroll/setups", setupFormData);
+        await axios.post(`${API_BASE}/api/payroll/setups`, setupFormData);
       }
       setShowSetupModal(false);
       resetSetupForm();
@@ -163,11 +165,11 @@ const PayslipGenerator = () => {
     try {
       if (payslipFormData.payslip_id) {
         await axios.put(
-          `/api/payroll/payslips/${payslipFormData.payslip_id}`,
+          `${API_BASE}/api/payroll/payslips/${payslipFormData.payslip_id}`,
           payslipFormData
         );
       } else {
-        await axios.post("/api/payroll/payslips", payslipFormData);
+        await axios.post(`${API_BASE}/api/payroll/payslips`, payslipFormData);
       }
       setShowPayslipModal(false);
       resetPayslipForm();
@@ -193,7 +195,7 @@ const PayslipGenerator = () => {
   const handleDeleteSetup = async (id) => {
     if (window.confirm("Delete this payroll setup?")) {
       try {
-        await axios.delete(`/api/payroll/setups/${id}`);
+        await axios.delete(`${API_BASE}/api/payroll/setups/${id}`);
         fetchPayrollSetups();
       } catch (error) {
         console.error("Error deleting payroll setup:", error);
@@ -204,7 +206,7 @@ const PayslipGenerator = () => {
   const handleDeletePayslip = async (id) => {
     if (window.confirm("Delete this payslip?")) {
       try {
-        await axios.delete(`/api/payroll/payslips/${id}`);
+        await axios.delete(`${API_BASE}/api/payroll/payslips/${id}`);
         if (selectedSetup) {
           fetchPayslips(selectedSetup);
         }
@@ -289,21 +291,19 @@ const PayslipGenerator = () => {
         <div className="flex gap-1 border-b border-slate-300 dark:border-slate-700 overflow-x-auto">
           <button
             onClick={() => setActiveTab("setups")}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-semibold transition-all duration-300 whitespace-nowrap border-b-2 ${
-              activeTab === "setups"
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-semibold transition-all duration-300 whitespace-nowrap border-b-2 ${activeTab === "setups"
                 ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 shadow-t-sm"
                 : "border-transparent text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300"
-            }`}
+              }`}
           >
             <FileText size={16} /> Payroll Periods
           </button>
           <button
             onClick={() => setActiveTab("payslips")}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-semibold transition-all duration-300 whitespace-nowrap border-b-2 ${
-              activeTab === "payslips"
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm font-semibold transition-all duration-300 whitespace-nowrap border-b-2 ${activeTab === "payslips"
                 ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 shadow-t-sm"
                 : "border-transparent text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300"
-            }`}
+              }`}
           >
             <DollarSign size={16} /> Payslips
           </button>
@@ -360,9 +360,8 @@ const PayslipGenerator = () => {
                     displayedSetups.map((setup) => (
                       <tr
                         key={setup.setup_id}
-                        className={`text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150 cursor-pointer ${
-                          selectedSetup === setup.setup_id ? "bg-indigo-50 dark:bg-slate-700/70" : ""
-                        }`}
+                        className={`text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150 cursor-pointer ${selectedSetup === setup.setup_id ? "bg-indigo-50 dark:bg-slate-700/70" : ""
+                          }`}
                         onClick={() => {
                           setSelectedSetup(setup.setup_id);
                           setActiveTab("payslips");
@@ -374,15 +373,14 @@ const PayslipGenerator = () => {
                         <td className="px-4 py-2">{new Date(setup.pay_date).toLocaleDateString()}</td>
                         <td className="px-4 py-2">
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                              setup.status === "Completed"
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${setup.status === "Completed"
                                 ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
                                 : setup.status === "Processing"
-                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
-                                : setup.status === "Draft"
-                                ? "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
-                                : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                            }`}
+                                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                                  : setup.status === "Draft"
+                                    ? "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                                    : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                              }`}
                           >
                             {setup.status}
                           </span>
@@ -784,13 +782,13 @@ const PayslipGenerator = () => {
                       className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                     />
                   </div>
-                  
+
                   <div className="col-span-2">
                     <h3 className="font-semibold text-sm mb-2 text-green-600 dark:text-green-400 border-b border-green-200 dark:border-green-800 pb-1">
                       Earnings
                     </h3>
                   </div>
-                  
+
                   <div>
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                       Basic Pay *
@@ -870,13 +868,13 @@ const PayslipGenerator = () => {
                       className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                     />
                   </div>
-                  
+
                   <div className="col-span-2">
                     <h3 className="font-semibold text-sm mb-2 text-red-600 dark:text-red-400 border-b border-red-200 dark:border-red-800 pb-1">
                       Deductions
                     </h3>
                   </div>
-                  
+
                   <div>
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                       SSS Deduction
@@ -955,7 +953,7 @@ const PayslipGenerator = () => {
                       className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                     />
                   </div>
-                  
+
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                       Notes
