@@ -74,9 +74,15 @@ const lmsMaterialsController = {
 
       console.log('[DEBUG StudentLMS] Found', materials.length, 'materials for student', student_id);
 
+      let isEnrolled = true;
+      if (materials.length === 0) {
+        isEnrolled = await LMSMaterials.hasEnrollments(student_id, academic_period_id);
+      }
+
       res.status(200).json({
         success: true,
         materials,
+        isEnrolled,
       });
     } catch (error) {
       console.error("Error fetching student materials:", error);

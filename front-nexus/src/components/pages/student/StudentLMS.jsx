@@ -31,6 +31,7 @@ const StudentLMS = () => {
   const [replyContent, setReplyContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [academicPeriod, setAcademicPeriod] = useState(null);
+  const [isEnrolled, setIsEnrolled] = useState(true);
 
   // Get student user from localStorage
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -101,7 +102,9 @@ const StudentLMS = () => {
         },
       );
       const materials = response.data?.materials || response.data || [];
-      console.log("Fetched materials:", materials);
+      const isEnrolledStatus = response.data?.isEnrolled !== false;
+      setIsEnrolled(isEnrolledStatus);
+
       setLessons(
         materials.map((m) => ({
           lesson_id: m.id || m.material_id,
@@ -359,7 +362,9 @@ const StudentLMS = () => {
               <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-8 text-center">
                 <BookOpen size={48} className="mx-auto text-slate-400 mb-3" />
                 <p className="text-slate-500 dark:text-slate-400">
-                  No learning materials available yet
+                  {isEnrolled
+                    ? "No learning materials available yet"
+                    : "You are not enrolled in any courses for this academic period"}
                 </p>
               </div>
             ) : (

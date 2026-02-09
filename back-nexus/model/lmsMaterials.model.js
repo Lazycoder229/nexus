@@ -100,6 +100,7 @@ const LMSMaterials = {
       WHERE e.student_id = ? 
         AND e.period_id = ? 
         AND e.status = 'Enrolled'
+        AND (lm.section_id IS NULL OR lm.section_id = e.section_id)
       ORDER BY lm.created_at DESC
     `;
 
@@ -182,6 +183,12 @@ const LMSMaterials = {
 
     const [rows] = await db.query(query, [material_id]);
     return rows;
+  },
+  // Check if student has any enrollments for period
+  hasEnrollments: async (student_id, period_id) => {
+    const query = "SELECT 1 FROM enrollments WHERE student_id = ? AND period_id = ? AND status = 'Enrolled' LIMIT 1";
+    const [rows] = await db.query(query, [student_id, period_id]);
+    return rows.length > 0;
   },
 };
 

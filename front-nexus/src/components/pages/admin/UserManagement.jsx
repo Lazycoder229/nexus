@@ -153,12 +153,16 @@ const SelectInput = ({
   onChange,
   children,
   className = "",
+  required = false,
+  ...props
 }) => (
   <select
     name={name}
     value={value}
     onChange={onChange}
+    required={required}
     className={`w-full p-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out shadow-sm text-sm appearance-none bg-white ${className}`}
+    {...props}
   >
     <option value="" disabled>
       {placeholder || `Select ${name}`}
@@ -374,6 +378,8 @@ function UserManagement() {
 
   // data
   const [users, setUsers] = useState([]);
+  const [departments, setDepartments] = useState([]); // Added departments state
+  const [programs, setPrograms] = useState([]); // Added programs state
   const [rbac, setRbac] = useState(INITIAL_RBAC_STATE);
 
   // modals & form state
@@ -405,6 +411,36 @@ function UserManagement() {
     guardian: false,
   });
 
+  const fetchDepartments = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        } // Added missing closing brace and comma
+      );
+      setDepartments(response.data);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+    }
+  };
+
+  const fetchPrograms = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/api/programs`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setPrograms(response.data);
+    } catch (error) {
+      console.error("Error fetching programs:", error);
+    }
+  };
+
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -422,6 +458,8 @@ function UserManagement() {
   };
   useEffect(() => {
     fetchUsers();
+    fetchDepartments();
+    fetchPrograms();
   }, []);
 
   /* -------------------------
@@ -838,24 +876,22 @@ function UserManagement() {
       </thead>
       <tbody>
         ${users
-          .map(
-            (u) =>
-              `<tr>
+        .map(
+          (u) =>
+            `<tr>
                 <td>${u.last_name || ""}, ${u.first_name || ""}</td>
                 <td>${u.email || ""}</td>
                 <td>${u.role || ""}</td>
-                <td>${
-                  u.role === "Student"
-                    ? u.student_number || ""
-                    : u.employee_id || ""
-                }</td>
-                <td>${
-                  u.role === "Student" ? u.course || "" : u.department || ""
-                }</td>
+                <td>${u.role === "Student"
+              ? u.student_number || ""
+              : u.employee_id || ""
+            }</td>
+                <td>${u.role === "Student" ? u.course || "" : u.department || ""
+            }</td>
                 <td>${u.status || ""}</td>
               </tr>`
-          )
-          .join("")}
+        )
+        .join("")}
       </tbody>
     </table>
 
@@ -1050,12 +1086,20 @@ function UserManagement() {
             onChange={handleInputChange}
             required={selectedRole === "Student"}
           />
-          <TextInput
+          <SelectInput
             name="course"
-            placeholder="Course (e.g., BSIT)"
             value={formData.course}
             onChange={handleInputChange}
-          />
+          >
+            <option value="" disabled>
+              Select Course (Program)
+            </option>
+            {programs.map((prog) => (
+              <option key={prog.id} value={prog.code}>
+                {prog.code} - {prog.name}
+              </option>
+            ))}
+          </SelectInput>
           <TextInput
             name="major"
             placeholder="Major"
@@ -1154,13 +1198,22 @@ function UserManagement() {
             onChange={handleInputChange}
             required={selectedRole !== "Student"}
           />
-          <TextInput
+          <SelectInput
             name="department"
-            placeholder="Department (e.g., MIS, HR)"
             value={formData.department}
             onChange={handleInputChange}
+            className={selectedRole === "Student" ? "hidden" : ""}
             required={selectedRole !== "Student"}
-          />
+          >
+            <option value="" disabled>
+              Select Department
+            </option>
+            {departments.map((dept) => (
+              <option key={dept.id} value={dept.name}>
+                {dept.name}
+              </option>
+            ))}
+          </SelectInput>
           <TextInput
             name="positionTitle"
             placeholder="Position Title"
@@ -1401,11 +1454,10 @@ function UserManagement() {
 
                     <td className="px-3 py-2 text-sm">
                       <span
-                        className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
-                          user.status === "Active"
-                            ? "bg-green-500 text-white"
-                            : "bg-yellow-500 text-white"
-                        }`}
+                        className={`px-2 py-0.5 text-xs font-semibold rounded-full ${user.status === "Active"
+                          ? "bg-green-500 text-white"
+                          : "bg-yellow-500 text-white"
+                          }`}
                       >
                         {user.status || "Active"}
                       </span>
@@ -1564,9 +1616,8 @@ function UserManagement() {
                           }
                         />
                         <span
-                          className={`ml-2 text-xs font-medium ${
-                            isAllowed ? "text-green-600" : "text-red-500"
-                          } hidden sm:inline`}
+                          className={`ml-2 text-xs font-medium ${isAllowed ? "text-green-600" : "text-red-500"
+                            } hidden sm:inline`}
                         >
                           {isAllowed ? "Allowed" : "Denied"}
                         </span>
@@ -1606,11 +1657,10 @@ function UserManagement() {
         <button
           onClick={() => setCurrentPage("users")}
           className={`flex items-center gap-2 px-4 py-1.5 font-semibold text-sm transition duration-150
-      ${
-        currentPage === "users"
-          ? "border-b-2 border-indigo-600 text-indigo-600"
-          : "text-gray-500 hover:text-indigo-600"
-      }
+      ${currentPage === "users"
+              ? "border-b-2 border-indigo-600 text-indigo-600"
+              : "text-gray-500 hover:text-indigo-600"
+            }
     `}
         >
           <Users className="w-4 h-4" /> Manage Users
@@ -1620,11 +1670,10 @@ function UserManagement() {
         <button
           onClick={() => setCurrentPage("roles")}
           className={`flex items-center gap-2 px-4 py-1.5 font-semibold text-sm transition duration-150
-      ${
-        currentPage === "roles"
-          ? "border-b-2 border-indigo-600 text-indigo-600"
-          : "text-gray-500 hover:text-indigo-600"
-      }
+      ${currentPage === "roles"
+              ? "border-b-2 border-indigo-600 text-indigo-600"
+              : "text-gray-500 hover:text-indigo-600"
+            }
     `}
         >
           <ListChecks className="w-4 h-4" /> Access Control (RBAC)

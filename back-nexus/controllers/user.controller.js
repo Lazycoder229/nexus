@@ -9,6 +9,12 @@ import {
   deleteUserService,
 } from "../services/user.service.js";
 import { generateToken } from "../helpers/jwt.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Get all users
 export const getAllUsers = async (req, res) => {
@@ -125,6 +131,41 @@ export const updateStudent = async (req, res) => {
 export const updateEmployee = async (req, res) => {
   try {
     const { userId } = req.params;
+
+    // Handle profile picture upload (Base64)
+    if (req.body.profilePictureBase64) {
+      try {
+        const base64Data = req.body.profilePictureBase64.replace(
+          /^data:image\/\w+;base64,/,
+          "",
+        );
+        const buffer = Buffer.from(base64Data, "base64");
+
+        const uploadDir = path.join(
+          __dirname,
+          "../public/uploads/profile_pics",
+        );
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+
+        const filename = `user-${userId}-${Date.now()}.png`;
+        const filepath = path.join(uploadDir, filename);
+
+        fs.writeFileSync(filepath, buffer);
+
+        // Set the URL for the database
+        req.body.profilePictureUrl = `/uploads/profile_pics/${filename}`;
+
+        // Remove base64 data so it doesn't get sent to the service/DB
+        delete req.body.profilePictureBase64;
+      } catch (err) {
+        console.error("Error saving profile picture:", err);
+        // Continue without saving image if it fails, or throw error?
+        // For now, let's log and continue, maybe the text update can still succeed.
+      }
+    }
+
     await updateEmployeeService(userId, req.body);
 
     res.status(200).json({ message: "Employee updated successfully" });

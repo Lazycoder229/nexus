@@ -162,7 +162,9 @@ const MarkAttendance = () => {
       const response = await axios.get(`${API_BASE_URL}/enrollments`, {
         params,
       });
-      const enrolledStudents = response.data.data || [];
+      const enrolledStudents = Array.isArray(response.data)
+        ? response.data
+        : response.data.data || [];
       console.log("Enrolled students fetched:", enrolledStudents);
       setStudents(enrolledStudents);
 
@@ -619,11 +621,10 @@ const MarkAttendance = () => {
                             onClick={() =>
                               handleAttendanceChange(studentId, "present")
                             }
-                            className={`px-3 py-1.5 rounded text-xs transition-colors ${
-                              attendance[studentId] === "present"
+                            className={`px-3 py-1.5 rounded text-xs transition-colors ${attendance[studentId] === "present"
                                 ? "bg-green-500 text-white"
                                 : "bg-gray-100 text-gray-600 hover:bg-green-100"
-                            }`}
+                              }`}
                           >
                             <CheckCircle className="w-3 h-3 inline mr-1" />
                             Present
@@ -632,11 +633,10 @@ const MarkAttendance = () => {
                             onClick={() =>
                               handleAttendanceChange(studentId, "late")
                             }
-                            className={`px-3 py-1.5 rounded text-xs transition-colors ${
-                              attendance[studentId] === "late"
+                            className={`px-3 py-1.5 rounded text-xs transition-colors ${attendance[studentId] === "late"
                                 ? "bg-yellow-500 text-white"
                                 : "bg-gray-100 text-gray-600 hover:bg-yellow-100"
-                            }`}
+                              }`}
                           >
                             <Clock className="w-3 h-3 inline mr-1" />
                             Late
@@ -645,11 +645,10 @@ const MarkAttendance = () => {
                             onClick={() =>
                               handleAttendanceChange(studentId, "absent")
                             }
-                            className={`px-3 py-1.5 rounded text-xs transition-colors ${
-                              attendance[studentId] === "absent"
+                            className={`px-3 py-1.5 rounded text-xs transition-colors ${attendance[studentId] === "absent"
                                 ? "bg-red-500 text-white"
                                 : "bg-gray-100 text-gray-600 hover:bg-red-100"
-                            }`}
+                              }`}
                           >
                             <XCircle className="w-3 h-3 inline mr-1" />
                             Absent

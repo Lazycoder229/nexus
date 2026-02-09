@@ -187,10 +187,9 @@ const LMSDiscussions = {
       SELECT 
         ldr.*,
         CONCAT(u.first_name, ' ', u.last_name) as author_name,
-        u.role as author_role,
-        u.student_id
+        u.role as author_role
       FROM lms_discussion_replies ldr
-      LEFT JOIN users u ON ldr.user_id = u.id
+      LEFT JOIN users u ON ldr.user_id = u.user_id
       WHERE ldr.discussion_id = ?
       ORDER BY ldr.created_at ASC
     `;

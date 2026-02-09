@@ -47,7 +47,7 @@ const LMSDiscussion = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `${API_BASE}/api/faculty-assignments/faculty/${userId}`
+        `${API_BASE}/api/faculty-assignments/faculty/${userId}`,
       );
       if (response.data.success) {
         setFacultyAssignments(response.data.data);
@@ -61,7 +61,8 @@ const LMSDiscussion = () => {
     setLoading(true);
     try {
       const userId = localStorage.getItem("userId");
-      const academicPeriodId = localStorage.getItem("currentAcademicPeriod") || 1;
+      const academicPeriodId =
+        localStorage.getItem("currentAcademicPeriod") || 1;
 
       const response = await axios.get(
         `${API_BASE}/api/lms/discussions/faculty`,
@@ -70,7 +71,7 @@ const LMSDiscussion = () => {
             faculty_id: userId,
             academic_period_id: academicPeriodId,
           },
-        }
+        },
       );
 
       if (response.data.success) {
@@ -86,7 +87,7 @@ const LMSDiscussion = () => {
   const fetchReplies = async (discussionId) => {
     try {
       const response = await axios.get(
-        `${API_BASE}/api/lms/discussions/${discussionId}/replies`
+        `${API_BASE}/api/lms/discussions/${discussionId}/replies`,
       );
 
       if (response.data.success) {
@@ -111,7 +112,8 @@ const LMSDiscussion = () => {
 
     try {
       const userId = localStorage.getItem("userId");
-      const academicPeriodId = localStorage.getItem("currentAcademicPeriod") || 1;
+      const academicPeriodId =
+        localStorage.getItem("currentAcademicPeriod") || 1;
 
       const discussionData = {
         ...formData,
@@ -121,7 +123,7 @@ const LMSDiscussion = () => {
 
       const response = await axios.post(
         `${API_BASE}/api/lms/discussions`,
-        discussionData
+        discussionData,
       );
 
       if (response.data.success) {
@@ -152,7 +154,7 @@ const LMSDiscussion = () => {
           discussion_id: selectedDiscussion.id,
           user_id: userId,
           content: replyText,
-        }
+        },
       );
 
       if (response.data.success) {
@@ -172,7 +174,7 @@ const LMSDiscussion = () => {
 
     try {
       const response = await axios.delete(
-        `${API_BASE}/api/lms/discussions/${id}`
+        `${API_BASE}/api/lms/discussions/${id}`,
       );
 
       if (response.data.success) {
@@ -191,7 +193,7 @@ const LMSDiscussion = () => {
         `${API_BASE}/api/lms/discussions/${discussion.id}`,
         {
           is_pinned: !discussion.is_pinned,
-        }
+        },
       );
 
       if (response.data.success) {
@@ -227,9 +229,10 @@ const LMSDiscussion = () => {
     });
   };
 
-  const filteredDiscussions = discussions.filter((discussion) =>
-    discussion.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    discussion.content?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredDiscussions = discussions.filter(
+    (discussion) =>
+      discussion.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      discussion.content?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const openThread = (discussion) => {
@@ -320,10 +323,11 @@ const LMSDiscussion = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleTogglePin(discussion)}
-                      className={`p-2 rounded-lg transition ${discussion.is_pinned
-                        ? "bg-indigo-100 text-indigo-600"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                        }`}
+                      className={`p-2 rounded-lg transition ${
+                        discussion.is_pinned
+                          ? "bg-indigo-100 text-indigo-600"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
                       title={discussion.is_pinned ? "Unpin" : "Pin"}
                     >
                       <Pin className="w-5 h-5" />
@@ -380,7 +384,7 @@ const LMSDiscussion = () => {
 
       {/* Create Discussion Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0  flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
               <h2 className="text-2xl font-bold text-gray-900">
@@ -438,14 +442,24 @@ const LMSDiscussion = () => {
                     value={formData.course_id}
                     onChange={(e) => {
                       handleInputChange(e);
-                      setFormData(prev => ({ ...prev, section_id: "" }));
+                      setFormData((prev) => ({ ...prev, section_id: "" }));
                     }}
                     required
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">Select Course</option>
-                    {[...new Map(facultyAssignments.map(item => [item.course_id, item])).values()].map((assignment) => (
-                      <option key={assignment.course_id} value={assignment.course_id}>
+                    {[
+                      ...new Map(
+                        facultyAssignments.map((item) => [
+                          item.course_id,
+                          item,
+                        ]),
+                      ).values(),
+                    ].map((assignment) => (
+                      <option
+                        key={assignment.course_id}
+                        value={assignment.course_id}
+                      >
                         {assignment.course_code} - {assignment.course_title}
                       </option>
                     ))}
@@ -466,9 +480,14 @@ const LMSDiscussion = () => {
                   >
                     <option value="">Select Section</option>
                     {facultyAssignments
-                      .filter((a) => a.course_id === parseInt(formData.course_id))
+                      .filter(
+                        (a) => a.course_id === parseInt(formData.course_id),
+                      )
                       .map((assignment) => (
-                        <option key={assignment.section_id} value={assignment.section_id}>
+                        <option
+                          key={assignment.section_id}
+                          value={assignment.section_id}
+                        >
                           {assignment.section}
                         </option>
                       ))}
@@ -515,7 +534,7 @@ const LMSDiscussion = () => {
 
       {/* Thread View Modal */}
       {showThreadModal && selectedDiscussion && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0  flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
               <div className="flex-1">

@@ -2,12 +2,15 @@
 import db from "../config/db.js";
 
 // Get all enrollments with student, course, and period details
-export const getAllEnrollments = async () => {
-  const [rows] = await db.query(
-    `SELECT 
+export const getAllEnrollments = async (filters = {}) => {
+  const { course_id, period_id, section_id } = filters;
+
+  let query = `SELECT 
         e.enrollment_id,
         e.student_id,
         CONCAT(u.first_name, ' ', u.last_name) AS student_name,
+        u.first_name,
+        u.last_name,
         sd.student_number,
         sd.year_level,
         sd.course AS student_course,
@@ -32,9 +35,31 @@ export const getAllEnrollments = async () => {
      JOIN users u ON e.student_id = u.user_id
      LEFT JOIN student_details sd ON e.student_id = sd.user_id
      JOIN courses c ON e.course_id = c.course_id
-     JOIN academic_periods ap ON e.period_id = ap.period_id
-     ORDER BY e.created_at DESC`,
-  );
+     JOIN academic_periods ap ON e.period_id = ap.period_id`;
+
+  const params = [];
+  const constraints = [];
+
+  if (course_id) {
+    constraints.push("e.course_id = ?");
+    params.push(course_id);
+  }
+  if (period_id) {
+    constraints.push("e.period_id = ?");
+    params.push(period_id);
+  }
+  if (section_id) {
+    constraints.push("e.section_id = ?");
+    params.push(section_id);
+  }
+
+  if (constraints.length > 0) {
+    query += " WHERE " + constraints.join(" AND ");
+  }
+
+  query += ` ORDER BY e.created_at DESC`;
+
+  const [rows] = await db.query(query, params);
   return rows;
 };
 

@@ -384,8 +384,9 @@ const AssignedSubjects = () => {
                   <p className="text-sm opacity-90">Section {course.section}</p>
                 </div>
                 <div
-                  className={`px-3 py-1 rounded-full text-xs font-semibold ${course.status === "active" ? "bg-green-400" : "bg-gray-400"
-                    }`}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    course.status === "active" ? "bg-green-400" : "bg-gray-400"
+                  }`}
                 >
                   {course.status.toUpperCase()}
                 </div>
@@ -446,7 +447,7 @@ const AssignedSubjects = () => {
 
       {/* Course Details Modal */}
       {showDetailsModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-indigo-500 to-blue-500 p-6 text-white sticky top-0">
@@ -553,10 +554,11 @@ const AssignedSubjects = () => {
                   <span className="font-semibold">Status</span>
                 </div>
                 <span
-                  className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${selectedCourse.status === "active"
+                  className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+                    selectedCourse.status === "active"
                       ? "bg-green-100 text-green-800"
                       : "bg-gray-100 text-gray-800"
-                    }`}
+                  }`}
                 >
                   {selectedCourse.status.toUpperCase()}
                 </span>
@@ -578,7 +580,7 @@ const AssignedSubjects = () => {
 
       {/* Student List Modal */}
       {showStudentsModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0  flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-green-500 to-emerald-500 p-6 text-white sticky top-0">
@@ -697,10 +699,11 @@ const AssignedSubjects = () => {
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <span
-                              className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${student.status === "enrolled"
+                              className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                student.status === "enrolled"
                                   ? "bg-green-100 text-green-800"
                                   : "bg-gray-100 text-gray-800"
-                                }`}
+                              }`}
                             >
                               {student.status}
                             </span>

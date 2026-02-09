@@ -2,8 +2,8 @@
 import * as enrollmentModel from "../model/enrollments.model.js";
 
 // Get all enrollments
-export const listEnrollments = async () => {
-  return await enrollmentModel.getAllEnrollments();
+export const listEnrollments = async (filters = {}) => {
+  return await enrollmentModel.getAllEnrollments(filters);
 };
 
 // Get enrollments by student

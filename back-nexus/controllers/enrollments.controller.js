@@ -2,9 +2,12 @@
 import * as enrollmentService from "../services/enrollments.service.js";
 
 // Get all enrollments
+// Get all enrollments
 export const getAllEnrollments = async (req, res) => {
   try {
-    const enrollments = await enrollmentService.listEnrollments();
+    const { course_id, period_id, section_id } = req.query;
+    const filters = { course_id, period_id, section_id };
+    const enrollments = await enrollmentService.listEnrollments(filters);
     res.json(enrollments);
   } catch (err) {
     console.error(err);

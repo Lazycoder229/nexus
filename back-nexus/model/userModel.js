@@ -324,80 +324,69 @@ export const updateStudentUser = async (userId, userData) => {
   }
 };
 export const updateEmployeeUser = async (userId, userData) => {
-  const {
-    email,
-    passwordHash, // optional
-    firstName,
-    middleName,
-    lastName,
-    suffix,
-    dateOfBirth,
-    gender,
-    phone,
-    permanentAddress,
-    profilePictureUrl,
-    status,
-    employeeId,
-    department,
-    positionTitle,
-    dateHired,
-    specialization,
-    educationalAttainment,
-    licenseNumber,
-    accessLevel,
-  } = userData;
-
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
 
-    // Update users table
-    const updateUserFields = [
-      email,
-      firstName,
-      middleName || null,
-      lastName,
-      suffix || null,
-      dateOfBirth || null,
-      gender || null,
-      phone || null,
-      permanentAddress || null,
-      profilePictureUrl || null,
-      status || "Active",
-    ];
+    // 1️⃣ Update users table (Partial Update)
+    const userFields = [];
+    const userValues = [];
 
-    let query = `
-      UPDATE users
-      SET email = ?, first_name = ?, middle_name = ?, last_name = ?, suffix = ?, 
-          date_of_birth = ?, gender = ?, phone = ?, permanent_address = ?, profile_picture_url = ?, status = ?
-    `;
-    if (passwordHash) query += `, password_hash = ?`;
+    const userMappings = {
+      email: "email",
+      firstName: "first_name",
+      middleName: "middle_name",
+      lastName: "last_name",
+      suffix: "suffix",
+      dateOfBirth: "date_of_birth",
+      gender: "gender",
+      phone: "phone",
+      permanentAddress: "permanent_address",
+      profilePictureUrl: "profile_picture_url",
+      status: "status",
+      passwordHash: "password_hash", // handled separately if needed, but included here for completeness in mapping
+    };
 
-    query += ` WHERE user_id = ?`;
+    Object.keys(userMappings).forEach((key) => {
+      if (userData[key] !== undefined) {
+        userFields.push(`${userMappings[key]} = ?`);
+        userValues.push(userData[key]);
+      }
+    });
 
-    if (passwordHash) updateUserFields.push(passwordHash);
-    updateUserFields.push(userId);
+    if (userFields.length > 0) {
+      userValues.push(userId);
+      const userQuery = `UPDATE users SET ${userFields.join(", ")} WHERE user_id = ?`;
+      await connection.query(userQuery, userValues);
+    }
 
-    await connection.query(query, updateUserFields);
+    // 2️⃣ Update employee_details table (Partial Update)
+    const employeeFields = [];
+    const employeeValues = [];
 
-    // Update employee_details table
-    await connection.query(
-      `UPDATE employee_details
-       SET employee_id = ?, department = ?, position_title = ?, date_hired = ?, 
-           specialization = ?, educational_attainment = ?, license_number = ?, access_level = ?
-       WHERE user_id = ?`,
-      [
-        employeeId || null,
-        department || null,
-        positionTitle || null,
-        dateHired || null,
-        specialization || null,
-        educationalAttainment || null,
-        licenseNumber || null,
-        accessLevel || null,
-        userId,
-      ],
-    );
+    const employeeMappings = {
+      employeeId: "employee_id",
+      department: "department",
+      positionTitle: "position_title",
+      dateHired: "date_hired",
+      specialization: "specialization",
+      educationalAttainment: "educational_attainment",
+      licenseNumber: "license_number",
+      accessLevel: "access_level",
+    };
+
+    Object.keys(employeeMappings).forEach((key) => {
+      if (userData[key] !== undefined) {
+        employeeFields.push(`${employeeMappings[key]} = ?`);
+        employeeValues.push(userData[key]);
+      }
+    });
+
+    if (employeeFields.length > 0) {
+      employeeValues.push(userId);
+      const employeeQuery = `UPDATE employee_details SET ${employeeFields.join(", ")} WHERE user_id = ?`;
+      await connection.query(employeeQuery, employeeValues);
+    }
 
     await connection.commit();
     connection.release();

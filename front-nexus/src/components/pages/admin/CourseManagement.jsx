@@ -23,11 +23,10 @@ import { saveAs } from "file-saver";
 // --- Status Badge Component ---
 const StatusBadge = ({ status }) => (
   <span
-    className={`px-2 py-1 rounded-full text-xs font-semibold ${
-      status === "Active"
-        ? "bg-green-100 text-green-800"
-        : "bg-red-100 text-red-800"
-    }`}
+    className={`px-2 py-1 rounded-full text-xs font-semibold ${status === "Active"
+      ? "bg-green-100 text-green-800"
+      : "bg-red-100 text-red-800"
+      }`}
   >
     {status}
   </span>
@@ -196,11 +195,11 @@ const CourseModal = ({
               value={
                 formData.department_id
                   ? departments
-                      .map((d) => ({
-                        value: d.department_id || d.id,
-                        label: d.name,
-                      }))
-                      .find((o) => o.value === formData.department_id)
+                    .map((d) => ({
+                      value: d.department_id || d.id,
+                      label: d.name,
+                    }))
+                    .find((o) => o.value === formData.department_id)
                   : null
               }
               onChange={(selected) =>
@@ -250,11 +249,11 @@ const CourseModal = ({
               value={
                 formData.instructor_id
                   ? instructors
-                      .map((i) => ({
-                        value: i.user_id,
-                        label: `${i.first_name} ${i.last_name}`,
-                      }))
-                      .find((o) => o.value === formData.instructor_id)
+                    .map((i) => ({
+                      value: i.user_id,
+                      label: `${i.first_name} ${i.last_name}`,
+                    }))
+                    .find((o) => o.value === formData.instructor_id)
                   : null
               }
               onChange={(selected) =>
@@ -450,6 +449,7 @@ const CourseManagement = () => {
       const res = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/api/course/courses`
       );
+      console.log("course", res.data);
       setCourses(res.data);
     } catch (err) {
       console.error(err);
@@ -461,6 +461,7 @@ const CourseManagement = () => {
       const res = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`
       );
+      console.log("dept", res.data);
       setDepartments(res.data);
     } catch (err) {
       console.error(err);
@@ -470,10 +471,10 @@ const CourseManagement = () => {
   const fetchInstructors = async () => {
     try {
       const res = await axios.get(
-        `${
-          import.meta.env.VITE_API_BASE_URL
+        `${import.meta.env.VITE_API_BASE_URL
         }/api/dept/departments/eligible-heads`
       );
+      console.log("inst", res.data);
       setInstructors(res.data);
     } catch (err) {
       console.error(err);
@@ -558,9 +559,9 @@ const CourseManagement = () => {
           prev.map((c) =>
             c.id === data.id
               ? {
-                  ...c, // keep department_name, instructor_name
-                  ...data, // update code, title, units, status, etc.
-                }
+                ...c, // keep department_name, instructor_name
+                ...data, // update code, title, units, status, etc.
+              }
               : c
           )
         );

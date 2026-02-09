@@ -11,12 +11,14 @@ import {
   Lock,
   Edit,
 } from "lucide-react";
+import { useRef } from "react";
 
 // Configure axios defaults
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const FacultyProfile = () => {
+  const fileInputRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [userId, setUserId] = useState(null);
@@ -36,7 +38,10 @@ const FacultyProfile = () => {
     specialization: "",
     dateHired: "",
     employmentStatus: "",
+    profilePictureUrl: "",
   });
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -93,7 +98,7 @@ const FacultyProfile = () => {
         suffix: userData.suffix || "",
         email: userData.email || "",
         phone: userData.phone || userData.contact_number || "",
-        address: userData.address || "",
+        address: userData.permanent_address || userData.address || "",
         dateOfBirth: userData.date_of_birth
           ? userData.date_of_birth.split("T")[0]
           : userData.dateOfBirth
@@ -101,7 +106,7 @@ const FacultyProfile = () => {
             : "",
         gender: userData.gender || "",
         department: userData.department || "",
-        position: userData.position || "",
+        position: userData.position_title || userData.position || "",
         specialization: userData.specialization || "",
         dateHired: userData.date_hired
           ? userData.date_hired.split("T")[0]
@@ -110,6 +115,7 @@ const FacultyProfile = () => {
             : "",
         employmentStatus:
           userData.employment_status || userData.employmentStatus || "",
+        profilePictureUrl: userData.profile_picture_url || "",
       });
       setLoading(false);
     } catch (error) {
@@ -135,6 +141,31 @@ const FacultyProfile = () => {
     });
   };
 
+  const handleImageClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File size must be less than 5MB");
+        return;
+      }
+      if (!file.type.startsWith("image/")) {
+        alert("Please select an image file");
+        return;
+      }
+
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handlePasswordChange = (e) => {
     setPasswordData({
       ...passwordData,
@@ -149,17 +180,21 @@ const FacultyProfile = () => {
 
       // Prepare data for backend - match backend field names
       const updateData = {
-        first_name: profileData.firstName,
-        middle_name: profileData.middleName,
-        last_name: profileData.lastName,
+        firstName: profileData.firstName,
+        middleName: profileData.middleName,
+        lastName: profileData.lastName,
         suffix: profileData.suffix,
         email: profileData.email,
         phone: profileData.phone,
-        address: profileData.address,
-        date_of_birth: profileData.dateOfBirth,
+        permanentAddress: profileData.address,
+        dateOfBirth: profileData.dateOfBirth,
         gender: profileData.gender,
         specialization: profileData.specialization,
       };
+
+      if (imagePreview) {
+        updateData.profilePictureBase64 = imagePreview;
+      }
 
       await axios.put(
         `${API_BASE_URL}/users/employee/${userId}`,
@@ -259,14 +294,41 @@ const FacultyProfile = () => {
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex flex-col items-center">
               {/* Profile Photo */}
+              {/* Profile Photo */}
               <div className="relative">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-4xl font-bold">
-                  {profileData.firstName ? profileData.firstName[0] : "F"}
-                  {profileData.lastName ? profileData.lastName[0] : "U"}
+                <div className="w-32 h-32 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
+                  {imagePreview || profileData.profilePictureUrl ? (
+                    <img
+                      src={
+                        imagePreview ||
+                        (profileData.profilePictureUrl.startsWith("http")
+                          ? profileData.profilePictureUrl
+                          : `${API_BASE_URL.replace(/\/api$/, "")}${profileData.profilePictureUrl}`)
+                      }
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-4xl font-bold">
+                      {profileData.firstName ? profileData.firstName[0] : "F"}
+                      {profileData.lastName ? profileData.lastName[0] : "U"}
+                    </div>
+                  )}
                 </div>
-                <button className="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors">
+                <button
+                  type="button"
+                  onClick={handleImageClick}
+                  className="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors"
+                >
                   <Camera className="w-4 h-4" />
                 </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  accept="image/*"
+                />
               </div>
 
               <h2 className="mt-4 text-xl font-bold text-gray-900">

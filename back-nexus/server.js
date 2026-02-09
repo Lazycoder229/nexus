@@ -88,10 +88,19 @@ app.use(
 // Security headers
 app.use(helmet());
 
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Body parser & cookies
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: "10mb" }));
 app.use(cookieParser());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({ limit: "10mb", extended: true }));
+
+// Serve static files
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 // Rate limiter
 app.use(limiter);
