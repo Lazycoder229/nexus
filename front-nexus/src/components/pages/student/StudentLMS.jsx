@@ -14,6 +14,7 @@ import {
   Send,
   MessageCircle,
   User,
+  X,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -37,10 +38,6 @@ const StudentLMS = () => {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const studentId = user?.user_id || user?.id;
 
-  // Debug: Log user and studentId
-  console.log('[DEBUG StudentLMS] User from localStorage:', user);
-  console.log('[DEBUG StudentLMS] studentId:', studentId);
-
   // Fetch active academic period on mount
   useEffect(() => {
     const fetchAcademicPeriod = async () => {
@@ -48,7 +45,6 @@ const StudentLMS = () => {
         const response = await axios.get(
           `${API_BASE}/api/academic-periods/active`,
         );
-        console.log('[DEBUG StudentLMS] Academic period response:', response.data);
         // The response may have period directly or nested
         const periodData = response.data?.period || response.data;
         if (periodData) {
@@ -65,12 +61,8 @@ const StudentLMS = () => {
   const academicPeriodId = academicPeriod?.period_id || academicPeriod?.id;
 
   useEffect(() => {
-    console.log('[DEBUG StudentLMS] Checking conditions - studentId:', studentId, 'academicPeriodId:', academicPeriodId);
     if (studentId && academicPeriodId) {
-      console.log('[DEBUG StudentLMS] Fetching data...');
       fetchData();
-    } else {
-      console.log('[DEBUG StudentLMS] Conditions not met, not fetching data');
     }
   }, [activeTab, studentId, academicPeriod]);
 
@@ -137,7 +129,6 @@ const StudentLMS = () => {
         },
       );
 
-      console.log("Fetched LMS assignments response:", response.data);
       // Handle different possible response formats
       let allItems = response.data?.data || response.data?.assignments || response.data || [];
       // Ensure it's an array
@@ -145,6 +136,8 @@ const StudentLMS = () => {
         console.warn("LMS assignments response is not an array:", allItems);
         allItems = [];
       }
+
+      console.log("Raw LMS Assignments Response:", allItems);
 
       // Filter Assignments (type 'assignment')
       const assignmentsData = allItems
@@ -157,8 +150,10 @@ const StudentLMS = () => {
           section_name: a.section_name,
           faculty_name: a.faculty_name,
           status:
-            a.submission_status ||
-            (new Date(a.due_date) < new Date() ? "missing" : "pending"),
+            a.submission_score !== null
+              ? "graded"
+              : a.submission_status ||
+              (new Date(a.due_date) < new Date() ? "missing" : "pending"),
           due_date: a.due_date,
           score: a.submission_score,
           total_points: a.total_points,
@@ -166,6 +161,11 @@ const StudentLMS = () => {
           posted_at: a.created_at || a.posted_at,
           feedback: a.feedback,
           max_score: a.total_points, // Ensure max_score is mapped
+          graded_by_name: a.graded_by_name,
+          graded_at: a.graded_at,
+          file_url: a.file_url,
+          file_name: a.file_name,
+          graded_at: a.graded_at,
         }));
       setAssignments(assignmentsData);
 
@@ -183,14 +183,18 @@ const StudentLMS = () => {
           section_name: q.section_name,
           faculty_name: q.faculty_name,
           status:
-            q.submission_status ||
-            (new Date(q.due_date) < new Date() ? "missing" : "pending"),
+            q.submission_score !== null
+              ? "completed" // Quizzes usually use 'completed' or 'graded', let's stick to 'completed' for quizzes based on existing usage or 'graded' if that's what triggers the score view.
+              : q.submission_status ||
+              (new Date(q.due_date) < new Date() ? "missing" : "pending"),
           due_date: q.due_date,
           time_limit: 30, // Default as it's not in the main table query yet (would need join or separate column)
           total_questions: 0, // Placeholder
           score: q.submission_score,
           total_points: q.total_points,
+          max_score: q.total_points,
           submitted_at: q.submitted_at,
+          quiz_answers: q.submission_text,
         }));
       setQuizzes(quizzesData);
     } catch (error) {
@@ -216,38 +220,155 @@ const StudentLMS = () => {
     }
   };
 
+
+
+  const [quizQuestions, setQuizQuestions] = useState([]);
+  const [quizAnswers, setQuizAnswers] = useState({});
+  const [selectedQuiz, setSelectedQuiz] = useState(null);
+  const [isReviewMode, setIsReviewMode] = useState(false);
+
+  const handleTakeQuiz = async (quiz) => {
+    setIsReviewMode(false);
+    try {
+      // Fetch questions
+      const response = await axios.get(`${API_BASE}/api/lms/assignments/${quiz.quiz_id}/quiz-questions`);
+      const questions = response.data?.questions || [];
+
+      if (questions.length === 0) {
+        alert("This quiz has no questions yet.");
+        return;
+      }
+
+      setQuizQuestions(questions);
+      setQuizAnswers({});
+      setSelectedQuiz(quiz);
+    } catch (error) {
+      console.error("Error fetching quiz questions:", error);
+      alert("Failed to load quiz.");
+    }
+  };
+
+  const handleQuizSubmit = async () => {
+    if (!selectedQuiz) return;
+
+    // Calculate total points for display (score is calculated by backend)
+    let totalPoints = 0;
+    quizQuestions.forEach(q => {
+      totalPoints += q.points || 1;
+    });
+
+    try {
+      const submissionPayload = {
+        student_id: studentId,
+        assignment_id: selectedQuiz.quiz_id,
+        submission_text: JSON.stringify(quizAnswers),
+        file_name: "quiz_results.json",
+        file_url: "", // No file
+      };
+
+      const submitRes = await axios.post(`${API_BASE}/api/lms/assignments/submit`, submissionPayload);
+      const { score } = submitRes.data;
+
+      if (score !== undefined) {
+        alert(`Quiz submitted! Your score: ${score}/${totalPoints}`);
+      } else {
+        alert("Quiz submitted successfully!");
+      }
+
+      setSelectedQuiz(null);
+      setQuizQuestions([]);
+      setQuizAnswers({});
+      fetchAssignmentsAndQuizzes();
+    } catch (error) {
+      console.error("Error submitting quiz:", error);
+      alert("Failed to submit quiz.");
+    }
+  };
+
+  const handleViewQuizResults = async (quiz) => {
+    setIsReviewMode(true);
+    try {
+      // Fetch questions WITH answers (secure review endpoint)
+      const response = await axios.get(`${API_BASE}/api/lms/assignments/${quiz.quiz_id}/quiz-review`, {
+        params: { student_id: studentId }
+      });
+      const questions = response.data?.questions || [];
+
+      if (questions.length === 0) {
+        alert("Unable to load quiz results.");
+        return;
+      }
+
+      setQuizQuestions(questions);
+      // Parse saved answers
+      const answers = JSON.parse(quiz.quiz_answers || "{}");
+      setQuizAnswers(answers);
+      setSelectedQuiz(quiz);
+    } catch (error) {
+      console.error("Error fetching quiz results:", error);
+      alert("Failed to load quiz results. Ensure you have submitted the quiz.");
+    }
+  };
+
+
+
+
+
+
   const handleAssignmentSubmit = async (e) => {
     e.preventDefault();
     if (!submissionFile || !selectedAssignment) return;
 
-    try {
-      // Backend does not strictly support file upload middleware here, 
-      // so we simulate the file URL or send metadata.
-      // In a real app with proper backend, we'd upload to /upload endpoint first.
+    // Use FileReader to read the file as Base64
+    const reader = new FileReader();
+    reader.readAsDataURL(submissionFile);
 
-      const payload = {
-        student_id: studentId,
-        assignment_id: selectedAssignment.assignment_id,
-        file_name: submissionFile.name,
-        // Mocking a file URL since backend doesn't handle multipart/form-data on this route
-        file_url: `https://nexus-lms-uploads.com/${submissionFile.name}`,
-        submission_text: "Assignment submitted via Student Portal",
-      };
+    reader.onload = async () => {
+      try {
+        const fileBase64 = reader.result;
 
-      await axios.post(`${API_BASE}/api/lms/assignments/submit`, payload, {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+        // 1. Upload the file to the backend
+        // Note: In a production app, we might want to show a loading state here
+        const uploadResponse = await axios.post(`${API_BASE}/api/lms/assignments/upload`, {
+          file_base64: fileBase64,
+          file_name: submissionFile.name
+        });
 
-      alert("Assignment submitted successfully! (File upload simulated)");
-      setSelectedAssignment(null);
-      setSubmissionFile(null);
-      fetchAssignmentsAndQuizzes(); // Refresh list
-    } catch (error) {
-      console.error("Error submitting assignment:", error);
-      alert("Failed to submit assignment");
-    }
+        if (!uploadResponse.data.success) {
+          throw new Error(uploadResponse.data.message || "File upload failed");
+        }
+
+        const fileUrl = uploadResponse.data.file_url;
+
+        // 2. Submit the assignment with the real file_url
+        const payload = {
+          student_id: studentId,
+          assignment_id: selectedAssignment.assignment_id,
+          file_name: submissionFile.name,
+          file_url: fileUrl, // Real URL from backend
+          submission_text: "Assignment submitted via Student Portal",
+        };
+
+        await axios.post(`${API_BASE}/api/lms/assignments/submit`, payload, {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        alert("Assignment submitted successfully!");
+        setSelectedAssignment(null);
+        setSubmissionFile(null);
+        fetchAssignmentsAndQuizzes(); // Refresh list
+      } catch (error) {
+        console.error("Error submitting assignment:", error);
+        alert(`Failed to submit assignment: ${error.message || "Unknown error"}`);
+      }
+    };
+
+    reader.onerror = (error) => {
+      console.error("Error reading file:", error);
+      alert("Failed to read file for upload");
+    };
   };
 
   const handleReplySubmit = async (e) => {
@@ -522,12 +643,18 @@ const StudentLMS = () => {
                   </div>
 
                   {quiz.status === "pending" && (
-                    <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors">
+                    <button
+                      onClick={() => handleTakeQuiz(quiz)}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors"
+                    >
                       Take Quiz
                     </button>
                   )}
                   {quiz.status === "completed" && (
-                    <button className="w-full bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors">
+                    <button
+                      onClick={() => handleViewQuizResults(quiz)}
+                      className="w-full bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors"
+                    >
                       View Results
                     </button>
                   )}
@@ -634,13 +761,19 @@ const StudentLMS = () => {
                         </button>
                       )}
                       {assignment.status === "submitted" && (
-                        <button className="flex items-center justify-center gap-2 bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors whitespace-nowrap">
+                        <button
+                          onClick={() => setSelectedAssignment(assignment)}
+                          className="flex items-center justify-center gap-2 bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors whitespace-nowrap"
+                        >
                           <FileText size={14} />
                           View Submission
                         </button>
                       )}
                       {assignment.status === "graded" && (
-                        <button className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors whitespace-nowrap">
+                        <button
+                          onClick={() => setSelectedAssignment(assignment)}
+                          className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors whitespace-nowrap"
+                        >
                           <CheckCircle size={14} />
                           View Grade
                         </button>
@@ -661,9 +794,24 @@ const StudentLMS = () => {
                         {new Date(assignment.submitted_at).toLocaleString()}
                       </p>
                       {assignment.feedback && (
-                        <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
-                          <strong>Feedback:</strong> {assignment.feedback}
-                        </p>
+                        <div className="mt-2 bg-slate-50 dark:bg-slate-700/50 p-3 rounded-md border border-slate-100 dark:border-slate-700">
+                          <p className="text-sm text-slate-700 dark:text-slate-300">
+                            <strong>Feedback:</strong> {assignment.feedback}
+                          </p>
+                        </div>
+                      )}
+
+                      {assignment.graded_by_name && (
+                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                          <span>
+                            Graded by: <span className="font-medium text-slate-700 dark:text-slate-200">{assignment.graded_by_name}</span>
+                          </span>
+                          {assignment.graded_at && (
+                            <span>
+                              on: <span className="font-medium text-slate-700 dark:text-slate-200">{new Date(assignment.graded_at).toLocaleString()}</span>
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
@@ -850,10 +998,12 @@ const StudentLMS = () => {
         {/* Assignment Submission Modal */}
         {selectedAssignment && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-              <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+              <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Submit Assignment
+                  {selectedAssignment.status === "submitted" || selectedAssignment.status === "graded"
+                    ? "Submission Details"
+                    : "Submit Assignment"}
                 </h3>
                 <button
                   onClick={() => setSelectedAssignment(null)}
@@ -875,56 +1025,160 @@ const StudentLMS = () => {
                   </svg>
                 </button>
               </div>
-              <form onSubmit={handleAssignmentSubmit} className="p-4 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Assignment
-                  </label>
-                  <p className="text-slate-900 dark:text-white font-medium">
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Common Details */}
+                <div className="bg-slate-50 dark:bg-slate-900/30 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <h4 className="font-semibold text-slate-900 dark:text-white mb-1">
                     {selectedAssignment.title}
+                  </h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                    {selectedAssignment.description}
                   </p>
+                  <div className="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 pt-2">
+                    <span className="flex items-center gap-1">
+                      <CalendarIcon size={12} />
+                      Due: {new Date(selectedAssignment.due_date).toLocaleDateString()}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <FileText size={12} />
+                      Max Score: {selectedAssignment.max_score}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Due Date
-                  </label>
-                  <p className="text-slate-600 dark:text-slate-400">
-                    {new Date(selectedAssignment.due_date).toLocaleDateString()}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Upload File
-                  </label>
-                  <input
-                    type="file"
-                    onChange={(e) => setSubmissionFile(e.target.files[0])}
-                    required
-                    className="block w-full text-sm text-slate-500 dark:text-slate-400
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-full file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-indigo-50 file:text-indigo-700
-                      hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-400"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAssignment(null)}
-                    className="px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center gap-2"
-                  >
-                    <Upload size={16} />
-                    Submit Assignment
-                  </button>
-                </div>
-              </form>
+
+                {/* View Mode (Submitted/Graded) */}
+                {(selectedAssignment.status === "submitted" || selectedAssignment.status === "graded") ? (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                        <CheckCircle size={16} className="text-indigo-600" />
+                        Your Submission
+                      </h4>
+                      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">
+                          Submitted on {new Date(selectedAssignment.submitted_at).toLocaleString()}
+                        </p>
+                        {/* We don't have file_url readily available in assignment object unless we fetch it or it was mapped. 
+                             Assuming we don't have it fully mapped or simulate it. 
+                             Ideally we should have mapped it. Let's check if we can simulate or if we need to fetch. 
+                             For now, we display status. */}
+                        <div className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 mt-2">
+                          <FileText size={16} />
+                          {selectedAssignment.file_url ? (
+                            <a
+                              href={`${API_BASE}${selectedAssignment.file_url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                            >
+                              {selectedAssignment.file_name || "View Assignment File"}
+                            </a>
+                          ) : (
+                            <span>Assignment File (Preview Unavailable)</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Grade & Feedback Section */}
+                    {selectedAssignment.status === "graded" && (
+                      <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg p-4 space-y-3">
+                        <div className="flex justify-between items-center">
+                          <h4 className="font-semibold text-green-800 dark:text-green-400 flex items-center gap-2">
+                            <CheckCircle size={18} />
+                            Graded
+                          </h4>
+                          <span className="text-lg font-bold text-green-700 dark:text-green-300">
+                            {selectedAssignment.score} <span className="text-sm font-normal text-green-600 dark:text-green-400">/ {selectedAssignment.max_score}</span>
+                          </span>
+                        </div>
+
+                        {selectedAssignment.feedback && (
+                          <div className="bg-white/60 dark:bg-black/20 p-3 rounded border border-green-100 dark:border-green-800/50">
+                            <p className="text-xs font-semibold text-green-800 dark:text-green-400 mb-1 uppercase tracking-wider">Feedback</p>
+                            <p className="text-sm text-green-900 dark:text-green-100">
+                              {selectedAssignment.feedback}
+                            </p>
+                          </div>
+                        )}
+
+                        {selectedAssignment.graded_by_name && (
+                          <div className="text-xs text-green-700 dark:text-green-400 pt-2 border-t border-green-200 dark:border-green-800 flex flex-wrap gap-2">
+                            <span>Graded by: <strong>{selectedAssignment.graded_by_name}</strong></span>
+                            {selectedAssignment.graded_at && (
+                              <span>on {new Date(selectedAssignment.graded_at).toLocaleDateString()}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex justify-end pt-2">
+                      <button
+                        onClick={() => setSelectedAssignment(null)}
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg transition-colors"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Submit Mode (Pending/Late) */
+                  <form onSubmit={handleAssignmentSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Upload File
+                      </label>
+                      <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-6 text-center hover:border-indigo-500 dark:hover:border-indigo-400 transition-colors bg-slate-50 dark:bg-slate-900/20">
+                        <input
+                          type="file"
+                          id="file-upload"
+                          onChange={(e) => setSubmissionFile(e.target.files[0])}
+                          required
+                          className="hidden"
+                        />
+                        <label
+                          htmlFor="file-upload"
+                          className="cursor-pointer flex flex-col items-center gap-2"
+                        >
+                          <Upload size={32} className="text-slate-400" />
+                          <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">
+                            Click to upload a file
+                          </span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                            {submissionFile ? submissionFile.name : "PDF, DOCX, ZIP up to 10MB"}
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="bg-yellow-50 dark:bg-yellow-900/10 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                      <p className="text-xs text-yellow-800 dark:text-yellow-200 flex items-center gap-1">
+                        <AlertCircle size={14} />
+                        Ensure your file is final before submitting. You cannot edit after submission.
+                      </p>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAssignment(null)}
+                        className="px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+                      >
+                        <Upload size={16} />
+                        Submit Assignment
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -1035,7 +1289,191 @@ const StudentLMS = () => {
             </div>
           </div>
         )}
+        {/* Quiz Modal */}
+        {selectedQuiz && quizQuestions.length > 0 && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+              <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Clock size={20} className="text-indigo-600" />
+                  {selectedQuiz.title}
+                </h3>
+                <button
+                  onClick={() => setSelectedQuiz(null)}
+                  className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {quizQuestions.map((q, index) => (
+                  <div key={q.id} className="space-y-3">
+                    <p className="font-medium text-slate-900 dark:text-white">
+                      {index + 1}. {q.question_text} <span className="text-xs text-slate-500">({q.points} pts)</span>
+                    </p>
+                    <div className="space-y-2 ml-4">
+                      {q.options && q.options.map((option, optIndex) => (
+                        <label key={optIndex} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors">
+                          <input
+                            type="radio"
+                            name={`question-${q.id}`}
+                            value={option}
+                            checked={quizAnswers[q.id] === option}
+                            onChange={() => setQuizAnswers({ ...quizAnswers, [q.id]: option })}
+                            className="text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="text-sm text-slate-700 dark:text-slate-300">{option}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30 flex justify-end gap-2">
+                <button
+                  onClick={() => setSelectedQuiz(null)}
+                  className="px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleQuizSubmit}
+                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium"
+                >
+                  Submit Quiz
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Quiz Modal */}
+      {selectedQuiz && quizQuestions.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-800 z-10">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                  {selectedQuiz.title}
+                </h2>
+                {isReviewMode && (
+                  <p className="text-sm font-semibold text-green-600 dark:text-green-400 mt-1">
+                    Results: {selectedQuiz.score}/{selectedQuiz.total_points}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedQuiz(null);
+                  setIsReviewMode(false);
+                }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {quizQuestions.map((q, index) => (
+                <div key={q.id || index} className="space-y-3">
+                  <p className="font-medium text-slate-900 dark:text-white">
+                    {index + 1}. {q.question_text}{" "}
+                    <span className="text-sm font-normal text-slate-500">
+                      ({q.points} pts)
+                    </span>
+                  </p>
+                  <div className="space-y-2">
+                    {isReviewMode ? (
+                      <div className="space-y-2">
+                        {/* Student Answer */}
+                        <div className={`p-3 rounded-lg border flex items-center gap-3 ${quizAnswers[q.id] === q.correct_answer
+                            ? "bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300"
+                            : "bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300"
+                          }`}>
+                          {quizAnswers[q.id] === q.correct_answer ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <X className="w-5 h-5 flex-shrink-0" />}
+                          <span className="font-medium">
+                            {quizAnswers[q.id] || "No Answer"}
+                          </span>
+                          <span className="text-sm opacity-75 ml-auto">
+                            {quizAnswers[q.id] === q.correct_answer ? "(Correct)" : "(Your Answer)"}
+                          </span>
+                        </div>
+
+                        {/* Correct Answer (only if wrong) */}
+                        {quizAnswers[q.id] !== q.correct_answer && (
+                          <div className="p-3 rounded-lg border flex items-center gap-3 bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300">
+                            <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                            <span className="font-medium">
+                              {q.correct_answer}
+                            </span>
+                            <span className="text-sm opacity-75 ml-auto">(Correct Answer)</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      q.options.map((option, optIdx) => (
+                        <label
+                          key={optIdx}
+                          onClick={() => {
+                            if (!isReviewMode) {
+                              setQuizAnswers(prev => ({
+                                ...prev,
+                                [q.id]: option
+                              }));
+                            }
+                          }}
+                          className={`flex items-center gap-3 p-3 rounded-lg border transition-all duration-200 ${quizAnswers[q.id] === option
+                            ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 shadow-sm"
+                            : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                            } cursor-pointer`}
+                        >
+                          <input
+                            type="radio"
+                            name={`question-${q.id}`}
+                            value={option}
+                            checked={quizAnswers[q.id] === option}
+                            onChange={() => { }} // Handled by label onClick
+                            className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 transition-transform duration-200 transform scale-100 active:scale-95"
+                          />
+                          <span className="text-slate-700 dark:text-slate-300">
+                            {option}
+                          </span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-6 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 sticky bottom-0 bg-white dark:bg-slate-800">
+              <button
+                onClick={() => {
+                  setSelectedQuiz(null);
+                  setIsReviewMode(false);
+                }}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                Cancel
+              </button>
+              {!isReviewMode && (
+                <button
+                  onClick={handleQuizSubmit}
+                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Submit Quiz
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

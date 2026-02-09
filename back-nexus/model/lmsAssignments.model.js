@@ -87,28 +87,35 @@ const LMSAssignments = {
   // Get assignments for a student based on their enrolled courses
   getByStudent: async (student_id, academic_period_id) => {
     const query = `
-      SELECT DISTINCT
-        la.*,
-        c.code as course_code,
-        c.title as course_name,
-        s.section_name,
-        CONCAT(u.first_name, ' ', u.last_name) as faculty_name,
-        las.id as submission_id,
-        las.status as submission_status,
-        las.score as submission_score,
-        las.submitted_at
-      FROM lms_assignments la
-      INNER JOIN enrollments e ON la.course_id = e.course_id 
-        AND la.academic_period_id = e.period_id
-      LEFT JOIN courses c ON la.course_id = c.course_id
-      LEFT JOIN sections s ON la.section_id = s.section_id
-      LEFT JOIN users u ON la.faculty_id = u.user_id
-      LEFT JOIN lms_assignment_submissions las ON la.id = las.assignment_id AND las.student_id = ?
-      WHERE e.student_id = ? 
-        AND e.period_id = ? 
-        AND e.status = 'Enrolled'
-        AND la.status = 'active'
-      ORDER BY la.due_date ASC
+        SELECT DISTINCT
+            la.*,
+            c.code as course_code,
+            c.title as course_name,
+            s.section_name,
+            CONCAT(u.first_name, ' ', u.last_name) as faculty_name,
+            las.id as submission_id,
+            las.status as submission_status,
+            las.score as submission_score,
+            las.submitted_at,
+            las.submission_text,
+            las.file_url,
+            las.file_name,
+            las.feedback,
+            las.graded_at,
+            CONCAT(grader.first_name, ' ', grader.last_name) as graded_by_name
+        FROM lms_assignments la
+        INNER JOIN enrollments e ON la.course_id = e.course_id 
+            AND la.academic_period_id = e.period_id
+        LEFT JOIN courses c ON la.course_id = c.course_id
+        LEFT JOIN sections s ON la.section_id = s.section_id
+        LEFT JOIN users u ON la.faculty_id = u.user_id
+        LEFT JOIN lms_assignment_submissions las ON la.id = las.assignment_id AND las.student_id = ?
+        LEFT JOIN users grader ON las.graded_by = grader.user_id
+        WHERE e.student_id = ? 
+            AND e.period_id = ? 
+            AND e.status = 'Enrolled'
+            AND la.status = 'active'
+        ORDER BY la.due_date ASC
     `;
     const [rows] = await db.query(query, [student_id, student_id, academic_period_id]);
     return rows;
@@ -271,8 +278,24 @@ const LMSAssignments = {
     return result.insertId;
   },
 
-  // Get quiz questions
+  // Get quiz questions (for students - NO ANSWERS)
   getQuizQuestions: async (assignment_id) => {
+    const query = `
+      SELECT id, assignment_id, question_text, question_type, options, points, order_num 
+      FROM lms_quiz_questions
+      WHERE assignment_id = ?
+      ORDER BY order_num ASC
+    `;
+
+    const [rows] = await db.query(query, [assignment_id]);
+    return rows.map((row) => ({
+      ...row,
+      options: JSON.parse(row.options),
+    }));
+  },
+
+  // Get quiz questions WITH answers (for grading/faculty)
+  getQuizQuestionsWithAnswers: async (assignment_id) => {
     const query = `
       SELECT * FROM lms_quiz_questions
       WHERE assignment_id = ?

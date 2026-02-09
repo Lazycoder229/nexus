@@ -24,6 +24,9 @@ router.put("/:id", lmsAssignmentsController.update);
 // Delete assignment
 router.delete("/:id", lmsAssignmentsController.delete);
 
+// Upload assignment file
+router.post("/upload", lmsAssignmentsController.uploadFile);
+
 // Submit assignment
 router.post("/submit", lmsAssignmentsController.submitAssignment);
 
@@ -41,5 +44,8 @@ router.post("/quiz-question", lmsAssignmentsController.createQuizQuestion);
 
 // Get quiz questions
 router.get("/:assignment_id/quiz-questions", lmsAssignmentsController.getQuizQuestions);
+
+// Get quiz review (secure)
+router.get("/:assignment_id/quiz-review", lmsAssignmentsController.getQuizReview);
 
 export default router;

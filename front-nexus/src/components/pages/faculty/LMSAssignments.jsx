@@ -47,6 +47,47 @@ const LMSAssignments = () => {
     course_id: "",
   });
 
+  const [questions, setQuestions] = useState([]);
+
+  const addQuestion = () => {
+    setQuestions([
+      ...questions,
+      {
+        id: Date.now(),
+        question_text: "",
+        question_type: "multiple_choice",
+        points: 5,
+        options: ["Option 1", "Option 2", "Option 3", "Option 4"],
+        correct_answer: "Option 1",
+      },
+    ]);
+  };
+
+  const removeQuestion = (id) => {
+    setQuestions(questions.filter((q) => q.id !== id));
+  };
+
+  const updateQuestion = (id, field, value) => {
+    setQuestions(
+      questions.map((q) => (q.id === id ? { ...q, [field]: value } : q)),
+    );
+  };
+
+  const updateOption = (questionId, optionIndex, value) => {
+    setQuestions(
+      questions.map((q) => {
+        if (q.id === questionId) {
+          const newOptions = [...q.options];
+          newOptions[optionIndex] = value;
+          // If the updated option was the correct answer, update that too if needed
+          // But usually we select correct answer from dropdown
+          return { ...q, options: newOptions };
+        }
+        return q;
+      }),
+    );
+  };
+
   const [gradeData, setGradeData] = useState({
     score: 0,
     feedback: "",
@@ -141,6 +182,24 @@ const LMSAssignments = () => {
       );
 
       if (response.data.success) {
+        const newAssignmentId = response.data.assignmentId;
+
+        // If it's a quiz, save questions
+        if (formData.assignment_type === "quiz" && questions.length > 0) {
+          for (let i = 0; i < questions.length; i++) {
+            const q = questions[i];
+            await axios.post(`${API_BASE}/api/lms/assignments/quiz-question`, {
+              assignment_id: newAssignmentId,
+              question_text: q.question_text,
+              question_type: q.question_type,
+              options: q.options,
+              correct_answer: q.correct_answer,
+              points: q.points,
+              order_num: i + 1,
+            });
+          }
+        }
+
         alert("Assignment created successfully!");
         setShowCreateModal(false);
         resetForm();
@@ -211,6 +270,7 @@ const LMSAssignments = () => {
       section_id: "",
       course_id: "",
     });
+    setQuestions([]);
   };
 
   const getStatusBadge = (assignment) => {
@@ -289,31 +349,28 @@ const LMSAssignments = () => {
       <div className="mb-6 flex gap-4 border-b">
         <button
           onClick={() => setActiveTab("all")}
-          className={`pb-3 px-4 font-medium transition ${
-            activeTab === "all"
-              ? "border-b-2 border-indigo-600 text-indigo-600"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
+          className={`pb-3 px-4 font-medium transition ${activeTab === "all"
+            ? "border-b-2 border-indigo-600 text-indigo-600"
+            : "text-gray-600 hover:text-gray-900"
+            }`}
         >
           All Assignments
         </button>
         <button
           onClick={() => setActiveTab("active")}
-          className={`pb-3 px-4 font-medium transition ${
-            activeTab === "active"
-              ? "border-b-2 border-indigo-600 text-indigo-600"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
+          className={`pb-3 px-4 font-medium transition ${activeTab === "active"
+            ? "border-b-2 border-indigo-600 text-indigo-600"
+            : "text-gray-600 hover:text-gray-900"
+            }`}
         >
           Active
         </button>
         <button
           onClick={() => setActiveTab("past")}
-          className={`pb-3 px-4 font-medium transition ${
-            activeTab === "past"
-              ? "border-b-2 border-indigo-600 text-indigo-600"
-              : "text-gray-600 hover:text-gray-900"
-          }`}
+          className={`pb-3 px-4 font-medium transition ${activeTab === "past"
+            ? "border-b-2 border-indigo-600 text-indigo-600"
+            : "text-gray-600 hover:text-gray-900"
+            }`}
         >
           Past Due
         </button>
@@ -611,6 +668,109 @@ const LMSAssignments = () => {
                 </label>
               </div>
 
+              {formData.assignment_type === "quiz" && (
+                <div className="border-t pt-4 mt-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Quiz Questions
+                    </label>
+                    <button
+                      type="button"
+                      onClick={addQuestion}
+                      className="text-indigo-600 hover:text-indigo-700 text-sm font-medium flex items-center gap-1"
+                    >
+                      <Plus className="w-4 h-4" /> Add Question
+                    </button>
+                  </div>
+
+                  <div className="space-y-6">
+                    {questions.map((q, index) => (
+                      <div
+                        key={q.id}
+                        className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => removeQuestion(q.id)}
+                          className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                        <div className="grid gap-3">
+                          <div className="flex gap-4">
+                            <div className="flex-1">
+                              <label className="block text-xs font-medium text-gray-500 mb-1">
+                                Question {index + 1}
+                              </label>
+                              <input
+                                type="text"
+                                value={q.question_text}
+                                onChange={(e) =>
+                                  updateQuestion(q.id, "question_text", e.target.value)
+                                }
+                                placeholder="Enter question text"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                required
+                              />
+                            </div>
+                            <div className="w-24">
+                              <label className="block text-xs font-medium text-gray-500 mb-1">
+                                Points
+                              </label>
+                              <input
+                                type="number"
+                                value={q.points}
+                                onChange={(e) =>
+                                  updateQuestion(q.id, "points", parseInt(e.target.value) || 0)
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                                min="1"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="block text-xs font-medium text-gray-500">Options</label>
+                            {q.options.map((option, optIdx) => (
+                              <div key={optIdx} className="flex items-center gap-2">
+                                <span className="text-xs text-gray-400 w-4">{String.fromCharCode(65 + optIdx)}.</span>
+                                <input
+                                  type="text"
+                                  value={option}
+                                  onChange={(e) => updateOption(q.id, optIdx, e.target.value)}
+                                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-md text-sm"
+                                  placeholder={`Option ${optIdx + 1}`}
+                                  required
+                                />
+                              </div>
+                            ))}
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">Correct Answer</label>
+                            <select
+                              value={q.correct_answer}
+                              onChange={(e) => updateQuestion(q.id, "correct_answer", e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            >
+                              {q.options.map((opt, i) => (
+                                <option key={i} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {questions.length === 0 && (
+                      <p className="text-sm text-gray-500 text-center italic py-2">No questions added yet.</p>
+                    )}
+                  </div>
+                  <div className="mt-4 text-right text-sm text-gray-600">
+                    Total Logic Points: <span className="font-bold">{questions.reduce((sum, q) => sum + (q.points || 0), 0)}</span> (Make sure this matches Total Points above)
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-4 pt-4">
                 <button
                   type="button"
@@ -681,11 +841,10 @@ const LMSAssignments = () => {
                           </p>
                         </div>
                         <span
-                          className={`px-3 py-1 rounded-full text-sm ${
-                            submission.status === "graded"
-                              ? "bg-green-100 text-green-600"
-                              : "bg-yellow-100 text-yellow-600"
-                          }`}
+                          className={`px-3 py-1 rounded-full text-sm ${submission.status === "graded"
+                            ? "bg-green-100 text-green-600"
+                            : "bg-yellow-100 text-yellow-600"
+                            }`}
                         >
                           {submission.status}
                         </span>
