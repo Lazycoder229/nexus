@@ -89,6 +89,14 @@ const ROLE_CONFIG = {
     icon: Users,
     color: "bg-yellow-100 text-yellow-800 border-yellow-300",
   },
+  HR: {
+    icon: Briefcase,
+    color: "bg-pink-100 text-pink-800 border-pink-300",
+  },
+  Accounting: {
+    icon: FileText,
+    color: "bg-blue-100 text-blue-800 border-blue-300",
+  },
 };
 
 const PERMISSIONS_LIST = [
@@ -119,6 +127,8 @@ const INITIAL_RBAC_STATE = {
   Faculty: PERMISSIONS_LIST.map((p) => ({ ...p, allowed: p.id === "S1" })),
   Staff: PERMISSIONS_LIST.map((p) => ({ ...p, allowed: p.id === "U1" })),
   Student: PERMISSIONS_LIST.map((p) => ({ ...p, allowed: false })),
+  HR: PERMISSIONS_LIST.map((p) => ({ ...p, allowed: false })),
+  Accounting: PERMISSIONS_LIST.map((p) => ({ ...p, allowed: false })),
 };
 
 /* -------------------------
@@ -250,7 +260,7 @@ const ViewUserModal = ({ isOpen, onClose, user }) => {
           value: user.father_name || user.mother_name || "N/A",
         },
         { label: "Parent Phone", value: user.parent_phone || "N/A" },
-        { label: "Mailing Address", value: user.mailing_address || "N/A" }
+        { label: "Mailing Address", value: user.mailing_address || "N/A" },
       );
     } else if (["Admin", "Faculty", "Staff"].includes(user.role)) {
       fields.push(
@@ -258,7 +268,7 @@ const ViewUserModal = ({ isOpen, onClose, user }) => {
         { label: "Department", value: user.department || "N/A" },
         { label: "Position Title", value: user.position_title || "N/A" },
         { label: "Date Hired", value: formatDOB(user.date_hired) || "N/A" },
-        { label: "Employment Status", value: user.status || "N/A" }
+        { label: "Employment Status", value: user.status || "N/A" },
       );
     }
 
@@ -269,7 +279,7 @@ const ViewUserModal = ({ isOpen, onClose, user }) => {
           label: "Educational Attainment",
           value: user.educational_attainment || "N/A",
         },
-        { label: "License Number", value: user.license_number || "N/A" }
+        { label: "License Number", value: user.license_number || "N/A" },
       );
     }
 
@@ -418,7 +428,7 @@ function UserManagement() {
         `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        } // Added missing closing brace and comma
+        }, // Added missing closing brace and comma
       );
       setDepartments(response.data);
     } catch (error) {
@@ -433,7 +443,7 @@ function UserManagement() {
         `${import.meta.env.VITE_API_BASE_URL}/api/programs`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       setPrograms(response.data);
     } catch (error) {
@@ -448,7 +458,7 @@ function UserManagement() {
         `${import.meta.env.VITE_API_BASE_URL}/api/users`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       console.log("Fetched users:", response.data);
       setUsers(response.data);
@@ -491,6 +501,14 @@ function UserManagement() {
       };
     else if (role === "Staff")
       specificFields = { ...employeeCommon, role: "Staff", employeeId: "" };
+    else if (role === "HR")
+      specificFields = { ...employeeCommon, role: "HR", employeeId: "" };
+    else if (role === "Accounting")
+      specificFields = {
+        ...employeeCommon,
+        role: "Accounting",
+        employeeId: "",
+      };
 
     return { ...initialCommonState, ...specificFields, role };
   }
@@ -542,16 +560,18 @@ function UserManagement() {
 
     try {
       let response;
+      // Always ensure role is set in formData
+      const submitData = { ...formData, role: selectedRole };
 
       // -------- CREATE MODE --------
       if (!isEditing) {
         // Password check only when creating
         if (
-          !formData.password ||
-          formData.password !== formData.confirmPassword
+          !submitData.password ||
+          submitData.password !== submitData.confirmPassword
         ) {
           alert(
-            "Password and Confirm Password must match and cannot be empty."
+            "Password and Confirm Password must match and cannot be empty.",
           );
           return;
         }
@@ -565,7 +585,7 @@ function UserManagement() {
             "employeeId",
           ];
           const missing = requiredFields.filter(
-            (field) => !formData[field] || formData[field].trim() === ""
+            (field) => !submitData[field] || submitData[field].trim() === "",
           );
           if (missing.length) {
             alert(`Please fill required fields: ${missing.join(", ")}`);
@@ -577,7 +597,7 @@ function UserManagement() {
         if (selectedRole === "Student") {
           response = await axios.post(
             `${import.meta.env.VITE_API_BASE_URL}/api/users/student`,
-            formData
+            submitData,
           );
         }
 
@@ -585,7 +605,7 @@ function UserManagement() {
         else {
           response = await axios.post(
             `${import.meta.env.VITE_API_BASE_URL}/api/users/employee`,
-            formData
+            submitData,
           );
         }
       }
@@ -598,7 +618,7 @@ function UserManagement() {
         if (selectedRole === "Student") {
           response = await axios.put(
             `${import.meta.env.VITE_API_BASE_URL}/api/users/student/${userId}`,
-            formData
+            submitData,
           );
         }
 
@@ -606,7 +626,7 @@ function UserManagement() {
         else {
           response = await axios.put(
             `${import.meta.env.VITE_API_BASE_URL}/api/users/employee/${userId}`,
-            formData
+            submitData,
           );
         }
       }
@@ -681,7 +701,7 @@ function UserManagement() {
 
     try {
       await axios.delete(
-        `${import.meta.env.VITE_API_BASE_URL}/api/users/${userId}`
+        `${import.meta.env.VITE_API_BASE_URL}/api/users/${userId}`,
       );
 
       setUsers((prev) => prev.filter((u) => u.user_id !== userId));
@@ -690,7 +710,7 @@ function UserManagement() {
     } catch (err) {
       console.error(err);
       alert(
-        `Error deleting user: ${err.response?.data?.message || err.message}`
+        `Error deleting user: ${err.response?.data?.message || err.message}`,
       );
     }
   };
@@ -699,7 +719,7 @@ function UserManagement() {
     setRbac((prevRbac) => ({
       ...prevRbac,
       [role]: prevRbac[role].map((p) =>
-        p.id === permissionId ? { ...p, allowed: isAllowed } : p
+        p.id === permissionId ? { ...p, allowed: isAllowed } : p,
       ),
     }));
   };
@@ -722,7 +742,7 @@ function UserManagement() {
           (u.lastName || "").toLowerCase().includes(q) ||
           (u.email || "").toLowerCase().includes(q) ||
           (u.studentNumber || "").toLowerCase().includes(q) ||
-          (u.employeeId || "").toLowerCase().includes(q)
+          (u.employeeId || "").toLowerCase().includes(q),
       );
     }
 
@@ -788,7 +808,7 @@ function UserManagement() {
     const rows = users.map((u) =>
       headers
         .map((h) => `"${(u[h] || "")?.toString().replace(/"/g, '""')}"`)
-        .join(",")
+        .join(","),
     );
     const csv = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -876,22 +896,24 @@ function UserManagement() {
       </thead>
       <tbody>
         ${users
-        .map(
-          (u) =>
-            `<tr>
+          .map(
+            (u) =>
+              `<tr>
                 <td>${u.last_name || ""}, ${u.first_name || ""}</td>
                 <td>${u.email || ""}</td>
                 <td>${u.role || ""}</td>
-                <td>${u.role === "Student"
-              ? u.student_number || ""
-              : u.employee_id || ""
-            }</td>
-                <td>${u.role === "Student" ? u.course || "" : u.department || ""
-            }</td>
+                <td>${
+                  u.role === "Student"
+                    ? u.student_number || ""
+                    : u.employee_id || ""
+                }</td>
+                <td>${
+                  u.role === "Student" ? u.course || "" : u.department || ""
+                }</td>
                 <td>${u.status || ""}</td>
-              </tr>`
-        )
-        .join("")}
+              </tr>`,
+          )
+          .join("")}
       </tbody>
     </table>
 
@@ -1191,13 +1213,18 @@ function UserManagement() {
 
       {!collapsed.employee && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          <TextInput
-            name="employeeId"
-            placeholder="Employee ID"
-            value={formData.employeeId}
-            onChange={handleInputChange}
-            required={selectedRole !== "Student"}
-          />
+          {/* Only show employeeId for roles that require it */}
+          {["Admin", "Faculty", "Staff", "HR", "Accounting"].includes(
+            selectedRole,
+          ) && (
+            <TextInput
+              name="employeeId"
+              placeholder="Employee ID"
+              value={formData.employeeId}
+              onChange={handleInputChange}
+              required
+            />
+          )}
           <SelectInput
             name="department"
             value={formData.department}
@@ -1354,6 +1381,8 @@ function UserManagement() {
               <option value="Admin">Admin</option>
               <option value="Faculty">Faculty</option>
               <option value="Staff">Staff</option>
+              <option value="HR">HR</option>
+              <option value="Accounting">Accounting</option>
             </SelectInput>
           </div>
         </div>
@@ -1454,10 +1483,11 @@ function UserManagement() {
 
                     <td className="px-3 py-2 text-sm">
                       <span
-                        className={`px-2 py-0.5 text-xs font-semibold rounded-full ${user.status === "Active"
-                          ? "bg-green-500 text-white"
-                          : "bg-yellow-500 text-white"
-                          }`}
+                        className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                          user.status === "Active"
+                            ? "bg-green-500 text-white"
+                            : "bg-yellow-500 text-white"
+                        }`}
                       >
                         {user.status || "Active"}
                       </span>
@@ -1592,7 +1622,7 @@ function UserManagement() {
                 </td>
                 {Object.keys(ROLE_CONFIG).map((role) => {
                   const isAllowed = rbac[role].find(
-                    (p) => p.id === permission.id
+                    (p) => p.id === permission.id,
                   )?.allowed;
                   return (
                     <td
@@ -1607,7 +1637,7 @@ function UserManagement() {
                             handlePermissionChange(
                               role,
                               permission.id,
-                              e.target.checked
+                              e.target.checked,
                             )
                           }
                           className="form-checkbox h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 transition duration-150 ease-in-out"
@@ -1616,8 +1646,9 @@ function UserManagement() {
                           }
                         />
                         <span
-                          className={`ml-2 text-xs font-medium ${isAllowed ? "text-green-600" : "text-red-500"
-                            } hidden sm:inline`}
+                          className={`ml-2 text-xs font-medium ${
+                            isAllowed ? "text-green-600" : "text-red-500"
+                          } hidden sm:inline`}
                         >
                           {isAllowed ? "Allowed" : "Denied"}
                         </span>
@@ -1657,10 +1688,11 @@ function UserManagement() {
         <button
           onClick={() => setCurrentPage("users")}
           className={`flex items-center gap-2 px-4 py-1.5 font-semibold text-sm transition duration-150
-      ${currentPage === "users"
-              ? "border-b-2 border-indigo-600 text-indigo-600"
-              : "text-gray-500 hover:text-indigo-600"
-            }
+      ${
+        currentPage === "users"
+          ? "border-b-2 border-indigo-600 text-indigo-600"
+          : "text-gray-500 hover:text-indigo-600"
+      }
     `}
         >
           <Users className="w-4 h-4" /> Manage Users
@@ -1670,10 +1702,11 @@ function UserManagement() {
         <button
           onClick={() => setCurrentPage("roles")}
           className={`flex items-center gap-2 px-4 py-1.5 font-semibold text-sm transition duration-150
-      ${currentPage === "roles"
-              ? "border-b-2 border-indigo-600 text-indigo-600"
-              : "text-gray-500 hover:text-indigo-600"
-            }
+      ${
+        currentPage === "roles"
+          ? "border-b-2 border-indigo-600 text-indigo-600"
+          : "text-gray-500 hover:text-indigo-600"
+      }
     `}
         >
           <ListChecks className="w-4 h-4" /> Access Control (RBAC)
@@ -1710,6 +1743,8 @@ function UserManagement() {
               <option value="Admin">Admin</option>
               <option value="Faculty">Faculty</option>
               <option value="Staff">Staff</option>
+              <option value="HR">HR</option>
+              <option value="Accounting">Accounting</option>
             </SelectInput>
             <p className="text-xs text-gray-500 mt-2">
               The role determines the specific fields required below. Role
@@ -1719,8 +1754,9 @@ function UserManagement() {
 
           {renderCommonFields()}
           {selectedRole === "Student" && renderStudentFields()}
-          {["Admin", "Faculty", "Staff"].includes(selectedRole) &&
-            renderEmployeeFields()}
+          {["Admin", "Faculty", "Staff", "HR", "Accounting"].includes(
+            selectedRole,
+          ) && renderEmployeeFields()}
 
           <div className="flex justify-end space-x-3 mt-4 pt-3 border-t border-gray-200">
             <button

@@ -162,7 +162,7 @@ export default function StaffDashboard() {
       const inventory = inventoryRes.data || [];
       const borrowRequests =
         borrowRes.data?.filter((t) => t.type === "borrow") || [];
-      const maintenanceRequests = maintenanceRes.data || [];
+      const maintenanceRequests = maintenanceRes.data?.data || [];
       setStats({
         totalBooks: books.length,
         inventoryItems: inventory.length,
@@ -205,13 +205,13 @@ export default function StaffDashboard() {
       color: "bg-indigo-600",
       detail: "Books in catalog",
     },
-    {
+    /*  {
       title: "Inventory Items",
       value: loading ? "..." : stats.inventoryItems.toString(),
       icon: ClipboardList,
       color: "bg-green-600",
       detail: "Assets managed",
-    },
+    }, */
     {
       title: "Borrow Requests",
       value: loading ? "..." : stats.borrowRequests.toString(),

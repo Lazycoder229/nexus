@@ -13,7 +13,7 @@ CREATE TABLE users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,  -- Unique identifier for each user
     email VARCHAR(255) NOT NULL UNIQUE,      -- Login email
     password_hash VARCHAR(255) NOT NULL,     -- Hashed password
-    role ENUM('Student', 'Admin', 'Faculty', 'Staff') NOT NULL,  -- User role
+    role ENUM('Student', 'Admin', 'Faculty', 'Staff',"HR","Accounting") NOT NULL,  -- User role
     
     first_name VARCHAR(100) NOT NULL,        -- First name
     middle_name VARCHAR(100),                -- Middle name (optional)
@@ -221,8 +221,7 @@ CREATE TABLE enrollments (
     FOREIGN KEY (course_id) REFERENCES courses(course_id) ON DELETE CASCADE,
     FOREIGN KEY (period_id) REFERENCES academic_periods(period_id) ON DELETE CASCADE
 );
-ALTER TABLE enrollments 
-ADD COLUMN year_level VARCHAR(20) AFTER period_id;
+
 -- ===========================
 -- 13. Admissions Table
 -- Tracks student admission applications and status
@@ -2792,142 +2791,6 @@ CREATE TABLE IF NOT EXISTS system_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-/*     -- ===========================
--- ADDITIONAL VIEWS FOR FRONTEND USAGE
--- ===========================
-
--- Faculty Announcements
-CREATE OR REPLACE VIEW faculty_announcements AS
-SELECT a.*, u.first_name, u.last_name
-FROM announcements a
-JOIN users u ON a.created_by = u.user_id
-WHERE a.target_role = 'Faculty';
-
--- Faculty Assigned Subjects
-CREATE OR REPLACE VIEW faculty_assigned_subjects AS
-SELECT f.user_id AS faculty_user_id, c.code AS course_code, c.title AS course_title, s.section_name, ap.school_year, ap.semester
-FROM faculty_course_assignments f
-JOIN courses c ON f.course_id = c.course_id
-JOIN sections s ON f.section_id = s.section_id
-JOIN academic_periods ap ON f.period_id = ap.period_id;
-
--- Faculty Grade Encoding
-CREATE OR REPLACE VIEW faculty_grade_encoding AS
-SELECT g.*, c.code AS course_code, c.title AS course_title, u.first_name, u.last_name
-FROM grades g
-JOIN courses c ON g.course_id = c.course_id
-JOIN users u ON g.student_user_id = u.user_id;
-
--- Staff Library Books
-CREATE OR REPLACE VIEW library_books AS
-SELECT b.*, c.name AS category_name
-FROM library_books b
-LEFT JOIN library_categories c ON b.category_id = c.category_id;
-
--- Staff Library Book Categories
-CREATE OR REPLACE VIEW library_book_categories AS
-SELECT * FROM library_categories;
-
--- Staff Library Book Statistics
-CREATE OR REPLACE VIEW library_book_statistics AS
-SELECT category_id, COUNT(*) AS total_books
-FROM library_books
-GROUP BY category_id;
-
--- Student Enlistment Available
-CREATE OR REPLACE VIEW student_enlistment_available AS
-SELECT c.*, s.section_name, ap.school_year, ap.semester
-FROM courses c
-JOIN sections s ON c.course_id = s.course_id
-JOIN academic_periods ap ON s.period_id = ap.period_id
-WHERE c.status = 'Active';
-
--- Student Enlistment Enrolled
-CREATE OR REPLACE VIEW student_enlistment_enrolled AS
-SELECT e.student_id, c.code AS course_code, c.title AS course_title, s.section_name, ap.school_year, ap.semester
-FROM enrollments e
-JOIN courses c ON e.course_id = c.course_id
-JOIN sections s ON e.section_id = s.section_id
-JOIN academic_periods ap ON e.period_id = ap.period_id;
-
--- HR Employee Summary
-CREATE OR REPLACE VIEW employee_summary AS
-SELECT e.*, u.first_name, u.last_name, u.email, u.phone, u.status
-FROM employee_details e
-JOIN users u ON e.user_id = u.user_id;
-
--- HR Deduction Summary
-CREATE OR REPLACE VIEW deduction_summary AS
-SELECT d.*, u.first_name, u.last_name
-FROM deductions d
-JOIN users u ON d.employee_id = u.user_id;
-
--- Accounting Scholarship Applications
-CREATE OR REPLACE VIEW scholarship_applications AS
-SELECT a.*, u.first_name, u.last_name, s.type_name
-FROM scholarship_applications a
-JOIN users u ON a.student_id = u.user_id
-JOIN scholarship_types s ON a.type_id = s.type_id;
-
--- Accounting Scholarship Types
-CREATE OR REPLACE VIEW scholarship_types_view AS
-SELECT * FROM scholarship_types;
-
--- Accounting Scholarship Applications Statistics
-CREATE OR REPLACE VIEW scholarship_applications_statistics AS
-SELECT type_id, COUNT(*) AS total_applications, SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) AS approved, SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) AS pending
-FROM scholarship_applications
-GROUP BY type_id;
--- ===========================
--- VIEWS FOR FRONTEND ENDPOINTS
--- ===========================
-
--- 1. Invoice Summary View
-CREATE OR REPLACE VIEW invoice_summary AS
-SELECT
-    s.user_id AS student_user_id,
-    s.student_number,
-    u.first_name,
-    u.last_name,
-    COUNT(i.invoice_id) AS total_invoices,
-    SUM(i.amount_due) AS total_due,
-    SUM(i.amount_paid) AS total_paid,
-    (SUM(i.amount_due) - SUM(i.amount_paid)) AS outstanding_balance
-FROM student_invoices i
-JOIN student_details s ON i.student_id = s.user_id
-JOIN users u ON s.user_id = u.user_id
-GROUP BY s.user_id, s.student_number, u.first_name, u.last_name;
-
--- 2. Student Grades Summary View
-CREATE OR REPLACE VIEW student_grades_summary AS
-SELECT
-    g.student_user_id,
-    u.first_name,
-    u.last_name,
-    COUNT(g.grade_id) AS total_grades,
-    AVG(g.final_grade) AS average_grade,
-    MAX(g.final_grade) AS highest_grade,
-    MIN(g.final_grade) AS lowest_grade
-FROM grades g
-JOIN users u ON g.student_user_id = u.user_id
-GROUP BY g.student_user_id, u.first_name, u.last_name;
-
--- 3. Student Enrollment Status View
-CREATE OR REPLACE VIEW student_enrollment_status AS
-SELECT
-    e.student_id,
-    u.first_name,
-    u.last_name,
-    ap.school_year,
-    ap.semester,
-    e.status AS enrollment_status,
-    e.enrollment_date
-FROM enrollments e
-JOIN users u ON e.student_id = u.user_id
-JOIN academic_periods ap ON e.period_id = ap.period_id; */
-
--- Migration: Add year_level column to enrollments table
--- Purpose: Track which academic year (1st-4th Year) students are in when enrolling
 
 ALTER TABLE enrollments 
 ADD COLUMN year_level VARCHAR(20) AFTER period_id;
