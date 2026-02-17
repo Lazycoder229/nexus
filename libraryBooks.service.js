@@ -1,4 +1,4 @@
-import LibraryBooksModel from "../model/libraryBooks.model.js";
+import LibraryBooksModel from "./back-nexus/model/libraryBooks.model.js";
 
 const LibraryBooksService = {
   getAllBooks: async (filters) => {

@@ -52,16 +52,20 @@ export const getAllUsers = async () => {
       s.father_name,
       s.mother_name,
       s.parent_phone,
-      e.employee_id,
-      e.position_title,
-      e.department,
-      e.date_hired,
+      er.employee_id,
+      er.department,
+      er.position,
+      er.hire_date,
+      er.employment_status,
+      e.position_title as detail_position_title,
+      e.department as detail_department,
       e.specialization,
       e.educational_attainment,
       e.license_number,
       e.access_level
     FROM users u
     LEFT JOIN student_details s ON u.user_id = s.user_id
+    LEFT JOIN employee_records er ON u.user_id = er.user_id
     LEFT JOIN employee_details e ON u.user_id = e.user_id
   `);
   return rows;

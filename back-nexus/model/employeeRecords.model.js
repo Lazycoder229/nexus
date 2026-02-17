@@ -2,7 +2,7 @@ import db from "../config/db.js";
 
 const EmployeeRecords = {
   // Create new employee record
-  create: (employeeData, callback) => {
+  create: async (employeeData) => {
     const query = `
       INSERT INTO employee_records (
         user_id, employee_number, department, position, employment_type,
@@ -13,36 +13,33 @@ const EmployeeRecords = {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    db.query(
-      query,
-      [
-        employeeData.user_id,
-        employeeData.employee_number,
-        employeeData.department,
-        employeeData.position,
-        employeeData.employment_type,
-        employeeData.employment_status,
-        employeeData.hire_date,
-        employeeData.end_date,
-        employeeData.basic_salary,
-        employeeData.allowances,
-        employeeData.sss_number,
-        employeeData.tin_number,
-        employeeData.philhealth_number,
-        employeeData.pagibig_number,
-        employeeData.emergency_contact_name,
-        employeeData.emergency_contact_phone,
-        employeeData.emergency_contact_relationship,
-        employeeData.bank_name,
-        employeeData.bank_account_number,
-        employeeData.notes,
-      ],
-      callback
-    );
+    const [result] = await db.query(query, [
+      employeeData.user_id,
+      employeeData.employee_number,
+      employeeData.department,
+      employeeData.position,
+      employeeData.employment_type,
+      employeeData.employment_status,
+      employeeData.hire_date,
+      employeeData.end_date,
+      employeeData.basic_salary,
+      employeeData.allowances,
+      employeeData.sss_number,
+      employeeData.tin_number,
+      employeeData.philhealth_number,
+      employeeData.pagibig_number,
+      employeeData.emergency_contact_name,
+      employeeData.emergency_contact_phone,
+      employeeData.emergency_contact_relationship,
+      employeeData.bank_name,
+      employeeData.bank_account_number,
+      employeeData.notes,
+    ]);
+    return result;
   },
 
   // Get all employee records with user details
-  getAll: (filters, callback) => {
+  getAll: async (filters) => {
     let query = `
       SELECT er.*, u.first_name, u.middle_name, u.last_name, u.email,
              u.phone, u.gender, u.date_of_birth, u.status as user_status
@@ -76,11 +73,12 @@ const EmployeeRecords = {
 
     query += " ORDER BY er.created_at DESC";
 
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 
   // Get employee by ID
-  getById: (id, callback) => {
+  getById: async (id) => {
     const query = `
       SELECT er.*, u.first_name, u.middle_name, u.last_name, u.email,
              u.phone, u.gender, u.date_of_birth, u.permanent_address,
@@ -89,11 +87,19 @@ const EmployeeRecords = {
       INNER JOIN users u ON er.user_id = u.user_id
       WHERE er.employee_id = ?
     `;
-    db.query(query, [id], callback);
+    const [rows] = await db.query(query, [id]);
+    return rows;
+  },
+
+  // Get employee by User ID
+  getByUserId: async (userId) => {
+    const query = `SELECT * FROM employee_records WHERE user_id = ?`;
+    const [rows] = await db.query(query, [userId]);
+    return rows;
   },
 
   // Update employee record
-  update: (id, employeeData, callback) => {
+  update: async (id, employeeData) => {
     const query = `
       UPDATE employee_records SET
         department = ?, position = ?, employment_type = ?,
@@ -106,44 +112,41 @@ const EmployeeRecords = {
       WHERE employee_id = ?
     `;
 
-    db.query(
-      query,
-      [
-        employeeData.department,
-        employeeData.position,
-        employeeData.employment_type,
-        employeeData.employment_status,
-        employeeData.hire_date,
-        employeeData.end_date,
-        employeeData.basic_salary,
-        employeeData.allowances,
-        employeeData.sss_number,
-        employeeData.tin_number,
-        employeeData.philhealth_number,
-        employeeData.pagibig_number,
-        employeeData.emergency_contact_name,
-        employeeData.emergency_contact_phone,
-        employeeData.emergency_contact_relationship,
-        employeeData.bank_name,
-        employeeData.bank_account_number,
-        employeeData.notes,
-        id,
-      ],
-      callback
-    );
+    const [result] = await db.query(query, [
+      employeeData.department,
+      employeeData.position,
+      employeeData.employment_type,
+      employeeData.employment_status,
+      employeeData.hire_date,
+      employeeData.end_date,
+      employeeData.basic_salary,
+      employeeData.allowances,
+      employeeData.sss_number,
+      employeeData.tin_number,
+      employeeData.philhealth_number,
+      employeeData.pagibig_number,
+      employeeData.emergency_contact_name,
+      employeeData.emergency_contact_phone,
+      employeeData.emergency_contact_relationship,
+      employeeData.bank_name,
+      employeeData.bank_account_number,
+      employeeData.notes,
+      id,
+    ]);
+    return result;
   },
 
   // Delete employee record
-  delete: (id, callback) => {
-    db.query(
+  delete: async (id) => {
+    const [result] = await db.query(
       "DELETE FROM employee_records WHERE employee_id = ?",
-      [id],
-      callback
+      [id]
     );
+    return result;
   },
 
   // Get summary statistics
-  getSummary: (callback) => {
+  getSummary: async () => {
     const query = `
       SELECT 
         COUNT(*) as total_employees,
@@ -153,7 +156,8 @@ const EmployeeRecords = {
         SUM(CASE WHEN employment_type = 'Part-time' THEN 1 ELSE 0 END) as part_time
       FROM employee_records
     `;
-    db.query(query, callback);
+    const [rows] = await db.query(query);
+    return rows;
   },
 };
 

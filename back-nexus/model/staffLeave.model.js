@@ -2,7 +2,7 @@ import db from "../config/db.js";
 
 const StaffLeave = {
   // Create leave request
-  create: (leaveData, callback) => {
+  create: async (leaveData) => {
     const query = `
       INSERT INTO staff_leave (
         employee_id, leave_type, start_date, end_date, reason,
@@ -10,23 +10,20 @@ const StaffLeave = {
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
-    db.query(
-      query,
-      [
-        leaveData.employee_id,
-        leaveData.leave_type,
-        leaveData.start_date,
-        leaveData.end_date,
-        leaveData.reason,
-        leaveData.status || "Pending",
-        leaveData.supporting_document_url,
-      ],
-      callback
-    );
+    const [result] = await db.query(query, [
+      leaveData.employee_id,
+      leaveData.leave_type,
+      leaveData.start_date,
+      leaveData.end_date,
+      leaveData.reason,
+      leaveData.status || "Pending",
+      leaveData.supporting_document_url,
+    ]);
+    return result;
   },
 
   // Get all leave requests with employee details
-  getAll: (filters, callback) => {
+  getAll: async (filters) => {
     let query = `
       SELECT sl.*, er.employee_number, er.department, er.position,
              u.first_name, u.middle_name, u.last_name,
@@ -62,11 +59,12 @@ const StaffLeave = {
 
     query += " ORDER BY sl.created_at DESC";
 
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 
   // Get leave by ID
-  getById: (id, callback) => {
+  getById: async (id) => {
     const query = `
       SELECT sl.*, er.employee_number, er.department, er.position,
              u.first_name, u.middle_name, u.last_name
@@ -75,11 +73,12 @@ const StaffLeave = {
       INNER JOIN users u ON er.user_id = u.user_id
       WHERE sl.leave_id = ?
     `;
-    db.query(query, [id], callback);
+    const [rows] = await db.query(query, [id]);
+    return rows;
   },
 
   // Update leave request
-  update: (id, leaveData, callback) => {
+  update: async (id, leaveData) => {
     const query = `
       UPDATE staff_leave SET
         leave_type = ?, start_date = ?, end_date = ?,
@@ -87,23 +86,20 @@ const StaffLeave = {
       WHERE leave_id = ?
     `;
 
-    db.query(
-      query,
-      [
-        leaveData.leave_type,
-        leaveData.start_date,
-        leaveData.end_date,
-        leaveData.reason,
-        leaveData.status,
-        leaveData.supporting_document_url,
-        id,
-      ],
-      callback
-    );
+    const [result] = await db.query(query, [
+      leaveData.leave_type,
+      leaveData.start_date,
+      leaveData.end_date,
+      leaveData.reason,
+      leaveData.status,
+      leaveData.supporting_document_url,
+      id,
+    ]);
+    return result;
   },
 
   // Approve leave
-  approve: (id, approvedBy, callback) => {
+  approve: async (id, approvedBy) => {
     const query = `
       UPDATE staff_leave SET
         status = 'Approved',
@@ -111,11 +107,12 @@ const StaffLeave = {
         approved_date = CURRENT_TIMESTAMP
       WHERE leave_id = ?
     `;
-    db.query(query, [approvedBy, id], callback);
+    const [result] = await db.query(query, [approvedBy, id]);
+    return result;
   },
 
   // Reject leave
-  reject: (id, approvedBy, rejectionReason, callback) => {
+  reject: async (id, approvedBy, rejectionReason) => {
     const query = `
       UPDATE staff_leave SET
         status = 'Rejected',
@@ -124,16 +121,25 @@ const StaffLeave = {
         rejection_reason = ?
       WHERE leave_id = ?
     `;
-    db.query(query, [approvedBy, rejectionReason, id], callback);
+    const [result] = await db.query(query, [
+      approvedBy,
+      rejectionReason,
+      id,
+    ]);
+    return result;
   },
 
   // Delete leave request
-  delete: (id, callback) => {
-    db.query("DELETE FROM staff_leave WHERE leave_id = ?", [id], callback);
+  delete: async (id) => {
+    const [result] = await db.query(
+      "DELETE FROM staff_leave WHERE leave_id = ?",
+      [id]
+    );
+    return result;
   },
 
   // Get leave summary
-  getSummary: (filters, callback) => {
+  getSummary: async (filters) => {
     let query = `
       SELECT 
         COUNT(*) as total_requests,
@@ -151,7 +157,8 @@ const StaffLeave = {
       params.push(filters.start_date, filters.end_date);
     }
 
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 };
 

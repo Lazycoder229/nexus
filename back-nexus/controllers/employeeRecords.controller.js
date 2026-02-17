@@ -1,7 +1,7 @@
 import EmployeeRecords from "../model/employeeRecords.model.js";
 
 // Get all employee records
-export const getAllEmployees = (req, res) => {
+export const getAllEmployees = async (req, res) => {
   const filters = {
     department: req.query.department,
     employment_status: req.query.employment_status,
@@ -9,91 +9,97 @@ export const getAllEmployees = (req, res) => {
     search: req.query.search,
   };
 
-  EmployeeRecords.getAll(filters, (err, results) => {
-    if (err) {
-      return res
-        .status(500)
-        .json({ message: "Error fetching employees", error: err });
-    }
+  try {
+    const results = await EmployeeRecords.getAll(filters);
     res.json({ success: true, data: results });
-  });
+  } catch (err) {
+    console.error("Error fetching employees:", err);
+    res
+      .status(500)
+      .json({ message: "Error fetching employees", error: err.message });
+  }
 };
 
 // Get employee by ID
-export const getEmployeeById = (req, res) => {
-  EmployeeRecords.getById(req.params.id, (err, results) => {
-    if (err) {
-      return res
-        .status(500)
-        .json({ message: "Error fetching employee", error: err });
-    }
+export const getEmployeeById = async (req, res) => {
+  try {
+    const results = await EmployeeRecords.getById(req.params.id);
     if (results.length === 0) {
       return res.status(404).json({ message: "Employee not found" });
     }
     res.json({ success: true, data: results[0] });
-  });
+  } catch (err) {
+    console.error("Error fetching employee:", err);
+    res
+      .status(500)
+      .json({ message: "Error fetching employee", error: err.message });
+  }
 };
 
 // Create employee record
-export const createEmployee = (req, res) => {
-  // Generate employee number
-  const employeeNumber = `EMP-${Date.now().toString().slice(-8)}`;
-  const employeeData = { ...req.body, employee_number: employeeNumber };
+export const createEmployee = async (req, res) => {
+  try {
+    // Generate employee number
+    const employeeNumber = `EMP-${Date.now().toString().slice(-8)}`;
+    const employeeData = { ...req.body, employee_number: employeeNumber };
 
-  EmployeeRecords.create(employeeData, (err, result) => {
-    if (err) {
-      return res
-        .status(500)
-        .json({ message: "Error creating employee", error: err });
-    }
+    const result = await EmployeeRecords.create(employeeData);
     res.status(201).json({
       success: true,
       message: "Employee created successfully",
       employee_id: result.insertId,
     });
-  });
+  } catch (err) {
+    console.error("Error creating employee:", err);
+    res
+      .status(500)
+      .json({ message: "Error creating employee", error: err.message });
+  }
 };
 
 // Update employee record
-export const updateEmployee = (req, res) => {
-  EmployeeRecords.update(req.params.id, req.body, (err, result) => {
-    if (err) {
-      return res
-        .status(500)
-        .json({ message: "Error updating employee", error: err });
-    }
+export const updateEmployee = async (req, res) => {
+  try {
+    const result = await EmployeeRecords.update(req.params.id, req.body);
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Employee not found" });
     }
     res.json({ success: true, message: "Employee updated successfully" });
-  });
+  } catch (err) {
+    console.error("Error updating employee:", err);
+    res
+      .status(500)
+      .json({ message: "Error updating employee", error: err.message });
+  }
 };
 
 // Delete employee record
-export const deleteEmployee = (req, res) => {
-  EmployeeRecords.delete(req.params.id, (err, result) => {
-    if (err) {
-      return res
-        .status(500)
-        .json({ message: "Error deleting employee", error: err });
-    }
+export const deleteEmployee = async (req, res) => {
+  try {
+    const result = await EmployeeRecords.delete(req.params.id);
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Employee not found" });
     }
     res.json({ success: true, message: "Employee deleted successfully" });
-  });
+  } catch (err) {
+    console.error("Error deleting employee:", err);
+    res
+      .status(500)
+      .json({ message: "Error deleting employee", error: err.message });
+  }
 };
 
 // Get summary statistics
-export const getEmployeeSummary = (req, res) => {
-  EmployeeRecords.getSummary((err, results) => {
-    if (err) {
-      return res
-        .status(500)
-        .json({ message: "Error fetching summary", error: err });
-    }
+export const getEmployeeSummary = async (req, res) => {
+  try {
+    const results = await EmployeeRecords.getSummary();
     res.json({ success: true, data: results[0] });
-  });
+  } catch (err) {
+    console.error("Error fetching summary:", err);
+    res
+      .status(500)
+      .json({ message: "Error fetching summary", error: err.message });
+  }
 };
 
 export default {

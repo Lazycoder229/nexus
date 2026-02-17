@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import api from "../../../api/axios";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import {
@@ -122,68 +123,40 @@ const HRDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // TODO: Replace with actual API endpoint
-      // const response = await axios.get('/api/hr/dashboard');
-      // Mock data for demonstration
+      // Fetch stats
+      const statsRes = await api.get("/api/hr/stats");
+      // Fetch recent activities
+      const activitiesRes = await api.get("/api/hr/activities");
+      // Fetch upcoming payrolls
+      const payrollsRes = await api.get("/api/hr/upcoming-payrolls");
+
       setDashboardData({
-        stats: {
-          totalEmployees: 52,
-          pendingLeaves: 3,
-          payrollsProcessed: 12,
-          deductionRequests: 2,
+        stats: statsRes.data || {
+          totalEmployees: 0,
+          pendingLeaves: 0,
+          payrollsProcessed: 0,
+          deductionRequests: 0,
         },
-        recentActivities: [
-          {
-            id: 1,
-            title: "Payroll Processed",
-            description: "December 2025 payroll completed",
-            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-            icon: FileText,
-            color: "bg-green-500",
-          },
-          {
-            id: 2,
-            title: "Leave Approved",
-            description: "Annual leave approved for John Doe",
-            timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000),
-            icon: CalendarCheck,
-            color: "bg-blue-500",
-          },
-          {
-            id: 3,
-            title: "Deduction Request",
-            description: "New deduction request submitted",
-            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-            icon: CheckSquare,
-            color: "bg-yellow-500",
-          },
-        ],
-        upcomingPayrolls: [
-          {
-            id: 1,
-            period: "January 2026",
-            description: "Monthly payroll for all employees",
-            amount: "₱ 1,200,000",
-            employees: 52,
-            status: "pending",
-          },
-          {
-            id: 2,
-            period: "February 2026",
-            description: "Monthly payroll for all employees",
-            amount: "₱ 1,250,000",
-            employees: 53,
-            status: "pending",
-          },
-          {
-            id: 3,
-            period: "December 2025",
-            description: "Year-end bonus payroll",
-            amount: "₱ 300,000",
-            employees: 52,
-            status: "processed",
-          },
-        ],
+        recentActivities: (activitiesRes.data || []).map((a) => ({
+          ...a,
+          icon:
+            a.type === "payroll"
+              ? FileText
+              : a.type === "leave"
+                ? CalendarCheck
+                : a.type === "deduction"
+                  ? CheckSquare
+                  : Bell,
+          color:
+            a.type === "payroll"
+              ? "bg-green-500"
+              : a.type === "leave"
+                ? "bg-blue-500"
+                : a.type === "deduction"
+                  ? "bg-yellow-500"
+                  : "bg-indigo-500",
+        })),
+        upcomingPayrolls: payrollsRes.data || [],
       });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);

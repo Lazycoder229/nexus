@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../api/axios";
 import { Download, FileText, Calendar, Search } from "lucide-react";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const PayrollReports = () => {
   const [payrollSetups, setPayrollSetups] = useState([]);
@@ -25,7 +23,7 @@ const PayrollReports = () => {
 
   const fetchPayrollSetups = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/payroll/setups`);
+      const response = await api.get(`/api/payroll/setups`);
       setPayrollSetups(response.data.data || []);
     } catch (error) {
       console.error("Error fetching payroll setups:", error);
@@ -40,8 +38,8 @@ const PayrollReports = () => {
 
     setLoading(true);
     try {
-      const response = await axios.get(
-        `${API_BASE}/api/payroll/summary/${selectedSetup}`,
+      const response = await api.get(
+        `/api/payroll/summary/${selectedSetup}`,
         {
           params: { report_type: reportType },
         }
@@ -163,7 +161,7 @@ const PayrollReports = () => {
               >
                 <option value="">Select a period</option>
                 {payrollSetups.map((setup) => (
-                  <option key={setup.setup_id} value={setup.setup_id}>
+                  <option key={setup.payroll_setup_id} value={setup.payroll_setup_id}>
                     {setup.period_type} - {new Date(setup.start_date).toLocaleDateString()} to {new Date(setup.end_date).toLocaleDateString()}
                   </option>
                 ))}
@@ -255,8 +253,8 @@ const PayrollReports = () => {
               </div>
             </div>
 
-            {/* Detailed Breakdown */}
-            {reportData.payslips && reportData.payslips.length > 0 && (
+            {/* Detailed / Tax Report View */}
+            {(reportType === "Detailed" || reportType === "Tax Report") && reportData.payslips && reportData.payslips.length > 0 && (
               <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
                   <thead className="bg-slate-100 dark:bg-slate-700/70">
@@ -308,6 +306,64 @@ const PayrollReports = () => {
               </div>
             )}
 
+            {/* Department Report */}
+            {reportType === "Department" && reportData.payslips && reportData.payslips.length > 0 && (
+              <div className="space-y-6">
+                {Object.entries(
+                  reportData.payslips.reduce((acc, payslip) => {
+                    const dept = payslip.department || "Unassigned";
+                    if (!acc[dept]) acc[dept] = [];
+                    acc[dept].push(payslip);
+                    return acc;
+                  }, {})
+                ).map(([dept, employees]) => {
+                  const deptTotals = employees.reduce(
+                    (sum, p) => ({
+                      gross: sum.gross + parseFloat(p.gross_pay || 0),
+                      deductions: sum.deductions + parseFloat(p.total_deductions || 0),
+                      net: sum.net + parseFloat(p.net_pay || 0),
+                    }),
+                    { gross: 0, deductions: 0, net: 0 }
+                  );
+
+                  return (
+                    <div key={dept} className="rounded border border-slate-200 dark:border-slate-700 overflow-hidden">
+                      <div className="bg-slate-100 dark:bg-slate-700/70 px-4 py-2 font-bold text-slate-800 dark:text-white border-b border-slate-200 dark:border-slate-700 flex justify-between">
+                        <span>{dept} Department</span>
+                        <span className="text-xs font-normal text-slate-500 self-center">{employees.length} Employees</span>
+                      </div>
+                      <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                        <thead className="bg-slate-50 dark:bg-slate-800">
+                          <tr className="text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            <th className="px-4 py-2">Employee</th>
+                            <th className="px-4 py-2 text-right">Gross Pay</th>
+                            <th className="px-4 py-2 text-right">Deductions</th>
+                            <th className="px-4 py-2 text-right">Net Pay</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
+                          {employees.map((p, idx) => (
+                            <tr key={idx} className="text-sm text-slate-700 dark:text-slate-200">
+                              <td className="px-4 py-1.5">{p.first_name} {p.last_name}</td>
+                              <td className="px-4 py-1.5 text-right">₱{parseFloat(p.gross_pay || 0).toLocaleString()}</td>
+                              <td className="px-4 py-1.5 text-right">₱{parseFloat(p.total_deductions || 0).toLocaleString()}</td>
+                              <td className="px-4 py-1.5 text-right font-medium">₱{parseFloat(p.net_pay || 0).toLocaleString()}</td>
+                            </tr>
+                          ))}
+                          <tr className="bg-slate-50 dark:bg-slate-800/50 font-semibold text-sm">
+                            <td className="px-4 py-2 text-right">Subtotal:</td>
+                            <td className="px-4 py-2 text-right text-green-600 dark:text-green-400">₱{deptTotals.gross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-2 text-right text-red-600 dark:text-red-400">₱{deptTotals.deductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-2 text-right text-indigo-600 dark:text-indigo-400">₱{deptTotals.net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Bank Transfer Section (if applicable) */}
             {reportType === "Bank Transfer" && reportData.payslips && reportData.payslips.length > 0 && (
               <div className="space-y-2">
@@ -343,7 +399,7 @@ const PayrollReports = () => {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 };
 

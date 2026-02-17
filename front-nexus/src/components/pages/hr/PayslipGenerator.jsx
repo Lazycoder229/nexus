@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../api/axios";
 import { Plus, Edit, Trash2, DollarSign, FileText, Search, ChevronLeft, ChevronRight } from "lucide-react";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const PayslipGenerator = () => {
   const [activeTab, setActiveTab] = useState("setups");
@@ -11,6 +9,29 @@ const PayslipGenerator = () => {
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showPayslipModal, setShowPayslipModal] = useState(false);
   const [selectedSetup, setSelectedSetup] = useState(null);
+  const [eligibleEmployees, setEligibleEmployees] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [isAutoCreating, setIsAutoCreating] = useState(false);
+
+  // Fetch eligible employees on mount
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const response = await api.get(`/api/users`);
+        const users = (response.data.data || response.data || []).filter(
+          (u) =>
+            u.role &&
+            ["admin", "faculty", "hr", "accounting", "staff", "employee"].includes(
+              u.role.toLowerCase()
+            )
+        );
+        setEligibleEmployees(users);
+      } catch (error) {
+        console.error("Error fetching employees:", error);
+      }
+    };
+    fetchEmployees();
+  }, []);
 
   // Pagination states
   const [setupCurrentPage, setSetupCurrentPage] = useState(1);
@@ -60,7 +81,7 @@ const PayslipGenerator = () => {
 
   const fetchPayrollSetups = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/payroll/setups`);
+      const response = await api.get(`/api/payroll/setups`);
       setPayrollSetups(response.data.data || []);
     } catch (error) {
       console.error("Error fetching payroll setups:", error);
@@ -69,8 +90,9 @@ const PayslipGenerator = () => {
 
   const fetchPayslips = async (setupId) => {
     try {
-      const response = await axios.get(
-        `${API_BASE}/api/payroll/payslips?setup_id=${setupId}`
+      if (!setupId) return;
+      const response = await api.get(
+        `/api/payroll/payslips/setup/${setupId}`
       );
       setPayslips(response.data.data || []);
     } catch (error) {
@@ -85,71 +107,102 @@ const PayslipGenerator = () => {
 
   const handlePayslipInputChange = async (e) => {
     const { name, value } = e.target;
-    setPayslipFormData({ ...payslipFormData, [name]: value });
 
-    // Auto-fetch deductions when employee is selected
-    if (name === "employee_id" && value) {
-      try {
-        const [employeeRes, deductionsRes] = await Promise.all([
-          axios.get(`${API_BASE}/api/employees/${value}`),
-          axios.get(`${API_BASE}/api/deductions?employee_id=${value}&status=Active`)
-        ]);
+    // Handle special user selection logic
+    if (name === "user_selection") {
+      setSelectedUserId(value);
 
-        const employee = employeeRes.data.data;
-        const deductions = deductionsRes.data.data || [];
+      const selectedUser = eligibleEmployees.find(u => u.user_id.toString() === value.toString());
 
-        // Calculate deductions
-        let sss = 0, philhealth = 0, pagibig = 0, loan = 0, other = 0;
+      if (selectedUser) {
+        if (!selectedUser.employee_id) {
+          // No employee record - Prepare for auto-creation
+          setPayslipFormData(prev => ({
+            ...prev,
+            employee_id: "",
+            basic_pay: "",
+            allowances: "",
+            sss_deduction: "",
+            philhealth_deduction: "",
+            pagibig_deduction: "",
+            loan_deduction: "",
+            other_deductions: ""
+          }));
+          return;
+        }
 
-        deductions.forEach(deduction => {
-          const amount = parseFloat(deduction.amount || 0);
-          switch (deduction.deduction_type) {
-            case "SSS":
-              sss += amount;
-              break;
-            case "PhilHealth":
-              philhealth += amount;
-              break;
-            case "Pag-IBIG":
-              pagibig += amount;
-              break;
-            case "Loan":
-            case "Cash Advance":
-              loan += amount;
-              break;
-            default:
-              other += amount;
-          }
-        });
+        // Valid employee selected
+        const empId = selectedUser.employee_id;
+        setPayslipFormData(prev => ({ ...prev, employee_id: empId }));
 
-        // Update form with employee data and deductions
-        setPayslipFormData(prev => ({
-          ...prev,
-          employee_id: value,
-          basic_pay: employee.basic_salary || "",
-          allowances: employee.allowances || "",
-          sss_deduction: sss.toFixed(2),
-          philhealth_deduction: philhealth.toFixed(2),
-          pagibig_deduction: pagibig.toFixed(2),
-          loan_deduction: loan.toFixed(2),
-          other_deductions: other.toFixed(2),
-        }));
-      } catch (error) {
-        console.error("Error fetching employee deductions:", error);
+        // Auto-fetch deductions
+        try {
+          const [employeeRes, deductionsRes] = await Promise.all([
+            api.get(`/api/employees/${empId}`),
+            api.get(`/api/deductions?employee_id=${empId}&status=Active`)
+          ]);
+
+          const employee = employeeRes.data.data;
+          const deductions = deductionsRes.data.data || [];
+
+          // Calculate deductions
+          let sss = 0, philhealth = 0, pagibig = 0, loan = 0, other = 0;
+
+          deductions.forEach(deduction => {
+            const amount = parseFloat(deduction.amount || 0);
+            switch (deduction.deduction_type) {
+              case "SSS":
+                sss += amount;
+                break;
+              case "PhilHealth":
+                philhealth += amount;
+                break;
+              case "Pag-IBIG":
+                pagibig += amount;
+                break;
+              case "Loan":
+              case "Cash Advance":
+                loan += amount;
+                break;
+              default:
+                other += amount;
+            }
+          });
+
+          // Update form with employee data and deductions
+          setPayslipFormData(prev => ({
+            ...prev,
+            basic_pay: employee.basic_salary || "",
+            allowances: employee.allowances || "",
+            sss_deduction: sss.toFixed(2),
+            philhealth_deduction: philhealth.toFixed(2),
+            pagibig_deduction: pagibig.toFixed(2),
+            loan_deduction: loan.toFixed(2),
+            other_deductions: other.toFixed(2),
+          }));
+        } catch (error) {
+          console.error("Error fetching employee deductions:", error);
+        }
+      } else {
+        // Reset if no user selected
+        setPayslipFormData(prev => ({ ...prev, employee_id: "" }));
       }
+      return;
     }
+
+    setPayslipFormData({ ...payslipFormData, [name]: value });
   };
 
   const handleSetupSubmit = async (e) => {
     e.preventDefault();
     try {
       if (setupFormData.setup_id) {
-        await axios.put(
-          `${API_BASE}/api/payroll/setups/${setupFormData.setup_id}`,
+        await api.put(
+          `/api/payroll/setups/${setupFormData.setup_id}`,
           setupFormData
         );
       } else {
-        await axios.post(`${API_BASE}/api/payroll/setups`, setupFormData);
+        await api.post(`/api/payroll/setups`, setupFormData);
       }
       setShowSetupModal(false);
       resetSetupForm();
@@ -162,23 +215,80 @@ const PayslipGenerator = () => {
 
   const handlePayslipSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate employee selection
+    if (!selectedUserId) {
+      alert("Please select an employee/user.");
+      return;
+    }
+
     try {
+      let finalEmployeeId = payslipFormData.employee_id;
+
+      // Auto-create employee record if missing
+      if (!finalEmployeeId && selectedUserId) {
+        setIsAutoCreating(true);
+        const selectedUser = eligibleEmployees.find(u => u.user_id.toString() === selectedUserId.toString());
+
+        try {
+          const createRes = await api.post('/api/employees', {
+            user_id: selectedUserId,
+            department: "Unassigned",
+            position: selectedUser?.role || "Employee",
+            basic_salary: Number(payslipFormData.basic_pay) || 0,
+            allowances: Number(payslipFormData.allowances) || 0,
+            employment_status: "Active",
+            employment_type: "Full-time",
+            hire_date: new Date().toISOString().split('T')[0],
+            emergency_contact_name: "N/A",
+            emergency_contact_phone: "N/A",
+            emergency_contact_relationship: "N/A",
+            bank_name: "N/A",
+            bank_account_number: "N/A",
+            notes: "Auto-created from Payslip Generator"
+          });
+
+          if (createRes.data.success) {
+            finalEmployeeId = createRes.data.employee_id;
+            // Update the local list to reflect the new ID immediately (optional but good for UX)
+            setEligibleEmployees(prev => prev.map(u =>
+              u.user_id.toString() === selectedUserId.toString()
+                ? { ...u, employee_id: finalEmployeeId, employee_number: "New" }
+                : u
+            ));
+          } else {
+            throw new Error("Failed to auto-create employee record.");
+          }
+        } catch (err) {
+          console.error("Auto-create failed", err);
+          alert("Failed to auto-create employee record: " + JSON.stringify(err.response?.data || err.message));
+          setIsAutoCreating(false);
+          return;
+        }
+      }
+
+      const payload = {
+        ...payslipFormData,
+        employee_id: finalEmployeeId, // Use the (potentially new) ID
+        payroll_setup_id: selectedSetup, // Use selectedSetup directly as it is the ID
+      };
+
       if (payslipFormData.payslip_id) {
-        await axios.put(
-          `${API_BASE}/api/payroll/payslips/${payslipFormData.payslip_id}`,
-          payslipFormData
+        await api.put(
+          `/api/payroll/payslips/${payslipFormData.payslip_id}`,
+          payload
         );
       } else {
-        await axios.post(`${API_BASE}/api/payroll/payslips`, payslipFormData);
+        await api.post(`/api/payroll/payslips`, payload);
       }
       setShowPayslipModal(false);
       resetPayslipForm();
-      if (selectedSetup) {
-        fetchPayslips(selectedSetup);
-      }
+      fetchPayslips(selectedSetup);
     } catch (error) {
       console.error("Error saving payslip:", error);
-      alert("Failed to save payslip");
+      alert("Failed to save payslip: " + JSON.stringify(error.response?.data || error.message));
+    } finally {
+      setIsAutoCreating(false);
     }
   };
 
@@ -195,7 +305,7 @@ const PayslipGenerator = () => {
   const handleDeleteSetup = async (id) => {
     if (window.confirm("Delete this payroll setup?")) {
       try {
-        await axios.delete(`${API_BASE}/api/payroll/setups/${id}`);
+        await api.delete(`/api/payroll/setups/${id}`);
         fetchPayrollSetups();
       } catch (error) {
         console.error("Error deleting payroll setup:", error);
@@ -206,7 +316,7 @@ const PayslipGenerator = () => {
   const handleDeletePayslip = async (id) => {
     if (window.confirm("Delete this payslip?")) {
       try {
-        await axios.delete(`${API_BASE}/api/payroll/payslips/${id}`);
+        await api.delete(`/api/payroll/payslips/${id}`);
         if (selectedSetup) {
           fetchPayslips(selectedSetup);
         }
@@ -247,6 +357,7 @@ const PayslipGenerator = () => {
       other_deductions: "",
       notes: "",
     });
+    setSelectedUserId(""); // Reset selected user ID for the form
   };
 
   // Filter and paginate setups
@@ -292,8 +403,8 @@ const PayslipGenerator = () => {
           <button
             onClick={() => setActiveTab("setups")}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm font-semibold transition-all duration-300 whitespace-nowrap border-b-2 ${activeTab === "setups"
-                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 shadow-t-sm"
-                : "border-transparent text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300"
+              ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 shadow-t-sm"
+              : "border-transparent text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300"
               }`}
           >
             <FileText size={16} /> Payroll Periods
@@ -301,8 +412,8 @@ const PayslipGenerator = () => {
           <button
             onClick={() => setActiveTab("payslips")}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm font-semibold transition-all duration-300 whitespace-nowrap border-b-2 ${activeTab === "payslips"
-                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 shadow-t-sm"
-                : "border-transparent text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300"
+              ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 shadow-t-sm"
+              : "border-transparent text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300"
               }`}
           >
             <DollarSign size={16} /> Payslips
@@ -359,11 +470,11 @@ const PayslipGenerator = () => {
                   {displayedSetups.length > 0 ? (
                     displayedSetups.map((setup) => (
                       <tr
-                        key={setup.setup_id}
-                        className={`text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150 cursor-pointer ${selectedSetup === setup.setup_id ? "bg-indigo-50 dark:bg-slate-700/70" : ""
+                        key={setup.payroll_setup_id}
+                        className={`text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150 cursor-pointer ${selectedSetup === setup.payroll_setup_id ? "bg-indigo-50 dark:bg-slate-700/70" : ""
                           }`}
                         onClick={() => {
-                          setSelectedSetup(setup.setup_id);
+                          setSelectedSetup(setup.payroll_setup_id);
                           setActiveTab("payslips");
                         }}
                       >
@@ -374,12 +485,12 @@ const PayslipGenerator = () => {
                         <td className="px-4 py-2">
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${setup.status === "Completed"
-                                ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                                : setup.status === "Processing"
-                                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
-                                  : setup.status === "Draft"
-                                    ? "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
-                                    : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                              ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                              : setup.status === "Processing"
+                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                                : setup.status === "Draft"
+                                  ? "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                                  : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
                               }`}
                           >
                             {setup.status}
@@ -395,7 +506,7 @@ const PayslipGenerator = () => {
                               <Edit size={14} />
                             </button>
                             <button
-                              onClick={() => handleDeleteSetup(setup.setup_id)}
+                              onClick={() => handleDeleteSetup(setup.payroll_setup_id)}
                               className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
                               title="Delete"
                             >
@@ -461,7 +572,7 @@ const PayslipGenerator = () => {
                 >
                   <option value="">Select a period</option>
                   {payrollSetups.map((setup) => (
-                    <option key={setup.setup_id} value={setup.setup_id}>
+                    <option key={setup.payroll_setup_id} value={setup.payroll_setup_id}>
                       {setup.period_type} - {new Date(setup.start_date).toLocaleDateString()} to {new Date(setup.end_date).toLocaleDateString()}
                     </option>
                   ))}
@@ -773,14 +884,31 @@ const PayslipGenerator = () => {
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                       Employee ID *
                     </label>
-                    <input
-                      type="number"
-                      name="employee_id"
-                      value={payslipFormData.employee_id}
+                    <select
+                      name="user_selection"
+                      value={selectedUserId}
                       onChange={handlePayslipInputChange}
                       required
-                      className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                    />
+                      className={`w-full px-3 py-2 text-sm border rounded-md transition-colors border-slate-300 dark:border-slate-600 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700`}
+                    >
+                      <option value="">Select Employee</option>
+                      {eligibleEmployees.map((emp) => (
+                        <option
+                          key={emp.user_id}
+                          value={emp.user_id}
+                        >
+                          {emp.first_name} {emp.last_name} ({emp.role})
+                          {emp.employee_id
+                            ? ` - ${emp.employee_number || "No Emp ID"}`
+                            : " - (Auto-create Record)"}
+                        </option>
+                      ))}
+                    </select>
+                    {!payslipFormData.employee_id && selectedUserId && (
+                      <p className="mt-1 text-xs text-blue-600 font-medium">
+                        Employee Record will be created automatically.
+                      </p>
+                    )}
                   </div>
 
                   <div className="col-span-2">
@@ -982,9 +1110,10 @@ const PayslipGenerator = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-500/30"
+                    disabled={isAutoCreating}
+                    className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Save Payslip
+                    {isAutoCreating ? "Creating Record & Saving..." : "Save Payslip"}
                   </button>
                 </div>
               </form>

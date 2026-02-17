@@ -540,11 +540,11 @@ const Menu = {
           icons: DollarSign,
           link: "/hr/hr_payslip_generator",
         },
-        {
+        /* {
           label: "Deduction Management",
           icons: DollarSign,
           link: "/hr/hr_deduction_management",
-        },
+        }, */
         {
           label: "Payroll Reports",
           icons: ReportIcon,
