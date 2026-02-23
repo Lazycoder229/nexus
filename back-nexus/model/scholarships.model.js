@@ -2,7 +2,7 @@ import db from "../config/db.js";
 
 const Scholarship = {
   // Create new scholarship program
-  createProgram: (data, callback) => {
+  createProgram: async (data) => {
     const query = `
       INSERT INTO scholarship_programs 
       (scholarship_name, scholarship_code, scholarship_type, discount_type,
@@ -11,7 +11,7 @@ const Scholarship = {
        academic_period_id, created_by)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    db.query(
+    const [result] = await db.query(
       query,
       [
         data.scholarship_name,
@@ -28,13 +28,13 @@ const Scholarship = {
         data.is_active !== undefined ? data.is_active : true,
         data.academic_period_id,
         data.created_by,
-      ],
-      callback
+      ]
     );
+    return result;
   },
 
   // Get all scholarship programs
-  getAllPrograms: (filters, callback) => {
+  getAllPrograms: async (filters) => {
     let query = `
       SELECT 
         sp.*,
@@ -67,11 +67,12 @@ const Scholarship = {
     }
 
     query += " ORDER BY sp.created_at DESC";
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 
   // Get scholarship program by ID
-  getProgramById: (id, callback) => {
+  getProgramById: async (id) => {
     const query = `
       SELECT 
         sp.*,
@@ -83,23 +84,25 @@ const Scholarship = {
       LEFT JOIN users u ON sp.created_by = u.user_id
       WHERE sp.scholarship_id = ?
     `;
-    db.query(query, [id], callback);
+    const [rows] = await db.query(query, [id]);
+    return rows;
   },
 
   // Update scholarship program
-  updateProgram: (id, data, callback) => {
+  updateProgram: async (id, data) => {
     const query = `
       UPDATE scholarship_programs 
-      SET scholarship_name = ?, scholarship_type = ?, discount_type = ?,
+      SET scholarship_name = ?, scholarship_code = ?, scholarship_type = ?, discount_type = ?,
           discount_value = ?, description = ?, eligibility_criteria = ?,
           required_gpa = ?, required_income_level = ?, total_budget = ?,
           max_beneficiaries = ?, is_active = ?, academic_period_id = ?
       WHERE scholarship_id = ?
     `;
-    db.query(
+    const [result] = await db.query(
       query,
       [
         data.scholarship_name,
+        data.scholarship_code,
         data.scholarship_type,
         data.discount_type,
         data.discount_value,
@@ -112,26 +115,27 @@ const Scholarship = {
         data.is_active,
         data.academic_period_id,
         id,
-      ],
-      callback
+      ]
     );
+    return result;
   },
 
   // Delete scholarship program
-  deleteProgram: (id, callback) => {
+  deleteProgram: async (id) => {
     const query = "DELETE FROM scholarship_programs WHERE scholarship_id = ?";
-    db.query(query, [id], callback);
+    const [result] = await db.query(query, [id]);
+    return result;
   },
 
   // Create scholarship allocation
-  createAllocation: (data, callback) => {
+  createAllocation: async (data) => {
     const query = `
       INSERT INTO scholarship_allocations 
       (scholarship_id, student_id, academic_period_id, allocated_amount,
        allocation_date, start_date, end_date, status, application_notes, created_by)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    db.query(
+    const [result] = await db.query(
       query,
       [
         data.scholarship_id,
@@ -144,13 +148,13 @@ const Scholarship = {
         data.status || "Pending",
         data.application_notes,
         data.created_by,
-      ],
-      callback
+      ]
     );
+    return result;
   },
 
   // Get all allocations
-  getAllAllocations: (filters, callback) => {
+  getAllAllocations: async (filters) => {
     let query = `
       SELECT 
         sa.*,
@@ -202,11 +206,12 @@ const Scholarship = {
       params.push(parseInt(filters.limit), parseInt(filters.offset || 0));
     }
 
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 
   // Get allocation by ID
-  getAllocationById: (id, callback) => {
+  getAllocationById: async (id) => {
     const query = `
       SELECT 
         sa.*,
@@ -232,11 +237,12 @@ const Scholarship = {
       LEFT JOIN users creator ON sa.created_by = creator.user_id
       WHERE sa.allocation_id = ?
     `;
-    db.query(query, [id], callback);
+    const [rows] = await db.query(query, [id]);
+    return rows;
   },
 
   // Update allocation
-  updateAllocation: (id, data, callback) => {
+  updateAllocation: async (id, data) => {
     const query = `
       UPDATE scholarship_allocations 
       SET scholarship_id = ?, student_id = ?, academic_period_id = ?,
@@ -244,7 +250,7 @@ const Scholarship = {
           status = ?, application_notes = ?
       WHERE allocation_id = ?
     `;
-    db.query(
+    const [result] = await db.query(
       query,
       [
         data.scholarship_id,
@@ -256,47 +262,51 @@ const Scholarship = {
         data.status,
         data.application_notes,
         id,
-      ],
-      callback
+      ]
     );
+    return result;
   },
 
   // Approve allocation
-  approveAllocation: (id, approved_by, approval_notes, callback) => {
+  approveAllocation: async (id, approved_by, approval_notes) => {
     const query = `
       UPDATE scholarship_allocations 
       SET status = 'Approved', approved_by = ?, approval_date = CURDATE(),
           approval_notes = ?
       WHERE allocation_id = ?
     `;
-    db.query(query, [approved_by, approval_notes, id], callback);
+    const [result] = await db.query(query, [approved_by, approval_notes, id]);
+    return result;
   },
 
   // Update allocation status
-  updateAllocationStatus: (id, status, callback) => {
+  updateAllocationStatus: async (id, status) => {
     const query =
       "UPDATE scholarship_allocations SET status = ? WHERE allocation_id = ?";
-    db.query(query, [status, id], callback);
+    const [result] = await db.query(query, [status, id]);
+    return result;
   },
 
   // Update disbursed amount
-  updateDisbursement: (id, amount, callback) => {
+  updateDisbursement: async (id, amount) => {
     const query = `
       UPDATE scholarship_allocations 
       SET disbursed_amount = disbursed_amount + ?
       WHERE allocation_id = ?
     `;
-    db.query(query, [amount, id], callback);
+    const [result] = await db.query(query, [amount, id]);
+    return result;
   },
 
   // Delete allocation
-  deleteAllocation: (id, callback) => {
+  deleteAllocation: async (id) => {
     const query = "DELETE FROM scholarship_allocations WHERE allocation_id = ?";
-    db.query(query, [id], callback);
+    const [result] = await db.query(query, [id]);
+    return result;
   },
 
   // Get scholarship summary
-  getScholarshipSummary: (filters, callback) => {
+  getScholarshipSummary: async (filters) => {
     let query = `
       SELECT 
         COUNT(DISTINCT sp.scholarship_id) as total_programs,
@@ -316,26 +326,67 @@ const Scholarship = {
       params.push(filters.academic_period_id);
     }
 
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 
   // Get student scholarships
-  getStudentScholarships: (student_id, callback) => {
+  getStudentScholarships: async (student_id) => {
     const query = `
-      SELECT 
-        sa.*,
-        sp.scholarship_name,
-        sp.scholarship_code,
-        sp.scholarship_type,
-        ap.school_year,
-        ap.semester
-      FROM scholarship_allocations sa
-      INNER JOIN scholarship_programs sp ON sa.scholarship_id = sp.scholarship_id
-      LEFT JOIN academic_periods ap ON sa.academic_period_id = ap.period_id
-      WHERE sa.student_id = ? AND sa.status IN ('Approved', 'Active')
-      ORDER BY sa.allocation_date DESC
+      (
+        SELECT 
+          sa.application_id as id,
+          sa.scholarship_id,
+          'Application' as source,
+          sp.scholarship_name as program_name,
+          sp.scholarship_code,
+          sp.discount_type,
+          sp.discount_value,
+          COALESCE(sb.tuition_discount, st.tuition_coverage_percentage, 0) as tuition_discount,
+          COALESCE(sb.allowance_amount, st.monthly_allowance, 0) as allowance_amount,
+          sp.required_gpa,
+          COALESCE(st.monthly_allowance, 0) as program_allowance_amount,
+          st.tuition_coverage_percentage as program_tuition_discount,
+          ap.school_year,
+          ap.semester,
+          sa.status,
+          sa.created_at as record_date
+        FROM scholarship_applications sa
+        INNER JOIN scholarship_programs sp ON sa.scholarship_id = sp.scholarship_id
+        LEFT JOIN scholarship_types st ON sa.scholarship_type_id = st.scholarship_type_id
+        LEFT JOIN academic_periods ap ON sa.academic_period_id = ap.period_id
+        LEFT JOIN scholarship_beneficiaries sb ON sa.application_id = sb.application_id
+        WHERE sa.student_id = ?
+      )
+      UNION ALL
+      (
+        SELECT 
+          sb.beneficiary_id as id,
+          sb.scholarship_id,
+          'Grant' as source,
+          sp.scholarship_name as program_name,
+          sp.scholarship_code,
+          sp.discount_type,
+          sp.discount_value,
+          sb.tuition_discount,
+          sb.allowance_amount,
+          sp.required_gpa,
+          COALESCE(st.monthly_allowance, 0) as program_allowance_amount,
+          st.tuition_coverage_percentage as program_tuition_discount,
+          ap.school_year,
+          ap.semester,
+          sb.status,
+          sb.created_at as record_date
+        FROM scholarship_beneficiaries sb
+        INNER JOIN scholarship_programs sp ON sb.scholarship_id = sp.scholarship_id
+        LEFT JOIN scholarship_types st ON sb.scholarship_type_id = st.scholarship_type_id
+        LEFT JOIN academic_periods ap ON sb.academic_period_id = ap.period_id
+        WHERE sb.student_id = ? AND sb.application_id IS NULL
+      )
+      ORDER BY record_date DESC
     `;
-    db.query(query, [student_id], callback);
+    const [rows] = await db.query(query, [student_id, student_id]);
+    return rows;
   },
 };
 

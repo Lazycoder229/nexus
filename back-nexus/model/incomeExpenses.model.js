@@ -2,7 +2,7 @@ import db from "../config/db.js";
 
 const IncomeExpense = {
   // Create new transaction
-  create: (data, callback) => {
+  create: async (data) => {
     const query = `
       INSERT INTO income_expenses 
       (transaction_type, transaction_number, category, subcategory, amount,
@@ -11,7 +11,7 @@ const IncomeExpense = {
        supporting_docs, requested_by)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    db.query(
+    const [result] = await db.query(
       query,
       [
         data.transaction_type,
@@ -30,13 +30,13 @@ const IncomeExpense = {
         data.receipt_url,
         data.supporting_docs,
         data.requested_by,
-      ],
-      callback
+      ]
     );
+    return result;
   },
 
   // Get all transactions
-  getAll: (filters, callback) => {
+  getAll: async (filters) => {
     let query = `
       SELECT 
         ie.*,
@@ -94,11 +94,12 @@ const IncomeExpense = {
       params.push(parseInt(filters.limit), parseInt(filters.offset || 0));
     }
 
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 
   // Get transaction by ID
-  getById: (id, callback) => {
+  getById: async (id) => {
     const query = `
       SELECT 
         ie.*,
@@ -114,11 +115,12 @@ const IncomeExpense = {
       LEFT JOIN users p ON ie.processed_by = p.user_id
       WHERE ie.transaction_id = ?
     `;
-    db.query(query, [id], callback);
+    const [rows] = await db.query(query, [id]);
+    return rows;
   },
 
   // Update transaction
-  update: (id, data, callback) => {
+  update: async (id, data) => {
     const query = `
       UPDATE income_expenses 
       SET transaction_type = ?, category = ?, subcategory = ?, amount = ?,
@@ -128,7 +130,7 @@ const IncomeExpense = {
           supporting_docs = ?
       WHERE transaction_id = ?
     `;
-    db.query(
+    const [result] = await db.query(
       query,
       [
         data.transaction_type,
@@ -146,56 +148,61 @@ const IncomeExpense = {
         data.receipt_url,
         data.supporting_docs,
         id,
-      ],
-      callback
+      ]
     );
+    return result;
   },
 
   // Approve transaction
-  approve: (id, approved_by, callback) => {
+  approve: async (id, approved_by) => {
     const query = `
       UPDATE income_expenses 
       SET status = 'Approved', approved_by = ?
       WHERE transaction_id = ?
     `;
-    db.query(query, [approved_by, id], callback);
+    const [result] = await db.query(query, [approved_by, id]);
+    return result;
   },
 
   // Process transaction (mark as paid)
-  process: (id, processed_by, callback) => {
+  process: async (id, processed_by) => {
     const query = `
       UPDATE income_expenses 
       SET status = 'Paid', processed_by = ?
       WHERE transaction_id = ?
     `;
-    db.query(query, [processed_by, id], callback);
+    const [result] = await db.query(query, [processed_by, id]);
+    return result;
   },
 
   // Update status
-  updateStatus: (id, status, callback) => {
+  updateStatus: async (id, status) => {
     const query =
       "UPDATE income_expenses SET status = ? WHERE transaction_id = ?";
-    db.query(query, [status, id], callback);
+    const [result] = await db.query(query, [status, id]);
+    return result;
   },
 
   // Delete transaction
-  delete: (id, callback) => {
+  delete: async (id) => {
     const query = "DELETE FROM income_expenses WHERE transaction_id = ?";
-    db.query(query, [id], callback);
+    const [result] = await db.query(query, [id]);
+    return result;
   },
 
   // Generate transaction number
-  generateTransactionNumber: (type, callback) => {
+  generateTransactionNumber: async (type) => {
     const query = `
       SELECT transaction_number FROM income_expenses 
       WHERE transaction_type = ?
       ORDER BY transaction_id DESC LIMIT 1
     `;
-    db.query(query, [type], callback);
+    const [rows] = await db.query(query, [type]);
+    return rows;
   },
 
   // Get financial summary
-  getFinancialSummary: (filters, callback) => {
+  getFinancialSummary: async (filters) => {
     let query = `
       SELECT 
         SUM(CASE WHEN transaction_type = 'Income' THEN amount ELSE 0 END) as total_income,
@@ -218,11 +225,12 @@ const IncomeExpense = {
       params.push(filters.academic_period_id);
     }
 
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 
   // Get category breakdown
-  getCategoryBreakdown: (transaction_type, filters, callback) => {
+  getCategoryBreakdown: async (transaction_type, filters) => {
     let query = `
       SELECT 
         category,
@@ -243,11 +251,12 @@ const IncomeExpense = {
     }
 
     query += " GROUP BY category ORDER BY total_amount DESC";
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 
   // Get monthly trend
-  getMonthlyTrend: (year, callback) => {
+  getMonthlyTrend: async (year) => {
     const query = `
       SELECT 
         MONTH(transaction_date) as month,
@@ -258,11 +267,12 @@ const IncomeExpense = {
       GROUP BY MONTH(transaction_date)
       ORDER BY month
     `;
-    db.query(query, [year], callback);
+    const [rows] = await db.query(query, [year]);
+    return rows;
   },
 
   // Get department expenses
-  getDepartmentExpenses: (filters, callback) => {
+  getDepartmentExpenses: async (filters) => {
     let query = `
       SELECT 
         department,
@@ -279,7 +289,8 @@ const IncomeExpense = {
     }
 
     query += " GROUP BY department ORDER BY total_amount DESC";
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 };
 

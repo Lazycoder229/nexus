@@ -3,9 +3,10 @@ import AnnouncementsService from "../services/announcements.service.js";
 const AnnouncementsController = {
   getAll: async (req, res) => {
     try {
-      const announcements = await AnnouncementsService.getAllAnnouncements(
-        req.query,
-      );
+      const currentUserId = req.user ? (req.user.userId || req.user.user_id) : null;
+      const filters = { ...req.query, user_id: req.query.user_id || currentUserId };
+
+      const announcements = await AnnouncementsService.getAllAnnouncements(filters);
       res.json(announcements);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -26,10 +27,8 @@ const AnnouncementsController = {
   create: async (req, res) => {
     console.log("CREATE ANNOUNCEMENT - Request received:", req.body);
     try {
-      // Use created_by from request body if provided, otherwise try to get from headers
       if (!req.body.created_by) {
-        const user = JSON.parse(req.headers.user || "{}");
-        req.body.created_by = user.user_id;
+        req.body.created_by = req.user.userId || req.user.user_id;
       }
       console.log("CREATE ANNOUNCEMENT - Calling service with data:", req.body);
       const id = await AnnouncementsService.createAnnouncement(req.body);
@@ -46,8 +45,7 @@ const AnnouncementsController = {
 
   update: async (req, res) => {
     try {
-      const user = JSON.parse(req.headers.user || "{}");
-      req.body.updated_by = user.user_id;
+      req.body.updated_by = req.user.userId || req.user.user_id;
       await AnnouncementsService.updateAnnouncement(req.params.id, req.body);
       res.json({ message: "Announcement updated successfully" });
     } catch (error) {
@@ -70,6 +68,25 @@ const AnnouncementsController = {
       res.json(stats);
     } catch (error) {
       res.status(500).json({ error: error.message });
+    }
+  },
+
+  markAsRead: async (req, res) => {
+    try {
+      const userId = req.user ? (req.user.userId || req.user.user_id) : null;
+      console.log("MARK AS READ - User ID from token:", userId);
+      const announcementId = req.params.id;
+
+      if (!userId) {
+        console.error("MARK AS READ - No User ID found in req.user:", req.user);
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
+      await AnnouncementsService.markAsRead(announcementId, userId);
+      res.json({ message: "Announcement marked as read" });
+    } catch (error) {
+      console.error("MARK AS READ - Error:", error);
+      res.status(400).json({ error: error.message });
     }
   },
 };

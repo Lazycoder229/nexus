@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../api/axios";
 import Select from "react-select";
 import { Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, FileText, User, Calendar } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
 const ApplicationForms = () => {
   const [applications, setApplications] = useState([]);
-  const [scholarshipTypes, setScholarshipTypes] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [periods, setPeriods] = useState([]);
   const [students, setStudents] = useState([]);
   const [statistics, setStatistics] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -18,51 +17,65 @@ const ApplicationForms = () => {
   const itemsPerPage = 10;
 
   const [formData, setFormData] = useState({
-    scholarship_type_id: "",
+    scholarship_id: "",
+    academic_period_id: "",
     student_id: "",
     application_date: new Date().toISOString().split('T')[0],
-    academic_year: "",
-    semester: "1st Semester",
     current_gpa: "",
     family_income: "",
     number_of_siblings: "",
     working_student: false,
     status: "Pending",
     remarks: "",
+    approved_amount: "",
   });
 
   useEffect(() => {
     fetchApplications();
-    fetchScholarshipTypes();
+    fetchPrograms();
+    fetchPeriods();
     fetchStudents();
     fetchStatistics();
   }, []);
+
 
   const fetchApplications = async () => {
     try {
       const params = new URLSearchParams();
       if (filterStatus) params.append("status", filterStatus);
       if (searchTerm) params.append("search", searchTerm);
-      const response = await axios.get(`${API_BASE}/api/scholarships/applications?${params}`);
+      const response = await api.get(`/api/scholarships/applications?${params}`);
       setApplications(response.data);
     } catch (error) {
       console.error("Error fetching applications:", error);
     }
   };
 
-  const fetchScholarshipTypes = async () => {
+  const fetchPrograms = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/scholarships/types?status=Active`);
-      setScholarshipTypes(response.data);
+      const response = await api.get(`/api/scholarships/programs?is_active=1`);
+      const data = response.data.data || response.data || [];
+      setPrograms(data);
     } catch (error) {
-      console.error("Error fetching scholarship types:", error);
+      console.error("Error fetching programs:", error);
+    }
+  };
+
+  const fetchPeriods = async () => {
+    try {
+      const response = await api.get(`/api/academic-periods`);
+      const data = response.data.data || response.data || [];
+      setPeriods(data);
+    } catch (error) {
+      console.error("Error fetching periods:", error);
     }
   };
 
   const fetchStudents = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/users`);
-      setStudents(response.data.filter(u => u.role === 'Student'));
+      const response = await api.get(`/api/users?role=Student`);
+      const data = response.data.data || response.data || [];
+      setStudents(data);
     } catch (error) {
       console.error("Error fetching students:", error);
     }
@@ -70,7 +83,7 @@ const ApplicationForms = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/scholarships/applications/statistics`);
+      const response = await api.get(`/api/scholarships/applications/statistics`);
       setStatistics(response.data);
     } catch (error) {
       console.error("Error fetching statistics:", error);
@@ -90,9 +103,9 @@ const ApplicationForms = () => {
     e.preventDefault();
     try {
       if (currentApp) {
-        await axios.put(`${API_BASE}/api/scholarships/applications/${currentApp.application_id}`, formData);
+        await api.put(`/api/scholarships/applications/${currentApp.application_id}`, formData);
       } else {
-        await axios.post(`${API_BASE}/api/scholarships/applications`, formData);
+        await api.post(`/api/scholarships/applications`, formData);
       }
       fetchApplications();
       fetchStatistics();
@@ -106,17 +119,17 @@ const ApplicationForms = () => {
   const handleEdit = (app) => {
     setCurrentApp(app);
     setFormData({
-      scholarship_type_id: app.scholarship_type_id,
+      scholarship_id: app.scholarship_id,
+      academic_period_id: app.academic_period_id,
       student_id: app.student_id,
       application_date: new Date(app.application_date).toISOString().split('T')[0],
-      academic_year: app.academic_year || "",
-      semester: app.semester,
       current_gpa: app.current_gpa || "",
       family_income: app.family_income || "",
       number_of_siblings: app.number_of_siblings || "",
       working_student: app.working_student,
       status: app.status,
       remarks: app.remarks || "",
+      approved_amount: app.approved_amount || "",
     });
     setShowModal(true);
   };
@@ -124,7 +137,7 @@ const ApplicationForms = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this application?")) {
       try {
-        await axios.delete(`${API_BASE}/api/scholarships/applications/${id}`);
+        await api.delete(`/api/scholarships/applications/${id}`);
         fetchApplications();
         fetchStatistics();
       } catch (error) {
@@ -138,17 +151,17 @@ const ApplicationForms = () => {
     setShowModal(false);
     setCurrentApp(null);
     setFormData({
-      scholarship_type_id: "",
+      scholarship_id: "",
+      academic_period_id: "",
       student_id: "",
       application_date: new Date().toISOString().split('T')[0],
-      academic_year: "",
-      semester: "1st Semester",
       current_gpa: "",
       family_income: "",
       number_of_siblings: "",
       working_student: false,
       status: "Pending",
       remarks: "",
+      approved_amount: "",
     });
   };
 
@@ -183,7 +196,8 @@ const ApplicationForms = () => {
     return badges[status] || "bg-gray-100 text-gray-700";
   };
 
-  const scholarshipOptions = scholarshipTypes.map(st => ({ value: st.scholarship_type_id, label: `${st.scholarship_name} (${st.scholarship_code})` }));
+  const programOptions = programs.map(p => ({ value: p.scholarship_id, label: `${p.scholarship_name} (${p.scholarship_code})` }));
+  const periodOptions = periods.map(p => ({ value: p.id || p.period_id, label: `${p.school_year} - ${p.semester}` }));
   const studentOptions = students.map(s => ({ value: s.user_id, label: `${s.first_name} ${s.last_name} - ${s.email}` }));
 
   return (
@@ -229,7 +243,7 @@ const ApplicationForms = () => {
                   <th className="px-4 py-2.5">Student</th>
                   <th className="px-4 py-2.5">Scholarship</th>
                   <th className="px-4 py-2.5">Application Date</th>
-                  <th className="px-4 py-2.5">Academic Year</th>
+                  <th className="px-4 py-2.5">Academic Period</th>
                   <th className="px-4 py-2.5">GPA</th>
                   <th className="px-4 py-2.5">Status</th>
                   <th className="px-4 py-2.5 text-right">Actions</th>
@@ -242,7 +256,7 @@ const ApplicationForms = () => {
                     <td className="px-4 py-2"><div className="flex items-center gap-2"><User size={14} className="text-slate-400" /><div><div className="font-medium">{app.student_name}</div><div className="text-xs text-slate-500 dark:text-slate-400">{app.student_number}</div></div></div></td>
                     <td className="px-4 py-2"><div className="font-semibold text-slate-900 dark:text-white">{app.scholarship_name}</div></td>
                     <td className="px-4 py-2"><div className="flex items-center gap-1 text-xs"><Calendar size={12} className="text-slate-400" />{new Date(app.application_date).toLocaleDateString()}</div></td>
-                    <td className="px-4 py-2"><span className="text-xs">{app.academic_year || 'N/A'} - {app.semester}</span></td>
+                    <td className="px-4 py-2"><span className="text-xs">{app.school_year || 'N/A'} - {app.period_semester || 'N/A'}</span></td>
                     <td className="px-4 py-2"><span className="font-semibold">{app.current_gpa || 'N/A'}</span></td>
                     <td className="px-4 py-2"><span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusBadge(app.status)}`}>{app.status}</span></td>
                     <td className="px-4 py-2 text-right">
@@ -270,9 +284,15 @@ const ApplicationForms = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-4 space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Scholarship Type *</label>
-                <Select options={scholarshipOptions} value={scholarshipOptions.find(opt => opt.value === formData.scholarship_type_id)} onChange={(option) => handleSelectChange(option, "scholarship_type_id")} placeholder="Select scholarship" required className="text-sm" classNamePrefix="react-select" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Scholarship Program *</label>
+                  <Select options={programOptions} value={programOptions.find(opt => opt.value === formData.scholarship_id)} onChange={(option) => handleSelectChange(option, "scholarship_id")} placeholder="Select program" required className="text-sm" classNamePrefix="react-select" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Academic Period *</label>
+                  <Select options={periodOptions} value={periodOptions.find(opt => opt.value === formData.academic_period_id)} onChange={(option) => handleSelectChange(option, "academic_period_id")} placeholder="Select period" required className="text-sm" classNamePrefix="react-select" />
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Student *</label>
@@ -280,17 +300,37 @@ const ApplicationForms = () => {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Application Date *</label><input type="date" name="application_date" value={formData.application_date} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
-                <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Academic Year</label><input type="text" name="academic_year" value={formData.academic_year} onChange={handleInputChange} className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" placeholder="2023-2024" /></div>
-                <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Semester *</label><select name="semester" value={formData.semester} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"><option value="1st Semester">1st Semester</option><option value="2nd Semester">2nd Semester</option><option value="Summer">Summer</option></select></div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
                 <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Current GPA</label><input type="number" name="current_gpa" value={formData.current_gpa} onChange={handleInputChange} step="0.01" max="4.00" className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
                 <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Family Income</label><input type="number" name="family_income" value={formData.family_income} onChange={handleInputChange} step="0.01" className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
-                <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Siblings</label><input type="number" name="number_of_siblings" value={formData.number_of_siblings} onChange={handleInputChange} className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label><select name="status" value={formData.status} onChange={handleInputChange} className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"><option value="Pending">Pending</option><option value="Under Review">Under Review</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option></select></div>
-                <div className="flex items-end"><label className="flex items-center gap-2"><input type="checkbox" name="working_student" checked={formData.working_student} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500" /><span className="text-sm text-slate-700 dark:text-slate-300">Working Student</span></label></div>
+                <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Siblings</label><input type="number" name="number_of_siblings" value={formData.number_of_siblings} onChange={handleInputChange} className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
+                <div className="flex items-end mb-2"><label className="flex items-center gap-2"><input type="checkbox" name="working_student" checked={formData.working_student} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500" /><span className="text-sm text-slate-700 dark:text-slate-300">Working Student</span></label></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label>
+                  <select name="status" value={formData.status} onChange={handleInputChange} className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+                    <option value="Pending">Pending</option>
+                    <option value="Under Review">Under Review</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+                {formData.status === 'Approved' && (
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Approved Amount *</label>
+                    <input
+                      type="number"
+                      name="approved_amount"
+                      value={formData.approved_amount}
+                      onChange={handleInputChange}
+                      required={formData.status === 'Approved'}
+                      step="0.01"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    />
+                  </div>
+                )}
               </div>
               <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Remarks</label><textarea name="remarks" value={formData.remarks} onChange={handleInputChange} rows="3" className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-vertical" /></div>
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700/50">
@@ -306,3 +346,4 @@ const ApplicationForms = () => {
 };
 
 export default ApplicationForms;
+

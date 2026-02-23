@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../api/axios";
 import Select from "react-select";
-import { Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, CheckSquare, AlertTriangle, TrendingUp } from "lucide-react";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import { Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, Shield } from "lucide-react";
 
 const EligibilityScreening = () => {
   const [screenings, setScreenings] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [programs, setPrograms] = useState([]);
   const [statistics, setStatistics] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [currentScreening, setCurrentScreening] = useState(null);
@@ -18,7 +17,7 @@ const EligibilityScreening = () => {
 
   const [formData, setFormData] = useState({
     application_id: "",
-    scholarship_type_id: "",
+    scholarship_id: "",
     student_id: "",
     screening_date: new Date().toISOString().split('T')[0],
     gpa_requirement_met: false,
@@ -41,6 +40,7 @@ const EligibilityScreening = () => {
   useEffect(() => {
     fetchScreenings();
     fetchApplications();
+    fetchPrograms();
     fetchStatistics();
   }, []);
 
@@ -49,8 +49,9 @@ const EligibilityScreening = () => {
       const params = new URLSearchParams();
       if (filterStatus) params.append("screening_status", filterStatus);
       if (searchTerm) params.append("search", searchTerm);
-      const response = await axios.get(`${API_BASE}/api/scholarships/screening?${params}`);
-      setScreenings(response.data);
+      const response = await api.get(`/api/scholarships/screening?${params}`);
+      const data = response.data.data || response.data || [];
+      setScreenings(data);
     } catch (error) {
       console.error("Error fetching screenings:", error);
     }
@@ -58,7 +59,7 @@ const EligibilityScreening = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/scholarships/screening/statistics`);
+      const response = await api.get(`/api/scholarships/screening/statistics`);
       setStatistics(response.data);
     } catch (error) {
       console.error("Error fetching statistics:", error);
@@ -67,29 +68,59 @@ const EligibilityScreening = () => {
 
   const fetchApplications = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/scholarships/applications`);
-      setApplications(response.data);
+      const response = await api.get(`/api/scholarships/applications`);
+      const data = response.data.data || response.data || [];
+      setApplications(data);
     } catch (error) {
       console.error("Error fetching applications:", error);
     }
   };
+
+  const fetchPrograms = async () => {
+    try {
+      const response = await api.get(`/api/scholarships/programs?is_active=1`);
+      const data = response.data.data || response.data || [];
+      setPrograms(data);
+    } catch (error) {
+      console.error("Error fetching programs:", error);
+    }
+  };
+
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({ ...formData, [name]: type === "checkbox" ? checked : value });
   };
 
-  const handleSelectChange = (selectedOption, field) => {
-    setFormData({ ...formData, [field]: selectedOption?.value || "" });
+  const handleSelectChange = async (selectedOption, field) => {
+    const value = selectedOption?.value || "";
+    setFormData(prev => ({ ...prev, [field]: value }));
+
+    // Auto-fill logic
+    if (field === "application_id" && value) {
+      try {
+        const response = await api.get(`/api/scholarships/applications/${value}`);
+        const app = response.data;
+        if (app) {
+          setFormData(prev => ({
+            ...prev,
+            scholarship_id: app.scholarship_id || prev.scholarship_id,
+            student_id: app.student_id || prev.student_id,
+          }));
+        }
+      } catch (error) {
+        console.error("Error auto-filling from application:", error);
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (currentScreening) {
-        await axios.put(`${API_BASE}/api/scholarships/screening/${currentScreening.screening_id}`, formData);
+        await api.put(`/api/scholarships/screening/${currentScreening.screening_id}`, formData);
       } else {
-        await axios.post(`${API_BASE}/api/scholarships/screening`, formData);
+        await api.post(`/api/scholarships/screening`, formData);
       }
       fetchScreenings();
       fetchStatistics();
@@ -104,7 +135,7 @@ const EligibilityScreening = () => {
     setCurrentScreening(scr);
     setFormData({
       application_id: scr.application_id,
-      scholarship_type_id: scr.scholarship_type_id,
+      scholarship_id: scr.scholarship_id,
       student_id: scr.student_id,
       screening_date: new Date(scr.screening_date).toISOString().split('T')[0],
       gpa_requirement_met: scr.gpa_requirement_met,
@@ -129,7 +160,7 @@ const EligibilityScreening = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this screening?")) {
       try {
-        await axios.delete(`${API_BASE}/api/scholarships/screening/${id}`);
+        await api.delete(`/api/scholarships/screening/${id}`);
         fetchScreenings();
         fetchStatistics();
       } catch (error) {
@@ -144,7 +175,7 @@ const EligibilityScreening = () => {
     setCurrentScreening(null);
     setFormData({
       application_id: "",
-      scholarship_type_id: "",
+      scholarship_id: "",
       student_id: "",
       screening_date: new Date().toISOString().split('T')[0],
       gpa_requirement_met: false,
@@ -197,6 +228,7 @@ const EligibilityScreening = () => {
   };
 
   const applicationOptions = applications.map(app => ({ value: app.application_id, label: `${app.application_number} - ${app.student_name}` }));
+  const programOptions = programs.map(p => ({ value: p.scholarship_id, label: `${p.scholarship_name} (${p.scholarship_code})` }));
 
   return (
     <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">

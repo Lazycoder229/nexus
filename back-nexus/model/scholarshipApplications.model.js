@@ -6,8 +6,10 @@ const ScholarshipApplicationsModel = {
     let query = `
       SELECT 
         sa.*,
-        st.scholarship_name,
-        st.scholarship_code,
+        sp.scholarship_name,
+        sp.scholarship_code,
+        ap.school_year,
+        ap.semester as period_semester,
         CONCAT(s.first_name, ' ', s.last_name) as student_name,
         s.email as student_email,
         sd.student_number,
@@ -16,7 +18,8 @@ const ScholarshipApplicationsModel = {
         CONCAT(r.first_name, ' ', r.last_name) as reviewer_name,
         CONCAT(a.first_name, ' ', a.last_name) as approver_name
       FROM scholarship_applications sa
-      INNER JOIN scholarship_types st ON sa.scholarship_type_id = st.scholarship_type_id
+      LEFT JOIN scholarship_programs sp ON sa.scholarship_id = sp.scholarship_id
+      LEFT JOIN academic_periods ap ON sa.academic_period_id = ap.period_id
       INNER JOIN users s ON sa.student_id = s.user_id
       LEFT JOIN student_details sd ON sa.student_id = sd.user_id
       LEFT JOIN users r ON sa.reviewed_by = r.user_id
@@ -30,9 +33,9 @@ const ScholarshipApplicationsModel = {
       params.push(filters.status);
     }
 
-    if (filters.scholarship_type_id) {
-      query += " AND sa.scholarship_type_id = ?";
-      params.push(filters.scholarship_type_id);
+    if (filters.scholarship_id) {
+      query += " AND sa.scholarship_id = ?";
+      params.push(filters.scholarship_id);
     }
 
     if (filters.student_id) {
@@ -40,13 +43,13 @@ const ScholarshipApplicationsModel = {
       params.push(filters.student_id);
     }
 
-    if (filters.academic_year) {
-      query += " AND sa.academic_year = ?";
-      params.push(filters.academic_year);
+    if (filters.academic_period_id) {
+      query += " AND sa.academic_period_id = ?";
+      params.push(filters.academic_period_id);
     }
 
     if (filters.search) {
-      query += " AND (sa.application_number LIKE ? OR st.scholarship_name LIKE ? OR CONCAT(s.first_name, ' ', s.last_name) LIKE ?)";
+      query += " AND (sa.application_number LIKE ? OR sp.scholarship_name LIKE ? OR CONCAT(s.first_name, ' ', s.last_name) LIKE ?)";
       const searchTerm = `%${filters.search}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
@@ -62,8 +65,10 @@ const ScholarshipApplicationsModel = {
     const query = `
       SELECT 
         sa.*,
-        st.scholarship_name,
-        st.scholarship_code,
+        sp.scholarship_name,
+        sp.scholarship_code,
+        ap.school_year,
+        ap.semester as period_semester,
         CONCAT(s.first_name, ' ', s.last_name) as student_name,
         s.email as student_email,
         s.phone as student_phone,
@@ -73,7 +78,8 @@ const ScholarshipApplicationsModel = {
         CONCAT(r.first_name, ' ', r.last_name) as reviewer_name,
         CONCAT(a.first_name, ' ', a.last_name) as approver_name
       FROM scholarship_applications sa
-      INNER JOIN scholarship_types st ON sa.scholarship_type_id = st.scholarship_type_id
+      LEFT JOIN scholarship_programs sp ON sa.scholarship_id = sp.scholarship_id
+      LEFT JOIN academic_periods ap ON sa.academic_period_id = ap.period_id
       INNER JOIN users s ON sa.student_id = s.user_id
       LEFT JOIN student_details sd ON sa.student_id = sd.user_id
       LEFT JOIN users r ON sa.reviewed_by = r.user_id
@@ -88,18 +94,20 @@ const ScholarshipApplicationsModel = {
   async createApplication(data) {
     const query = `
       INSERT INTO scholarship_applications (
-        scholarship_type_id, student_id, application_number, application_date,
-        academic_year, semester, current_gpa, current_year_level, current_course, units_enrolled,
+        scholarship_id, scholarship_type_id, student_id, application_number, application_date,
+        academic_period_id, academic_year, semester, current_gpa, current_year_level, current_course, units_enrolled,
         family_income, number_of_siblings, working_student,
         grade_sheet_submitted, income_certificate_submitted, recommendation_letter_submitted, essay_submitted, other_documents,
-        status, priority_score, remarks
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        status, priority_score, approved_amount, remarks
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const [result] = await pool.query(query, [
-      data.scholarship_type_id,
+      data.scholarship_id || null,
+      data.scholarship_type_id || null,
       data.student_id,
       data.application_number,
       data.application_date,
+      data.academic_period_id || null,
       data.academic_year || null,
       data.semester,
       data.current_gpa || null,
@@ -116,6 +124,7 @@ const ScholarshipApplicationsModel = {
       data.other_documents || null,
       data.status || 'Pending',
       data.priority_score || null,
+      data.approved_amount || null,
       data.remarks || null,
     ]);
     return result.insertId;
@@ -125,7 +134,9 @@ const ScholarshipApplicationsModel = {
   async updateApplication(id, data) {
     const query = `
       UPDATE scholarship_applications SET
+        scholarship_id = ?,
         scholarship_type_id = ?,
+        academic_period_id = ?,
         academic_year = ?,
         semester = ?,
         current_gpa = ?,
@@ -153,7 +164,9 @@ const ScholarshipApplicationsModel = {
       WHERE application_id = ?
     `;
     const [result] = await pool.query(query, [
+      data.scholarship_id,
       data.scholarship_type_id,
+      data.academic_period_id,
       data.academic_year,
       data.semester,
       data.current_gpa,

@@ -4,7 +4,7 @@ import bodyParser from "body-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
-import dotenv from "dotenv"; // ✅ ESM import
+import dotenv from "dotenv"; //  ESM import
 
 import departmentRoutes from "./routes/departmentRoutes.js"; // your route file
 import courseRoutes from "./routes/courses.routes.js"; // your route file
@@ -39,6 +39,7 @@ import invoicesRoutes from "./routes/invoices.routes.js"; // invoice management 
 import paymentsRoutes from "./routes/payments.routes.js"; // payment collection routes
 import scholarshipsRoutes from "./routes/scholarships.routes.js"; // scholarship routes
 import incomeExpensesRoutes from "./routes/incomeExpenses.routes.js"; // income & expenses routes
+import accountingRoutes from "./routes/accounting.routes.js"; // accounting routes
 import paymentGatewayRoutes from "./routes/paymentGateway.routes.js"; // payment gateway routes
 import employeeRecordsRoutes from "./routes/employeeRecords.routes.js"; // employee records routes
 import staffLeaveRoutes from "./routes/staffLeave.routes.js"; // staff leave routes
@@ -53,6 +54,7 @@ import scholarshipApplicationsRoutes from "./routes/scholarshipApplications.rout
 import scholarshipBeneficiariesRoutes from "./routes/scholarshipBeneficiaries.routes.js"; // scholarship beneficiaries routes
 import scholarshipEligibilityRoutes from "./routes/scholarshipEligibility.routes.js"; // scholarship eligibility routes
 import announcementsRoutes from "./routes/announcements.routes.js"; // announcements routes
+import feedbackRoutes from "./routes/feedback.routes.js"; // feedback routes
 import eventsRoutes from "./routes/events.routes.js"; // events routes
 import schoolCalendarRoutes from "./routes/schoolCalendar.routes.js"; // school calendar routes
 import publicEventsRoutes from "./routes/publicEvents.routes.js"; // public events routes
@@ -79,7 +81,7 @@ const limiter = rateLimit({
 app.use(
   cors({
     origin: "http://localhost:5173",
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
     exposedHeaders: ["Authorization"],
   }),
@@ -145,6 +147,7 @@ app.use("/api/invoices", invoicesRoutes);
 app.use("/api/payments", paymentsRoutes);
 app.use("/api/scholarships", scholarshipsRoutes);
 app.use("/api/income-expenses", incomeExpensesRoutes);
+app.use("/api/accounting", accountingRoutes);
 app.use("/api/payment-gateway", paymentGatewayRoutes);
 
 // HR & Payroll routes
@@ -167,6 +170,7 @@ app.use("/api/scholarships/screening", scholarshipEligibilityRoutes);
 
 // Events & Communication routes
 app.use("/api/events/announcements", announcementsRoutes);
+app.use("/api/feedback", feedbackRoutes);
 app.use("/api/events/scheduling", eventsRoutes);
 app.use("/api/events/calendar", schoolCalendarRoutes);
 app.use("/api/events/public", publicEventsRoutes);

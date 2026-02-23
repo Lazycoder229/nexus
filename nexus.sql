@@ -2972,3 +2972,35 @@ CREATE TABLE IF NOT EXISTS lms_discussion_likes (
     INDEX idx_lms_likes_discussion (discussion_id),
     INDEX idx_lms_likes_user (user_id)
 );
+/* Ito ay add niyo sa database */
+
+ ALTER TABLE scholarship_applications 
+      ADD COLUMN IF NOT EXISTS scholarship_id INT AFTER scholarship_type_id,
+      ADD COLUMN IF NOT EXISTS academic_period_id INT AFTER semester
+    ALTER TABLE scholarship_beneficiaries 
+      ADD COLUMN IF NOT EXISTS scholarship_id INT AFTER scholarship_type_id,
+      ADD COLUMN IF NOT EXISTS academic_period_id INT AFTER semester
+
+
+ALTER TABLE scholarship_eligibility_screening ADD COLUMN IF NOT EXISTS scholarship_id INT AFTER application_id;
+ALTER TABLE scholarship_eligibility_screening ADD COLUMN IF NOT EXISTS academic_period_id INT AFTER student_id;
+
+  CREATE TABLE IF NOT EXISTS announcement_reads (
+                read_id INT AUTO_INCREMENT PRIMARY KEY,
+                announcement_id INT NOT NULL,
+                user_id INT NOT NULL,
+                read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_read (announcement_id, user_id),
+                FOREIGN KEY (announcement_id) REFERENCES announcements(announcement_id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE);
+
+                 CREATE TABLE IF NOT EXISTS student_feedback (
+                feedback_id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                category VARCHAR(50) NOT NULL,
+                rating INT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+                message TEXT NOT NULL,
+                response TEXT,
+                submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+            )

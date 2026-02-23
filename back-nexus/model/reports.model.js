@@ -14,8 +14,8 @@ const ReportsModel = {
         u.date_of_birth as birth_date,
         sd.year_level,
         u.status,
-        p.program_name,
-        p.program_code,
+        p.name as program_name,
+        p.code as program_code,
         e.enrollment_id,
         e.enrollment_date,
         e.enrollment_status,
@@ -28,7 +28,7 @@ const ReportsModel = {
         END) as gpa
       FROM users u
       INNER JOIN student_details sd ON u.user_id = sd.user_id
-      LEFT JOIN programs p ON sd.course = p.program_name
+      LEFT JOIN programs p ON sd.course = p.name
       LEFT JOIN enrollments e ON u.user_id = e.student_id
       LEFT JOIN academic_periods ap ON e.academic_period_id = ap.academic_period_id
       LEFT JOIN grades g ON u.user_id = g.student_id
@@ -85,8 +85,8 @@ const ReportsModel = {
         CONCAT(u.first_name, ' ', u.last_name) AS student_name,
         sd.student_number,
         u.email,
-        p.program_name,
-        p.program_code,
+        p.name as program_name,
+        p.code as program_code,
         ap.academic_year,
         ap.semester,
         ap.start_date,
@@ -96,7 +96,7 @@ const ReportsModel = {
       FROM enrollments e
       INNER JOIN users u ON e.student_id = u.user_id
       INNER JOIN student_details sd ON u.user_id = sd.user_id
-      LEFT JOIN programs p ON e.program_id = p.program_id
+      LEFT JOIN programs p ON sd.course = p.name
       LEFT JOIN academic_periods ap ON e.academic_period_id = ap.academic_period_id
       LEFT JOIN enrollment_courses ec ON e.enrollment_id = ec.enrollment_id
       LEFT JOIN courses c ON ec.course_id = c.course_id

@@ -2,19 +2,12 @@ import IncomeExpense from "../model/incomeExpenses.model.js";
 
 const incomeExpenseController = {
   // Create new transaction
-  createTransaction: (req, res) => {
-    const transactionType = req.body.transaction_type;
+  createTransaction: async (req, res) => {
+    try {
+      const transactionType = req.body.transaction_type;
 
-    // Generate transaction number
-    IncomeExpense.generateTransactionNumber(transactionType, (err, results) => {
-      if (err) {
-        console.error("Error generating transaction number:", err);
-        return res.status(500).json({
-          success: false,
-          message: "Failed to generate transaction number",
-          error: err.message,
-        });
-      }
+      // Generate transaction number
+      const results = await IncomeExpense.generateTransactionNumber(transactionType);
 
       const prefix = transactionType === "Income" ? "INC" : "EXP";
       let transactionNumber = `${prefix}-000001`;
@@ -35,74 +28,64 @@ const incomeExpenseController = {
         requested_by: req.user.user_id,
       };
 
-      IncomeExpense.create(data, (err, result) => {
-        if (err) {
-          console.error("Error creating transaction:", err);
-          return res.status(500).json({
-            success: false,
-            message: "Failed to create transaction",
-            error: err.message,
-          });
-        }
+      const result = await IncomeExpense.create(data);
 
-        res.status(201).json({
-          success: true,
-          message: "Transaction created successfully",
-          data: {
-            transaction_id: result.insertId,
-            transaction_number: transactionNumber,
-          },
-        });
+      res.status(201).json({
+        success: true,
+        message: "Transaction created successfully",
+        data: {
+          transaction_id: result.insertId,
+          transaction_number: transactionNumber,
+        },
       });
-    });
+    } catch (err) {
+      console.error("Error creating transaction:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to create transaction",
+        error: err.message,
+      });
+    }
   },
 
   // Get all transactions
-  getAllTransactions: (req, res) => {
-    const filters = {
-      transaction_type: req.query.transaction_type,
-      category: req.query.category,
-      status: req.query.status,
-      department: req.query.department,
-      academic_period_id: req.query.academic_period_id,
-      start_date: req.query.start_date,
-      end_date: req.query.end_date,
-      search: req.query.search,
-      limit: req.query.limit || 50,
-      offset: req.query.offset || 0,
-    };
+  getAllTransactions: async (req, res) => {
+    try {
+      const filters = {
+        transaction_type: req.query.transaction_type,
+        category: req.query.category,
+        status: req.query.status,
+        department: req.query.department,
+        academic_period_id: req.query.academic_period_id,
+        start_date: req.query.start_date,
+        end_date: req.query.end_date,
+        search: req.query.search,
+        limit: req.query.limit || 50,
+        offset: req.query.offset || 0,
+      };
 
-    IncomeExpense.getAll(filters, (err, results) => {
-      if (err) {
-        console.error("Error fetching transactions:", err);
-        return res.status(500).json({
-          success: false,
-          message: "Failed to fetch transactions",
-          error: err.message,
-        });
-      }
+      const results = await IncomeExpense.getAll(filters);
 
       res.status(200).json({
         success: true,
         data: results,
         count: results.length,
       });
-    });
+    } catch (err) {
+      console.error("Error fetching transactions:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch transactions",
+        error: err.message,
+      });
+    }
   },
 
   // Get transaction by ID
-  getTransactionById: (req, res) => {
-    const { id } = req.params;
-
-    IncomeExpense.getById(id, (err, results) => {
-      if (err) {
-        console.error("Error fetching transaction:", err);
-        return res.status(500).json({
-          success: false,
-          message: "Failed to fetch transaction",
-          error: err.message,
-        });
-      }
+  getTransactionById: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const results = await IncomeExpense.getById(id);
 
       if (results.length === 0) {
         return res.status(404).json({
@@ -115,23 +98,23 @@ const incomeExpenseController = {
         success: true,
         data: results[0],
       });
-    });
+    } catch (err) {
+      console.error("Error fetching transaction:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch transaction",
+        error: err.message,
+      });
+    }
   },
 
   // Update transaction
-  updateTransaction: (req, res) => {
-    const { id } = req.params;
-    const data = req.body;
+  updateTransaction: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const data = req.body;
 
-    IncomeExpense.update(id, data, (err, result) => {
-      if (err) {
-        console.error("Error updating transaction:", err);
-        return res.status(500).json({
-          success: false,
-          message: "Failed to update transaction",
-          error: err.message,
-        });
-      }
+      const result = await IncomeExpense.update(id, data);
 
       if (result.affectedRows === 0) {
         return res.status(404).json({
@@ -144,23 +127,23 @@ const incomeExpenseController = {
         success: true,
         message: "Transaction updated successfully",
       });
-    });
+    } catch (err) {
+      console.error("Error updating transaction:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update transaction",
+        error: err.message,
+      });
+    }
   },
 
   // Approve transaction
-  approveTransaction: (req, res) => {
-    const { id } = req.params;
-    const approved_by = req.user.user_id;
+  approveTransaction: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const approved_by = req.user.user_id;
 
-    IncomeExpense.approve(id, approved_by, (err, result) => {
-      if (err) {
-        console.error("Error approving transaction:", err);
-        return res.status(500).json({
-          success: false,
-          message: "Failed to approve transaction",
-          error: err.message,
-        });
-      }
+      const result = await IncomeExpense.approve(id, approved_by);
 
       if (result.affectedRows === 0) {
         return res.status(404).json({
@@ -173,23 +156,23 @@ const incomeExpenseController = {
         success: true,
         message: "Transaction approved successfully",
       });
-    });
+    } catch (err) {
+      console.error("Error approving transaction:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to approve transaction",
+        error: err.message,
+      });
+    }
   },
 
   // Process transaction (mark as paid)
-  processTransaction: (req, res) => {
-    const { id } = req.params;
-    const processed_by = req.user.user_id;
+  processTransaction: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const processed_by = req.user.user_id;
 
-    IncomeExpense.process(id, processed_by, (err, result) => {
-      if (err) {
-        console.error("Error processing transaction:", err);
-        return res.status(500).json({
-          success: false,
-          message: "Failed to process transaction",
-          error: err.message,
-        });
-      }
+      const result = await IncomeExpense.process(id, processed_by);
 
       if (result.affectedRows === 0) {
         return res.status(404).json({
@@ -202,22 +185,21 @@ const incomeExpenseController = {
         success: true,
         message: "Transaction processed successfully",
       });
-    });
+    } catch (err) {
+      console.error("Error processing transaction:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to process transaction",
+        error: err.message,
+      });
+    }
   },
 
   // Delete transaction
-  deleteTransaction: (req, res) => {
-    const { id } = req.params;
-
-    IncomeExpense.delete(id, (err, result) => {
-      if (err) {
-        console.error("Error deleting transaction:", err);
-        return res.status(500).json({
-          success: false,
-          message: "Failed to delete transaction",
-          error: err.message,
-        });
-      }
+  deleteTransaction: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = await IncomeExpense.delete(id);
 
       if (result.affectedRows === 0) {
         return res.status(404).json({
@@ -230,117 +212,123 @@ const incomeExpenseController = {
         success: true,
         message: "Transaction deleted successfully",
       });
-    });
+    } catch (err) {
+      console.error("Error deleting transaction:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to delete transaction",
+        error: err.message,
+      });
+    }
   },
 
   // Get financial summary
-  getFinancialSummary: (req, res) => {
-    const filters = {
-      start_date: req.query.start_date,
-      end_date: req.query.end_date,
-      academic_period_id: req.query.academic_period_id,
-    };
+  getFinancialSummary: async (req, res) => {
+    try {
+      const filters = {
+        start_date: req.query.start_date,
+        end_date: req.query.end_date,
+        academic_period_id: req.query.academic_period_id,
+      };
 
-    IncomeExpense.getFinancialSummary(filters, (err, results) => {
-      if (err) {
-        console.error("Error fetching financial summary:", err);
-        return res.status(500).json({
-          success: false,
-          message: "Failed to fetch financial summary",
-          error: err.message,
-        });
-      }
+      const results = await IncomeExpense.getFinancialSummary(filters);
 
       res.status(200).json({
         success: true,
         data: results[0] || {},
       });
-    });
+    } catch (err) {
+      console.error("Error fetching financial summary:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch financial summary",
+        error: err.message,
+      });
+    }
   },
 
   // Get category breakdown
-  getCategoryBreakdown: (req, res) => {
-    const { transaction_type } = req.params;
-    const filters = {
-      start_date: req.query.start_date,
-      end_date: req.query.end_date,
-      academic_period_id: req.query.academic_period_id,
-    };
+  getCategoryBreakdown: async (req, res) => {
+    try {
+      const { transaction_type } = req.params;
+      const filters = {
+        start_date: req.query.start_date,
+        end_date: req.query.end_date,
+        academic_period_id: req.query.academic_period_id,
+      };
 
-    IncomeExpense.getCategoryBreakdown(
-      transaction_type,
-      filters,
-      (err, results) => {
-        if (err) {
-          console.error("Error fetching category breakdown:", err);
-          return res.status(500).json({
-            success: false,
-            message: "Failed to fetch category breakdown",
-            error: err.message,
-          });
-        }
+      const results = await IncomeExpense.getCategoryBreakdown(
+        transaction_type,
+        filters
+      );
 
-        res.status(200).json({
-          success: true,
-          data: results,
-          count: results.length,
-        });
-      }
-    );
+      res.status(200).json({
+        success: true,
+        data: results,
+        count: results.length,
+      });
+    } catch (err) {
+      console.error("Error fetching category breakdown:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch category breakdown",
+        error: err.message,
+      });
+    }
   },
 
   // Get monthly trend
-  getMonthlyTrend: (req, res) => {
-    const { year } = req.query;
+  getMonthlyTrend: async (req, res) => {
+    try {
+      const { year } = req.query;
 
-    if (!year) {
-      return res.status(400).json({
-        success: false,
-        message: "Year parameter is required",
-      });
-    }
-
-    IncomeExpense.getMonthlyTrend(year, (err, results) => {
-      if (err) {
-        console.error("Error fetching monthly trend:", err);
-        return res.status(500).json({
+      if (!year) {
+        return res.status(400).json({
           success: false,
-          message: "Failed to fetch monthly trend",
-          error: err.message,
+          message: "Year parameter is required",
         });
       }
+
+      const results = await IncomeExpense.getMonthlyTrend(year);
 
       res.status(200).json({
         success: true,
         data: results,
         count: results.length,
       });
-    });
+    } catch (err) {
+      console.error("Error fetching monthly trend:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch monthly trend",
+        error: err.message,
+      });
+    }
   },
 
   // Get department expenses
-  getDepartmentExpenses: (req, res) => {
-    const filters = {
-      start_date: req.query.start_date,
-      end_date: req.query.end_date,
-    };
+  getDepartmentExpenses: async (req, res) => {
+    try {
+      const filters = {
+        start_date: req.query.start_date,
+        end_date: req.query.end_date,
+      };
 
-    IncomeExpense.getDepartmentExpenses(filters, (err, results) => {
-      if (err) {
-        console.error("Error fetching department expenses:", err);
-        return res.status(500).json({
-          success: false,
-          message: "Failed to fetch department expenses",
-          error: err.message,
-        });
-      }
+      const results = await IncomeExpense.getDepartmentExpenses(filters);
 
       res.status(200).json({
         success: true,
         data: results,
         count: results.length,
       });
-    });
+    } catch (err) {
+      console.error("Error fetching department expenses:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch department expenses",
+        error: err.message,
+      });
+    }
   },
 };
 

@@ -58,6 +58,10 @@ const AnnouncementsService = {
   getStatistics: async () => {
     return await AnnouncementsModel.getStatistics();
   },
+
+  markAsRead: async (announcement_id, user_id) => {
+    return await AnnouncementsModel.markAsRead(announcement_id, user_id);
+  },
 };
 
 export default AnnouncementsService;

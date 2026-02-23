@@ -1,8 +1,6 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
-import { DollarSign, Download, Eye, Printer, Search, ChevronLeft, ChevronRight, Receipt, Calendar } from "lucide-react";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import React, { useState, useEffect } from "react";
+import api from "../../../api/axios";
+import { DollarSign, Download, Eye, Printer, Search, ChevronLeft, ChevronRight, Receipt, Calendar, Award } from "lucide-react";
 
 const StudentFinanceBalance = () => {
   const [balance, setBalance] = useState(null);
@@ -19,27 +17,85 @@ const StudentFinanceBalance = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_BASE}/api/invoices`);
-      const invoices = response.data || [];
 
-      // Calculate balance from invoices
-      const totalTuition = invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
-      const totalPaid = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+      const studentId = localStorage.getItem("userId");
+
+      // 1. Fetch Invoices, Tuition Setup, and Scholarships
+      const [invoiceRes, scheduleRes, scholarshipRes] = await Promise.all([
+        api.get(`/api/invoices/my-invoices`),
+        api.get(`/api/tuition-fees/student-schedule`),
+        studentId ? api.get(`/api/scholarships/student/${studentId}`) : Promise.resolve({ data: { data: [] } })
+      ]);
+
+      const invoices = invoiceRes.data.data || invoiceRes.data || [];
+      const scheduleData = scheduleRes.data.data || {};
+      const scholarships = scholarshipRes.data.data || [];
+
+      // Filter active approved scholarships
+      const activeGrant = scholarships.find(s => s.status === 'Approved' || s.status === 'Active');
+
+      const scheduleItems = [];
+
+      // Add Expected Fees from Tuition Setup if they exist and no invoice is present for that period
+      if (scheduleData.has_setup) {
+        if (invoices.length === 0) {
+          const fees = [
+            { desc: 'Tuition Fee', amount: scheduleData.tuition_fee, isTuition: true },
+            { desc: 'Laboratory Fee', amount: scheduleData.laboratory_fee },
+            { desc: 'Library Fee', amount: scheduleData.library_fee },
+            { desc: 'Registration Fee', amount: scheduleData.registration_fee },
+            { desc: 'Miscellaneous Fees', amount: (parseFloat(scheduleData.miscellaneous_fee) || 0) + (parseFloat(scheduleData.other_fees) || 0) }
+          ].filter(f => parseFloat(f.amount) > 0);
+
+          fees.forEach((f, idx) => {
+            scheduleItems.push({
+              schedule_id: `setup-${idx}`,
+              due_date: new Date(),
+              description: `${f.desc} (${scheduleData.school_year} ${scheduleData.semester})`,
+              amount: f.amount,
+              paid_amount: 0,
+              status: 'pending'
+            });
+          });
+        }
+      }
+
+      // Add real invoices to the schedule
+      invoices.forEach(inv => {
+        scheduleItems.push({
+          schedule_id: inv.invoice_id,
+          due_date: inv.due_date,
+          description: `Invoice #${inv.invoice_number} - ${inv.academic_period_id ? 'Tuition' : 'Other'}`,
+          amount: inv.total_amount,
+          paid_amount: inv.amount_paid || 0,
+          status: inv.status.toLowerCase()
+        });
+      });
+
+      // Calculate balance summary
+      const totalTuition = scheduleItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+      const totalPaid = scheduleItems.reduce((sum, item) => sum + (parseFloat(item.paid_amount) || 0), 0);
+
+      let scholarshipDeduction = 0;
+      if (activeGrant) {
+        if (activeGrant.discount_type === 'Percentage') {
+          // If percentage, usually applies to Tuition Fee only
+          const tuitionBase = scheduleData.tuition_fee || 0;
+          scholarshipDeduction = (tuitionBase * (activeGrant.discount_value / 100));
+        } else {
+          // Fixed amount
+          scholarshipDeduction = parseFloat(activeGrant.discount_value) || 0;
+        }
+      }
 
       setBalance({
         total_tuition: totalTuition,
         total_paid: totalPaid,
-        remaining_balance: totalTuition - totalPaid,
+        scholarship_deduction: scholarshipDeduction,
+        remaining_balance: Math.max(0, totalTuition - totalPaid - scholarshipDeduction),
       });
 
-      setPaymentSchedule(invoices.map(inv => ({
-        schedule_id: inv.id || inv.invoice_id,
-        due_date: inv.due_date,
-        description: inv.description || 'Tuition Fee',
-        amount: inv.amount,
-        paid_amount: inv.status === 'paid' ? inv.amount : 0,
-        status: inv.status,
-      })));
+      setPaymentSchedule(scheduleItems);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -76,18 +132,24 @@ const StudentFinanceBalance = () => {
         </div>
 
         {/* Balance Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg p-5 text-white shadow-lg">
-            <p className="text-xs font-medium text-indigo-100 uppercase mb-1">Total Tuition Fee</p>
-            <p className="text-3xl font-bold">₱{parseFloat(balance?.total_tuition || 0).toLocaleString()}</p>
+            <p className="text-xs font-medium text-indigo-100 uppercase mb-1">Total Fees</p>
+            <p className="text-2xl font-bold">₱{parseFloat(balance?.total_tuition || 0).toLocaleString()}</p>
           </div>
           <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-5 text-white shadow-lg">
             <p className="text-xs font-medium text-green-100 uppercase mb-1">Total Paid</p>
-            <p className="text-3xl font-bold">₱{parseFloat(balance?.total_paid || 0).toLocaleString()}</p>
+            <p className="text-2xl font-bold">₱{parseFloat(balance?.total_paid || 0).toLocaleString()}</p>
+          </div>
+          <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg p-5 text-white shadow-lg">
+            <p className="text-xs font-medium text-amber-100 uppercase mb-1 flex items-center gap-1">
+              <Award size={12} /> Scholarship
+            </p>
+            <p className="text-2xl font-bold">₱{parseFloat(balance?.scholarship_deduction || 0).toLocaleString()}</p>
           </div>
           <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-lg p-5 text-white shadow-lg">
             <p className="text-xs font-medium text-red-100 uppercase mb-1">Remaining Balance</p>
-            <p className="text-3xl font-bold">₱{parseFloat(balance?.remaining_balance || 0).toLocaleString()}</p>
+            <p className="text-2xl font-bold">₱{parseFloat(balance?.remaining_balance || 0).toLocaleString()}</p>
           </div>
         </div>
 

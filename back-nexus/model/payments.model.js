@@ -2,7 +2,7 @@ import db from "../config/db.js";
 
 const Payment = {
   // Create new payment
-  create: (data, callback) => {
+  create: async (data) => {
     const query = `
       INSERT INTO payment_collections 
       (payment_reference, invoice_id, student_id, amount_paid, payment_method,
@@ -10,7 +10,7 @@ const Payment = {
        receipt_number, notes, collected_by)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    db.query(
+    const [result] = await db.query(
       query,
       [
         data.payment_reference,
@@ -26,13 +26,13 @@ const Payment = {
         data.receipt_number,
         data.notes,
         data.collected_by,
-      ],
-      callback
+      ]
     );
+    return result;
   },
 
   // Get all payments with filters
-  getAll: (filters, callback) => {
+  getAll: async (filters) => {
     let query = `
       SELECT 
         pc.*,
@@ -40,7 +40,8 @@ const Payment = {
         sd.student_number,
         si.invoice_number,
         si.total_amount as invoice_total,
-        si.balance as invoice_balance,
+        si.amount_paid as invoice_total_paid,
+        si.total_amount - si.amount_paid as invoice_balance,
         CONCAT(c.first_name, ' ', c.last_name) as collected_by_name,
         CONCAT(v.first_name, ' ', v.last_name) as verified_by_name
       FROM payment_collections pc
@@ -89,11 +90,12 @@ const Payment = {
       params.push(parseInt(filters.limit), parseInt(filters.offset || 0));
     }
 
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 
   // Get payment by ID
-  getById: (id, callback) => {
+  getById: async (id) => {
     const query = `
       SELECT 
         pc.*,
@@ -102,8 +104,8 @@ const Payment = {
         sd.student_number,
         si.invoice_number,
         si.total_amount as invoice_total,
-        si.amount_paid as invoice_paid,
-        si.balance as invoice_balance,
+        si.amount_paid as invoice_total_paid,
+        si.total_amount - si.amount_paid as invoice_balance,
         CONCAT(c.first_name, ' ', c.last_name) as collected_by_name,
         CONCAT(v.first_name, ' ', v.last_name) as verified_by_name
       FROM payment_collections pc
@@ -114,11 +116,12 @@ const Payment = {
       LEFT JOIN users v ON pc.verified_by = v.user_id
       WHERE pc.payment_id = ?
     `;
-    db.query(query, [id], callback);
+    const [rows] = await db.query(query, [id]);
+    return rows;
   },
 
   // Get payments by student
-  getByStudent: (student_id, callback) => {
+  getByStudent: async (student_id) => {
     const query = `
       SELECT 
         pc.*,
@@ -128,11 +131,12 @@ const Payment = {
       WHERE pc.student_id = ?
       ORDER BY pc.payment_date DESC
     `;
-    db.query(query, [student_id], callback);
+    const [rows] = await db.query(query, [student_id]);
+    return rows;
   },
 
   // Get payments by invoice
-  getByInvoice: (invoice_id, callback) => {
+  getByInvoice: async (invoice_id) => {
     const query = `
       SELECT 
         pc.*,
@@ -142,11 +146,12 @@ const Payment = {
       WHERE pc.invoice_id = ?
       ORDER BY pc.payment_date DESC
     `;
-    db.query(query, [invoice_id], callback);
+    const [rows] = await db.query(query, [invoice_id]);
+    return rows;
   },
 
   // Update payment
-  update: (id, data, callback) => {
+  update: async (id, data) => {
     const query = `
       UPDATE payment_collections 
       SET amount_paid = ?, payment_method = ?, payment_date = ?,
@@ -154,7 +159,7 @@ const Payment = {
           payment_status = ?, receipt_number = ?, notes = ?
       WHERE payment_id = ?
     `;
-    db.query(
+    const [result] = await db.query(
       query,
       [
         data.amount_paid,
@@ -167,45 +172,49 @@ const Payment = {
         data.receipt_number,
         data.notes,
         id,
-      ],
-      callback
+      ]
     );
+    return result;
   },
 
   // Verify payment
-  verify: (id, verified_by, callback) => {
+  verify: async (id, verified_by) => {
     const query = `
       UPDATE payment_collections 
       SET payment_status = 'Verified', verified_by = ?
       WHERE payment_id = ?
     `;
-    db.query(query, [verified_by, id], callback);
+    const [result] = await db.query(query, [verified_by, id]);
+    return result;
   },
 
   // Update payment status
-  updateStatus: (id, status, callback) => {
+  updateStatus: async (id, status) => {
     const query =
       "UPDATE payment_collections SET payment_status = ? WHERE payment_id = ?";
-    db.query(query, [status, id], callback);
+    const [result] = await db.query(query, [status, id]);
+    return result;
   },
 
   // Delete payment
-  delete: (id, callback) => {
+  delete: async (id) => {
     const query = "DELETE FROM payment_collections WHERE payment_id = ?";
-    db.query(query, [id], callback);
+    const [result] = await db.query(query, [id]);
+    return result;
   },
 
   // Generate payment reference
-  generatePaymentReference: (callback) => {
+  generatePaymentReference: async () => {
     const query = `
       SELECT payment_reference FROM payment_collections 
       ORDER BY payment_id DESC LIMIT 1
     `;
-    db.query(query, [], callback);
+    const [rows] = await db.query(query);
+    return rows;
   },
 
   // Get payment summary
-  getPaymentSummary: (filters, callback) => {
+  getPaymentSummary: async (filters) => {
     let query = `
       SELECT 
         COUNT(*) as total_payments,
@@ -223,15 +232,16 @@ const Payment = {
       params.push(filters.start_date, filters.end_date);
     }
     if (filters.payment_method) {
-      query += " AND payment_method = ?";
+      query += " AND pc.payment_method = ?";
       params.push(filters.payment_method);
     }
 
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 
   // Get daily collection report
-  getDailyCollection: (date, callback) => {
+  getDailyCollection: async (date) => {
     const query = `
       SELECT 
         payment_method,
@@ -242,7 +252,8 @@ const Payment = {
       GROUP BY payment_method
       ORDER BY total_amount DESC
     `;
-    db.query(query, [date], callback);
+    const [rows] = await db.query(query, [date]);
+    return rows;
   },
 };
 

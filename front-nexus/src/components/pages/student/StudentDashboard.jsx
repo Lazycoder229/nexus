@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from "react";
+import api from "../../../api/axios";
 import {
   LayoutDashboard,
   BookOpen,
@@ -16,8 +16,6 @@ import {
   DollarSign,
 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
 const StudentDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [upcomingClasses, setUpcomingClasses] = useState([]);
@@ -33,12 +31,13 @@ const StudentDashboard = () => {
     try {
       setLoading(true);
       // Fetch from real backend endpoints
-      const [enrollmentsRes, gradesRes, attendanceRes, announcementsRes, invoicesRes] = await Promise.all([
-        axios.get(`${API_BASE}/api/enrollments`),
-        axios.get(`${API_BASE}/api/grades`),
-        axios.get(`${API_BASE}/api/student-attendance`),
-        axios.get(`${API_BASE}/api/events/announcements`),
-        axios.get(`${API_BASE}/api/invoices`),
+      const [enrollmentsRes, gradesRes, attendanceRes, announcementsRes, invoicesRes, scholarshipRes] = await Promise.all([
+        api.get(`/api/enrollments`),
+        api.get(`/api/grades`),
+        api.get(`/api/student-attendance`),
+        api.get(`/api/events/announcements`),
+        api.get(`/api/invoices`),
+        api.get(`/api/scholarships/student/${localStorage.getItem("userId") || 0}`)
       ]);
 
       // Aggregate dashboard data from real endpoints
@@ -47,21 +46,37 @@ const StudentDashboard = () => {
       const attendance = attendanceRes.data || [];
       const announcementsData = announcementsRes.data || [];
       const invoices = invoicesRes.data || [];
+      const scholarships = scholarshipRes.data.data || [];
 
       // Calculate dashboard summary
       const totalPresent = attendance.filter(a => a.status === 'present').length;
       const totalRecords = attendance.length || 1;
       const attendanceRate = Math.round((totalPresent / totalRecords) * 100);
 
+      // Find active grant for scholarship deduction
+      const activeGrant = scholarships.find(s => s.status === 'Approved' || s.status === 'Active');
+      let scholarshipDeduction = 0;
+      if (activeGrant) {
+        if (activeGrant.discount_type === 'Percentage') {
+          // We'd need tuition fee setup to be exact, but for dashboard let's use a simpler heuristic or just show the grant info
+          // For now, let's keep it simple: if percentage, we might need another fetch or just show fixed deduction if present
+          scholarshipDeduction = 0; // Placeholder until tuition fees are fetched here too, or just subtract fixed allowance
+        } else {
+          scholarshipDeduction = parseFloat(activeGrant.discount_value) || 0;
+        }
+      }
+
       const pendingBalance = invoices
         .filter(inv => inv.status === 'pending' || inv.status === 'unpaid')
         .reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+
+      const finalBalance = Math.max(0, pendingBalance - scholarshipDeduction);
 
       setDashboardData({
         enrolled_subjects: enrollments.length,
         current_gpa: grades.length > 0 ? (grades.reduce((sum, g) => sum + (parseFloat(g.grade) || 0), 0) / grades.length).toFixed(2) : "0.00",
         attendance_rate: attendanceRate,
-        pending_balance: pendingBalance.toLocaleString(),
+        pending_balance: finalBalance.toLocaleString(),
         pending_assignments: 0,
         upcoming_exams: 0,
         completed_units: enrollments.reduce((sum, e) => sum + (e.units || 0), 0),

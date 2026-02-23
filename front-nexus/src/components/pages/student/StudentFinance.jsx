@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from "react";
+import api from "../../../api/axios";
 import {
   DollarSign,
   Plus,
@@ -18,10 +18,9 @@ import {
   Wallet,
   BarChart3,
   Eye,
-  Printer
+  Printer,
+  Award
 } from "lucide-react";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentFinance = () => {
   const [activeTab, setActiveTab] = useState("balance");
@@ -71,15 +70,41 @@ const StudentFinance = () => {
 
   const fetchBalance = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/invoices`);
-      const invoices = response.data || [];
+      const studentId = localStorage.getItem("userId");
+      if (!studentId) return;
+
+      const [invoiceRes, scholarshipRes, setupRes] = await Promise.all([
+        api.get(`/api/invoices`, { params: { student_id: studentId } }),
+        api.get(`/api/scholarships/student/${studentId}`),
+        api.get(`/api/tuition-fees/student-schedule`)
+      ]);
+
+      const invoices = invoiceRes.data.data || [];
+      const scholarships = scholarshipRes.data.data || [];
+      const scheduleData = setupRes.data.data || {};
+
+      const activeGrant = scholarships.find(s => s.status === 'Approved' || s.status === 'Active');
+
       // Calculate balance from invoices
-      const totalTuition = invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
-      const totalPaid = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+      const totalBilled = invoices.reduce((sum, inv) => sum + (parseFloat(inv.total_amount) || 0), 0);
+      const totalPaid = invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount_paid) || 0), 0);
+      const currentBalance = invoices.reduce((sum, inv) => sum + (parseFloat(inv.balance) || 0), 0);
+
+      let scholarshipDeduction = 0;
+      if (activeGrant) {
+        if (activeGrant.discount_type === 'Percentage') {
+          const tuitionBase = scheduleData.tuition_fee || 0;
+          scholarshipDeduction = (tuitionBase * (activeGrant.discount_value / 100));
+        } else {
+          scholarshipDeduction = parseFloat(activeGrant.discount_value) || 0;
+        }
+      }
+
       setBalance({
-        total_tuition: totalTuition,
+        total_tuition: totalBilled,
         total_paid: totalPaid,
-        remaining_balance: totalTuition - totalPaid,
+        scholarship_deduction: scholarshipDeduction,
+        remaining_balance: currentBalance,
       });
     } catch (error) {
       console.error("Error fetching balance:", error);
@@ -88,14 +113,16 @@ const StudentFinance = () => {
 
   const fetchPaymentSchedule = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/invoices`);
-      const invoices = response.data || [];
+      const studentId = localStorage.getItem("userId");
+      const response = await api.get(`/api/invoices`, { params: { student_id: studentId } });
+      const invoices = response.data.data || [];
       setPaymentSchedule(invoices.map(inv => ({
-        schedule_id: inv.id || inv.invoice_id,
+        schedule_id: inv.invoice_id,
         due_date: inv.due_date,
-        description: inv.description || 'Tuition Fee',
-        amount: inv.amount,
-        paid_amount: inv.status === 'paid' ? inv.amount : 0,
+        description: inv.notes || 'Tuition Fee',
+        amount: inv.total_amount,
+        paid_amount: inv.amount_paid,
+        balance: inv.balance,
         status: inv.status,
       })));
     } catch (error) {
@@ -105,16 +132,17 @@ const StudentFinance = () => {
 
   const fetchReceipts = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/payments`);
-      const paymentsData = response.data || [];
+      const studentId = localStorage.getItem("userId");
+      const response = await api.get(`/api/payments/student/${studentId}`);
+      const paymentsData = response.data.data || [];
       setReceipts(paymentsData.map(p => ({
-        receipt_id: p.id || p.payment_id,
-        receipt_number: p.receipt_number || `RCP-${p.id}`,
-        payment_date: p.payment_date || p.created_at,
-        description: p.description || 'Payment',
-        payment_method: p.payment_method || 'cash',
-        amount: p.amount,
-        status: p.status || 'paid',
+        receipt_id: p.payment_id,
+        receipt_number: p.receipt_number || p.payment_reference,
+        payment_date: p.payment_date,
+        description: p.notes || 'Payment',
+        payment_method: p.payment_method,
+        amount: p.amount_paid,
+        status: p.payment_status,
         semester: p.semester,
       })));
     } catch (error) {
@@ -124,16 +152,17 @@ const StudentFinance = () => {
 
   const fetchPayments = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/payments`);
-      const paymentsData = response.data || [];
+      const studentId = localStorage.getItem("userId");
+      const response = await api.get(`/api/payments/student/${studentId}`);
+      const paymentsData = response.data.data || [];
       setPayments(paymentsData.map(p => ({
-        payment_id: p.id || p.payment_id,
-        reference_number: p.reference_number,
-        payment_date: p.payment_date || p.created_at,
-        payment_method: p.payment_method || 'cash',
-        amount: p.amount,
-        status: p.status || 'paid',
-        processed_by: p.processed_by,
+        payment_id: p.payment_id,
+        reference_number: p.payment_reference,
+        payment_date: p.payment_date,
+        payment_method: p.payment_method,
+        amount: p.amount_paid,
+        status: p.payment_status,
+        processed_by: p.collected_by_name,
         notes: p.notes,
       })));
     } catch (error) {
@@ -143,26 +172,28 @@ const StudentFinance = () => {
 
   const fetchSummary = async () => {
     try {
+      const studentId = localStorage.getItem("userId");
       const [invoicesRes, paymentsRes] = await Promise.all([
-        axios.get(`${API_BASE}/api/invoices`),
-        axios.get(`${API_BASE}/api/payments`),
+        api.get(`/api/invoices`, { params: { student_id: studentId } }),
+        api.get(`/api/payments/student/${studentId}`),
       ]);
-      const invoices = invoicesRes.data || [];
-      const paymentsData = paymentsRes.data || [];
+      const invoices = invoicesRes.data.data || [];
+      const paymentsData = paymentsRes.data.data || [];
 
-      const totalTuition = invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
-      const totalPaid = paymentsData.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+      const totalTuition = invoices.reduce((sum, inv) => sum + (parseFloat(inv.total_amount) || 0), 0);
+      const totalPaid = invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount_paid) || 0), 0);
+      const outstanding = invoices.reduce((sum, inv) => sum + (parseFloat(inv.balance) || 0), 0);
 
       setSummary({
         total_payments: paymentsData.length,
         total_amount_paid: totalPaid,
-        outstanding_balance: totalTuition - totalPaid,
+        outstanding_balance: outstanding,
         total_tuition: totalTuition,
         payment_progress: totalTuition > 0 ? Math.round((totalPaid / totalTuition) * 100) : 0,
         by_payment_method: Object.values(paymentsData.reduce((acc, p) => {
           const method = p.payment_method || 'cash';
           if (!acc[method]) acc[method] = { payment_method: method, total_amount: 0 };
-          acc[method].total_amount += parseFloat(p.amount) || 0;
+          acc[method].total_amount += parseFloat(p.amount_paid) || 0;
           return acc;
         }, {})),
       });
@@ -216,10 +247,11 @@ const StudentFinance = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const studentId = localStorage.getItem("userId");
     try {
-      await axios.post(`${API_BASE}/api/payments`, {
+      await api.post(`/api/payments`, {
         ...formData,
-        student_id: 1, // TODO: Get from auth
+        student_id: studentId,
       });
       fetchData();
       handleCloseModal();
@@ -284,13 +316,17 @@ const StudentFinance = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      paid: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-      partial: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-      pending: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-      overdue: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-      cancelled: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
+      // Invoice statuses
+      'Paid': "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      'Partially Paid': "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+      'Pending': "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+      'Overdue': "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+      'Cancelled': "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
+      // Payment statuses
+      'Verified': "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      'Cleared': "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
     };
-    return colors[status] || colors.pending;
+    return colors[status] || colors.Pending;
   };
 
   const getPaymentMethodIcon = (method) => {
@@ -350,12 +386,12 @@ const StudentFinance = () => {
 
         {/* Balance Overview Cards */}
         {activeTab === "balance" && balance && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg p-5 text-white shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-indigo-100 uppercase mb-1">Total Tuition Fee</p>
-                  <p className="text-3xl font-bold">₱{parseFloat(balance.total_tuition || 0).toLocaleString()}</p>
+                  <p className="text-xs font-medium text-indigo-100 uppercase mb-1">Total Fees</p>
+                  <p className="text-2xl font-bold">₱{parseFloat(balance.total_tuition || 0).toLocaleString()}</p>
                 </div>
                 <div className="bg-white/20 p-3 rounded-lg">
                   <FileText className="text-white" size={28} />
@@ -366,10 +402,21 @@ const StudentFinance = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-green-100 uppercase mb-1">Total Paid</p>
-                  <p className="text-3xl font-bold">₱{parseFloat(balance.total_paid || 0).toLocaleString()}</p>
+                  <p className="text-2xl font-bold">₱{parseFloat(balance.total_paid || 0).toLocaleString()}</p>
                 </div>
                 <div className="bg-white/20 p-3 rounded-lg">
                   <CheckCircle className="text-white" size={28} />
+                </div>
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg p-5 text-white shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-amber-100 uppercase mb-1">Scholarship</p>
+                  <p className="text-2xl font-bold">₱{parseFloat(balance.scholarship_deduction || 0).toLocaleString()}</p>
+                </div>
+                <div className="bg-white/20 p-3 rounded-lg">
+                  <Award className="text-white" size={28} />
                 </div>
               </div>
             </div>
@@ -377,7 +424,7 @@ const StudentFinance = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-medium text-red-100 uppercase mb-1">Remaining Balance</p>
-                  <p className="text-3xl font-bold">₱{parseFloat(balance.remaining_balance || 0).toLocaleString()}</p>
+                  <p className="text-2xl font-bold">₱{parseFloat(balance.remaining_balance || 0).toLocaleString()}</p>
                 </div>
                 <div className="bg-white/20 p-3 rounded-lg">
                   <AlertCircle className="text-white" size={28} />

@@ -30,9 +30,12 @@ const StudentAttendance = () => {
 
   const fetchAttendanceLogs = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/student-attendance`);
-      const data = response.data || [];
-      setAttendanceLogs(data);
+      const studentId = localStorage.getItem("userId");
+      const response = await axios.get(`${API_BASE}/api/student-attendance`, {
+        params: { student_id: studentId }
+      });
+      const data = response.data.data || [];
+      setAttendanceLogs(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching attendance logs:", error);
       setAttendanceLogs([]);
@@ -41,9 +44,12 @@ const StudentAttendance = () => {
 
   const fetchAttendanceRecords = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/student-attendance`);
-      const data = response.data || [];
-      setAttendanceRecords(data);
+      const studentId = localStorage.getItem("userId");
+      const response = await axios.get(`${API_BASE}/api/student-attendance`, {
+        params: { student_id: studentId }
+      });
+      const data = response.data.data || [];
+      setAttendanceRecords(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching attendance records:", error);
       setAttendanceRecords([]);
@@ -90,7 +96,11 @@ const StudentAttendance = () => {
   const getAttendanceForDate = (day) => {
     if (!day) return null;
     const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    return attendanceRecords.find((record) => record.date === dateStr);
+    return attendanceRecords.find((record) => {
+      if (!record.attendance_date) return false;
+      const recordDate = new Date(record.attendance_date).toISOString().split('T')[0];
+      return recordDate === dateStr;
+    });
   };
 
   const tabs = [
@@ -123,8 +133,8 @@ const StudentAttendance = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${activeTab === tab.id
-                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20"
-                    : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20"
+                  : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                   }`}
               >
                 <Icon size={16} />
@@ -164,9 +174,9 @@ const StudentAttendance = () => {
                         className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
                       >
                         <td className="p-3 text-sm text-slate-900 dark:text-white">
-                          {new Date(log.date).toLocaleDateString()}
+                          {log.attendance_date ? new Date(log.attendance_date).toLocaleDateString() : "-"}
                         </td>
-                        <td className="p-3 text-sm text-slate-900 dark:text-white">{log.subject_name || log.course_name || "General"}</td>
+                        <td className="p-3 text-sm text-slate-900 dark:text-white">{log.course_title || log.course_code || "General"}</td>
                         <td className="p-3 text-sm text-slate-700 dark:text-slate-300">
                           {log.time_in ? new Date(`2000-01-01T${log.time_in}`).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-"}
                         </td>
@@ -224,18 +234,18 @@ const StudentAttendance = () => {
                     <div
                       key={index}
                       className={`aspect-square border rounded-lg p-2 text-center ${!day
-                          ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
-                          : isToday
-                            ? "border-indigo-600 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30"
-                            : attendance
-                              ? attendance.status === "present"
-                                ? "bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700"
-                                : attendance.status === "absent"
-                                  ? "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700"
-                                  : attendance.status === "late"
-                                    ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700"
-                                    : "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700"
-                              : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                        ? "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
+                        : isToday
+                          ? "border-indigo-600 dark:border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30"
+                          : attendance
+                            ? attendance.status === "present"
+                              ? "bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700"
+                              : attendance.status === "absent"
+                                ? "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700"
+                                : attendance.status === "late"
+                                  ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700"
+                                  : "bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700"
+                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
                         }`}
                     >
                       {day && (

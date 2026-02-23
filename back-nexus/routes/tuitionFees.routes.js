@@ -16,6 +16,9 @@ router.get("/", tuitionFeeController.getAllTuitionFees);
 // Get fee for specific criteria
 router.get("/details", tuitionFeeController.getFeeByDetails);
 
+// Get fee schedule for current student
+router.get("/student-schedule", tuitionFeeController.getStudentSchedule);
+
 // Get tuition fee by ID
 router.get("/:id", tuitionFeeController.getTuitionFeeById);
 

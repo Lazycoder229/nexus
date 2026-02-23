@@ -1,7 +1,34 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import api from "../../../api/axios";
 import { LayoutDashboard, DollarSign, FileText, Award } from "lucide-react";
 
 export default function AccountingDashboard() {
+  const [invoiceSummary, setInvoiceSummary] = useState(null);
+  const [scholarshipStats, setScholarshipStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [invoiceRes, scholarshipRes] = await Promise.all([
+          api.get("/api/invoices/summary"),
+          api.get("/api/scholarships/beneficiaries/statistics"),
+        ]);
+        setInvoiceSummary(invoiceRes.data);
+        setScholarshipStats(scholarshipRes.data);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+
+  const totalRevenue = invoiceSummary?.total_revenue ?? invoiceSummary?.total_paid ?? 0;
+  const invoicesIssued = invoiceSummary?.total_invoices ?? 0;
+  const scholarshipsDisbursed = scholarshipStats?.total_disbursed ?? 0;
+
   return (
     <div className="h-[80vh] font-sans text-gray-800">
       <main className="p-4">
@@ -35,7 +62,7 @@ export default function AccountingDashboard() {
                     Total Revenue
                   </p>
                   <h2 className="text-2xl font-bold text-gray-900 mt-1">
-                    ₱0.00
+                    {loading ? "Loading..." : `₱${parseFloat(totalRevenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                   </h2>
                 </div>
                 <div className="p-3 rounded-full bg-green-600 flex items-center justify-center">
@@ -52,7 +79,9 @@ export default function AccountingDashboard() {
                   <p className="text-xs font-medium text-gray-500">
                     Invoices Issued
                   </p>
-                  <h2 className="text-2xl font-bold text-gray-900 mt-1">0</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 mt-1">
+                    {loading ? "Loading..." : invoicesIssued}
+                  </h2>
                 </div>
                 <div className="p-3 rounded-full bg-indigo-600 flex items-center justify-center">
                   <FileText className="w-6 h-6 text-white" />
@@ -69,7 +98,7 @@ export default function AccountingDashboard() {
                     Scholarships Disbursed
                   </p>
                   <h2 className="text-2xl font-bold text-gray-900 mt-1">
-                    ₱0.00
+                    {loading ? "Loading..." : `₱${parseFloat(scholarshipsDisbursed).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                   </h2>
                 </div>
                 <div className="p-3 rounded-full bg-yellow-600 flex items-center justify-center">

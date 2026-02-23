@@ -496,17 +496,22 @@ const Menu = {
 
       path: "/student/student_calendar_exams",
     },
-    {
-      title: "Communication",
-      icons: Mail,
-
-      path: "/student/student_communication",
-    },
+    /*  {
+       title: "Communication",
+       icons: Mail,
+ 
+       path: "/student/student_communication",
+     }, */
     {
       title: "Finance",
       icons: DollarSign,
 
       path: "/student/student_finance",
+    },
+    {
+      title: "Scholarships",
+      icons: Award,
+      path: "/student/student_scholarships",
     },
   ],
 
@@ -590,11 +595,11 @@ const Menu = {
           icons: ReportIcon,
           link: "/accounting/accounting_income_expenses",
         },
-        {
+        /*  {
           label: "Payment Gateway",
           icons: DollarSign,
           link: "/accounting/accounting_payment_gateway",
-        },
+        }, */
       ],
     },
     {
@@ -606,21 +611,21 @@ const Menu = {
           icons: FileText,
           link: "/accounting/accounting_application_forms",
         },
-        {
+        /* {
           label: "Scholarship Type Setup",
           icons: Award,
           link: "/accounting/accounting_scholar_type_setup",
-        },
+        }, */
         {
           label: "Benefeciary list",
           icons: Users,
           link: "/accounting/accounting_benefeciary_list",
         },
-        {
+        /*  {
           label: "Eligibility Screening",
           icons: CheckSquare,
           link: "/accounting/accounting_eligibility_screening",
-        },
+        }, */
       ],
     },
   ],

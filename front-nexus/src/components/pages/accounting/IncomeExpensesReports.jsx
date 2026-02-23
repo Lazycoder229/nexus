@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../api/axios";
 import {
   Plus,
   Edit,
@@ -12,8 +12,6 @@ import {
   ChevronRight,
   Search,
 } from "lucide-react";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const IncomeExpensesReports = () => {
   const [transactions, setTransactions] = useState([]);
@@ -90,7 +88,7 @@ const IncomeExpensesReports = () => {
 
   const fetchTransactions = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/income-expenses`, {
+      const response = await api.get(`/api/income-expenses`, {
         params: filters,
       });
       setTransactions(response.data.data || []);
@@ -101,7 +99,7 @@ const IncomeExpensesReports = () => {
 
   const fetchSummary = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/income-expenses/summary`, {
+      const response = await api.get(`/api/income-expenses/summary`, {
         params: {
           start_date: filters.start_date,
           end_date: filters.end_date,
@@ -123,12 +121,12 @@ const IncomeExpensesReports = () => {
     e.preventDefault();
     try {
       if (formData.transaction_id) {
-        await axios.put(
-          `${API_BASE}/api/income-expenses/${formData.transaction_id}`,
+        await api.put(
+          `/api/income-expenses/${formData.transaction_id}`,
           formData
         );
       } else {
-        await axios.post(`${API_BASE}/api/income-expenses`, formData);
+        await api.post(`/api/income-expenses`, formData);
       }
       setShowModal(false);
       resetForm();
@@ -148,7 +146,7 @@ const IncomeExpensesReports = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Delete this transaction?")) {
       try {
-        await axios.delete(`${API_BASE}/api/income-expenses/${id}`);
+        await api.delete(`/api/income-expenses/${id}`);
         fetchTransactions();
         fetchSummary();
       } catch (error) {
@@ -420,8 +418,8 @@ const IncomeExpensesReports = () => {
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span
                         className={`px-2 py-1 text-xs rounded-full font-medium ${transaction.transaction_type === "Income"
-                            ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
-                            : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
+                          ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
+                          : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
                           }`}
                       >
                         {transaction.transaction_type}
@@ -441,8 +439,8 @@ const IncomeExpensesReports = () => {
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span
                         className={`font-semibold text-sm ${transaction.transaction_type === "Income"
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-600 dark:text-red-400"
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-red-600 dark:text-red-400"
                           }`}
                       >
                         {transaction.transaction_type === "Income" ? "+" : "-"}₱
@@ -529,8 +527,8 @@ const IncomeExpensesReports = () => {
                 key={i + 1}
                 onClick={() => setCurrentPage(i + 1)}
                 className={`px-3 py-1.5 text-xs rounded border transition-colors ${currentPage === i + 1
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  ? "bg-indigo-600 text-white border-indigo-600"
+                  : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                   }`}
               >
                 {i + 1}

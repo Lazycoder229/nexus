@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../api/axios";
 import {
   Plus,
   Edit,
@@ -13,8 +13,6 @@ import {
   ChevronRight,
   Search,
 } from "lucide-react";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const PaymentGateway = () => {
   const [gateways, setGateways] = useState([]);
@@ -74,7 +72,7 @@ const PaymentGateway = () => {
 
   const fetchGateways = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/payment-gateway/config`);
+      const response = await api.get(`/api/payment-gateway/config`);
       setGateways(response.data.data || []);
     } catch (error) {
       console.error("Error fetching gateways:", error);
@@ -83,7 +81,7 @@ const PaymentGateway = () => {
 
   const fetchTransactions = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/payment-gateway/transactions`, {
+      const response = await api.get(`/api/payment-gateway/transactions`, {
         params: filters,
       });
       setTransactions(response.data.data || []);
@@ -94,7 +92,7 @@ const PaymentGateway = () => {
 
   const fetchSummary = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/payment-gateway/summary`, {
+      const response = await api.get(`/api/payment-gateway/summary`, {
         params: {
           start_date: filters.start_date,
           end_date: filters.end_date,
@@ -111,12 +109,12 @@ const PaymentGateway = () => {
     e.preventDefault();
     try {
       if (gatewayForm.gateway_id) {
-        await axios.put(
-          `${API_BASE}/api/payment-gateway/config/${gatewayForm.gateway_id}`,
+        await api.put(
+          `/api/payment-gateway/config/${gatewayForm.gateway_id}`,
           gatewayForm
         );
       } else {
-        await axios.post(`${API_BASE}/api/payment-gateway/config`, gatewayForm);
+        await api.post(`/api/payment-gateway/config`, gatewayForm);
       }
       setShowGatewayModal(false);
       resetGatewayForm();
@@ -136,7 +134,7 @@ const PaymentGateway = () => {
   const handleDeleteGateway = async (id) => {
     if (window.confirm("Delete this gateway configuration?")) {
       try {
-        await axios.delete(`${API_BASE}/api/payment-gateway/config/${id}`);
+        await api.delete(`/api/payment-gateway/config/${id}`);
         fetchGateways();
       } catch (error) {
         console.error("Error deleting gateway:", error);
@@ -146,7 +144,7 @@ const PaymentGateway = () => {
 
   const handleVerifyTransaction = async (id) => {
     try {
-      await axios.post(`${API_BASE}/api/payment-gateway/transactions/${id}/verify`);
+      await api.post(`/api/payment-gateway/transactions/${id}/verify`);
       fetchTransactions();
       fetchSummary();
       alert("Transaction verified!");
@@ -265,8 +263,8 @@ const PaymentGateway = () => {
                     <span className="text-sm text-slate-600 dark:text-slate-400">Status:</span>
                     <span
                       className={`px-2 py-1 text-xs rounded-full font-medium ${gateway.is_active
-                          ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
-                          : "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300"
+                        ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
+                        : "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300"
                         }`}
                     >
                       {gateway.is_active ? "Active" : "Inactive"}
@@ -276,8 +274,8 @@ const PaymentGateway = () => {
                     <span className="text-sm text-slate-600 dark:text-slate-400">Mode:</span>
                     <span
                       className={`px-2 py-1 text-xs rounded-full font-medium ${gateway.is_test_mode
-                          ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
-                          : "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-400"
+                        ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
+                        : "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-400"
                         }`}
                     >
                       {gateway.is_test_mode ? "Test" : "Live"}
@@ -476,12 +474,12 @@ const PaymentGateway = () => {
                             )}
                           <span
                             className={`px-2 py-1 text-xs rounded-full font-medium ${transaction.transaction_status === "Success"
-                                ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
-                                : transaction.transaction_status === "Failed"
-                                  ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
-                                  : transaction.transaction_status === "Refunded"
-                                    ? "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400"
-                                    : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
+                              ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
+                              : transaction.transaction_status === "Failed"
+                                ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
+                                : transaction.transaction_status === "Refunded"
+                                  ? "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400"
+                                  : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
                               }`}
                           >
                             {transaction.transaction_status}
@@ -562,8 +560,8 @@ const PaymentGateway = () => {
                   key={i + 1}
                   onClick={() => setCurrentPage(i + 1)}
                   className={`px-3 py-1.5 text-xs rounded border transition-colors ${currentPage === i + 1
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                     }`}
                 >
                   {i + 1}

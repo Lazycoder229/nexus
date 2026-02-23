@@ -10,7 +10,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const TuitionFeeSetup = () => {
   const [fees, setFees] = useState([]);
@@ -71,7 +70,7 @@ const TuitionFeeSetup = () => {
   const fetchPrograms = async () => {
     try {
       const response = await api.get(`/api/programs`);
-      setPrograms(response.data.data || []);
+      setPrograms(response.data.data || response.data || []);
     } catch (error) {
       console.error("Error fetching programs:", error);
     }
@@ -80,7 +79,7 @@ const TuitionFeeSetup = () => {
   const fetchPeriods = async () => {
     try {
       const response = await api.get(`/api/academic-periods`);
-      setPeriods(response.data.data || []);
+      setPeriods(response.data.data || response.data || []);
     } catch (error) {
       console.error("Error fetching periods:", error);
     }
@@ -307,11 +306,10 @@ const TuitionFeeSetup = () => {
                       </td>
                       <td className="px-4 py-2">
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${
-                            fee.is_active
-                              ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                              : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
-                          }`}
+                          className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${fee.is_active
+                            ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                            : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                            }`}
                         >
                           {fee.is_active ? "Active" : "Inactive"}
                         </span>
@@ -476,8 +474,8 @@ const TuitionFeeSetup = () => {
                   >
                     <option value="">Select Program</option>
                     {programs.map((prog) => (
-                      <option key={prog.program_id} value={prog.program_id}>
-                        {prog.program_name}
+                      <option key={prog.id} value={prog.id}>
+                        {prog.name}
                       </option>
                     ))}
                   </select>
@@ -513,7 +511,7 @@ const TuitionFeeSetup = () => {
                   >
                     <option value="">Select Period</option>
                     {periods.map((period) => (
-                      <option key={period.period_id} value={period.period_id}>
+                      <option key={period.id} value={period.id}>
                         {period.school_year} - {period.semester}
                       </option>
                     ))}

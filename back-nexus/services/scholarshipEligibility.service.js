@@ -15,8 +15,8 @@ const EligibilityScreeningService = {
 
   async createScreening(data) {
     // Validate required fields
-    if (!data.application_id || !data.scholarship_type_id || !data.student_id || !data.screened_by) {
-      throw new Error("Application, scholarship type, student, and screener are required");
+    if (!data.application_id || !data.scholarship_id || !data.student_id || !data.academic_period_id || !data.screened_by) {
+      throw new Error("Application, scholarship program, student, academic period, and screener are required");
     }
 
     // Set screening date if not provided
@@ -25,7 +25,7 @@ const EligibilityScreeningService = {
     }
 
     // Calculate overall eligibility
-    const allRequirementsMet = 
+    const allRequirementsMet =
       (data.gpa_requirement_met || false) &&
       (data.year_level_eligible || false) &&
       (data.course_eligible || false) &&
@@ -57,13 +57,13 @@ const EligibilityScreeningService = {
     }
 
     // Recalculate overall eligibility if criteria changed
-    if (data.gpa_requirement_met !== undefined || 
-        data.year_level_eligible !== undefined ||
-        data.course_eligible !== undefined ||
-        data.income_requirement_met !== undefined ||
-        data.documents_complete !== undefined ||
-        data.interview_completed !== undefined) {
-      
+    if (data.gpa_requirement_met !== undefined ||
+      data.year_level_eligible !== undefined ||
+      data.course_eligible !== undefined ||
+      data.income_requirement_met !== undefined ||
+      data.documents_complete !== undefined ||
+      data.interview_completed !== undefined) {
+
       const gpaOk = data.gpa_requirement_met !== undefined ? data.gpa_requirement_met : existing.gpa_requirement_met;
       const yearOk = data.year_level_eligible !== undefined ? data.year_level_eligible : existing.year_level_eligible;
       const courseOk = data.course_eligible !== undefined ? data.course_eligible : existing.course_eligible;

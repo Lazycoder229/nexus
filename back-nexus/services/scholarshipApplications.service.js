@@ -1,5 +1,6 @@
 import ScholarshipApplicationsModel from "../model/scholarshipApplications.model.js";
-import ScholarshipTypesModel from "../model/scholarshipTypes.model.js";
+import Scholarship from "../model/scholarships.model.js";
+import { getAcademicPeriodById } from "../model/academicPeriods.model.js";
 
 const ScholarshipApplicationsService = {
   async getAllApplications(filters) {
@@ -16,22 +17,35 @@ const ScholarshipApplicationsService = {
 
   async createApplication(data) {
     // Validate required fields
-    if (!data.scholarship_type_id || !data.student_id || !data.semester) {
-      throw new Error("Scholarship type, student, and semester are required");
+    if (!data.scholarship_id || !data.student_id || !data.academic_period_id) {
+      throw new Error("Scholarship program, student, and academic period are required");
     }
 
-    // Check if scholarship type exists and has available slots
-    const scholarshipType = await ScholarshipTypesModel.getScholarshipTypeById(data.scholarship_type_id);
-    if (!scholarshipType) {
-      throw new Error("Scholarship type not found");
+    // Fetch academic period to populate year and semester
+    const period = await getAcademicPeriodById(data.academic_period_id);
+    if (!period) {
+      throw new Error("Academic period not found");
+    }
+    data.academic_year = period.school_year;
+    data.semester = period.semester;
+
+    // Check if scholarship program exists and has available slots
+    const results = await Scholarship.getProgramById(data.scholarship_id);
+    if (!results || results.length === 0) {
+      throw new Error("Scholarship program not found");
+    }
+    const scholarshipProgram = results[0];
+
+    if (!scholarshipProgram.is_active) {
+      throw new Error("This scholarship program is not currently active");
     }
 
-    if (scholarshipType.status !== 'Active') {
-      throw new Error("This scholarship is not currently active");
+    if (scholarshipProgram.available_amount <= 0 && scholarshipProgram.total_budget > 0) {
+      // Optional: Budget check, though maybe slots are more important
     }
 
-    if (scholarshipType.slots_available <= 0) {
-      throw new Error("No slots available for this scholarship");
+    if (scholarshipProgram.current_beneficiaries >= scholarshipProgram.max_beneficiaries && scholarshipProgram.max_beneficiaries > 0) {
+      throw new Error("No slots available for this scholarship program");
     }
 
     // Generate application number
@@ -57,6 +71,15 @@ const ScholarshipApplicationsService = {
     // If approving, validate approved_amount
     if (data.status === 'Approved' && !data.approved_amount) {
       throw new Error("Approved amount is required when approving application");
+    }
+
+    // If academic_period_id is updated, refresh year and semester
+    if (data.academic_period_id && data.academic_period_id !== existing.academic_period_id) {
+      const period = await getAcademicPeriodById(data.academic_period_id);
+      if (period) {
+        data.academic_year = period.school_year;
+        data.semester = period.semester;
+      }
     }
 
     // Set review/approval dates

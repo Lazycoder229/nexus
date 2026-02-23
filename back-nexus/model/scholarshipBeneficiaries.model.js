@@ -6,8 +6,10 @@ const ScholarshipBeneficiariesModel = {
     let query = `
       SELECT 
         sb.*,
-        st.scholarship_name,
-        st.scholarship_code,
+        sp.scholarship_name,
+        sp.scholarship_code,
+        ap.school_year,
+        ap.semester as period_semester,
         CONCAT(s.first_name, ' ', s.last_name) as student_name,
         s.email as student_email,
         sd.student_number,
@@ -16,7 +18,8 @@ const ScholarshipBeneficiariesModel = {
         sa.application_number,
         (sb.total_grant_amount - sb.total_disbursed) as remaining_balance
       FROM scholarship_beneficiaries sb
-      INNER JOIN scholarship_types st ON sb.scholarship_type_id = st.scholarship_type_id
+      LEFT JOIN scholarship_programs sp ON sb.scholarship_id = sp.scholarship_id
+      LEFT JOIN academic_periods ap ON sb.academic_period_id = ap.period_id
       INNER JOIN users s ON sb.student_id = s.user_id
       LEFT JOIN student_details sd ON sb.student_id = sd.user_id
       LEFT JOIN scholarship_applications sa ON sb.application_id = sa.application_id
@@ -29,9 +32,9 @@ const ScholarshipBeneficiariesModel = {
       params.push(filters.status);
     }
 
-    if (filters.scholarship_type_id) {
-      query += " AND sb.scholarship_type_id = ?";
-      params.push(filters.scholarship_type_id);
+    if (filters.scholarship_id) {
+      query += " AND sb.scholarship_id = ?";
+      params.push(filters.scholarship_id);
     }
 
     if (filters.student_id) {
@@ -39,9 +42,9 @@ const ScholarshipBeneficiariesModel = {
       params.push(filters.student_id);
     }
 
-    if (filters.academic_year) {
-      query += " AND sb.academic_year = ?";
-      params.push(filters.academic_year);
+    if (filters.academic_period_id) {
+      query += " AND sb.academic_period_id = ?";
+      params.push(filters.academic_period_id);
     }
 
     if (filters.disbursement_status) {
@@ -50,7 +53,7 @@ const ScholarshipBeneficiariesModel = {
     }
 
     if (filters.search) {
-      query += " AND (st.scholarship_name LIKE ? OR CONCAT(s.first_name, ' ', s.last_name) LIKE ? OR sd.student_number LIKE ?)";
+      query += " AND (sp.scholarship_name LIKE ? OR CONCAT(s.first_name, ' ', s.last_name) LIKE ? OR sd.student_number LIKE ?)";
       const searchTerm = `%${filters.search}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
@@ -66,8 +69,10 @@ const ScholarshipBeneficiariesModel = {
     const query = `
       SELECT 
         sb.*,
-        st.scholarship_name,
-        st.scholarship_code,
+        sp.scholarship_name,
+        sp.scholarship_code,
+        ap.school_year,
+        ap.semester as period_semester,
         CONCAT(s.first_name, ' ', s.last_name) as student_name,
         s.email as student_email,
         s.phone as student_phone,
@@ -77,7 +82,8 @@ const ScholarshipBeneficiariesModel = {
         sa.application_number,
         (sb.total_grant_amount - sb.total_disbursed) as remaining_balance
       FROM scholarship_beneficiaries sb
-      INNER JOIN scholarship_types st ON sb.scholarship_type_id = st.scholarship_type_id
+      LEFT JOIN scholarship_programs sp ON sb.scholarship_id = sp.scholarship_id
+      LEFT JOIN academic_periods ap ON sb.academic_period_id = ap.period_id
       INNER JOIN users s ON sb.student_id = s.user_id
       LEFT JOIN student_details sd ON sb.student_id = sd.user_id
       LEFT JOIN scholarship_applications sa ON sb.application_id = sa.application_id
@@ -91,22 +97,24 @@ const ScholarshipBeneficiariesModel = {
   async createBeneficiary(data) {
     const query = `
       INSERT INTO scholarship_beneficiaries (
-        application_id, scholarship_type_id, student_id,
-        start_date, end_date, academic_year, semester,
+        application_id, scholarship_id, scholarship_type_id, student_id,
+        start_date, end_date, academic_period_id, academic_year, semester,
         total_grant_amount, tuition_discount, allowance_amount, other_benefits,
         total_disbursed, disbursement_status, last_disbursement_date,
         required_gpa, current_gpa, gpa_maintained,
         community_service_hours_required, community_service_hours_completed, service_requirement_met,
         renewable, renewal_application_id, renewal_status,
         status, remarks
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const [result] = await pool.query(query, [
       data.application_id,
-      data.scholarship_type_id,
+      data.scholarship_id || null,
+      data.scholarship_type_id || null,
       data.student_id,
       data.start_date,
       data.end_date,
+      data.academic_period_id || null,
       data.academic_year || null,
       data.semester || null,
       data.total_grant_amount,
@@ -135,6 +143,9 @@ const ScholarshipBeneficiariesModel = {
   async updateBeneficiary(id, data) {
     const query = `
       UPDATE scholarship_beneficiaries SET
+        scholarship_id = ?,
+        scholarship_type_id = ?,
+        academic_period_id = ?,
         start_date = ?,
         end_date = ?,
         academic_year = ?,
@@ -163,6 +174,9 @@ const ScholarshipBeneficiariesModel = {
       WHERE beneficiary_id = ?
     `;
     const [result] = await pool.query(query, [
+      data.scholarship_id,
+      data.scholarship_type_id,
+      data.academic_period_id,
       data.start_date,
       data.end_date,
       data.academic_year,

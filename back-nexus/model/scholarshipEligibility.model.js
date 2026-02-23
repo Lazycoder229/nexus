@@ -7,15 +7,18 @@ const EligibilityScreeningModel = {
       SELECT 
         se.*,
         sa.application_number,
-        st.scholarship_name,
-        st.scholarship_code,
+        sp.scholarship_name,
+        sp.scholarship_code,
+        ap.school_year,
+        ap.semester as period_semester,
         CONCAT(s.first_name, ' ', s.last_name) as student_name,
         s.email as student_email,
         sd.student_number,
         CONCAT(sc.first_name, ' ', sc.last_name) as screener_name
       FROM scholarship_eligibility_screening se
       INNER JOIN scholarship_applications sa ON se.application_id = sa.application_id
-      INNER JOIN scholarship_types st ON se.scholarship_type_id = st.scholarship_type_id
+      LEFT JOIN scholarship_programs sp ON se.scholarship_id = sp.scholarship_id
+      LEFT JOIN academic_periods ap ON se.academic_period_id = ap.period_id
       INNER JOIN users s ON se.student_id = s.user_id
       LEFT JOIN student_details sd ON se.student_id = sd.user_id
       LEFT JOIN users sc ON se.screened_by = sc.user_id
@@ -33,9 +36,14 @@ const EligibilityScreeningModel = {
       params.push(filters.application_id);
     }
 
-    if (filters.scholarship_type_id) {
-      query += " AND se.scholarship_type_id = ?";
-      params.push(filters.scholarship_type_id);
+    if (filters.scholarship_id) {
+      query += " AND se.scholarship_id = ?";
+      params.push(filters.scholarship_id);
+    }
+
+    if (filters.academic_period_id) {
+      query += " AND se.academic_period_id = ?";
+      params.push(filters.academic_period_id);
     }
 
     if (filters.student_id) {
@@ -44,7 +52,7 @@ const EligibilityScreeningModel = {
     }
 
     if (filters.search) {
-      query += " AND (sa.application_number LIKE ? OR st.scholarship_name LIKE ? OR CONCAT(s.first_name, ' ', s.last_name) LIKE ?)";
+      query += " AND (sa.application_number LIKE ? OR sp.scholarship_name LIKE ? OR CONCAT(s.first_name, ' ', s.last_name) LIKE ?)";
       const searchTerm = `%${filters.search}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
@@ -61,9 +69,11 @@ const EligibilityScreeningModel = {
       SELECT 
         se.*,
         sa.application_number,
-        st.scholarship_name,
-        st.scholarship_code,
-        CONCAT(s.first_name, ' ', s.last_name) as student_name,
+        sp.scholarship_name,
+        sp.scholarship_code,
+        ap.school_year,
+        ap.semester as period_semester,
+        CONCAT(s.first_name, ' ', last_name) as student_name,
         s.email as student_email,
         sd.student_number,
         sd.course as student_course,
@@ -71,7 +81,8 @@ const EligibilityScreeningModel = {
         CONCAT(sc.first_name, ' ', sc.last_name) as screener_name
       FROM scholarship_eligibility_screening se
       INNER JOIN scholarship_applications sa ON se.application_id = sa.application_id
-      INNER JOIN scholarship_types st ON se.scholarship_type_id = st.scholarship_type_id
+      LEFT JOIN scholarship_programs sp ON se.scholarship_id = sp.scholarship_id
+      LEFT JOIN academic_periods ap ON se.academic_period_id = ap.period_id
       INNER JOIN users s ON se.student_id = s.user_id
       LEFT JOIN student_details sd ON se.student_id = sd.user_id
       LEFT JOIN users sc ON se.screened_by = sc.user_id
@@ -85,7 +96,7 @@ const EligibilityScreeningModel = {
   async createScreening(data) {
     const query = `
       INSERT INTO scholarship_eligibility_screening (
-        application_id, scholarship_type_id, student_id, screening_date, screened_by,
+        application_id, scholarship_id, academic_period_id, student_id, screening_date, screened_by,
         gpa_requirement_met, gpa_value, gpa_required,
         year_level_eligible, year_level_value, year_level_required,
         course_eligible, course_value, course_required,
@@ -98,7 +109,8 @@ const EligibilityScreeningModel = {
     `;
     const [result] = await pool.query(query, [
       data.application_id,
-      data.scholarship_type_id,
+      data.scholarship_id,
+      data.academic_period_id,
       data.student_id,
       data.screening_date,
       data.screened_by,

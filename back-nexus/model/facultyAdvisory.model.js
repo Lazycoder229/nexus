@@ -138,11 +138,12 @@ const FacultyAdvisory = {
     return db.query(
       `
       SELECT u.user_id, u.first_name, u.last_name, u.email,
-             e.program_id, e.year_level,
+             sd.year_level,
              p.name as program_name, p.code as program_code
       FROM users u
+      INNER JOIN student_details sd ON u.user_id = sd.user_id
       INNER JOIN enrollments e ON u.user_id = e.student_id
-      LEFT JOIN programs p ON e.program_id = p.program_id
+      LEFT JOIN programs p ON sd.course = p.name
       LEFT JOIN faculty_advisory_assignments faa ON u.user_id = faa.student_id 
         AND faa.academic_period_id = ? AND faa.status = 'active'
       WHERE u.role = 'Student' AND faa.advisory_id IS NULL

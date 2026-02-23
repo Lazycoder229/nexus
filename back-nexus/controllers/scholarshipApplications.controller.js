@@ -4,9 +4,9 @@ export const getAllApplications = async (req, res) => {
   try {
     const filters = {
       status: req.query.status,
-      scholarship_type_id: req.query.scholarship_type_id,
+      scholarship_id: req.query.scholarship_id,
       student_id: req.query.student_id,
-      academic_year: req.query.academic_year,
+      academic_period_id: req.query.academic_period_id,
       search: req.query.search,
     };
     const applications = await ScholarshipApplicationsService.getAllApplications(filters);

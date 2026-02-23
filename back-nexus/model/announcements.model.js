@@ -5,12 +5,14 @@ const AnnouncementsModel = {
     try {
       let query = `
         SELECT a.*, 
-               CONCAT(u.first_name, ' ', u.last_name) as creator_name
+               CONCAT(u.first_name, ' ', u.last_name) as creator_name,
+               CASE WHEN ar.read_id IS NOT NULL THEN 1 ELSE 0 END as is_read
         FROM announcements a
         LEFT JOIN users u ON a.created_by = u.user_id
+        LEFT JOIN announcement_reads ar ON a.announcement_id = ar.announcement_id AND ar.user_id = ?
         WHERE 1=1
       `;
-      const params = [];
+      const params = [filters.user_id || null];
 
       if (filters.status) {
         query += " AND a.status = ?";
@@ -156,6 +158,17 @@ const AnnouncementsModel = {
         );
       });
     });
+  },
+
+  markAsRead: async (announcement_id, user_id) => {
+    try {
+      const query = "INSERT IGNORE INTO announcement_reads (announcement_id, user_id) VALUES (?, ?)";
+      const [results] = await db.query(query, [announcement_id, user_id]);
+      return results;
+    } catch (err) {
+      console.error("markAsRead error:", err);
+      throw err;
+    }
   },
 };
 

@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../api/axios";
 import Select from "react-select";
 import { Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, Users, Award, DollarSign, TrendingUp } from "lucide-react";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const BeneficiaryList = () => {
   const [beneficiaries, setBeneficiaries] = useState([]);
   const [applications, setApplications] = useState([]);
-  const [scholarshipTypes, setScholarshipTypes] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [periods, setPeriods] = useState([]);
   const [students, setStudents] = useState([]);
   const [statistics, setStatistics] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -20,12 +19,11 @@ const BeneficiaryList = () => {
 
   const [formData, setFormData] = useState({
     application_id: "",
-    scholarship_type_id: "",
+    scholarship_id: "",
+    academic_period_id: "",
     student_id: "",
     start_date: new Date().toISOString().split('T')[0],
     end_date: "",
-    academic_year: "",
-    semester: "1st Semester",
     total_grant_amount: "",
     tuition_discount: "",
     allowance_amount: "",
@@ -39,17 +37,19 @@ const BeneficiaryList = () => {
   useEffect(() => {
     fetchBeneficiaries();
     fetchApplications();
-    fetchScholarshipTypes();
+    fetchPrograms();
+    fetchPeriods();
     fetchStudents();
     fetchStatistics();
   }, []);
+
 
   const fetchBeneficiaries = async () => {
     try {
       const params = new URLSearchParams();
       if (filterStatus) params.append("status", filterStatus);
       if (searchTerm) params.append("search", searchTerm);
-      const response = await axios.get(`${API_BASE}/api/scholarships/beneficiaries?${params}`);
+      const response = await api.get(`/api/scholarships/beneficiaries?${params}`);
       setBeneficiaries(response.data);
     } catch (error) {
       console.error("Error fetching beneficiaries:", error);
@@ -58,7 +58,7 @@ const BeneficiaryList = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/scholarships/beneficiaries/statistics`);
+      const response = await api.get(`/api/scholarships/beneficiaries/statistics`);
       setStatistics(response.data);
     } catch (error) {
       console.error("Error fetching statistics:", error);
@@ -67,26 +67,38 @@ const BeneficiaryList = () => {
 
   const fetchApplications = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/scholarships/applications?status=Approved`);
+      const response = await api.get(`/api/scholarships/applications?status=Approved`);
       setApplications(response.data);
     } catch (error) {
       console.error("Error fetching applications:", error);
     }
   };
 
-  const fetchScholarshipTypes = async () => {
+  const fetchPrograms = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/scholarships/types?status=Active`);
-      setScholarshipTypes(response.data);
+      const response = await api.get(`/api/scholarships/programs?is_active=1`);
+      const data = response.data.data || response.data || [];
+      setPrograms(data);
     } catch (error) {
-      console.error("Error fetching scholarship types:", error);
+      console.error("Error fetching programs:", error);
+    }
+  };
+
+  const fetchPeriods = async () => {
+    try {
+      const response = await api.get(`/api/academic-periods`);
+      const data = response.data.data || response.data || [];
+      setPeriods(data);
+    } catch (error) {
+      console.error("Error fetching periods:", error);
     }
   };
 
   const fetchStudents = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/users`);
-      setStudents(response.data.filter(u => u.role === 'Student'));
+      const response = await api.get(`/api/users?role=Student`);
+      const data = response.data.data || response.data || [];
+      setStudents(data);
     } catch (error) {
       console.error("Error fetching students:", error);
     }
@@ -97,17 +109,38 @@ const BeneficiaryList = () => {
     setFormData({ ...formData, [name]: type === "checkbox" ? checked : value });
   };
 
-  const handleSelectChange = (selectedOption, field) => {
-    setFormData({ ...formData, [field]: selectedOption?.value || "" });
+  const handleSelectChange = async (selectedOption, field) => {
+    const value = selectedOption?.value || "";
+    setFormData(prev => ({ ...prev, [field]: value }));
+
+    // Auto-fill logic when application is selected
+    if (field === "application_id" && value) {
+      try {
+        const response = await api.get(`/api/scholarships/applications/${value}`);
+        const app = response.data;
+        if (app) {
+          setFormData(prev => ({
+            ...prev,
+            scholarship_id: app.scholarship_id || prev.scholarship_id,
+            academic_period_id: app.academic_period_id || prev.academic_period_id,
+            student_id: app.student_id || prev.student_id,
+            total_grant_amount: app.approved_amount || prev.total_grant_amount,
+            current_gpa: app.current_gpa || prev.current_gpa,
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching application details for auto-fill:", error);
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (currentBen) {
-        await axios.put(`${API_BASE}/api/scholarships/beneficiaries/${currentBen.beneficiary_id}`, formData);
+        await api.put(`/api/scholarships/beneficiaries/${currentBen.beneficiary_id}`, formData);
       } else {
-        await axios.post(`${API_BASE}/api/scholarships/beneficiaries`, formData);
+        await api.post(`/api/scholarships/beneficiaries`, formData);
       }
       fetchBeneficiaries();
       fetchStatistics();
@@ -122,12 +155,11 @@ const BeneficiaryList = () => {
     setCurrentBen(ben);
     setFormData({
       application_id: ben.application_id,
-      scholarship_type_id: ben.scholarship_type_id,
+      scholarship_id: ben.scholarship_id,
+      academic_period_id: ben.academic_period_id,
       student_id: ben.student_id,
       start_date: new Date(ben.start_date).toISOString().split('T')[0],
       end_date: ben.end_date ? new Date(ben.end_date).toISOString().split('T')[0] : "",
-      academic_year: ben.academic_year || "",
-      semester: ben.semester,
       total_grant_amount: ben.total_grant_amount || "",
       tuition_discount: ben.tuition_discount || "",
       allowance_amount: ben.allowance_amount || "",
@@ -143,7 +175,7 @@ const BeneficiaryList = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this beneficiary?")) {
       try {
-        await axios.delete(`${API_BASE}/api/scholarships/beneficiaries/${id}`);
+        await api.delete(`/api/scholarships/beneficiaries/${id}`);
         fetchBeneficiaries();
         fetchStatistics();
       } catch (error) {
@@ -158,12 +190,11 @@ const BeneficiaryList = () => {
     setCurrentBen(null);
     setFormData({
       application_id: "",
-      scholarship_type_id: "",
+      scholarship_id: "",
+      academic_period_id: "",
       student_id: "",
       start_date: new Date().toISOString().split('T')[0],
       end_date: "",
-      academic_year: "",
-      semester: "1st Semester",
       total_grant_amount: "",
       tuition_discount: "",
       allowance_amount: "",
@@ -206,9 +237,10 @@ const BeneficiaryList = () => {
     return badges[status] || "bg-gray-100 text-gray-700";
   };
 
+  const programOptions = programs.map(p => ({ value: p.scholarship_id, label: `${p.scholarship_name} (${p.scholarship_code})` }));
+  const periodOptions = periods.map(p => ({ value: p.id || p.period_id, label: `${p.school_year} - ${p.semester}` }));
   const applicationOptions = applications.map(app => ({ value: app.application_id, label: `${app.application_number} - ${app.student_name}` }));
-  const scholarshipOptions = scholarshipTypes.map(st => ({ value: st.scholarship_type_id, label: `${st.scholarship_name}` }));
-  const studentOptions = students.map(s => ({ value: s.user_id, label: `${s.first_name} ${s.last_name}` }));
+  const studentOptions = students.map(s => ({ value: s.user_id, label: `${s.first_name} ${s.last_name} - ${s.email}` }));
 
   return (
     <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
@@ -249,13 +281,13 @@ const BeneficiaryList = () => {
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-100 dark:bg-slate-700/70">
                 <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  <th className="px-4 py-2.5">Student</th>
-                  <th className="px-4 py-2.5">Scholarship</th>
-                  <th className="px-4 py-2.5">Period</th>
-                  <th className="px-4 py-2.5">Grant Amount</th>
-                  <th className="px-4 py-2.5">Disbursed</th>
-                  <th className="px-4 py-2.5">GPA</th>
-                  <th className="px-4 py-2.5">Status</th>
+                  <th className="px-4 py-2.5 text-left">Student</th>
+                  <th className="px-4 py-2.5 text-left">Scholarship</th>
+                  <th className="px-4 py-2.5 text-left">Period</th>
+                  <th className="px-4 py-2.5 text-left">Grant Amount</th>
+                  <th className="px-4 py-2.5 text-left">Disbursed</th>
+                  <th className="px-4 py-2.5 text-left">GPA</th>
+                  <th className="px-4 py-2.5 text-left">Status</th>
                   <th className="px-4 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
@@ -264,9 +296,9 @@ const BeneficiaryList = () => {
                   <tr key={ben.beneficiary_id} className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150">
                     <td className="px-4 py-2"><div className="font-medium">{ben.student_name}</div><div className="text-xs text-slate-500 dark:text-slate-400">{ben.student_number}</div></td>
                     <td className="px-4 py-2"><div className="font-semibold text-slate-900 dark:text-white">{ben.scholarship_name}</div></td>
-                    <td className="px-4 py-2"><span className="text-xs">{ben.academic_year} - {ben.semester}</span></td>
-                    <td className="px-4 py-2"><div className="flex items-center gap-1"><DollarSign size={12} className="text-slate-400" /><span className="font-semibold">₱{parseFloat(ben.total_grant_amount).toFixed(2)}</span></div></td>
-                    <td className="px-4 py-2"><span className="font-semibold text-green-600 dark:text-green-400">₱{parseFloat(ben.total_disbursed).toFixed(2)}</span></td>
+                    <td className="px-4 py-2"><span className="text-xs">{ben.school_year || 'N/A'} - {ben.period_semester || 'N/A'}</span></td>
+                    <td className="px-4 py-2"><span className="font-semibold text-indigo-600">₱{parseFloat(ben.total_grant_amount || 0).toLocaleString()}</span></td>
+                    <td className="px-4 py-2"><span className="text-emerald-600">₱{parseFloat(ben.total_disbursed || 0).toLocaleString()}</span></td>
                     <td className="px-4 py-2"><span className={`font-semibold ${ben.gpa_maintained ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{ben.current_gpa || 'N/A'}</span></td>
                     <td className="px-4 py-2"><span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusBadge(ben.status)}`}>{ben.status}</span></td>
                     <td className="px-4 py-2 text-right">
@@ -300,33 +332,34 @@ const BeneficiaryList = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Scholarship Type *</label>
-                  <Select options={scholarshipOptions} value={scholarshipOptions.find(opt => opt.value === formData.scholarship_type_id)} onChange={(option) => handleSelectChange(option, "scholarship_type_id")} placeholder="Select scholarship" required className="text-sm" classNamePrefix="react-select" />
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Scholarship Program *</label>
+                  <Select options={programOptions} value={programOptions.find(opt => opt.value === formData.scholarship_id)} onChange={(option) => handleSelectChange(option, "scholarship_id")} placeholder="Select program" required className="text-sm" classNamePrefix="react-select" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Student *</label>
-                  <Select options={studentOptions} value={studentOptions.find(opt => opt.value === formData.student_id)} onChange={(option) => handleSelectChange(option, "student_id")} placeholder="Select student" required className="text-sm" classNamePrefix="react-select" />
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Academic Period *</label>
+                  <Select options={periodOptions} value={periodOptions.find(opt => opt.value === formData.academic_period_id)} onChange={(option) => handleSelectChange(option, "academic_period_id")} placeholder="Select period" required className="text-sm" classNamePrefix="react-select" />
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Student / Recipient *</label>
+                <Select options={studentOptions} value={studentOptions.find(opt => opt.value === formData.student_id)} onChange={(option) => handleSelectChange(option, "student_id")} placeholder="Select student" required className="text-sm" classNamePrefix="react-select" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Start Date *</label><input type="date" name="start_date" value={formData.start_date} onChange={handleInputChange} required className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
                 <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">End Date</label><input type="date" name="end_date" value={formData.end_date} onChange={handleInputChange} className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
-                <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Academic Year</label><input type="text" name="academic_year" value={formData.academic_year} onChange={handleInputChange} className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" placeholder="2023-2024" /></div>
-                <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Semester</label><select name="semester" value={formData.semester} onChange={handleInputChange} className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"><option value="1st Semester">1st Semester</option><option value="2nd Semester">2nd Semester</option><option value="Summer">Summer</option></select></div>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Total Grant Amount *</label><input type="number" name="total_grant_amount" value={formData.total_grant_amount} onChange={handleInputChange} step="0.01" required className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
-                <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Tuition Discount</label><input type="number" name="tuition_discount" value={formData.tuition_discount} onChange={handleInputChange} step="0.01" className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
-                <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Allowance Amount</label><input type="number" name="allowance_amount" value={formData.allowance_amount} onChange={handleInputChange} step="0.01" className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
+                <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Grant Amount *</label><input type="number" name="total_grant_amount" value={formData.total_grant_amount} onChange={handleInputChange} step="0.01" required className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
+                <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Tuition Disc.</label><input type="number" name="tuition_discount" value={formData.tuition_discount} onChange={handleInputChange} step="0.01" className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
+                <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Allowance</label><input type="number" name="allowance_amount" value={formData.allowance_amount} onChange={handleInputChange} step="0.01" className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Required GPA</label><input type="number" name="required_gpa" value={formData.required_gpa} onChange={handleInputChange} step="0.01" max="4.00" className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
                 <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Current GPA</label><input type="number" name="current_gpa" value={formData.current_gpa} onChange={handleInputChange} step="0.01" max="4.00" className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
-                <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Community Service Hours</label><input type="number" name="community_service_hours" value={formData.community_service_hours} onChange={handleInputChange} className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Status</label><select name="status" value={formData.status} onChange={handleInputChange} className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"><option value="Active">Active</option><option value="Completed">Completed</option><option value="Suspended">Suspended</option><option value="Revoked">Revoked</option></select></div>
-                <div className="flex items-end"><label className="flex items-center gap-2"><input type="checkbox" name="renewable" checked={formData.renewable} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500" /><span className="text-sm text-slate-700 dark:text-slate-300">Renewable Scholarship</span></label></div>
+                <div className="flex items-end mb-2"><label className="flex items-center gap-2"><input type="checkbox" name="renewable" checked={formData.renewable} onChange={handleInputChange} className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500" /><span className="text-sm text-slate-700 dark:text-slate-300">Renewable</span></label></div>
               </div>
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700/50">
                 <button type="button" onClick={closeModal} className="px-3 py-1.5 text-sm bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors border border-slate-300 dark:border-slate-600">Cancel</button>

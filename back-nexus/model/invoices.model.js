@@ -2,7 +2,7 @@ import db from "../config/db.js";
 
 const Invoice = {
   // Create new invoice
-  create: (data, callback) => {
+  create: async (data) => {
     const query = `
       INSERT INTO student_invoices 
       (invoice_number, student_id, enrollment_id, academic_period_id, 
@@ -12,7 +12,7 @@ const Invoice = {
        invoice_date, due_date, status, notes, created_by)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    db.query(
+    const [result] = await db.query(
       query,
       [
         data.invoice_number,
@@ -36,19 +36,20 @@ const Invoice = {
         data.status || "Pending",
         data.notes,
         data.created_by,
-      ],
-      callback
+      ]
     );
+    return result;
   },
 
   // Get all invoices with filters
-  getAll: (filters, callback) => {
+  getAll: async (filters) => {
     let query = `
       SELECT 
         si.*,
+        (si.total_amount - si.amount_paid) AS balance,
         CONCAT(s.first_name, ' ', s.last_name) as student_name,
         sd.student_number,
-        p.program_name,
+        p.name as program_name,
         ap.school_year,
         ap.semester,
         CONCAT(c.first_name, ' ', c.last_name) as created_by_name
@@ -56,7 +57,7 @@ const Invoice = {
       INNER JOIN users s ON si.student_id = s.user_id
       LEFT JOIN student_details sd ON s.user_id = sd.user_id
       LEFT JOIN enrollments e ON si.enrollment_id = e.enrollment_id
-      LEFT JOIN programs p ON e.program_id = p.program_id
+      LEFT JOIN programs p ON sd.course = p.name
       LEFT JOIN academic_periods ap ON si.academic_period_id = ap.period_id
       LEFT JOIN users c ON si.created_by = c.user_id
       WHERE 1=1
@@ -72,8 +73,14 @@ const Invoice = {
       params.push(filters.academic_period_id);
     }
     if (filters.status) {
-      query += " AND si.status = ?";
-      params.push(filters.status);
+      if (filters.status.includes(",")) {
+        const statuses = filters.status.split(",");
+        query += " AND si.status IN (?)";
+        params.push(statuses);
+      } else {
+        query += " AND si.status = ?";
+        params.push(filters.status);
+      }
     }
     if (filters.search) {
       query += ` AND (si.invoice_number LIKE ? OR 
@@ -90,20 +97,22 @@ const Invoice = {
       params.push(parseInt(filters.limit), parseInt(filters.offset || 0));
     }
 
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 
   // Get invoice by ID
-  getById: (id, callback) => {
+  getById: async (id) => {
     const query = `
       SELECT 
         si.*,
+        (si.total_amount - si.amount_paid) AS balance,
         CONCAT(s.first_name, ' ', s.last_name) as student_name,
         s.email as student_email,
         sd.student_number,
         sd.year_level,
-        p.program_name,
-        p.program_code,
+        p.name as program_name,
+        p.code as program_code,
         ap.school_year,
         ap.semester,
         CONCAT(c.first_name, ' ', c.last_name) as created_by_name
@@ -111,19 +120,21 @@ const Invoice = {
       INNER JOIN users s ON si.student_id = s.user_id
       LEFT JOIN student_details sd ON s.user_id = sd.user_id
       LEFT JOIN enrollments e ON si.enrollment_id = e.enrollment_id
-      LEFT JOIN programs p ON e.program_id = p.program_id
+      LEFT JOIN programs p ON sd.course = p.name
       LEFT JOIN academic_periods ap ON si.academic_period_id = ap.period_id
       LEFT JOIN users c ON si.created_by = c.user_id
       WHERE si.invoice_id = ?
     `;
-    db.query(query, [id], callback);
+    const [rows] = await db.query(query, [id]);
+    return rows;
   },
 
   // Get invoices by student
-  getByStudent: (student_id, callback) => {
+  getByStudent: async (student_id) => {
     const query = `
       SELECT 
         si.*,
+        (si.total_amount - si.amount_paid) AS balance,
         ap.school_year,
         ap.semester
       FROM student_invoices si
@@ -131,11 +142,12 @@ const Invoice = {
       WHERE si.student_id = ?
       ORDER BY si.invoice_date DESC
     `;
-    db.query(query, [student_id], callback);
+    const [rows] = await db.query(query, [student_id]);
+    return rows;
   },
 
   // Update invoice
-  update: (id, data, callback) => {
+  update: async (id, data) => {
     const query = `
       UPDATE student_invoices 
       SET student_id = ?, enrollment_id = ?, academic_period_id = ?,
@@ -145,7 +157,7 @@ const Invoice = {
           total_amount = ?, due_date = ?, status = ?, notes = ?
       WHERE invoice_id = ?
     `;
-    db.query(
+    const [result] = await db.query(
       query,
       [
         data.student_id,
@@ -167,50 +179,54 @@ const Invoice = {
         data.status,
         data.notes,
         id,
-      ],
-      callback
+      ]
     );
+    return result;
   },
 
   // Update payment amount
-  updatePayment: (id, amount, callback) => {
+  updatePayment: async (id, amount) => {
     const query = `
       UPDATE student_invoices 
       SET amount_paid = amount_paid + ?
       WHERE invoice_id = ?
     `;
-    db.query(query, [amount, id], callback);
+    const [result] = await db.query(query, [amount, id]);
+    return result;
   },
 
   // Update invoice status
-  updateStatus: (id, status, callback) => {
+  updateStatus: async (id, status) => {
     const query = "UPDATE student_invoices SET status = ? WHERE invoice_id = ?";
-    db.query(query, [status, id], callback);
+    const [result] = await db.query(query, [status, id]);
+    return result;
   },
 
   // Delete invoice
-  delete: (id, callback) => {
+  delete: async (id) => {
     const query = "DELETE FROM student_invoices WHERE invoice_id = ?";
-    db.query(query, [id], callback);
+    const [result] = await db.query(query, [id]);
+    return result;
   },
 
   // Generate invoice number
-  generateInvoiceNumber: (callback) => {
+  generateInvoiceNumber: async () => {
     const query = `
       SELECT invoice_number FROM student_invoices 
       ORDER BY invoice_id DESC LIMIT 1
     `;
-    db.query(query, [], callback);
+    const [rows] = await db.query(query);
+    return rows;
   },
 
   // Get financial summary
-  getFinancialSummary: (filters, callback) => {
+  getFinancialSummary: async (filters) => {
     let query = `
       SELECT 
         COUNT(*) as total_invoices,
         SUM(total_amount) as total_billed,
         SUM(amount_paid) as total_paid,
-        SUM(balance) as total_balance,
+        SUM(total_amount - amount_paid) as total_balance,
         SUM(CASE WHEN status = 'Paid' THEN 1 ELSE 0 END) as paid_count,
         SUM(CASE WHEN status = 'Overdue' THEN 1 ELSE 0 END) as overdue_count
       FROM student_invoices
@@ -227,7 +243,8 @@ const Invoice = {
       params.push(filters.start_date, filters.end_date);
     }
 
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 };
 

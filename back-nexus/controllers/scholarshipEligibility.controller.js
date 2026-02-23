@@ -5,7 +5,8 @@ export const getAllScreenings = async (req, res) => {
     const filters = {
       screening_status: req.query.screening_status,
       application_id: req.query.application_id,
-      scholarship_type_id: req.query.scholarship_type_id,
+      scholarship_id: req.query.scholarship_id,
+      academic_period_id: req.query.academic_period_id,
       student_id: req.query.student_id,
       search: req.query.search,
     };

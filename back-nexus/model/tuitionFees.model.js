@@ -2,7 +2,7 @@ import db from "../config/db.js";
 
 const TuitionFee = {
   // Create new tuition fee setup
-  create: (data, callback) => {
+  create: async (data) => {
     const query = `
       INSERT INTO tuition_fee_setup 
       (program_id, year_level, academic_period_id, tuition_fee, laboratory_fee, 
@@ -10,7 +10,7 @@ const TuitionFee = {
        other_fees, is_active, created_by)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    db.query(
+    const [result] = await db.query(
       query,
       [
         data.program_id,
@@ -26,18 +26,18 @@ const TuitionFee = {
         data.other_fees || 0,
         data.is_active !== undefined ? data.is_active : true,
         data.created_by,
-      ],
-      callback
+      ]
     );
+    return result;
   },
 
   // Get all tuition fee setups with filters
-  getAll: (filters, callback) => {
+  getAll: async (filters) => {
     let query = `
       SELECT 
         tfs.*,
-        p.program_name,
-        p.program_code,
+        p.name as program_name,
+        p.code as program_code,
         ap.school_year,
         ap.semester,
         CONCAT(u.first_name, ' ', u.last_name) as created_by_name
@@ -67,16 +67,17 @@ const TuitionFee = {
     }
 
     query += " ORDER BY tfs.created_at DESC";
-    db.query(query, params, callback);
+    const [rows] = await db.query(query, params);
+    return rows;
   },
 
   // Get tuition fee by ID
-  getById: (id, callback) => {
+  getById: async (id) => {
     const query = `
       SELECT 
         tfs.*,
-        p.program_name,
-        p.program_code,
+        p.name as program_name,
+        p.code as program_code,
         ap.school_year,
         ap.semester,
         CONCAT(u.first_name, ' ', u.last_name) as created_by_name
@@ -86,11 +87,12 @@ const TuitionFee = {
       LEFT JOIN users u ON tfs.created_by = u.user_id
       WHERE tfs.fee_setup_id = ?
     `;
-    db.query(query, [id], callback);
+    const [rows] = await db.query(query, [id]);
+    return rows;
   },
 
   // Update tuition fee setup
-  update: (id, data, callback) => {
+  update: async (id, data) => {
     const query = `
       UPDATE tuition_fee_setup 
       SET program_id = ?, year_level = ?, academic_period_id = ?, 
@@ -99,7 +101,7 @@ const TuitionFee = {
           miscellaneous_fee = ?, other_fees = ?, is_active = ?
       WHERE fee_setup_id = ?
     `;
-    db.query(
+    const [result] = await db.query(
       query,
       [
         data.program_id,
@@ -115,26 +117,81 @@ const TuitionFee = {
         data.other_fees || 0,
         data.is_active,
         id,
-      ],
-      callback
+      ]
     );
+    return result;
   },
 
   // Delete tuition fee setup
-  delete: (id, callback) => {
+  delete: async (id) => {
     const query = "DELETE FROM tuition_fee_setup WHERE fee_setup_id = ?";
-    db.query(query, [id], callback);
+    const [result] = await db.query(query, [id]);
+    return result;
   },
 
   // Get fee for specific program, year level, and period
-  getFeeByDetails: (program_id, year_level, academic_period_id, callback) => {
+  getFeeByDetails: async (program_id, year_level, academic_period_id) => {
     const query = `
       SELECT * FROM tuition_fee_setup 
       WHERE program_id = ? AND year_level = ? AND academic_period_id = ? AND is_active = TRUE
       LIMIT 1
     `;
-    db.query(query, [program_id, year_level, academic_period_id], callback);
+    const [rows] = await db.query(query, [program_id, year_level, academic_period_id]);
+    return rows;
   },
+
+  // Get fee schedule for a specific student based on their current enrollment/details
+  getStudentFeeSchedule: async (student_id) => {
+    // 1. Get student's program and year level
+    const [studentDetails] = await db.query(
+      `SELECT sd.course, sd.year_level, p.program_id 
+       FROM student_details sd
+       LEFT JOIN programs p ON sd.course = p.name
+       WHERE sd.user_id = ?`,
+      [student_id]
+    );
+
+    if (!studentDetails || studentDetails.length === 0) {
+      return null;
+    }
+
+    const { program_id, year_level } = studentDetails[0];
+
+    // 2. Get active academic period
+    const [activePeriod] = await db.query(
+      `SELECT period_id, school_year, semester FROM academic_periods WHERE is_active = TRUE LIMIT 1`
+    );
+
+    if (!activePeriod || activePeriod.length === 0) {
+      return null;
+    }
+
+    const { period_id, school_year, semester } = activePeriod[0];
+
+    // 3. Get matching tuition fee setup
+    const [feeSetup] = await db.query(
+      `SELECT tfs.*, p.name as program_name, ap.school_year, ap.semester
+       FROM tuition_fee_setup tfs
+       JOIN programs p ON tfs.program_id = p.program_id
+       JOIN academic_periods ap ON tfs.academic_period_id = ap.period_id
+       WHERE tfs.program_id = ? AND tfs.year_level = ? AND tfs.academic_period_id = ? AND tfs.is_active = TRUE
+       LIMIT 1`,
+      [program_id, year_level, period_id]
+    );
+
+    if (!feeSetup || feeSetup.length === 0) {
+      return {
+        has_setup: false,
+        student_info: studentDetails[0],
+        active_period: activePeriod[0]
+      };
+    }
+
+    return {
+      has_setup: true,
+      ...feeSetup[0]
+    };
+  }
 };
 
 export default TuitionFee;

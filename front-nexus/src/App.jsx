@@ -108,6 +108,7 @@ import StudentAttendance from "./components/pages/student/StudentAttendance";
 import StudentCalendar from "./components/pages/student/StudentCalendar";
 import StudentAnnouncements from "./components/pages/student/StudentAnnouncements";
 import StudentCommunication from "./components/pages/student/StudentCommunication";
+import StudentScholarships from "./components/pages/student/StudentScholarships";
 import StaffDashboard from "./components/pages/staff/StaffDashboard";
 import AccountingDashboard from "./components/pages/accounting/AccountingDashboard";
 
@@ -318,7 +319,9 @@ function AppWrapper() {
         />
         {/* Finance */}
         <Route path="student_finance" element={<StudentFinance />} />
-        // ...existing code...
+
+        {/* Scholarships */}
+        <Route path="student_scholarships" element={<StudentScholarships />} />
       </Route>
 
       {/* Faculty Routes */}

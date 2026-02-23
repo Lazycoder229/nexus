@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../api/axios";
 import {
   Plus,
   Search,
@@ -10,8 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const PaymentCollection = () => {
   const [payments, setPayments] = useState([]);
@@ -61,7 +59,7 @@ const PaymentCollection = () => {
 
   const fetchPayments = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/payments`, { params: filters });
+      const response = await api.get(`/api/payments`, { params: filters });
       setPayments(response.data.data || []);
     } catch (error) {
       console.error("Error fetching payments:", error);
@@ -70,7 +68,7 @@ const PaymentCollection = () => {
 
   const fetchSummary = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/payments/summary`, {
+      const response = await api.get(`/api/payments/summary`, {
         params: {
           start_date: filters.start_date,
           end_date: filters.end_date,
@@ -85,9 +83,9 @@ const PaymentCollection = () => {
   const fetchInvoices = async (studentId = null) => {
     try {
       const url = studentId
-        ? `${API_BASE}/api/invoices/student/${studentId}`
-        : `${API_BASE}/api/invoices`;
-      const response = await axios.get(url, {
+        ? `/api/invoices/student/${studentId}`
+        : `/api/invoices`;
+      const response = await api.get(url, {
         params: { status: "Pending,Partially Paid" },
       });
       setInvoices(response.data.data || []);
@@ -98,6 +96,20 @@ const PaymentCollection = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === "invoice_id" && value) {
+      const selectedInvoice = invoices.find(inv => String(inv.invoice_id) === String(value));
+      if (selectedInvoice) {
+        setFormData({
+          ...formData,
+          invoice_id: value,
+          student_id: selectedInvoice.student_id,
+          amount_paid: selectedInvoice.balance || ""
+        });
+        return;
+      }
+    }
+
     setFormData({ ...formData, [name]: value });
 
     if (name === "student_id" && value) {
@@ -108,7 +120,7 @@ const PaymentCollection = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_BASE}/api/payments`, formData);
+      await api.post(`/api/payments`, formData);
       setShowModal(false);
       resetForm();
       fetchPayments();
@@ -123,7 +135,7 @@ const PaymentCollection = () => {
   const handleVerify = async (id) => {
     if (window.confirm("Verify this payment?")) {
       try {
-        await axios.patch(`${API_BASE}/api/payments/${id}/verify`);
+        await api.patch(`/api/payments/${id}/verify`);
         fetchPayments();
       } catch (error) {
         console.error("Error verifying payment:", error);
@@ -267,6 +279,7 @@ const PaymentCollection = () => {
               <button
                 onClick={() => {
                   resetForm();
+                  fetchInvoices();
                   setShowModal(true);
                 }}
                 className="flex items-center gap-1.5 px-3 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-500/30"
@@ -364,10 +377,10 @@ const PaymentCollection = () => {
                   <td className="px-4 py-2 whitespace-nowrap">
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded-full ${payment.payment_status === "Verified"
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
-                          : payment.payment_status === "Pending"
-                            ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-                            : "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400"
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
+                        : payment.payment_status === "Pending"
+                          ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                          : "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400"
                         }`}
                     >
                       {payment.payment_status}
@@ -454,8 +467,8 @@ const PaymentCollection = () => {
                 key={i + 1}
                 onClick={() => setCurrentPage(i + 1)}
                 className={`px-3 py-1.5 text-xs rounded border transition-colors ${currentPage === i + 1
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  ? "bg-indigo-600 text-white border-indigo-600"
+                  : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                   }`}
               >
                 {i + 1}

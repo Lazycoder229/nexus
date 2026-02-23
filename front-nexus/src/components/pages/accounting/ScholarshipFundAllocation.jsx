@@ -1,17 +1,17 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../api/axios";
 import { Plus, Edit, Trash2, Award, DollarSign, Users, Search, ChevronLeft, ChevronRight } from "lucide-react";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const ScholarshipFundAllocation = () => {
   const [programs, setPrograms] = useState([]);
   const [allocations, setAllocations] = useState([]);
+  const [periods, setPeriods] = useState([]);
   const [showProgramModal, setShowProgramModal] = useState(false);
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [filters, setFilters] = useState({
     status: "",
     scholarship_type: "",
+    academic_period_id: "",
     search: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
@@ -20,11 +20,16 @@ const ScholarshipFundAllocation = () => {
   const [programForm, setProgramForm] = useState({
     scholarship_id: null,
     scholarship_name: "",
+    scholarship_code: "",
     scholarship_type: "Merit-based",
+    discount_type: "Percentage",
+    discount_value: "",
     funding_source: "",
     total_budget: "",
-    academic_year: new Date().getFullYear(),
-    semester: "1st Semester",
+    max_beneficiaries: "",
+    academic_period_id: "",
+    required_gpa: "",
+    required_income_level: "",
     eligibility_criteria: "",
     description: "",
   });
@@ -61,12 +66,24 @@ const ScholarshipFundAllocation = () => {
   useEffect(() => {
     fetchPrograms();
     fetchAllocations();
+    fetchPeriods();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
+  const fetchPeriods = async () => {
+    try {
+      const response = await api.get("/api/academic-periods");
+      // Adjust based on common API response pattern
+      const periodList = response.data.data || response.data || [];
+      setPeriods(periodList);
+    } catch (error) {
+      console.error("Error fetching academic periods:", error);
+    }
+  };
+
   const fetchPrograms = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/scholarships/programs`, {
+      const response = await api.get(`/api/scholarships/programs`, {
         params: filters,
       });
       setPrograms(response.data.data || []);
@@ -77,7 +94,7 @@ const ScholarshipFundAllocation = () => {
 
   const fetchAllocations = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/scholarships/allocations`, {
+      const response = await api.get(`/api/scholarships/allocations`, {
         params: filters,
       });
       setAllocations(response.data.data || []);
@@ -90,12 +107,12 @@ const ScholarshipFundAllocation = () => {
     e.preventDefault();
     try {
       if (programForm.scholarship_id) {
-        await axios.put(
-          `${API_BASE}/api/scholarships/programs/${programForm.scholarship_id}`,
+        await api.put(
+          `/api/scholarships/programs/${programForm.scholarship_id}`,
           programForm
         );
       } else {
-        await axios.post(`${API_BASE}/api/scholarships/programs`, programForm);
+        await api.post(`/api/scholarships/programs`, programForm);
       }
       setShowProgramModal(false);
       resetProgramForm();
@@ -111,12 +128,12 @@ const ScholarshipFundAllocation = () => {
     e.preventDefault();
     try {
       if (allocationForm.allocation_id) {
-        await axios.put(
-          `${API_BASE}/api/scholarships/allocations/${allocationForm.allocation_id}`,
+        await api.put(
+          `/api/scholarships/allocations/${allocationForm.allocation_id}`,
           allocationForm
         );
       } else {
-        await axios.post(`${API_BASE}/api/scholarships/allocations`, allocationForm);
+        await api.post(`/api/scholarships/allocations`, allocationForm);
       }
       setShowAllocationModal(false);
       resetAllocationForm();
@@ -132,7 +149,7 @@ const ScholarshipFundAllocation = () => {
   const handleDeleteProgram = async (id) => {
     if (window.confirm("Delete this scholarship program?")) {
       try {
-        await axios.delete(`${API_BASE}/api/scholarships/programs/${id}`);
+        await api.delete(`/api/scholarships/programs/${id}`);
         fetchPrograms();
       } catch (error) {
         console.error("Error deleting program:", error);
@@ -143,7 +160,7 @@ const ScholarshipFundAllocation = () => {
   const handleDeleteAllocation = async (id) => {
     if (window.confirm("Delete this allocation?")) {
       try {
-        await axios.delete(`${API_BASE}/api/scholarships/allocations/${id}`);
+        await api.delete(`/api/scholarships/allocations/${id}`);
         fetchAllocations();
         fetchPrograms();
       } catch (error) {
@@ -155,7 +172,7 @@ const ScholarshipFundAllocation = () => {
   const handleApprove = async (id) => {
     if (window.confirm("Approve this scholarship allocation?")) {
       try {
-        await axios.patch(`${API_BASE}/api/scholarships/allocations/${id}/approve`);
+        await api.patch(`/api/scholarships/allocations/${id}/approve`);
         fetchAllocations();
         fetchPrograms();
       } catch (error) {
@@ -168,11 +185,16 @@ const ScholarshipFundAllocation = () => {
     setProgramForm({
       scholarship_id: null,
       scholarship_name: "",
+      scholarship_code: "",
       scholarship_type: "Merit-based",
+      discount_type: "Percentage",
+      discount_value: "",
       funding_source: "",
       total_budget: "",
-      academic_year: new Date().getFullYear(),
-      semester: "1st Semester",
+      max_beneficiaries: "",
+      academic_period_id: "",
+      required_gpa: "",
+      required_income_level: "",
       eligibility_criteria: "",
       description: "",
     });
@@ -248,6 +270,21 @@ const ScholarshipFundAllocation = () => {
                 ))}
               </select>
               <select
+                value={filters.academic_period_id}
+                onChange={(e) => {
+                  setFilters({ ...filters, academic_period_id: e.target.value });
+                  setCurrentPage(1);
+                }}
+                className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+              >
+                <option value="">All Periods</option>
+                {periods.map((period) => (
+                  <option key={period.id} value={period.id}>
+                    {period.school_year} - {period.semester}
+                  </option>
+                ))}
+              </select>
+              <select
                 value={filters.status}
                 onChange={(e) => {
                   setFilters({ ...filters, status: e.target.value });
@@ -302,6 +339,9 @@ const ScholarshipFundAllocation = () => {
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-bold text-lg text-slate-900 dark:text-white">
                   {program.scholarship_name}
+                  <div className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                    {program.scholarship_code}
+                  </div>
                 </h3>
                 <div className="flex gap-1">
                   <button
@@ -321,9 +361,16 @@ const ScholarshipFundAllocation = () => {
                   </button>
                 </div>
               </div>
-              <span className="inline-block px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 text-xs rounded-full mb-2">
-                {program.scholarship_type}
-              </span>
+              <div className="flex justify-between gap-1 mb-2">
+                <span className="inline-block px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 text-xs rounded-full">
+                  {program.scholarship_type}
+                </span>
+                {program.school_year && (
+                  <span className="inline-block px-2 py-1 bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400 text-xs rounded-full">
+                    {program.school_year} {program.semester}
+                  </span>
+                )}
+              </div>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-slate-600 dark:text-slate-400">Budget:</span>
@@ -439,12 +486,12 @@ const ScholarshipFundAllocation = () => {
                     <td className="px-4 py-2 whitespace-nowrap">
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded-full ${allocation.disbursement_status === "Disbursed"
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
-                            : allocation.disbursement_status === "Approved"
-                              ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400"
-                              : allocation.disbursement_status === "Cancelled"
-                                ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
-                                : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"
+                          : allocation.disbursement_status === "Approved"
+                            ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400"
+                            : allocation.disbursement_status === "Cancelled"
+                              ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+                              : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
                           }`}
                       >
                         {allocation.disbursement_status}
@@ -539,8 +586,8 @@ const ScholarshipFundAllocation = () => {
                   key={i + 1}
                   onClick={() => setCurrentPage(i + 1)}
                   className={`px-3 py-1.5 text-xs rounded border transition-colors ${currentPage === i + 1
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
                     }`}
                 >
                   {i + 1}
@@ -613,7 +660,7 @@ const ScholarshipFundAllocation = () => {
             <form onSubmit={handleProgramSubmit} className="flex flex-col flex-1 overflow-hidden">
               <div className="flex-1 overflow-y-auto px-6 py-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
+                  <div>
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                       Scholarship Name *
                     </label>
@@ -627,6 +674,24 @@ const ScholarshipFundAllocation = () => {
                         })
                       }
                       required
+                      className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Scholarship Code *
+                    </label>
+                    <input
+                      type="text"
+                      value={programForm.scholarship_code}
+                      onChange={(e) =>
+                        setProgramForm({
+                          ...programForm,
+                          scholarship_code: e.target.value,
+                        })
+                      }
+                      required
+                      placeholder="e.g. MERIT-2024"
                       className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
@@ -651,6 +716,66 @@ const ScholarshipFundAllocation = () => {
                         </option>
                       ))}
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Academic Period *
+                    </label>
+                    <select
+                      value={programForm.academic_period_id}
+                      onChange={(e) =>
+                        setProgramForm({
+                          ...programForm,
+                          academic_period_id: e.target.value,
+                        })
+                      }
+                      required
+                      className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    >
+                      <option value="">Select Period</option>
+                      {periods.map((period) => (
+                        <option key={period.id} value={period.id}>
+                          {period.school_year} - {period.semester}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Discount Type *
+                    </label>
+                    <select
+                      value={programForm.discount_type}
+                      onChange={(e) =>
+                        setProgramForm({
+                          ...programForm,
+                          discount_type: e.target.value,
+                        })
+                      }
+                      required
+                      className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    >
+                      <option value="Percentage">Percentage</option>
+                      <option value="Fixed Amount">Fixed Amount</option>
+                      <option value="Full Scholarship">Full Scholarship</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                      Discount Value {programForm.discount_type === 'Percentage' ? '(%)' : ''}
+                    </label>
+                    <input
+                      type="number"
+                      value={programForm.discount_value}
+                      onChange={(e) =>
+                        setProgramForm({
+                          ...programForm,
+                          discount_value: e.target.value,
+                        })
+                      }
+                      disabled={programForm.discount_type === 'Full Scholarship'}
+                      className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
@@ -689,40 +814,55 @@ const ScholarshipFundAllocation = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Academic Year *
+                      Max Beneficiaries
                     </label>
                     <input
                       type="number"
-                      value={programForm.academic_year}
+                      value={programForm.max_beneficiaries}
                       onChange={(e) =>
                         setProgramForm({
                           ...programForm,
-                          academic_year: e.target.value,
+                          max_beneficiaries: e.target.value,
                         })
                       }
-                      required
                       className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                      Semester *
-                    </label>
-                    <select
-                      value={programForm.semester}
-                      onChange={(e) =>
-                        setProgramForm({
-                          ...programForm,
-                          semester: e.target.value,
-                        })
-                      }
-                      required
-                      className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    >
-                      <option>1st Semester</option>
-                      <option>2nd Semester</option>
-                      <option>Summer</option>
-                    </select>
+                  <div className="grid grid-cols-2 gap-2 col-span-1">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Required GPA
+                      </label>
+                      <input
+                        type="number"
+                        value={programForm.required_gpa}
+                        onChange={(e) =>
+                          setProgramForm({
+                            ...programForm,
+                            required_gpa: e.target.value,
+                          })
+                        }
+                        step="0.01"
+                        className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Income Level
+                      </label>
+                      <input
+                        type="number"
+                        value={programForm.required_income_level}
+                        onChange={(e) =>
+                          setProgramForm({
+                            ...programForm,
+                            required_income_level: e.target.value,
+                          })
+                        }
+                        step="0.01"
+                        className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">

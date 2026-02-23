@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../../../api/axios";
 import {
   Plus,
   Edit,
@@ -8,12 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Award,
-  DollarSign,
-  Users,
-  TrendingUp,
 } from "lucide-react";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const ScholarshipTypeSetup = () => {
   const [scholarshipTypes, setScholarshipTypes] = useState([]);
@@ -67,7 +62,7 @@ const ScholarshipTypeSetup = () => {
       if (filterStatus) params.append("status", filterStatus);
       if (searchTerm) params.append("search", searchTerm);
 
-      const response = await axios.get(`${API_BASE}/api/scholarships/types?${params}`);
+      const response = await api.get(`/api/scholarships/types?${params}`);
       setScholarshipTypes(response.data);
     } catch (error) {
       console.error("Error fetching scholarship types:", error);
@@ -76,7 +71,7 @@ const ScholarshipTypeSetup = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/scholarships/types/statistics`);
+      const response = await api.get(`/api/scholarships/types/statistics`);
       setStatistics(response.data);
     } catch (error) {
       console.error("Error fetching statistics:", error);
@@ -92,9 +87,9 @@ const ScholarshipTypeSetup = () => {
     e.preventDefault();
     try {
       if (currentType) {
-        await axios.put(`${API_BASE}/api/scholarships/types/${currentType.scholarship_type_id}`, formData);
+        await api.put(`/api/scholarships/types/${currentType.scholarship_type_id}`, formData);
       } else {
-        await axios.post(`${API_BASE}/api/scholarships/types`, formData);
+        await api.post(`/api/scholarships/types`, formData);
       }
       fetchScholarshipTypes();
       fetchStatistics();
@@ -138,7 +133,7 @@ const ScholarshipTypeSetup = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this scholarship type?")) {
       try {
-        await axios.delete(`${API_BASE}/api/scholarships/types/${id}`);
+        await api.delete(`/api/scholarships/types/${id}`);
         fetchScholarshipTypes();
         fetchStatistics();
       } catch (error) {

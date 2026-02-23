@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
-import { MessageCircle, Bell, Star, Send, Filter, CheckCircle, AlertCircle } from "lucide-react";
+import { MessageCircle, Bell, Star, Send, Filter, CheckCircle, AlertCircle, Eye } from "lucide-react";
+import api from "../../../api/axios";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const StudentAnnouncements = () => {
   const [activeTab, setActiveTab] = useState("notifications");
@@ -15,6 +14,8 @@ const StudentAnnouncements = () => {
     message: "",
   });
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     fetchData();
@@ -35,16 +36,28 @@ const StudentAnnouncements = () => {
 
   const fetchNotifications = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/events/announcements`);
+      const studentId = localStorage.getItem("userId");
+      const response = await api.get(`/api/events/announcements`, {
+        params: { user_id: studentId }
+      });
       const data = response.data || [];
-      // Transform announcements to notification format
-      setNotifications(data.map(item => ({
-        notification_id: item.id || item.announcement_id,
+
+      // Deduplicate by ID
+      const seenIds = new Set();
+      const uniqueData = data.filter(item => {
+        const id = item.announcement_id || item.id;
+        if (seenIds.has(id)) return false;
+        seenIds.add(id);
+        return true;
+      });
+
+      setNotifications(uniqueData.map(item => ({
+        notification_id: item.announcement_id || item.id,
         title: item.title,
         message: item.content || item.message,
         type: item.type || 'announcement',
         priority: item.priority || 'medium',
-        is_read: item.is_read || false,
+        is_read: item.is_read === 1 || item.is_read === true,
         created_at: item.created_at,
       })));
     } catch (error) {
@@ -54,7 +67,7 @@ const StudentAnnouncements = () => {
 
   const fetchFeedback = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/feedback`);
+      const response = await api.get(`/api/feedback`);
       const data = response.data || [];
       setFeedbackList(data);
     } catch (error) {
@@ -66,7 +79,7 @@ const StudentAnnouncements = () => {
   const handleSubmitFeedback = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_BASE}/api/feedback`, feedbackForm);
+      await api.post(`/api/feedback`, feedbackForm);
       alert("Feedback submitted successfully!");
       setFeedbackForm({ category: "", rating: 5, message: "" });
       fetchFeedback();
@@ -78,8 +91,11 @@ const StudentAnnouncements = () => {
 
   const markAsRead = async (notificationId) => {
     try {
-      await axios.put(`${API_BASE}/api/events/announcements/${notificationId}/read`);
-      fetchNotifications();
+      await api.put(`/api/events/announcements/${notificationId}/read`);
+      // Update local state for immediate feedback
+      setNotifications(prev => prev.map(n =>
+        n.notification_id === notificationId ? { ...n, is_read: true } : n
+      ));
     } catch (error) {
       console.error("Error marking notification as read:", error);
     }
@@ -104,8 +120,20 @@ const StudentAnnouncements = () => {
     return colors[priority] || colors.low;
   };
 
-  const filteredNotifications =
-    filter === "all" ? notifications : filter === "unread" ? notifications.filter((n) => !n.is_read) : notifications.filter((n) => n.is_read);
+  const filteredNotifications = (filter === "all"
+    ? notifications
+    : filter === "unread"
+      ? notifications.filter((n) => !n.is_read)
+      : notifications.filter((n) => n.is_read)
+  ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  // Pagination Logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredNotifications.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredNotifications.length / itemsPerPage);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   const tabs = [
     { id: "notifications", label: "Notifications", icon: Bell },
@@ -135,8 +163,8 @@ const StudentAnnouncements = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${activeTab === tab.id
-                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20"
-                    : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20"
+                  : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                   }`}
               >
                 <Icon size={16} />
@@ -157,28 +185,28 @@ const StudentAnnouncements = () => {
             {/* Filter */}
             <div className="flex gap-2">
               <button
-                onClick={() => setFilter("all")}
+                onClick={() => { setFilter("all"); setCurrentPage(1); }}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === "all"
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600"
                   }`}
               >
                 All ({notifications.length})
               </button>
               <button
-                onClick={() => setFilter("unread")}
+                onClick={() => { setFilter("unread"); setCurrentPage(1); }}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === "unread"
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600"
                   }`}
               >
                 Unread ({notifications.filter((n) => !n.is_read).length})
               </button>
               <button
-                onClick={() => setFilter("read")}
+                onClick={() => { setFilter("read"); setCurrentPage(1); }}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === "read"
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600"
                   }`}
               >
                 Read ({notifications.filter((n) => n.is_read).length})
@@ -186,54 +214,110 @@ const StudentAnnouncements = () => {
             </div>
 
             {/* Notifications List */}
-            <div className="space-y-3">
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
               {filteredNotifications.length === 0 ? (
-                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-8 text-center">
+                <div className="p-8 text-center">
                   <Bell size={48} className="mx-auto text-slate-400 mb-3" />
                   <p className="text-slate-500 dark:text-slate-400">No notifications to display</p>
                 </div>
               ) : (
-                filteredNotifications.map((notification) => {
-                  const { icon: Icon, color } = getNotificationIcon(notification.type);
-                  return (
-                    <div
-                      key={notification.notification_id}
-                      className={`bg-white dark:bg-slate-800 rounded-lg border p-4 hover:shadow-md transition-shadow ${notification.is_read
-                          ? "border-slate-200 dark:border-slate-700"
-                          : "border-indigo-300 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-900/10"
-                        }`}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+                      <tr>
+                        <th className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-10">Type</th>
+                        <th className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Announcement</th>
+                        <th className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-32">Priority</th>
+                        <th className="p-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-24">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                      {currentItems.map((notification) => {
+                        const { icon: Icon, color } = getNotificationIcon(notification.type);
+                        return (
+                          <tr
+                            key={notification.notification_id}
+                            className={`${notification.is_read ? "opacity-75" : "bg-indigo-50/30 dark:bg-indigo-900/10"} hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors`}
+                          >
+                            <td className="p-3">
+                              <div className={color}>
+                                <Icon size={20} />
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <div className="flex flex-col">
+                                <span className={`font-bold text-slate-900 dark:text-white ${notification.is_read ? "text-slate-500" : "text-indigo-600 dark:text-indigo-400"}`}>
+                                  {notification.title}
+                                </span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400 mb-1">
+                                  {new Date(notification.created_at).toLocaleString()}
+                                </span>
+                                <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2">{notification.message}</p>
+                              </div>
+                            </td>
+                            <td className="p-3 cursor-default" title="Announcement Priority">
+                              <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${getPriorityColor(notification.priority)}`}>
+                                {notification.priority}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">
+                              {notification.is_read ? (
+                                <span className="text-slate-400 dark:text-slate-500" title="Read">
+                                  <Eye size={18} className="inline" />
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => markAsRead(notification.notification_id)}
+                                  className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 p-1 rounded-full hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                                  title="Mark as Read"
+                                >
+                                  <CheckCircle size={18} />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/30">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredNotifications.length)} of {filteredNotifications.length} entries
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => paginate(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-2 py-1 text-xs font-medium rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-slate-800 transition-colors"
                     >
-                      <div className="flex gap-3">
-                        <div className={`flex-shrink-0 ${color}`}>
-                          <Icon size={24} />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <h3 className="text-lg font-bold text-slate-900 dark:text-white">{notification.title}</h3>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">
-                                {new Date(notification.created_at).toLocaleString()}
-                              </p>
-                            </div>
-                            <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${getPriorityColor(notification.priority)}`}>
-                              {notification.priority}
-                            </span>
-                          </div>
-                          <p className="text-sm text-slate-700 dark:text-slate-300 mb-3">{notification.message}</p>
-                          {!notification.is_read && (
-                            <button
-                              onClick={() => markAsRead(notification.notification_id)}
-                              className="flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium"
-                            >
-                              <CheckCircle size={14} />
-                              Mark as Read
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
+                      Prev
+                    </button>
+                    {[...Array(totalPages)].map((_, i) => (
+                      <button
+                        key={i + 1}
+                        onClick={() => paginate(i + 1)}
+                        className={`px-2.5 py-1 text-xs font-medium rounded border transition-colors ${currentPage === i + 1
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "border-slate-300 dark:border-slate-600 hover:bg-white dark:hover:bg-slate-800"
+                          }`}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => paginate(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="px-2 py-1 text-xs font-medium rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-slate-800 transition-colors"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
