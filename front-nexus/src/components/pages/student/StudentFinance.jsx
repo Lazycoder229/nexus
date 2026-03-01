@@ -19,7 +19,7 @@ import {
   BarChart3,
   Eye,
   Printer,
-  Award
+  Award,
 } from "lucide-react";
 
 const StudentFinance = () => {
@@ -40,6 +40,7 @@ const StudentFinance = () => {
   const itemsPerPage = 10;
 
   const [formData, setFormData] = useState({
+    invoice_id: "",
     amount: "",
     payment_method: "cash",
     reference_number: "",
@@ -73,28 +74,45 @@ const StudentFinance = () => {
       const studentId = localStorage.getItem("userId");
       if (!studentId) return;
 
-      const [invoiceRes, scholarshipRes, setupRes] = await Promise.all([
+      const [invoiceRes, scholarshipRes] = await Promise.all([
         api.get(`/api/invoices`, { params: { student_id: studentId } }),
         api.get(`/api/scholarships/student/${studentId}`),
-        api.get(`/api/tuition-fees/student-schedule`)
       ]);
+
+      let scheduleData = {};
+      try {
+        const setupRes = await api.get(`/api/tuition-fees/student-schedule`);
+        scheduleData = setupRes.data?.data || {};
+        // eslint-disable-next-line no-empty
+      } catch {}
 
       const invoices = invoiceRes.data.data || [];
       const scholarships = scholarshipRes.data.data || [];
-      const scheduleData = setupRes.data.data || {};
 
-      const activeGrant = scholarships.find(s => s.status === 'Approved' || s.status === 'Active');
+      const activeGrant = scholarships.find(
+        (s) => s.status === "Approved" || s.status === "Active",
+      );
 
       // Calculate balance from invoices
-      const totalBilled = invoices.reduce((sum, inv) => sum + (parseFloat(inv.total_amount) || 0), 0);
-      const totalPaid = invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount_paid) || 0), 0);
-      const currentBalance = invoices.reduce((sum, inv) => sum + (parseFloat(inv.balance) || 0), 0);
+      const totalBilled = invoices.reduce(
+        (sum, inv) => sum + (parseFloat(inv.total_amount) || 0),
+        0,
+      );
+      const totalPaid = invoices.reduce(
+        (sum, inv) => sum + (parseFloat(inv.amount_paid) || 0),
+        0,
+      );
+      const currentBalance = invoices.reduce(
+        (sum, inv) => sum + (parseFloat(inv.balance) || 0),
+        0,
+      );
 
       let scholarshipDeduction = 0;
       if (activeGrant) {
-        if (activeGrant.discount_type === 'Percentage') {
+        if (activeGrant.discount_type === "Percentage") {
           const tuitionBase = scheduleData.tuition_fee || 0;
-          scholarshipDeduction = (tuitionBase * (activeGrant.discount_value / 100));
+          scholarshipDeduction =
+            tuitionBase * (activeGrant.discount_value / 100);
         } else {
           scholarshipDeduction = parseFloat(activeGrant.discount_value) || 0;
         }
@@ -114,17 +132,21 @@ const StudentFinance = () => {
   const fetchPaymentSchedule = async () => {
     try {
       const studentId = localStorage.getItem("userId");
-      const response = await api.get(`/api/invoices`, { params: { student_id: studentId } });
+      const response = await api.get(`/api/invoices`, {
+        params: { student_id: studentId },
+      });
       const invoices = response.data.data || [];
-      setPaymentSchedule(invoices.map(inv => ({
-        schedule_id: inv.invoice_id,
-        due_date: inv.due_date,
-        description: inv.notes || 'Tuition Fee',
-        amount: inv.total_amount,
-        paid_amount: inv.amount_paid,
-        balance: inv.balance,
-        status: inv.status,
-      })));
+      setPaymentSchedule(
+        invoices.map((inv) => ({
+          schedule_id: inv.invoice_id,
+          due_date: inv.due_date,
+          description: inv.notes || "Tuition Fee",
+          amount: inv.total_amount,
+          paid_amount: inv.amount_paid,
+          balance: inv.balance,
+          status: inv.status,
+        })),
+      );
     } catch (error) {
       console.error("Error fetching payment schedule:", error);
     }
@@ -135,16 +157,18 @@ const StudentFinance = () => {
       const studentId = localStorage.getItem("userId");
       const response = await api.get(`/api/payments/student/${studentId}`);
       const paymentsData = response.data.data || [];
-      setReceipts(paymentsData.map(p => ({
-        receipt_id: p.payment_id,
-        receipt_number: p.receipt_number || p.payment_reference,
-        payment_date: p.payment_date,
-        description: p.notes || 'Payment',
-        payment_method: p.payment_method,
-        amount: p.amount_paid,
-        status: p.payment_status,
-        semester: p.semester,
-      })));
+      setReceipts(
+        paymentsData.map((p) => ({
+          receipt_id: p.payment_id,
+          receipt_number: p.receipt_number || p.payment_reference,
+          payment_date: p.payment_date,
+          description: p.notes || "Payment",
+          payment_method: p.payment_method,
+          amount: p.amount_paid,
+          status: p.payment_status,
+          semester: p.semester,
+        })),
+      );
     } catch (error) {
       console.error("Error fetching receipts:", error);
     }
@@ -155,16 +179,18 @@ const StudentFinance = () => {
       const studentId = localStorage.getItem("userId");
       const response = await api.get(`/api/payments/student/${studentId}`);
       const paymentsData = response.data.data || [];
-      setPayments(paymentsData.map(p => ({
-        payment_id: p.payment_id,
-        reference_number: p.payment_reference,
-        payment_date: p.payment_date,
-        payment_method: p.payment_method,
-        amount: p.amount_paid,
-        status: p.payment_status,
-        processed_by: p.collected_by_name,
-        notes: p.notes,
-      })));
+      setPayments(
+        paymentsData.map((p) => ({
+          payment_id: p.payment_id,
+          reference_number: p.payment_reference,
+          payment_date: p.payment_date,
+          payment_method: p.payment_method,
+          amount: p.amount_paid,
+          status: p.payment_status,
+          processed_by: p.collected_by_name,
+          notes: p.notes,
+        })),
+      );
     } catch (error) {
       console.error("Error fetching payments:", error);
     }
@@ -180,22 +206,35 @@ const StudentFinance = () => {
       const invoices = invoicesRes.data.data || [];
       const paymentsData = paymentsRes.data.data || [];
 
-      const totalTuition = invoices.reduce((sum, inv) => sum + (parseFloat(inv.total_amount) || 0), 0);
-      const totalPaid = invoices.reduce((sum, inv) => sum + (parseFloat(inv.amount_paid) || 0), 0);
-      const outstanding = invoices.reduce((sum, inv) => sum + (parseFloat(inv.balance) || 0), 0);
+      const totalTuition = invoices.reduce(
+        (sum, inv) => sum + (parseFloat(inv.total_amount) || 0),
+        0,
+      );
+      const totalPaid = invoices.reduce(
+        (sum, inv) => sum + (parseFloat(inv.amount_paid) || 0),
+        0,
+      );
+      const outstanding = invoices.reduce(
+        (sum, inv) => sum + (parseFloat(inv.balance) || 0),
+        0,
+      );
 
       setSummary({
         total_payments: paymentsData.length,
         total_amount_paid: totalPaid,
         outstanding_balance: outstanding,
         total_tuition: totalTuition,
-        payment_progress: totalTuition > 0 ? Math.round((totalPaid / totalTuition) * 100) : 0,
-        by_payment_method: Object.values(paymentsData.reduce((acc, p) => {
-          const method = p.payment_method || 'cash';
-          if (!acc[method]) acc[method] = { payment_method: method, total_amount: 0 };
-          acc[method].total_amount += parseFloat(p.amount_paid) || 0;
-          return acc;
-        }, {})),
+        payment_progress:
+          totalTuition > 0 ? Math.round((totalPaid / totalTuition) * 100) : 0,
+        by_payment_method: Object.values(
+          paymentsData.reduce((acc, p) => {
+            const method = p.payment_method || "cash";
+            if (!acc[method])
+              acc[method] = { payment_method: method, total_amount: 0 };
+            acc[method].total_amount += parseFloat(p.amount_paid) || 0;
+            return acc;
+          }, {}),
+        ),
       });
     } catch (error) {
       console.error("Error fetching summary:", error);
@@ -206,7 +245,7 @@ const StudentFinance = () => {
     try {
       const response = await fetch(
         `http://localhost:5000/api/student/finance/receipts/${receiptId}/download`,
-        { method: "GET" }
+        { method: "GET" },
       );
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -235,8 +274,17 @@ const StudentFinance = () => {
   const handleMakePayment = () => {
     setModalType("payment");
     setSelectedItem(null);
+    const firstUnpaid = paymentSchedule.find(
+      (s) => !s.status || s.status.toLowerCase() !== "paid",
+    );
     setFormData({
-      amount: "",
+      invoice_id: firstUnpaid?.schedule_id
+        ? String(firstUnpaid.schedule_id)
+        : "",
+      amount:
+        firstUnpaid && parseFloat(firstUnpaid.balance) > 0
+          ? String(parseFloat(firstUnpaid.balance).toFixed(2))
+          : "",
       payment_method: "cash",
       reference_number: "",
       payment_date: new Date().toISOString().split("T")[0],
@@ -250,7 +298,12 @@ const StudentFinance = () => {
     const studentId = localStorage.getItem("userId");
     try {
       await api.post(`/api/payments`, {
-        ...formData,
+        invoice_id: formData.invoice_id,
+        amount_paid: formData.amount,
+        payment_method: formData.payment_method,
+        reference_number: formData.reference_number,
+        payment_date: formData.payment_date,
+        notes: formData.notes,
         student_id: studentId,
       });
       fetchData();
@@ -265,6 +318,7 @@ const StudentFinance = () => {
     setSelectedItem(null);
     setModalType("payment");
     setFormData({
+      invoice_id: "",
       amount: "",
       payment_method: "cash",
       reference_number: "",
@@ -276,11 +330,16 @@ const StudentFinance = () => {
   // Filter receipts
   const filteredReceipts = receipts.filter((receipt) => {
     const matchesSearch =
-      receipt.receipt_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      receipt.payment_method?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      receipt.receipt_number
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      receipt.payment_method
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
       receipt.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || receipt.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "all" || receipt.status === statusFilter;
     const matchesSemester =
       semesterFilter === "all" || receipt.semester === semesterFilter;
 
@@ -290,11 +349,16 @@ const StudentFinance = () => {
   // Filter payments
   const filteredPayments = payments.filter((payment) => {
     const matchesSearch =
-      payment.reference_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.payment_method?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.reference_number
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      payment.payment_method
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
       payment.notes?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || payment.status === statusFilter;
+    const matchesStatus =
+      statusFilter === "all" || payment.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
@@ -317,14 +381,19 @@ const StudentFinance = () => {
   const getStatusColor = (status) => {
     const colors = {
       // Invoice statuses
-      'Paid': "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-      'Partially Paid': "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-      'Pending': "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-      'Overdue': "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-      'Cancelled': "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
+      Paid: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      "Partially Paid":
+        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+      Pending:
+        "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+      Overdue: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+      Cancelled:
+        "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400",
       // Payment statuses
-      'Verified': "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-      'Cleared': "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      Verified:
+        "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      Cleared:
+        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
     };
     return colors[status] || colors.Pending;
   };
@@ -372,10 +441,11 @@ const StudentFinance = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${activeTab === tab.id
-                  ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20"
-                  : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                  }`}
+                className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20"
+                    : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                }`}
               >
                 <Icon size={16} />
                 {tab.label}
@@ -390,8 +460,12 @@ const StudentFinance = () => {
             <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg p-5 text-white shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-indigo-100 uppercase mb-1">Total Fees</p>
-                  <p className="text-2xl font-bold">₱{parseFloat(balance.total_tuition || 0).toLocaleString()}</p>
+                  <p className="text-xs font-medium text-indigo-100 uppercase mb-1">
+                    Total Fees
+                  </p>
+                  <p className="text-2xl font-bold">
+                    ₱{parseFloat(balance.total_tuition || 0).toLocaleString()}
+                  </p>
                 </div>
                 <div className="bg-white/20 p-3 rounded-lg">
                   <FileText className="text-white" size={28} />
@@ -401,8 +475,12 @@ const StudentFinance = () => {
             <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-5 text-white shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-green-100 uppercase mb-1">Total Paid</p>
-                  <p className="text-2xl font-bold">₱{parseFloat(balance.total_paid || 0).toLocaleString()}</p>
+                  <p className="text-xs font-medium text-green-100 uppercase mb-1">
+                    Total Paid
+                  </p>
+                  <p className="text-2xl font-bold">
+                    ₱{parseFloat(balance.total_paid || 0).toLocaleString()}
+                  </p>
                 </div>
                 <div className="bg-white/20 p-3 rounded-lg">
                   <CheckCircle className="text-white" size={28} />
@@ -412,8 +490,15 @@ const StudentFinance = () => {
             <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg p-5 text-white shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-amber-100 uppercase mb-1">Scholarship</p>
-                  <p className="text-2xl font-bold">₱{parseFloat(balance.scholarship_deduction || 0).toLocaleString()}</p>
+                  <p className="text-xs font-medium text-amber-100 uppercase mb-1">
+                    Scholarship
+                  </p>
+                  <p className="text-2xl font-bold">
+                    ₱
+                    {parseFloat(
+                      balance.scholarship_deduction || 0,
+                    ).toLocaleString()}
+                  </p>
                 </div>
                 <div className="bg-white/20 p-3 rounded-lg">
                   <Award className="text-white" size={28} />
@@ -423,8 +508,15 @@ const StudentFinance = () => {
             <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-lg p-5 text-white shadow-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-red-100 uppercase mb-1">Remaining Balance</p>
-                  <p className="text-2xl font-bold">₱{parseFloat(balance.remaining_balance || 0).toLocaleString()}</p>
+                  <p className="text-xs font-medium text-red-100 uppercase mb-1">
+                    Remaining Balance
+                  </p>
+                  <p className="text-2xl font-bold">
+                    ₱
+                    {parseFloat(
+                      balance.remaining_balance || 0,
+                    ).toLocaleString()}
+                  </p>
                 </div>
                 <div className="bg-white/20 p-3 rounded-lg">
                   <AlertCircle className="text-white" size={28} />
@@ -494,7 +586,9 @@ const StudentFinance = () => {
         {activeTab === "balance" && (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Payment Schedule</h3>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                Payment Schedule
+              </h3>
               <button
                 onClick={handleMakePayment}
                 className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-sm border shadow-md shadow-indigo-500/30"
@@ -518,7 +612,10 @@ const StudentFinance = () => {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
                   {paymentSchedule.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                      <td
+                        colSpan="6"
+                        className="px-4 py-8 text-center text-slate-500 dark:text-slate-400"
+                      >
                         No payment schedule found
                       </td>
                     </tr>
@@ -534,14 +631,28 @@ const StudentFinance = () => {
                             {new Date(schedule.due_date).toLocaleDateString()}
                           </div>
                         </td>
-                        <td className="px-4 py-2 font-medium">{schedule.description}</td>
-                        <td className="px-4 py-2">₱{parseFloat(schedule.amount).toLocaleString()}</td>
-                        <td className="px-4 py-2">₱{parseFloat(schedule.paid_amount || 0).toLocaleString()}</td>
-                        <td className="px-4 py-2 font-semibold">
-                          ₱{parseFloat(schedule.amount - (schedule.paid_amount || 0)).toLocaleString()}
+                        <td className="px-4 py-2 font-medium">
+                          {schedule.description}
                         </td>
                         <td className="px-4 py-2">
-                          <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(schedule.status)}`}>
+                          ₱{parseFloat(schedule.amount).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-2">
+                          ₱
+                          {parseFloat(
+                            schedule.paid_amount || 0,
+                          ).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-2 font-semibold">
+                          ₱
+                          {parseFloat(
+                            schedule.amount - (schedule.paid_amount || 0),
+                          ).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-2">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(schedule.status)}`}
+                          >
                             {schedule.status}
                           </span>
                         </td>
@@ -572,7 +683,10 @@ const StudentFinance = () => {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
                 {currentReceipts.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                    <td
+                      colSpan="7"
+                      className="px-4 py-8 text-center text-slate-500 dark:text-slate-400"
+                    >
                       No receipts found
                     </td>
                   </tr>
@@ -585,11 +699,15 @@ const StudentFinance = () => {
                       <td className="px-4 py-2 font-mono font-semibold text-indigo-600 dark:text-indigo-400">
                         {receipt.receipt_number}
                       </td>
-                      <td className="px-4 py-2">{new Date(receipt.payment_date).toLocaleDateString()}</td>
+                      <td className="px-4 py-2">
+                        {new Date(receipt.payment_date).toLocaleDateString()}
+                      </td>
                       <td className="px-4 py-2">
                         <div className="font-medium">{receipt.description}</div>
                         {receipt.semester && (
-                          <div className="text-xs text-slate-500 dark:text-slate-400">{receipt.semester}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                            {receipt.semester}
+                          </div>
                         )}
                       </td>
                       <td className="px-4 py-2">
@@ -602,7 +720,9 @@ const StudentFinance = () => {
                         ₱{parseFloat(receipt.amount).toLocaleString()}
                       </td>
                       <td className="px-4 py-2">
-                        <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(receipt.status)}`}>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(receipt.status)}`}
+                        >
                           {receipt.status}
                         </span>
                       </td>
@@ -616,7 +736,9 @@ const StudentFinance = () => {
                             <Eye size={14} />
                           </button>
                           <button
-                            onClick={() => handleDownloadReceipt(receipt.receipt_id)}
+                            onClick={() =>
+                              handleDownloadReceipt(receipt.receipt_id)
+                            }
                             title="Download PDF"
                             className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
                           >
@@ -657,7 +779,10 @@ const StudentFinance = () => {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
                 {currentPayments.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">
+                    <td
+                      colSpan="7"
+                      className="px-4 py-8 text-center text-slate-500 dark:text-slate-400"
+                    >
                       No payment history found
                     </td>
                   </tr>
@@ -673,7 +798,9 @@ const StudentFinance = () => {
                           {new Date(payment.payment_date).toLocaleDateString()}
                         </div>
                       </td>
-                      <td className="px-4 py-2 font-mono text-xs">{payment.reference_number || "N/A"}</td>
+                      <td className="px-4 py-2 font-mono text-xs">
+                        {payment.reference_number || "N/A"}
+                      </td>
                       <td className="px-4 py-2">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
                           {getPaymentMethodIcon(payment.payment_method)}
@@ -684,11 +811,15 @@ const StudentFinance = () => {
                         ₱{parseFloat(payment.amount).toLocaleString()}
                       </td>
                       <td className="px-4 py-2">
-                        <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(payment.status)}`}>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(payment.status)}`}
+                        >
                           {payment.status}
                         </span>
                       </td>
-                      <td className="px-4 py-2">{payment.processed_by || "Self-Service"}</td>
+                      <td className="px-4 py-2">
+                        {payment.processed_by || "Self-Service"}
+                      </td>
                       <td className="px-4 py-2">
                         <div className="max-w-xs truncate text-xs text-slate-500 dark:text-slate-400">
                           {payment.notes || "-"}
@@ -710,50 +841,78 @@ const StudentFinance = () => {
               <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Total Payments</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{summary.total_payments}</p>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">
+                      Total Payments
+                    </p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                      {summary.total_payments}
+                    </p>
                   </div>
                   <div className="bg-indigo-100 dark:bg-indigo-900/30 p-3 rounded-lg">
-                    <Receipt className="text-indigo-600 dark:text-indigo-400" size={24} />
+                    <Receipt
+                      className="text-indigo-600 dark:text-indigo-400"
+                      size={24}
+                    />
                   </div>
                 </div>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Total Amount Paid</p>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">
+                      Total Amount Paid
+                    </p>
                     <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                      ₱{parseFloat(summary.total_amount_paid || 0).toLocaleString()}
+                      ₱
+                      {parseFloat(
+                        summary.total_amount_paid || 0,
+                      ).toLocaleString()}
                     </p>
                   </div>
                   <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
-                    <TrendingUp className="text-green-600 dark:text-green-400" size={24} />
+                    <TrendingUp
+                      className="text-green-600 dark:text-green-400"
+                      size={24}
+                    />
                   </div>
                 </div>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Outstanding Balance</p>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">
+                      Outstanding Balance
+                    </p>
                     <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                      ₱{parseFloat(summary.outstanding_balance || 0).toLocaleString()}
+                      ₱
+                      {parseFloat(
+                        summary.outstanding_balance || 0,
+                      ).toLocaleString()}
                     </p>
                   </div>
                   <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-lg">
-                    <AlertCircle className="text-red-600 dark:text-red-400" size={24} />
+                    <AlertCircle
+                      className="text-red-600 dark:text-red-400"
+                      size={24}
+                    />
                   </div>
                 </div>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Payment Progress</p>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">
+                      Payment Progress
+                    </p>
                     <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
                       {summary.payment_progress}%
                     </p>
                   </div>
                   <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg">
-                    <BarChart3 className="text-blue-600 dark:text-blue-400" size={24} />
+                    <BarChart3
+                      className="text-blue-600 dark:text-blue-400"
+                      size={24}
+                    />
                   </div>
                 </div>
               </div>
@@ -761,21 +920,31 @@ const StudentFinance = () => {
 
             {/* Payment Progress Bar */}
             <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Payment Progress</h3>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+                Payment Progress
+              </h3>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600 dark:text-slate-400">
-                    ₱{parseFloat(summary.total_amount_paid || 0).toLocaleString()} of ₱
+                    ₱
+                    {parseFloat(
+                      summary.total_amount_paid || 0,
+                    ).toLocaleString()}{" "}
+                    of ₱
                     {parseFloat(summary.total_tuition || 0).toLocaleString()}
                   </span>
-                  <span className="font-bold text-slate-900 dark:text-white">{summary.payment_progress}%</span>
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    {summary.payment_progress}%
+                  </span>
                 </div>
                 <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-4">
                   <div
                     className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-4 rounded-full transition-all flex items-center justify-end pr-2"
                     style={{ width: `${summary.payment_progress}%` }}
                   >
-                    <span className="text-xs font-bold text-white">{summary.payment_progress}%</span>
+                    <span className="text-xs font-bold text-white">
+                      {summary.payment_progress}%
+                    </span>
                   </div>
                 </div>
               </div>
@@ -789,7 +958,10 @@ const StudentFinance = () => {
               </h3>
               <div className="space-y-3">
                 {summary.by_payment_method?.map((method) => (
-                  <div key={method.payment_method} className="flex items-center justify-between">
+                  <div
+                    key={method.payment_method}
+                    className="flex items-center justify-between"
+                  >
                     <div className="flex items-center gap-3 flex-1">
                       <span className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300 capitalize min-w-[120px]">
                         {getPaymentMethodIcon(method.payment_method)}
@@ -820,10 +992,14 @@ const StudentFinance = () => {
             <span className="text-xs sm:text-sm">
               Page <span className="font-semibold">{currentPage}</span> of{" "}
               <span className="font-semibold">
-                {activeTab === "receipts" ? totalPages || 1 : totalPagesPayments || 1}
+                {activeTab === "receipts"
+                  ? totalPages || 1
+                  : totalPagesPayments || 1}
               </span>{" "}
               | Total Records:{" "}
-              {activeTab === "receipts" ? filteredReceipts.length : filteredPayments.length}
+              {activeTab === "receipts"
+                ? filteredReceipts.length
+                : filteredPayments.length}
             </span>
             <div className="flex gap-1 items-center mt-2 sm:mt-0">
               <button
@@ -839,11 +1015,17 @@ const StudentFinance = () => {
               <button
                 onClick={() =>
                   setCurrentPage((prev) =>
-                    Math.min(prev + 1, activeTab === "receipts" ? totalPages : totalPagesPayments)
+                    Math.min(
+                      prev + 1,
+                      activeTab === "receipts"
+                        ? totalPages
+                        : totalPagesPayments,
+                    ),
                   )
                 }
                 disabled={
-                  currentPage === (activeTab === "receipts" ? totalPages : totalPagesPayments)
+                  currentPage ===
+                  (activeTab === "receipts" ? totalPages : totalPagesPayments)
                 }
                 className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
               >
@@ -892,6 +1074,49 @@ const StudentFinance = () => {
               <form onSubmit={handleSubmit} className="p-4 space-y-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Invoice *
+                  </label>
+                  <select
+                    required
+                    value={formData.invoice_id}
+                    onChange={(e) => {
+                      const inv = paymentSchedule.find(
+                        (s) => String(s.schedule_id) === e.target.value,
+                      );
+                      setFormData({
+                        ...formData,
+                        invoice_id: e.target.value,
+                        amount: inv
+                          ? String((parseFloat(inv.balance) || 0).toFixed(2))
+                          : formData.amount,
+                      });
+                    }}
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all"
+                  >
+                    <option value="">Select invoice…</option>
+                    {paymentSchedule
+                      .filter(
+                        (s) => !s.status || s.status.toLowerCase() !== "paid",
+                      )
+                      .map((s) => {
+                        const bal = parseFloat(s.balance) || 0;
+                        return (
+                          <option
+                            key={s.schedule_id}
+                            value={String(s.schedule_id)}
+                          >
+                            {s.description} — ₱
+                            {bal.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}{" "}
+                            balance{s.due_date ? ` (due ${s.due_date})` : ""}
+                          </option>
+                        );
+                      })}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Amount *
                   </label>
                   <input
@@ -899,7 +1124,9 @@ const StudentFinance = () => {
                     step="0.01"
                     required
                     value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, amount: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all"
                     placeholder="0.00"
                   />
@@ -912,7 +1139,12 @@ const StudentFinance = () => {
                     <select
                       required
                       value={formData.payment_method}
-                      onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          payment_method: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all"
                     >
                       <option value="cash">Cash</option>
@@ -930,7 +1162,12 @@ const StudentFinance = () => {
                       type="date"
                       required
                       value={formData.payment_date}
-                      onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          payment_date: e.target.value,
+                        })
+                      }
                       className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all"
                     />
                   </div>
@@ -942,7 +1179,12 @@ const StudentFinance = () => {
                   <input
                     type="text"
                     value={formData.reference_number}
-                    onChange={(e) => setFormData({ ...formData, reference_number: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        reference_number: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all"
                     placeholder="Transaction or check number"
                   />
@@ -954,7 +1196,9 @@ const StudentFinance = () => {
                   <textarea
                     rows="3"
                     value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, notes: e.target.value })
+                    }
                     className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-slate-900 dark:text-slate-100 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all resize-none"
                     placeholder="Additional payment details"
                   />
@@ -998,7 +1242,9 @@ const StudentFinance = () => {
                         Date
                       </p>
                       <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                        {new Date(selectedItem.payment_date).toLocaleDateString()}
+                        {new Date(
+                          selectedItem.payment_date,
+                        ).toLocaleDateString()}
                       </p>
                     </div>
                     <div>
@@ -1023,7 +1269,7 @@ const StudentFinance = () => {
                       </p>
                       <span
                         className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(
-                          selectedItem.status
+                          selectedItem.status,
                         )}`}
                       >
                         {selectedItem.status}
@@ -1045,14 +1291,18 @@ const StudentFinance = () => {
 
                   {/* Footer */}
                   <div className="text-center text-xs text-slate-500 dark:text-slate-400">
-                    <p>This is an official receipt issued by the institution.</p>
+                    <p>
+                      This is an official receipt issued by the institution.
+                    </p>
                     <p>Thank you for your payment!</p>
                   </div>
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
                   <button
-                    onClick={() => handleDownloadReceipt(selectedItem.receipt_id)}
+                    onClick={() =>
+                      handleDownloadReceipt(selectedItem.receipt_id)
+                    }
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-all text-sm shadow-md"
                   >
                     <Download size={14} />

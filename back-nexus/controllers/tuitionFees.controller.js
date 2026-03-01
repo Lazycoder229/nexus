@@ -89,20 +89,22 @@ const tuitionFeeController = {
       if (!program_id || !year_level || !academic_period_id) {
         return res.status(400).json({
           success: false,
-          message: "program_id, year_level, and academic_period_id are required",
+          message:
+            "program_id, year_level, and academic_period_id are required",
         });
       }
 
       const results = await TuitionFee.getFeeByDetails(
         program_id,
         year_level,
-        academic_period_id
+        academic_period_id,
       );
 
       if (!results || results.length === 0) {
         return res.status(404).json({
           success: false,
-          message: "No active tuition fee setup found for the specified criteria",
+          message:
+            "No active tuition fee setup found for the specified criteria",
         });
       }
 
@@ -181,29 +183,31 @@ const tuitionFeeController = {
     try {
       // If student, use their own ID. If admin/staff, can provide student_id parameter
       let studentId = req.user.user_id;
-      if (req.user.role !== 'Student' && req.query.student_id) {
+      if (req.user.role !== "Student" && req.query.student_id) {
         studentId = req.query.student_id;
       }
 
       const schedule = await TuitionFee.getStudentFeeSchedule(studentId);
 
       if (!schedule) {
-        return res.status(404).json({
-          success: false,
-          message: "Student details or active academic period not found"
+        return res.status(200).json({
+          success: true,
+          data: null,
+          message:
+            "No active academic period or fee schedule found for this student",
         });
       }
 
       res.status(200).json({
         success: true,
-        data: schedule
+        data: schedule,
       });
     } catch (err) {
       console.error("Error fetching student schedule:", err);
       res.status(500).json({
         success: false,
         message: "Failed to fetch student fee schedule",
-        error: err.message
+        error: err.message,
       });
     }
   },

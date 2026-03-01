@@ -36,6 +36,10 @@ const AnnouncementCenter = () => {
     is_pinned: false,
   });
 
+  const authHeaders = () => ({
+    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+  });
+
   useEffect(() => {
     fetchData();
     // fetchStatistics(); // Temporarily disabled due to backend error
@@ -48,6 +52,7 @@ const AnnouncementCenter = () => {
       if (searchTerm) params.append("search", searchTerm);
       const response = await axios.get(
         `http://localhost:5000/api/events/announcements?${params}`,
+        authHeaders(),
       );
       setAnnouncements(response.data);
     } catch (error) {
@@ -87,11 +92,13 @@ const AnnouncementCenter = () => {
         response = await axios.put(
           `http://localhost:5000/api/events/announcements/${current.announcement_id}`,
           submitData,
+          authHeaders(),
         );
       } else {
         response = await axios.post(
           "http://localhost:5000/api/events/announcements",
           submitData,
+          authHeaders(),
         );
       }
       console.log("Save successful, response:", response.data);
@@ -110,8 +117,8 @@ const AnnouncementCenter = () => {
       } else {
         alert(
           error.response?.data?.error ||
-          error.message ||
-          "Error saving announcement",
+            error.message ||
+            "Error saving announcement",
         );
       }
     }
@@ -144,6 +151,7 @@ const AnnouncementCenter = () => {
       try {
         await axios.delete(
           `http://localhost:5000/api/events/announcements/${id}`,
+          authHeaders(),
         );
         fetchData();
         // fetchStatistics(); // Temporarily disabled
@@ -220,33 +228,25 @@ const AnnouncementCenter = () => {
         {statistics && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="bg-white rounded-md border border-slate-200 shadow-sm p-4">
-              <p className="text-xs font-medium text-slate-600">
-                Total
-              </p>
+              <p className="text-xs font-medium text-slate-600">Total</p>
               <p className="text-2xl font-bold text-indigo-600 mt-1">
                 {statistics.total_announcements}
               </p>
             </div>
             <div className="bg-white rounded-md border border-slate-200 shadow-sm p-4">
-              <p className="text-xs font-medium text-slate-600">
-                Published
-              </p>
+              <p className="text-xs font-medium text-slate-600">Published</p>
               <p className="text-2xl font-bold text-green-600 mt-1">
                 {statistics.published_count}
               </p>
             </div>
             <div className="bg-white rounded-md border border-slate-200 shadow-sm p-4">
-              <p className="text-xs font-medium text-slate-600">
-                Draft
-              </p>
+              <p className="text-xs font-medium text-slate-600">Draft</p>
               <p className="text-2xl font-bold text-gray-600 mt-1">
                 {statistics.draft_count}
               </p>
             </div>
             <div className="bg-white rounded-md border border-slate-200 shadow-sm p-4">
-              <p className="text-xs font-medium text-slate-600">
-                Views
-              </p>
+              <p className="text-xs font-medium text-slate-600">Views</p>
               <p className="text-2xl font-bold text-purple-600 mt-1">
                 {statistics.total_views}
               </p>

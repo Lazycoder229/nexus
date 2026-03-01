@@ -117,15 +117,18 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
 
     if (!email || !password) {
       alert("Please enter both email and password.");
       return;
     }
 
+    setSubmitting(true);
     try {
       // Send login request
       const { data } = await axios.post(
@@ -182,6 +185,8 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
       } else {
         alert("Network error. Please try again later.");
       }
+    } finally {
+      setSubmitting(false);
     }
   };
   return (
@@ -296,13 +301,16 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
             {/* Submit Button (Amber Accent) */}
             <button
               type="submit"
-              className="group mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-8 py-2.5 text-white text-sm font-semibold shadow-md shadow-amber-200 dark:shadow-none hover:bg-amber-700 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+              disabled={submitting}
+              className="group mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-8 py-2.5 text-white text-sm font-semibold shadow-md shadow-amber-200 dark:shadow-none hover:bg-amber-700 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
-              Log In
-              <ArrowRight
-                size={16}
-                className="group-hover:translate-x-1 transition-transform"
-              />
+              {submitting ? "Logging in…" : "Log In"}
+              {!submitting && (
+                <ArrowRight
+                  size={16}
+                  className="group-hover:translate-x-1 transition-transform"
+                />
+              )}
             </button>
           </form>
 

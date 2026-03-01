@@ -12,32 +12,29 @@ const Invoice = {
        invoice_date, due_date, status, notes, created_by)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const [result] = await db.query(
-      query,
-      [
-        data.invoice_number,
-        data.student_id,
-        data.enrollment_id,
-        data.academic_period_id,
-        data.tuition_fee || 0,
-        data.laboratory_fee || 0,
-        data.library_fee || 0,
-        data.athletic_fee || 0,
-        data.registration_fee || 0,
-        data.id_fee || 0,
-        data.miscellaneous_fee || 0,
-        data.other_fees || 0,
-        data.subtotal,
-        data.discount_amount || 0,
-        data.scholarship_amount || 0,
-        data.total_amount,
-        data.invoice_date,
-        data.due_date,
-        data.status || "Pending",
-        data.notes,
-        data.created_by,
-      ]
-    );
+    const [result] = await db.query(query, [
+      data.invoice_number,
+      data.student_id,
+      data.enrollment_id,
+      data.academic_period_id,
+      data.tuition_fee || 0,
+      data.laboratory_fee || 0,
+      data.library_fee || 0,
+      data.athletic_fee || 0,
+      data.registration_fee || 0,
+      data.id_fee || 0,
+      data.miscellaneous_fee || 0,
+      data.other_fees || 0,
+      data.subtotal,
+      data.discount_amount || 0,
+      data.scholarship_amount || 0,
+      data.total_amount,
+      data.invoice_date,
+      data.due_date,
+      data.status || "Pending",
+      data.notes,
+      data.created_by,
+    ]);
     return result;
   },
 
@@ -46,7 +43,7 @@ const Invoice = {
     let query = `
       SELECT 
         si.*,
-        (si.total_amount - si.amount_paid) AS balance,
+        (si.total_amount - COALESCE(si.amount_paid, 0)) AS balance,
         CONCAT(s.first_name, ' ', s.last_name) as student_name,
         sd.student_number,
         p.name as program_name,
@@ -134,7 +131,7 @@ const Invoice = {
     const query = `
       SELECT 
         si.*,
-        (si.total_amount - si.amount_paid) AS balance,
+        (si.total_amount - COALESCE(si.amount_paid, 0)) AS balance,
         ap.school_year,
         ap.semester
       FROM student_invoices si
@@ -157,30 +154,27 @@ const Invoice = {
           total_amount = ?, due_date = ?, status = ?, notes = ?
       WHERE invoice_id = ?
     `;
-    const [result] = await db.query(
-      query,
-      [
-        data.student_id,
-        data.enrollment_id,
-        data.academic_period_id,
-        data.tuition_fee || 0,
-        data.laboratory_fee || 0,
-        data.library_fee || 0,
-        data.athletic_fee || 0,
-        data.registration_fee || 0,
-        data.id_fee || 0,
-        data.miscellaneous_fee || 0,
-        data.other_fees || 0,
-        data.subtotal,
-        data.discount_amount || 0,
-        data.scholarship_amount || 0,
-        data.total_amount,
-        data.due_date,
-        data.status,
-        data.notes,
-        id,
-      ]
-    );
+    const [result] = await db.query(query, [
+      data.student_id,
+      data.enrollment_id,
+      data.academic_period_id,
+      data.tuition_fee || 0,
+      data.laboratory_fee || 0,
+      data.library_fee || 0,
+      data.athletic_fee || 0,
+      data.registration_fee || 0,
+      data.id_fee || 0,
+      data.miscellaneous_fee || 0,
+      data.other_fees || 0,
+      data.subtotal,
+      data.discount_amount || 0,
+      data.scholarship_amount || 0,
+      data.total_amount,
+      data.due_date,
+      data.status,
+      data.notes,
+      id,
+    ]);
     return result;
   },
 

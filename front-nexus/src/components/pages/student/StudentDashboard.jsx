@@ -31,33 +31,52 @@ const StudentDashboard = () => {
     try {
       setLoading(true);
       // Fetch from real backend endpoints
-      const [enrollmentsRes, gradesRes, attendanceRes, announcementsRes, invoicesRes, scholarshipRes] = await Promise.all([
+      const [
+        enrollmentsRes,
+        gradesRes,
+        attendanceRes,
+        announcementsRes,
+        invoicesRes,
+        scholarshipRes,
+      ] = await Promise.all([
         api.get(`/api/enrollments`),
         api.get(`/api/grades`),
         api.get(`/api/student-attendance`),
         api.get(`/api/events/announcements`),
         api.get(`/api/invoices`),
-        api.get(`/api/scholarships/student/${localStorage.getItem("userId") || 0}`)
+        api.get(
+          `/api/scholarships/student/${localStorage.getItem("userId") || 0}`,
+        ),
       ]);
 
       // Aggregate dashboard data from real endpoints
-      const enrollments = enrollmentsRes.data || [];
-      const grades = gradesRes.data || [];
-      const attendance = attendanceRes.data || [];
+      const enrollments = Array.isArray(enrollmentsRes.data)
+        ? enrollmentsRes.data
+        : enrollmentsRes.data?.data || [];
+      const grades = Array.isArray(gradesRes.data)
+        ? gradesRes.data
+        : gradesRes.data?.data || [];
+      const attendance = Array.isArray(attendanceRes.data)
+        ? attendanceRes.data
+        : attendanceRes.data?.data || [];
       const announcementsData = announcementsRes.data || [];
       const invoices = invoicesRes.data || [];
       const scholarships = scholarshipRes.data.data || [];
 
       // Calculate dashboard summary
-      const totalPresent = attendance.filter(a => a.status === 'present').length;
+      const totalPresent = attendance.filter(
+        (a) => a.status === "present",
+      ).length;
       const totalRecords = attendance.length || 1;
       const attendanceRate = Math.round((totalPresent / totalRecords) * 100);
 
       // Find active grant for scholarship deduction
-      const activeGrant = scholarships.find(s => s.status === 'Approved' || s.status === 'Active');
+      const activeGrant = scholarships.find(
+        (s) => s.status === "Approved" || s.status === "Active",
+      );
       let scholarshipDeduction = 0;
       if (activeGrant) {
-        if (activeGrant.discount_type === 'Percentage') {
+        if (activeGrant.discount_type === "Percentage") {
           // We'd need tuition fee setup to be exact, but for dashboard let's use a simpler heuristic or just show the grant info
           // For now, let's keep it simple: if percentage, we might need another fetch or just show fixed deduction if present
           scholarshipDeduction = 0; // Placeholder until tuition fees are fetched here too, or just subtract fixed allowance
@@ -67,44 +86,58 @@ const StudentDashboard = () => {
       }
 
       const pendingBalance = invoices
-        .filter(inv => inv.status === 'pending' || inv.status === 'unpaid')
+        .filter((inv) => inv.status === "pending" || inv.status === "unpaid")
         .reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
 
       const finalBalance = Math.max(0, pendingBalance - scholarshipDeduction);
 
       setDashboardData({
         enrolled_subjects: enrollments.length,
-        current_gpa: grades.length > 0 ? (grades.reduce((sum, g) => sum + (parseFloat(g.grade) || 0), 0) / grades.length).toFixed(2) : "0.00",
+        current_gpa:
+          grades.length > 0
+            ? (
+                grades.reduce((sum, g) => sum + (parseFloat(g.grade) || 0), 0) /
+                grades.length
+              ).toFixed(2)
+            : "0.00",
         attendance_rate: attendanceRate,
         pending_balance: finalBalance.toLocaleString(),
         pending_assignments: 0,
         upcoming_exams: 0,
-        completed_units: enrollments.reduce((sum, e) => sum + (e.units || 0), 0),
+        completed_units: enrollments.reduce(
+          (sum, e) => sum + (e.units || 0),
+          0,
+        ),
       });
 
       // Set recent grades
-      setRecentGrades(grades.slice(0, 5).map(g => ({
-        subject: g.course_name || g.subject_name || 'N/A',
-        assessment: g.assessment_type || 'Final',
-        grade: g.grade || g.final_grade || 'N/A',
-      })));
+      setRecentGrades(
+        grades.slice(0, 5).map((g) => ({
+          subject: g.course_name || g.subject_name || "N/A",
+          assessment: g.assessment_type || "Final",
+          grade: g.grade || g.final_grade || "N/A",
+        })),
+      );
 
       // Set announcements
-      setAnnouncements(announcementsData.slice(0, 5).map(a => ({
-        title: a.title,
-        message: a.content || a.message,
-        date: new Date(a.created_at).toLocaleDateString(),
-      })));
+      setAnnouncements(
+        announcementsData.slice(0, 5).map((a) => ({
+          title: a.title,
+          message: a.content || a.message,
+          date: new Date(a.created_at).toLocaleDateString(),
+        })),
+      );
 
       // Set upcoming classes (from enrollments/schedules)
-      setUpcomingClasses(enrollments.slice(0, 3).map(e => ({
-        subject_name: e.course_name || e.subject_name || 'N/A',
-        room: e.room || 'TBA',
-        instructor: e.instructor_name || 'TBA',
-        time: e.schedule || 'TBA',
-        duration: e.duration || '2 hours',
-      })));
-
+      setUpcomingClasses(
+        enrollments.slice(0, 3).map((e) => ({
+          subject_name: e.course_name || e.subject_name || "N/A",
+          room: e.room || "TBA",
+          instructor: e.instructor_name || "TBA",
+          time: e.schedule || "TBA",
+          duration: e.duration || "2 hours",
+        })),
+      );
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -136,8 +169,12 @@ const StudentDashboard = () => {
           <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg p-5 text-white shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-indigo-100 uppercase mb-1">Enrolled Subjects</p>
-                <p className="text-3xl font-bold">{dashboardData?.enrolled_subjects || 0}</p>
+                <p className="text-xs font-medium text-indigo-100 uppercase mb-1">
+                  Enrolled Subjects
+                </p>
+                <p className="text-3xl font-bold">
+                  {dashboardData?.enrolled_subjects || 0}
+                </p>
               </div>
               <div className="bg-white/20 p-3 rounded-lg">
                 <BookOpen className="text-white" size={28} />
@@ -148,8 +185,12 @@ const StudentDashboard = () => {
           <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-5 text-white shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-green-100 uppercase mb-1">Current GPA</p>
-                <p className="text-3xl font-bold">{dashboardData?.current_gpa || "0.00"}</p>
+                <p className="text-xs font-medium text-green-100 uppercase mb-1">
+                  Current GPA
+                </p>
+                <p className="text-3xl font-bold">
+                  {dashboardData?.current_gpa || "0.00"}
+                </p>
               </div>
               <div className="bg-white/20 p-3 rounded-lg">
                 <TrendingUp className="text-white" size={28} />
@@ -160,8 +201,12 @@ const StudentDashboard = () => {
           <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-5 text-white shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-orange-100 uppercase mb-1">Attendance Rate</p>
-                <p className="text-3xl font-bold">{dashboardData?.attendance_rate || 0}%</p>
+                <p className="text-xs font-medium text-orange-100 uppercase mb-1">
+                  Attendance Rate
+                </p>
+                <p className="text-3xl font-bold">
+                  {dashboardData?.attendance_rate || 0}%
+                </p>
               </div>
               <div className="bg-white/20 p-3 rounded-lg">
                 <CheckCircle className="text-white" size={28} />
@@ -172,8 +217,12 @@ const StudentDashboard = () => {
           <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-lg p-5 text-white shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-red-100 uppercase mb-1">Pending Balance</p>
-                <p className="text-3xl font-bold">₱{dashboardData?.pending_balance || 0}</p>
+                <p className="text-xs font-medium text-red-100 uppercase mb-1">
+                  Pending Balance
+                </p>
+                <p className="text-3xl font-bold">
+                  ₱{dashboardData?.pending_balance || 0}
+                </p>
               </div>
               <div className="bg-white/20 p-3 rounded-lg">
                 <DollarSign className="text-white" size={28} />
@@ -194,7 +243,9 @@ const StudentDashboard = () => {
               </h3>
               <div className="space-y-3">
                 {upcomingClasses.length === 0 ? (
-                  <p className="text-center text-slate-500 dark:text-slate-400 py-4">No classes today</p>
+                  <p className="text-center text-slate-500 dark:text-slate-400 py-4">
+                    No classes today
+                  </p>
                 ) : (
                   upcomingClasses.map((classItem, index) => (
                     <div
@@ -203,16 +254,27 @@ const StudentDashboard = () => {
                     >
                       <div className="flex items-center gap-3">
                         <div className="bg-indigo-100 dark:bg-indigo-900/30 p-2 rounded-lg">
-                          <Clock size={18} className="text-indigo-600 dark:text-indigo-400" />
+                          <Clock
+                            size={18}
+                            className="text-indigo-600 dark:text-indigo-400"
+                          />
                         </div>
                         <div>
-                          <p className="font-semibold text-slate-900 dark:text-white">{classItem.subject_name}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">{classItem.room} • {classItem.instructor}</p>
+                          <p className="font-semibold text-slate-900 dark:text-white">
+                            {classItem.subject_name}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {classItem.room} • {classItem.instructor}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400">{classItem.time}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{classItem.duration}</p>
+                        <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                          {classItem.time}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {classItem.duration}
+                        </p>
                       </div>
                     </div>
                   ))
@@ -238,17 +300,26 @@ const StudentDashboard = () => {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                     {recentGrades.length === 0 ? (
                       <tr>
-                        <td colSpan="3" className="py-4 text-center text-slate-500 dark:text-slate-400">
+                        <td
+                          colSpan="3"
+                          className="py-4 text-center text-slate-500 dark:text-slate-400"
+                        >
                           No recent grades
                         </td>
                       </tr>
                     ) : (
                       recentGrades.map((grade, index) => (
                         <tr key={index} className="text-sm">
-                          <td className="py-2 font-medium text-slate-900 dark:text-white">{grade.subject}</td>
-                          <td className="py-2 text-slate-600 dark:text-slate-400">{grade.assessment}</td>
+                          <td className="py-2 font-medium text-slate-900 dark:text-white">
+                            {grade.subject}
+                          </td>
+                          <td className="py-2 text-slate-600 dark:text-slate-400">
+                            {grade.assessment}
+                          </td>
                           <td className="py-2 text-right">
-                            <span className="font-bold text-green-600 dark:text-green-400">{grade.grade}</span>
+                            <span className="font-bold text-green-600 dark:text-green-400">
+                              {grade.grade}
+                            </span>
                           </td>
                         </tr>
                       ))
@@ -269,7 +340,9 @@ const StudentDashboard = () => {
               </h3>
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {announcements.length === 0 ? (
-                  <p className="text-center text-slate-500 dark:text-slate-400 py-4">No announcements</p>
+                  <p className="text-center text-slate-500 dark:text-slate-400 py-4">
+                    No announcements
+                  </p>
                 ) : (
                   announcements.map((announcement, index) => (
                     <div
@@ -277,11 +350,20 @@ const StudentDashboard = () => {
                       className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600"
                     >
                       <div className="flex items-start gap-2">
-                        <AlertCircle size={16} className="text-orange-500 mt-0.5 flex-shrink-0" />
+                        <AlertCircle
+                          size={16}
+                          className="text-orange-500 mt-0.5 flex-shrink-0"
+                        />
                         <div>
-                          <p className="font-semibold text-sm text-slate-900 dark:text-white">{announcement.title}</p>
-                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{announcement.message}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">{announcement.date}</p>
+                          <p className="font-semibold text-sm text-slate-900 dark:text-white">
+                            {announcement.title}
+                          </p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                            {announcement.message}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">
+                            {announcement.date}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -292,19 +374,33 @@ const StudentDashboard = () => {
 
             {/* Quick Stats */}
             <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Quick Stats</h3>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
+                Quick Stats
+              </h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Pending Assignments</span>
-                  <span className="font-bold text-orange-600 dark:text-orange-400">{dashboardData?.pending_assignments || 0}</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">
+                    Pending Assignments
+                  </span>
+                  <span className="font-bold text-orange-600 dark:text-orange-400">
+                    {dashboardData?.pending_assignments || 0}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Upcoming Exams</span>
-                  <span className="font-bold text-red-600 dark:text-red-400">{dashboardData?.upcoming_exams || 0}</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">
+                    Upcoming Exams
+                  </span>
+                  <span className="font-bold text-red-600 dark:text-red-400">
+                    {dashboardData?.upcoming_exams || 0}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">Completed Units</span>
-                  <span className="font-bold text-green-600 dark:text-green-400">{dashboardData?.completed_units || 0}</span>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">
+                    Completed Units
+                  </span>
+                  <span className="font-bold text-green-600 dark:text-green-400">
+                    {dashboardData?.completed_units || 0}
+                  </span>
                 </div>
               </div>
             </div>

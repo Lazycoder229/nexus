@@ -83,10 +83,14 @@ export const getEnrollmentsByStudent = async (studentId) => {
         e.final_grade,
         e.remarks,
         e.created_at,
-        e.updated_at
+        e.updated_at,
+        CONCAT(fu.first_name, ' ', fu.last_name) AS instructor_name
      FROM enrollments e
      JOIN courses c ON e.course_id = c.course_id
      JOIN academic_periods ap ON e.period_id = ap.period_id
+     LEFT JOIN faculty_course_assignments fca 
+       ON e.course_id = fca.course_id AND e.period_id = fca.academic_period_id
+     LEFT JOIN users fu ON fca.faculty_user_id = fu.user_id
      WHERE e.student_id = ?
      ORDER BY e.created_at DESC`,
     [studentId],

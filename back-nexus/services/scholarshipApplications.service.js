@@ -1,6 +1,7 @@
 import ScholarshipApplicationsModel from "../model/scholarshipApplications.model.js";
 import Scholarship from "../model/scholarships.model.js";
 import { getAcademicPeriodById } from "../model/academicPeriods.model.js";
+import pool from "../config/db.js";
 
 const ScholarshipApplicationsService = {
   async getAllApplications(filters) {
@@ -8,7 +9,8 @@ const ScholarshipApplicationsService = {
   },
 
   async getApplicationById(id) {
-    const application = await ScholarshipApplicationsModel.getApplicationById(id);
+    const application =
+      await ScholarshipApplicationsModel.getApplicationById(id);
     if (!application) {
       throw new Error("Application not found");
     }
@@ -18,7 +20,9 @@ const ScholarshipApplicationsService = {
   async createApplication(data) {
     // Validate required fields
     if (!data.scholarship_id || !data.student_id || !data.academic_period_id) {
-      throw new Error("Scholarship program, student, and academic period are required");
+      throw new Error(
+        "Scholarship program, student, and academic period are required",
+      );
     }
 
     // Fetch academic period to populate year and semester
@@ -40,22 +44,41 @@ const ScholarshipApplicationsService = {
       throw new Error("This scholarship program is not currently active");
     }
 
-    if (scholarshipProgram.available_amount <= 0 && scholarshipProgram.total_budget > 0) {
+    if (
+      scholarshipProgram.available_amount <= 0 &&
+      scholarshipProgram.total_budget > 0
+    ) {
       // Optional: Budget check, though maybe slots are more important
     }
 
-    if (scholarshipProgram.current_beneficiaries >= scholarshipProgram.max_beneficiaries && scholarshipProgram.max_beneficiaries > 0) {
+    if (
+      scholarshipProgram.current_beneficiaries >=
+        scholarshipProgram.max_beneficiaries &&
+      scholarshipProgram.max_beneficiaries > 0
+    ) {
       throw new Error("No slots available for this scholarship program");
+    }
+
+    // Auto-derive scholarship_type_id if not provided
+    if (!data.scholarship_type_id && scholarshipProgram.scholarship_type) {
+      const [typeRows] = await pool.query(
+        `SELECT scholarship_type_id FROM scholarship_types WHERE scholarship_code = ? LIMIT 1`,
+        [scholarshipProgram.scholarship_type],
+      );
+      if (typeRows.length > 0) {
+        data.scholarship_type_id = typeRows[0].scholarship_type_id;
+      }
     }
 
     // Generate application number
     if (!data.application_number) {
-      data.application_number = await ScholarshipApplicationsModel.generateApplicationNumber();
+      data.application_number =
+        await ScholarshipApplicationsModel.generateApplicationNumber();
     }
 
     // Set application date if not provided
     if (!data.application_date) {
-      data.application_date = new Date().toISOString().split('T')[0];
+      data.application_date = new Date().toISOString().split("T")[0];
     }
 
     const id = await ScholarshipApplicationsModel.createApplication(data);
@@ -69,12 +92,15 @@ const ScholarshipApplicationsService = {
     }
 
     // If approving, validate approved_amount
-    if (data.status === 'Approved' && !data.approved_amount) {
+    if (data.status === "Approved" && !data.approved_amount) {
       throw new Error("Approved amount is required when approving application");
     }
 
     // If academic_period_id is updated, refresh year and semester
-    if (data.academic_period_id && data.academic_period_id !== existing.academic_period_id) {
+    if (
+      data.academic_period_id &&
+      data.academic_period_id !== existing.academic_period_id
+    ) {
       const period = await getAcademicPeriodById(data.academic_period_id);
       if (period) {
         data.academic_year = period.school_year;
@@ -83,12 +109,18 @@ const ScholarshipApplicationsService = {
     }
 
     // Set review/approval dates
-    if (data.status === 'Under Review' && !data.review_date) {
-      data.review_date = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    if (data.status === "Under Review" && !data.review_date) {
+      data.review_date = new Date()
+        .toISOString()
+        .replace("T", " ")
+        .substring(0, 19);
     }
 
-    if (data.status === 'Approved' && !data.approval_date) {
-      data.approval_date = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    if (data.status === "Approved" && !data.approval_date) {
+      data.approval_date = new Date()
+        .toISOString()
+        .replace("T", " ")
+        .substring(0, 19);
     }
 
     await ScholarshipApplicationsModel.updateApplication(id, data);
@@ -102,7 +134,7 @@ const ScholarshipApplicationsService = {
     }
 
     // Prevent deletion of approved applications
-    if (existing.status === 'Approved') {
+    if (existing.status === "Approved") {
       throw new Error("Cannot delete approved applications");
     }
 
