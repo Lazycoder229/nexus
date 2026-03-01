@@ -162,19 +162,19 @@ const ClassCapacityMonitor = () => {
     let colorClass = "";
     switch (status) {
       case "full":
-        colorClass = "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300";
+        colorClass = "bg-red-100 text-red-700";
         break;
       case "near-full":
-        colorClass = "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
+        colorClass = "bg-yellow-100 text-yellow-700";
         break;
       case "moderate":
-        colorClass = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300";
+        colorClass = "bg-indigo-100 text-indigo-700";
         break;
       case "low":
-        colorClass = "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300";
+        colorClass = "bg-green-100 text-green-700";
         break;
       default:
-        colorClass = "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300";
+        colorClass = "bg-slate-100 text-slate-700";
     }
     return (
       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
@@ -184,7 +184,7 @@ const ClassCapacityMonitor = () => {
   };
 
   const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
-    <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
+    <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700">
       <span className="text-xs sm:text-sm">
         Page <span className="font-semibold">{currentPage}</span> of{" "}
         <span className="font-semibold">{totalPages}</span> | Total Records:{" "}
@@ -194,17 +194,17 @@ const ClassCapacityMonitor = () => {
         <button
           onClick={() => setPage((p) => Math.max(p - 1, 1))}
           disabled={currentPage === 1}
-          className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+          className="p-1.5 rounded-md border border-slate-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
         >
           <ChevronLeft size={16} />
         </button>
-        <span className="px-2 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+        <span className="px-2 py-1 text-xs font-semibold text-indigo-600">
           {currentPage}
         </span>
         <button
           onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
           disabled={currentPage === totalPages || totalPages === 0}
-          className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+          className="p-1.5 rounded-md border border-slate-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
         >
           <ChevronRight size={16} />
         </button>
@@ -213,98 +213,98 @@ const ClassCapacityMonitor = () => {
   );
 
   return (
-    <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
+    <div className=" p-3 sm:p-4 transition-colors duration-500">
       <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
         {/* Header */}
-        <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Users size={24} className="text-indigo-600" />
             Class Capacity Monitor
           </h2>
-          <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+          <span className="text-sm text-slate-500 font-medium">
             Real-time Enrollment Tracking
           </span>
         </div>
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-indigo-500 dark:border-indigo-600">
+          <div className="bg-white rounded-md shadow-sm p-4 border-l-4 border-indigo-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                <p className="text-xs font-medium text-slate-600">
                   Total Sections
                 </p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                <p className="text-2xl font-bold text-slate-900 mt-1">
                   {totalSections}
                 </p>
               </div>
-              <BookOpen className="text-indigo-600 dark:text-indigo-400" size={28} />
+              <BookOpen className="text-indigo-600" size={28} />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-green-500 dark:border-green-600">
+          <div className="bg-white rounded-md shadow-sm p-4 border-l-4 border-green-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                <p className="text-xs font-medium text-slate-600">
                   Total Enrolled
                 </p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                <p className="text-2xl font-bold text-slate-900 mt-1">
                   {totalEnrolled}
                 </p>
               </div>
-              <Users className="text-green-600 dark:text-green-400" size={28} />
+              <Users className="text-green-600" size={28} />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-purple-500 dark:border-purple-600">
+          <div className="bg-white rounded-md shadow-sm p-4 border-l-4 border-purple-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                <p className="text-xs font-medium text-slate-600">
                   Total Capacity
                 </p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                <p className="text-2xl font-bold text-slate-900 mt-1">
                   {totalCapacity}
                 </p>
               </div>
-              <TrendingUp className="text-purple-600 dark:text-purple-400" size={28} />
+              <TrendingUp className="text-purple-600" size={28} />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-orange-500 dark:border-orange-600">
+          <div className="bg-white rounded-md shadow-sm p-4 border-l-4 border-orange-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Utilization</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                <p className="text-xs font-medium text-slate-600">Utilization</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">
                   {overallUtilization}%
                 </p>
               </div>
-              <Clock className="text-orange-600 dark:text-orange-400" size={28} />
+              <Clock className="text-orange-600" size={28} />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-red-500 dark:border-red-600">
+          <div className="bg-white rounded-md shadow-sm p-4 border-l-4 border-red-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                <p className="text-xs font-medium text-slate-600">
                   Full Sections
                 </p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                <p className="text-2xl font-bold text-slate-900 mt-1">
                   {fullSections}
                 </p>
               </div>
-              <AlertCircle className="text-red-600 dark:text-red-400" size={28} />
+              <AlertCircle className="text-red-600" size={28} />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-yellow-500 dark:border-yellow-600">
+          <div className="bg-white rounded-md shadow-sm p-4 border-l-4 border-yellow-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Near Full</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                <p className="text-xs font-medium text-slate-600">Near Full</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">
                   {nearFullSections}
                 </p>
               </div>
-              <TrendingUp className="text-yellow-600 dark:text-yellow-400" size={28} />
+              <TrendingUp className="text-yellow-600" size={28} />
             </div>
           </div>
         </div>
@@ -322,7 +322,7 @@ const ClassCapacityMonitor = () => {
                   setSearchQuery(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
+                className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all shadow-inner"
               />
               <Search
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -378,10 +378,10 @@ const ClassCapacityMonitor = () => {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
-            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-              <thead className="bg-slate-100 dark:bg-slate-700/70">
-                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+          <div className="overflow-x-auto rounded border border-slate-200">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-100">
+                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700">
                   <th className="px-4 py-2.5">Section</th>
                   <th className="px-4 py-2.5">Course</th>
                   <th className="px-4 py-2.5">Period</th>
@@ -391,7 +391,7 @@ const ClassCapacityMonitor = () => {
                   <th className="px-4 py-2.5 text-right">Utilization</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {paginatedSections.length > 0 ? (
                   paginatedSections.map((section) => {
                     const status = getCapacityStatus(
@@ -406,11 +406,11 @@ const ClassCapacityMonitor = () => {
                     return (
                       <tr
                         key={section.section_id}
-                        className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150"
+                        className="text-sm text-slate-700 hover:bg-indigo-50/50 transition duration-150"
                       >
                         <td className="px-4 py-2">
                           <div className="font-semibold">{section.section_name}</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">
+                          <div className="text-xs text-slate-500">
                             {section.course_code}
                           </div>
                         </td>
@@ -439,7 +439,7 @@ const ClassCapacityMonitor = () => {
                   <tr>
                     <td
                       colSpan={7}
-                      className="p-4 text-center text-slate-500 dark:text-slate-400 italic"
+                      className="p-4 text-center text-slate-500 italic"
                     >
                       No sections found matching your search criteria.
                     </td>

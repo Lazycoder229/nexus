@@ -200,17 +200,17 @@ const AcademicCalendar = () => {
     const eventTypeObj = eventTypes.find((t) => t.value === type);
     const colorMap = {
       enrollment:
-        "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-      exam: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+        "bg-blue-100 text-blue-700",
+      exam: "bg-red-100 text-red-700",
       holiday:
-        "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+        "bg-green-100 text-green-700",
       meeting:
-        "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+        "bg-purple-100 text-purple-700",
       deadline:
-        "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-      activity: "bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300",
+        "bg-orange-100 text-orange-700",
+      activity: "bg-teal-100 text-teal-700",
       other:
-        "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
+        "bg-slate-100 text-slate-700",
     };
     return (
       <span
@@ -224,7 +224,7 @@ const AcademicCalendar = () => {
   };
 
   const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
-    <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
+    <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700">
       <span className="text-xs sm:text-sm">
         Page {currentPage} of {totalPages} | Total Records: {totalItems}
       </span>
@@ -232,17 +232,17 @@ const AcademicCalendar = () => {
         <button
           onClick={() => setPage((p) => Math.max(p - 1, 1))}
           disabled={currentPage === 1}
-          className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+          className="p-1.5 rounded-md border border-slate-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
         >
           <ChevronLeft size={16} />
         </button>
-        <span className="px-2 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+        <span className="px-2 py-1 text-xs font-semibold text-indigo-600">
           {currentPage}
         </span>
         <button
           onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
           disabled={currentPage === totalPages || totalPages === 0}
-          className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+          className="p-1.5 rounded-md border border-slate-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
         >
           <ChevronRight size={16} />
         </button>
@@ -332,7 +332,7 @@ const AcademicCalendar = () => {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
+                className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all shadow-inner"
               />
               <Search
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -372,7 +372,7 @@ const AcademicCalendar = () => {
               </div>
               <button
                 onClick={() => setShowModal(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors text-sm border shadow-sm whitespace-nowrap bg-indigo-600 text-white hover:bg-indigo-700 border-indigo-700 dark:border-indigo-600 shadow-md shadow-indigo-500/30"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors text-sm border shadow-sm whitespace-nowrap bg-indigo-600 text-white hover:bg-indigo-700 border-indigo-700 shadow-md shadow-indigo-500/30"
               >
                 <Plus size={14} />
                 New Event
@@ -381,10 +381,10 @@ const AcademicCalendar = () => {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
-            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-              <thead className="bg-slate-100 dark:bg-slate-700/70">
-                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+          <div className="overflow-x-auto rounded border border-slate-200">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-100">
+                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700">
                   <th className="px-4 py-2.5">Event Name</th>
                   <th className="px-4 py-2.5">Type</th>
                   <th className="px-4 py-2.5">Date</th>
@@ -394,12 +394,12 @@ const AcademicCalendar = () => {
                   <th className="px-4 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {currentItems.length > 0 ? (
                   currentItems.map((event) => (
                     <tr
                       key={event.event_id}
-                      className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150"
+                      className="text-sm text-slate-700 hover:bg-indigo-50/50 transition duration-150"
                     >
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-3">
@@ -414,7 +414,7 @@ const AcademicCalendar = () => {
                               {event.event_name}
                             </div>
                             {event.description && (
-                              <div className="text-slate-500 dark:text-slate-400 text-xs mt-1">
+                              <div className="text-slate-500 text-xs mt-1">
                                 {event.description.substring(0, 60)}
                                 {event.description.length > 60 && "..."}
                               </div>
@@ -432,7 +432,7 @@ const AcademicCalendar = () => {
                             <div>{formatDate(event.start_date)}</div>
                             {event.end_date &&
                               event.end_date !== event.start_date && (
-                                <div className="text-slate-500 dark:text-slate-400 text-xs">
+                                <div className="text-slate-500 text-xs">
                                   to {formatDate(event.end_date)}
                                 </div>
                               )}
@@ -465,14 +465,14 @@ const AcademicCalendar = () => {
                       <td className="px-4 py-2 text-right space-x-2">
                         <button
                           onClick={() => handleEdit(event)}
-                          className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                          className="text-indigo-600 hover:text-indigo-800 transition-colors p-1 rounded-full hover:bg-slate-200"
                           title="Edit"
                         >
                           <Edit size={14} />
                         </button>
                         <button
                           onClick={() => handleDelete(event.event_id)}
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                          className="text-red-600 hover:text-red-800 transition-colors p-1 rounded-full hover:bg-slate-200"
                           title="Delete"
                         >
                           <Trash2 size={14} />

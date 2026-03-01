@@ -15,23 +15,20 @@ const ReportsModel = {
         sd.year_level,
         u.status,
         p.name as program_name,
-        p.code as program_code,
+        COALESCE(p.code, sd.course) as program_code,
         e.enrollment_id,
         e.enrollment_date,
-        e.enrollment_status,
-        ap.academic_year,
+        e.status AS enrollment_status,
+        ap.school_year as academic_year,
         ap.semester,
         COUNT(DISTINCT g.grade_id) as total_grades,
-        AVG(CASE 
-          WHEN g.numerical_grade IS NOT NULL THEN g.numerical_grade
-          ELSE NULL
-        END) as gpa
+        AVG(g.final_grade) as gpa
       FROM users u
       INNER JOIN student_details sd ON u.user_id = sd.user_id
-      LEFT JOIN programs p ON sd.course = p.name
+      LEFT JOIN programs p ON sd.course = p.name OR sd.course = p.code
       LEFT JOIN enrollments e ON u.user_id = e.student_id
-      LEFT JOIN academic_periods ap ON e.academic_period_id = ap.academic_period_id
-      LEFT JOIN grades g ON u.user_id = g.student_id
+      LEFT JOIN academic_periods ap ON e.period_id = ap.period_id
+      LEFT JOIN grades g ON u.user_id = g.student_user_id
       WHERE u.role = 'Student'
     `;
 
@@ -68,7 +65,7 @@ const ReportsModel = {
       params.push(filters.date_to);
     }
 
-    query += ` GROUP BY u.user_id, e.enrollment_id, ap.academic_period_id ORDER BY sd.student_number ASC`;
+    query += ` GROUP BY u.user_id, e.enrollment_id, ap.period_id ORDER BY sd.student_number ASC`;
 
     const [rows] = await pool.query(query, params);
     return rows;
@@ -80,43 +77,43 @@ const ReportsModel = {
       SELECT 
         e.enrollment_id,
         e.enrollment_date,
-        e.enrollment_status,
+        e.status AS enrollment_status,
         e.year_level,
         CONCAT(u.first_name, ' ', u.last_name) AS student_name,
         sd.student_number,
         u.email,
         p.name as program_name,
         p.code as program_code,
-        ap.academic_year,
+        ap.school_year as academic_year,
         ap.semester,
         ap.start_date,
         ap.end_date,
-        COUNT(DISTINCT ec.course_id) as enrolled_courses,
-        SUM(c.units) as total_units
+        c.code as course_code,
+        c.title as course_title,
+        c.units as total_units
       FROM enrollments e
       INNER JOIN users u ON e.student_id = u.user_id
       INNER JOIN student_details sd ON u.user_id = sd.user_id
       LEFT JOIN programs p ON sd.course = p.name
-      LEFT JOIN academic_periods ap ON e.academic_period_id = ap.academic_period_id
-      LEFT JOIN enrollment_courses ec ON e.enrollment_id = ec.enrollment_id
-      LEFT JOIN courses c ON ec.course_id = c.course_id
+      LEFT JOIN academic_periods ap ON e.period_id = ap.period_id
+      LEFT JOIN courses c ON e.course_id = c.course_id
       WHERE 1=1
     `;
 
     const params = [];
 
     if (filters.academic_period_id) {
-      query += ` AND e.academic_period_id = ?`;
+      query += ` AND e.period_id = ?`;
       params.push(filters.academic_period_id);
     }
 
     if (filters.program_id) {
-      query += ` AND e.program_id = ?`;
+      query += ` AND p.program_id = ?`;
       params.push(filters.program_id);
     }
 
     if (filters.status) {
-      query += ` AND e.enrollment_status = ?`;
+      query += ` AND e.status = ?`;
       params.push(filters.status);
     }
 
@@ -130,7 +127,7 @@ const ReportsModel = {
       params.push(filters.date_to);
     }
 
-    query += ` GROUP BY e.enrollment_id ORDER BY e.enrollment_date DESC`;
+    query += ` ORDER BY e.enrollment_date DESC`;
 
     const [rows] = await pool.query(query, params);
     return rows;
@@ -145,11 +142,11 @@ const ReportsModel = {
           sa.attendance_date,
           sa.time_in,
           sa.status,
-          sa.notes,
+          sa.remarks,
           CONCAT(u.first_name, ' ', u.last_name) AS student_name,
           sd.student_number,
-          c.course_code,
-          c.course_name,
+          c.code AS course_code,
+          c.title AS course_name,
           sec.section_name,
           CONCAT(f.first_name, ' ', f.last_name) AS marked_by_name
         FROM student_attendance sa
@@ -195,15 +192,15 @@ const ReportsModel = {
           sa.time_in,
           sa.time_out,
           sa.status,
-          sa.notes,
+          sa.remarks,
           sa.attendance_method,
           CONCAT(u.first_name, ' ', u.last_name) AS staff_name,
-          ed.employee_id,
-          ed.department,
+          er.employee_number,
+          er.department,
           TIMESTAMPDIFF(HOUR, sa.time_in, sa.time_out) as hours_worked
         FROM staff_attendance sa
         INNER JOIN users u ON sa.user_id = u.user_id
-        INNER JOIN employee_details ed ON u.user_id = ed.user_id
+        LEFT JOIN employee_records er ON u.user_id = er.user_id
         WHERE 1=1
       `;
 
@@ -225,11 +222,11 @@ const ReportsModel = {
       }
 
       if (filters.department) {
-        query += ` AND ed.department = ?`;
+        query += ` AND er.department = ?`;
         params.push(filters.department);
       }
 
-      query += ` ORDER BY sa.attendance_date DESC, ed.employee_id ASC`;
+      query += ` ORDER BY sa.attendance_date DESC`;
 
       const [rows] = await pool.query(query, params);
       return rows;
@@ -308,9 +305,9 @@ const ReportsModel = {
     const [enrollmentStats] = await pool.query(`
       SELECT 
         COUNT(*) as total_enrollments,
-        SUM(CASE WHEN enrollment_status = 'enrolled' THEN 1 ELSE 0 END) as enrolled,
-        SUM(CASE WHEN enrollment_status = 'pending' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN enrollment_status = 'dropped' THEN 1 ELSE 0 END) as dropped
+        SUM(CASE WHEN status = 'enrolled' THEN 1 ELSE 0 END) as enrolled,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN status = 'dropped' THEN 1 ELSE 0 END) as dropped
       FROM enrollments
     `);
 
@@ -347,7 +344,7 @@ const ReportsModel = {
   // Get report templates
   async getReportTemplates() {
     const [rows] = await pool.query(
-      "SELECT * FROM report_templates WHERE is_active = 1 ORDER BY template_name"
+      "SELECT * FROM report_templates WHERE is_active = 1 ORDER BY template_name",
     );
     return rows;
   },
@@ -372,7 +369,7 @@ const ReportsModel = {
         data.file_size,
         JSON.stringify(data.data_snapshot || {}),
         data.status || "completed",
-      ]
+      ],
     );
     return result.insertId;
   },
@@ -422,7 +419,7 @@ const ReportsModel = {
         data.file_size,
         data.file_path,
         JSON.stringify(data.filters_applied || {}),
-      ]
+      ],
     );
     return result.insertId;
   },

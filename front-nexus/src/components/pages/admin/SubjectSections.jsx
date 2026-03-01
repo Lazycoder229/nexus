@@ -35,7 +35,7 @@ const StatusBadge = ({ status }) => {
 };
 
 const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
-  <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
+  <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700">
     <span className="text-xs sm:text-sm">
       Page {currentPage} of {totalPages} | Total Records: {totalItems}
     </span>
@@ -43,17 +43,17 @@ const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
       <button
         onClick={() => setPage((p) => Math.max(p - 1, 1))}
         disabled={currentPage === 1}
-        className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+        className="p-1.5 rounded-md border border-slate-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
       >
         <ChevronLeft size={16} />
       </button>
-      <span className="px-2 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+      <span className="px-2 py-1 text-xs font-semibold text-indigo-600">
         {currentPage}
       </span>
       <button
         onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
         disabled={currentPage === totalPages || totalPages === 0}
-        className="p-1.5 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors"
+        className="p-1.5 rounded-md border border-slate-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
       >
         <ChevronRight size={16} />
       </button>
@@ -319,7 +319,7 @@ const SubjectSections = () => {
                   setSearchTerm(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
+                className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all shadow-inner"
               />
               <Search
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -358,7 +358,7 @@ const SubjectSections = () => {
               </div>
               <button
                 onClick={() => setShowModal(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors text-sm border shadow-sm whitespace-nowrap bg-indigo-600 text-white hover:bg-indigo-700 border-indigo-700 dark:border-indigo-600 shadow-md shadow-indigo-500/30"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-colors text-sm border shadow-sm whitespace-nowrap bg-indigo-600 text-white hover:bg-indigo-700 border-indigo-700 shadow-md shadow-indigo-500/30"
               >
                 <Plus size={14} />
                 New Section
@@ -366,10 +366,10 @@ const SubjectSections = () => {
             </div>
           </div>
           {/* Table */}
-          <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
-            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-              <thead className="bg-slate-100 dark:bg-slate-700/70">
-                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+          <div className="overflow-x-auto rounded border border-slate-200">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-100">
+                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700">
                   <th className="px-4 py-2.5">Section</th>
                   <th className="px-4 py-2.5">Course</th>
                   <th className="px-4 py-2.5">Period</th>
@@ -379,7 +379,7 @@ const SubjectSections = () => {
                   <th className="px-4 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {currentItems.length > 0 ? (
                   currentItems.map((section) => {
                     const capacityPercentage =
@@ -387,7 +387,7 @@ const SubjectSections = () => {
                     return (
                       <tr
                         key={section.section_id}
-                        className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150"
+                        className="text-sm text-slate-700 hover:bg-indigo-50/50 transition duration-150"
                       >
                         <td className="px-4 py-2">
                           <div className="font-semibold">
@@ -398,7 +398,7 @@ const SubjectSections = () => {
                           <div className="font-medium">
                             {section.course_code}
                           </div>
-                          <div className="text-slate-500 dark:text-slate-400 text-xs">
+                          <div className="text-slate-500 text-xs">
                             {section.course_title}
                           </div>
                         </td>
@@ -421,7 +421,7 @@ const SubjectSections = () => {
                                 {section.max_capacity}
                               </span>
                             </div>
-                            <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2">
+                            <div className="w-full bg-slate-200 rounded-full h-2">
                               <div
                                 className={`h-2 rounded-full transition-all ${
                                   capacityPercentage >= 100
@@ -444,14 +444,14 @@ const SubjectSections = () => {
                           <button
                             onClick={() => handleEdit(section)}
                             title="Edit"
-                            className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                            className="text-indigo-600 hover:text-indigo-800 transition-colors p-1 rounded-full hover:bg-slate-200"
                           >
                             <Edit size={14} />
                           </button>
                           <button
                             onClick={() => handleDelete(section.section_id)}
                             title="Delete"
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                            className="text-red-600 hover:text-red-800 transition-colors p-1 rounded-full hover:bg-slate-200"
                           >
                             <Trash2 size={14} />
                           </button>

@@ -270,11 +270,11 @@ const TimetableBuilder = () => {
   };
 
   return (
-    <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
+    <div className=" p-3 sm:p-4 transition-colors duration-500">
       <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
         {/* Header */}
-        <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
             <Calendar size={24} className="text-indigo-600" />
             Timetable Builder
           </h2>
@@ -289,30 +289,30 @@ const TimetableBuilder = () => {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-indigo-500 dark:border-indigo-600">
+          <div className="bg-white rounded-md shadow-sm p-4 border-l-4 border-indigo-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                <p className="text-xs font-medium text-slate-600">
                   Total Classes ({selectedDay})
                 </p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                <p className="text-2xl font-bold text-slate-900 mt-1">
                   {filteredSections.length}
                 </p>
               </div>
               <BookOpen
-                className="text-indigo-600 dark:text-indigo-400"
+                className="text-indigo-600"
                 size={28}
               />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-green-500 dark:border-green-600">
+          <div className="bg-white rounded-md shadow-sm p-4 border-l-4 border-green-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                <p className="text-xs font-medium text-slate-600">
                   Active Time Slots
                 </p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                <p className="text-2xl font-bold text-slate-900 mt-1">
                   {
                     timeSlots.filter(
                       (t) => getSectionsForTimeSlot(t).length > 0,
@@ -320,17 +320,17 @@ const TimetableBuilder = () => {
                   }
                 </p>
               </div>
-              <Clock className="text-green-600 dark:text-green-400" size={28} />
+              <Clock className="text-green-600" size={28} />
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border-l-4 border-purple-500 dark:border-purple-600">
+          <div className="bg-white rounded-md shadow-sm p-4 border-l-4 border-purple-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                <p className="text-xs font-medium text-slate-600">
                   Total Students
                 </p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                <p className="text-2xl font-bold text-slate-900 mt-1">
                   {filteredSections.reduce(
                     (sum, s) => sum + s.current_enrolled,
                     0,
@@ -338,7 +338,7 @@ const TimetableBuilder = () => {
                 </p>
               </div>
               <Users
-                className="text-purple-600 dark:text-purple-400"
+                className="text-purple-600"
                 size={28}
               />
             </div>
@@ -355,7 +355,7 @@ const TimetableBuilder = () => {
                 placeholder="Search classes, rooms..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
+                className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all shadow-inner"
               />
               <Search
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -402,8 +402,8 @@ const TimetableBuilder = () => {
           </div>
 
           {/* Day Tabs */}
-          <div className="flex gap-2 flex-wrap bg-white dark:bg-slate-800 p-3 rounded-md border border-slate-200 dark:border-slate-700">
-            <span className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400 mr-2">
+          <div className="flex gap-2 flex-wrap bg-white p-3 rounded-md border border-slate-200">
+            <span className="flex items-center gap-2 text-xs font-medium text-slate-600 mr-2">
               <Filter size={14} />
               Select Day:
             </span>
@@ -414,7 +414,7 @@ const TimetableBuilder = () => {
                 className={`px-3 py-1.5 rounded-md font-medium transition-all text-sm ${
                   selectedDay === day
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/30"
-                    : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
                 {day}
@@ -424,16 +424,16 @@ const TimetableBuilder = () => {
         </div>
 
         {/* Timetable Grid - Grouped by Course → Year → Section */}
-        <div className="bg-white dark:bg-slate-800 rounded-md shadow-sm p-4 border border-slate-200 dark:border-slate-700">
-          <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
+        <div className="bg-white rounded-md shadow-sm p-4 border border-slate-200">
+          <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-200">
             <Calendar
-              className="text-indigo-600 dark:text-indigo-400"
+              className="text-indigo-600"
               size={24}
             />
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            <h3 className="text-lg font-bold text-slate-900">
               {selectedDay} Schedule
             </h3>
-            <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">
+            <span className="ml-auto text-xs text-slate-500">
               {filteredSections.length}{" "}
               {filteredSections.length === 1 ? "class" : "classes"}
             </span>
@@ -446,21 +446,21 @@ const TimetableBuilder = () => {
                 .map(([courseKey, yearLevels]) => (
                   <div
                     key={courseKey}
-                    className="border border-slate-200 dark:border-slate-700 rounded-md overflow-hidden"
+                    className="border border-slate-200 rounded-md overflow-hidden"
                   >
                     {/* Course Header */}
-                    <div className="bg-indigo-100 dark:bg-indigo-900/30 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
-                      <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <div className="bg-indigo-100 px-4 py-2.5 border-b border-slate-200">
+                      <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                         <BookOpen
                           size={16}
-                          className="text-indigo-600 dark:text-indigo-400"
+                          className="text-indigo-600"
                         />
                         {courseKey}
                       </h4>
                     </div>
 
                     {/* Year Levels */}
-                    <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                    <div className="divide-y divide-slate-200">
                       {Object.entries(yearLevels)
                         .sort(([a], [b]) => {
                           if (a === "N/A") return 1;
@@ -470,11 +470,11 @@ const TimetableBuilder = () => {
                         .map(([yearLevel, sections]) => (
                           <div
                             key={yearLevel}
-                            className="bg-white dark:bg-slate-800"
+                            className="bg-white"
                           >
                             {/* Year Level Header */}
-                            <div className="bg-slate-50 dark:bg-slate-900/50 px-4 py-2">
-                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            <div className="bg-slate-50 px-4 py-2">
+                              <span className="text-xs font-semibold text-slate-700">
                                 Year{" "}
                                 {yearLevel === "N/A"
                                   ? "Level Not Set"
@@ -490,12 +490,12 @@ const TimetableBuilder = () => {
                                 )
                                 .map((section, index) => {
                                   const colors = [
-                                    "border-l-indigo-500 dark:border-l-indigo-600 bg-indigo-50 dark:bg-indigo-900/20",
-                                    "border-l-green-500 dark:border-l-green-600 bg-green-50 dark:bg-green-900/20",
-                                    "border-l-purple-500 dark:border-l-purple-600 bg-purple-50 dark:bg-purple-900/20",
-                                    "border-l-orange-500 dark:border-l-orange-600 bg-orange-50 dark:bg-orange-900/20",
-                                    "border-l-pink-500 dark:border-l-pink-600 bg-pink-50 dark:bg-pink-900/20",
-                                    "border-l-cyan-500 dark:border-l-cyan-600 bg-cyan-50 dark:bg-cyan-900/20",
+                                    "border-l-indigo-500 bg-indigo-50",
+                                    "border-l-green-500 bg-green-50",
+                                    "border-l-purple-500 bg-purple-50",
+                                    "border-l-orange-500 bg-orange-50",
+                                    "border-l-pink-500 bg-pink-50",
+                                    "border-l-cyan-500 bg-cyan-50",
                                   ];
                                   const colorClass =
                                     colors[index % colors.length];
@@ -503,20 +503,20 @@ const TimetableBuilder = () => {
                                   return (
                                     <div
                                       key={section.section_id}
-                                      className={`border-l-4 rounded-md p-3 shadow-sm hover:shadow-md transition-all ${colorClass} border border-slate-200 dark:border-slate-700 relative group`}
+                                      className={`border-l-4 rounded-md p-3 shadow-sm hover:shadow-md transition-all ${colorClass} border border-slate-200 relative group`}
                                     >
                                       <button
                                         onClick={() => handleOpenModal(section)}
-                                        className="absolute top-2 right-2 p-1.5 rounded-full bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:shadow-md"
+                                        className="absolute top-2 right-2 p-1.5 rounded-full bg-white text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:shadow-md"
                                         title="Edit Schedule"
                                       >
                                         <Edit2 size={12} />
                                       </button>
-                                      <div className="font-bold text-sm text-slate-900 dark:text-white mb-2">
+                                      <div className="font-bold text-sm text-slate-900 mb-2">
                                         Section {section.section_name}
                                       </div>
                                       <div className="space-y-1.5 text-xs">
-                                        <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                                        <div className="flex items-center gap-1.5 text-slate-700">
                                           <Clock size={12} />
                                           <span>
                                             {section.schedule_time_start} -{" "}
@@ -524,12 +524,12 @@ const TimetableBuilder = () => {
                                           </span>
                                         </div>
                                         {section.room && (
-                                          <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                                          <div className="flex items-center gap-1.5 text-slate-700">
                                             <MapPin size={12} />
                                             <span>{section.room}</span>
                                           </div>
                                         )}
-                                        <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                                        <div className="flex items-center gap-1.5 text-slate-700">
                                           <Users size={12} />
                                           <span>
                                             {section.current_enrolled}/
@@ -538,7 +538,7 @@ const TimetableBuilder = () => {
                                         </div>
                                       </div>
                                       {section.period_name && (
-                                        <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+                                        <div className="mt-2 pt-2 border-t border-slate-200 text-xs text-slate-500">
                                           {section.period_name} {section.year}
                                         </div>
                                       )}
@@ -555,12 +555,12 @@ const TimetableBuilder = () => {
               <div className="text-center py-12">
                 <Calendar
                   size={48}
-                  className="text-slate-300 dark:text-slate-600 mx-auto mb-3"
+                  className="text-slate-300 mx-auto mb-3"
                 />
-                <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">
+                <p className="text-slate-500 font-medium text-sm">
                   No classes scheduled for {selectedDay}
                 </p>
-                <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">
+                <p className="text-slate-400 text-xs mt-1">
                   Try selecting a different day or adjusting your filters
                 </p>
               </div>
@@ -571,18 +571,18 @@ const TimetableBuilder = () => {
         {/* Add/Edit Schedule Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               {/* Modal Header */}
-              <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <div className="flex items-center justify-between p-4 border-b border-slate-200">
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <Calendar size={20} className="text-indigo-600" />
                   {editingSection ? "Edit Schedule" : "Add Schedule"}
                 </h3>
                 <button
                   onClick={handleCloseModal}
-                  className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+                  className="p-1 hover:bg-slate-100 rounded-full transition-colors"
                 >
-                  <X size={20} className="text-slate-500 dark:text-slate-400" />
+                  <X size={20} className="text-slate-500" />
                 </button>
               </div>
 
@@ -590,7 +590,7 @@ const TimetableBuilder = () => {
               <div className="p-4 space-y-4">
                 {/* Course Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
                     Course/Program <span className="text-red-500">*</span>
                   </label>
                   <Select
@@ -627,7 +627,7 @@ const TimetableBuilder = () => {
 
                 {/* Year Level Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
                     Year Level <span className="text-red-500">*</span>
                   </label>
                   <Select
@@ -655,7 +655,7 @@ const TimetableBuilder = () => {
 
                 {/* Section Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
                     Section <span className="text-red-500">*</span>
                   </label>
                   <Select
@@ -711,14 +711,14 @@ const TimetableBuilder = () => {
 
                 {/* Schedule Day */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
                     Day <span className="text-red-500">*</span>
                   </label>
                   <select
                     name="schedule_day"
                     value={formData.schedule_day}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                   >
                     {daysOfWeek.map((day) => (
                       <option key={day} value={day}>
@@ -731,7 +731,7 @@ const TimetableBuilder = () => {
                 <div className="grid grid-cols-2 gap-4">
                   {/* Start Time */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
                       Start Time <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -739,13 +739,13 @@ const TimetableBuilder = () => {
                       name="schedule_time_start"
                       value={formData.schedule_time_start}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                     />
                   </div>
 
                   {/* End Time */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
                       End Time <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -753,14 +753,14 @@ const TimetableBuilder = () => {
                       name="schedule_time_end"
                       value={formData.schedule_time_end}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                     />
                   </div>
                 </div>
 
                 {/* Room */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
                     Room
                   </label>
                   <input
@@ -769,16 +769,16 @@ const TimetableBuilder = () => {
                     value={formData.room}
                     onChange={handleInputChange}
                     placeholder="e.g., Room 101, Lab A"
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                   />
                 </div>
               </div>
 
               {/* Modal Footer */}
-              <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-end gap-2 p-4 border-t border-slate-200">
                 <button
                   onClick={handleCloseModal}
-                  className="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 font-medium text-sm transition-colors"
+                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 font-medium text-sm transition-colors"
                 >
                   Cancel
                 </button>

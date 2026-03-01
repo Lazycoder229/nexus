@@ -42,6 +42,7 @@ const ExamSetup = () => {
   useEffect(() => {
     fetchExams();
     fetchCourses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchExams = async () => {
@@ -72,10 +73,6 @@ const ExamSetup = () => {
     } catch (error) {
       console.error("Error fetching courses:", error);
     }
-  };
-
-  const handleFilter = () => {
-    fetchExams();
   };
 
   const handleOpenModal = (exam = null) => {
@@ -181,22 +178,17 @@ const ExamSetup = () => {
 
   const getStatusBadge = (status) => {
     const statusColors = {
-      draft:
-        "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300",
-      scheduled:
-        "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400",
-      ongoing:
-        "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400",
-      completed:
-        "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400",
-      cancelled: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400",
+      draft: "bg-slate-100 text-slate-800",
+      scheduled: "bg-blue-100 text-blue-800",
+      ongoing: "bg-green-100 text-green-800",
+      completed: "bg-purple-100 text-purple-800",
+      cancelled: "bg-red-100 text-red-800",
     };
 
     return (
       <span
         className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-          statusColors[status] ||
-          "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300"
+          statusColors[status] || "bg-slate-100 text-slate-800"
         }`}
       >
         {status}
@@ -206,21 +198,17 @@ const ExamSetup = () => {
 
   const getExamTypeBadge = (type) => {
     const typeColors = {
-      quiz: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400",
-      midterm:
-        "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-400",
-      final: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400",
-      practical:
-        "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-400",
-      project:
-        "bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-400",
+      quiz: "bg-yellow-100 text-yellow-800",
+      midterm: "bg-orange-100 text-orange-800",
+      final: "bg-red-100 text-red-800",
+      practical: "bg-indigo-100 text-indigo-800",
+      project: "bg-pink-100 text-pink-800",
     };
 
     return (
       <span
         className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-          typeColors[type] ||
-          "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300"
+          typeColors[type] || "bg-slate-100 text-slate-800"
         }`}
       >
         {type}
@@ -229,52 +217,36 @@ const ExamSetup = () => {
   };
 
   return (
-    <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
+    <div className=" p-3 sm:p-4 transition-colors duration-500">
       <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
         {/* Header */}
-        <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
             <FileText size={24} className="text-indigo-600" />
             Exam Setup
           </h2>
-          <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+          <span className="text-sm text-slate-500 font-medium">
             Data Integrity: Online
           </span>
         </div>
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Total Exams
-            </p>
-            <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-              245
-            </p>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Total Exams</p>
+            <p className="text-2xl font-bold text-indigo-600">245</p>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Scheduled
-            </p>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              32
-            </p>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Scheduled</p>
+            <p className="text-2xl font-bold text-blue-600">32</p>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Ongoing
-            </p>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-              8
-            </p>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Ongoing</p>
+            <p className="text-2xl font-bold text-green-600">8</p>
           </div>
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Completed
-            </p>
-            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-              205
-            </p>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Completed</p>
+            <p className="text-2xl font-bold text-purple-600">205</p>
           </div>
         </div>
 
@@ -289,7 +261,7 @@ const ExamSetup = () => {
               onChange={(e) =>
                 setFilters({ ...filters, search: e.target.value })
               }
-              className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
+              className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all shadow-inner"
             />
             <Search
               className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -304,7 +276,7 @@ const ExamSetup = () => {
               onChange={(e) =>
                 setFilters({ ...filters, exam_type: e.target.value })
               }
-              className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-40"
+              className="px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm w-40"
             >
               <option value="">All Exam Types</option>
               <option value="quiz">Quiz</option>
@@ -318,7 +290,7 @@ const ExamSetup = () => {
               onChange={(e) =>
                 setFilters({ ...filters, status: e.target.value })
               }
-              className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-32"
+              className="px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm w-32"
             >
               <option value="">All Status</option>
               <option value="draft">Draft</option>
@@ -329,7 +301,7 @@ const ExamSetup = () => {
             </select>
             <button
               onClick={() => handleOpenModal()}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-sm border shadow-md shadow-indigo-500/30"
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-md shadow-indigo-500/30"
             >
               <Plus size={14} />
               Create New Exam
@@ -339,13 +311,11 @@ const ExamSetup = () => {
 
         {/* Exams Table */}
         <div>
-          <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-100">
-            Exam List
-          </h2>
-          <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
-            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-              <thead className="bg-slate-100 dark:bg-slate-700/70">
-                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+          <h2 className="text-xl font-bold mb-4 text-slate-800">Exam List</h2>
+          <div className="overflow-x-auto rounded border border-slate-200">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-100">
+                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700">
                   <th className="px-4 py-2.5">Exam Name</th>
                   <th className="px-4 py-2.5">Course</th>
                   <th className="px-4 py-2.5">Type</th>
@@ -356,7 +326,7 @@ const ExamSetup = () => {
                   <th className="px-4 py-2.5 w-1/12 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {(() => {
                   if (loading) {
                     return (
@@ -402,7 +372,7 @@ const ExamSetup = () => {
                   return paginatedData.map((exam) => (
                     <tr
                       key={exam.exam_id}
-                      className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150"
+                      className="text-sm text-slate-700 hover:bg-indigo-50/50 transition duration-150"
                     >
                       <td className="px-4 py-2 font-medium">
                         {exam.exam_name}
@@ -426,14 +396,14 @@ const ExamSetup = () => {
                       <td className="px-4 py-2 text-right space-x-2">
                         <button
                           onClick={() => handleOpenModal(exam)}
-                          className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                          className="text-indigo-600 hover:text-indigo-800 transition-colors p-1 rounded-full hover:bg-slate-200"
                           title="Edit"
                         >
                           <Edit size={14} />
                         </button>
                         <button
                           onClick={() => handleDelete(exam.exam_id)}
-                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                          className="text-red-600 hover:text-red-800 transition-colors p-1 rounded-full hover:bg-slate-200"
                           title="Delete"
                         >
                           <Trash2 size={14} />
@@ -447,7 +417,7 @@ const ExamSetup = () => {
           </div>
 
           {/* Pagination */}
-          <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
+          <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700">
             <span className="text-xs sm:text-sm">
               Page <span className="font-semibold">{currentPage}</span> of{" "}
               <span className="font-semibold">
@@ -480,12 +450,9 @@ const ExamSetup = () => {
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="p-1.5 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                className="p-1.5 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
               >
-                <ChevronLeft
-                  size={16}
-                  className="text-slate-600 dark:text-slate-400"
-                />
+                <ChevronLeft size={16} className="text-slate-600" />
               </button>
               {(() => {
                 const searchTerm = filters.search.toLowerCase();
@@ -506,7 +473,7 @@ const ExamSetup = () => {
                     className={`px-3 py-1.5 text-xs rounded border transition-colors ${
                       currentPage === i + 1
                         ? "bg-indigo-600 text-white border-indigo-600"
-                        : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                        : "border-slate-300 text-slate-700 hover:bg-slate-100"
                     }`}
                   >
                     {i + 1}
@@ -540,12 +507,9 @@ const ExamSetup = () => {
                     Math.ceil(filtered.length / itemsPerPage) || 1;
                   return currentPage === totalPages;
                 })()}
-                className="p-1.5 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                className="p-1.5 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
               >
-                <ChevronRight
-                  size={16}
-                  className="text-slate-600 dark:text-slate-400"
-                />
+                <ChevronRight size={16} className="text-slate-600" />
               </button>
             </div>
           </div>
@@ -558,18 +522,18 @@ const ExamSetup = () => {
             onClick={handleCloseModal}
           >
             <div
-              className="bg-white dark:bg-slate-800 rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200 dark:border-slate-700"
+              className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Sticky Header */}
-              <div className="sticky top-0 bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600 px-6 py-4 rounded-t-lg">
+              <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 rounded-t-lg">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                  <h2 className="text-xl font-bold text-slate-800">
                     {editingExam ? "Edit Exam" : "Create New Exam"}
                   </h2>
                   <button
                     onClick={handleCloseModal}
-                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                    className="text-slate-400 hover:text-slate-600 transition-colors"
                   >
                     <Plus size={24} className="rotate-45" />
                   </button>
@@ -585,7 +549,7 @@ const ExamSetup = () => {
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2">
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
                         Exam Name *
                       </label>
                       <input
@@ -598,12 +562,12 @@ const ExamSetup = () => {
                           })
                         }
                         required
-                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
                         Course ID
                       </label>
                       <Select
@@ -644,7 +608,7 @@ const ExamSetup = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
                         Exam Type *
                       </label>
                       <select
@@ -656,7 +620,7 @@ const ExamSetup = () => {
                           })
                         }
                         required
-                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       >
                         <option value="quiz">Quiz</option>
                         <option value="midterm">Midterm</option>
@@ -667,7 +631,7 @@ const ExamSetup = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
                         Exam Date
                       </label>
                       <input
@@ -679,12 +643,12 @@ const ExamSetup = () => {
                             exam_date: e.target.value,
                           })
                         }
-                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
                         Exam Time
                       </label>
                       <input
@@ -696,12 +660,12 @@ const ExamSetup = () => {
                             exam_time: e.target.value,
                           })
                         }
-                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
                         Duration (minutes)
                       </label>
                       <input
@@ -713,12 +677,12 @@ const ExamSetup = () => {
                             exam_duration: e.target.value,
                           })
                         }
-                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
                         Total Points
                       </label>
                       <input
@@ -730,12 +694,12 @@ const ExamSetup = () => {
                             total_points: e.target.value,
                           })
                         }
-                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
                         Passing Score
                       </label>
                       <input
@@ -747,12 +711,12 @@ const ExamSetup = () => {
                             passing_score: e.target.value,
                           })
                         }
-                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
                         Status *
                       </label>
                       <select
@@ -761,7 +725,7 @@ const ExamSetup = () => {
                           setFormData({ ...formData, status: e.target.value })
                         }
                         required
-                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       >
                         <option value="draft">Draft</option>
                         <option value="scheduled">Scheduled</option>
@@ -772,7 +736,7 @@ const ExamSetup = () => {
                     </div>
 
                     <div className="col-span-2">
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
                         Instructions
                       </label>
                       <textarea
@@ -784,25 +748,25 @@ const ExamSetup = () => {
                           })
                         }
                         rows={4}
-                        className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Sticky Footer */}
-                <div className="sticky bottom-0 bg-slate-50 dark:bg-slate-700 border-t border-slate-200 dark:border-slate-600 px-6 py-4 rounded-b-lg">
+                <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-lg">
                   <div className="flex gap-3 justify-end">
                     <button
                       type="button"
                       onClick={handleCloseModal}
-                      className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors text-sm font-medium"
+                      className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-500 transition-colors text-sm font-medium"
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
                     >
                       {editingExam ? "Update Exam" : "Create Exam"}
                     </button>

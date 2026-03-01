@@ -10,6 +10,7 @@ import {
   CalendarDays,
   CheckSquare,
 } from "lucide-react";
+import NexusAIChat from "../../NexusAIChat";
 
 dayjs.extend(relativeTime);
 
@@ -59,7 +60,7 @@ const RecentActivity = ({ activities, loading }) => (
             <item.icon
               className={`w-4 h-4 flex-shrink-0 mt-0.5 ${item.color.replace(
                 "border-",
-                "text-"
+                "text-",
               )}`}
             />
             <div className="flex-1">
@@ -185,7 +186,7 @@ export default function AdminDashboard() {
       const students = users.filter((u) => u.role === "Student");
       const faculty = users.filter((u) => u.role === "Faculty");
       const pendingAdmissions = admissions.filter(
-        (a) => a.status === "Pending"
+        (a) => a.status === "Pending",
       ).length;
 
       setStats({
@@ -316,6 +317,9 @@ export default function AdminDashboard() {
           </div>
         </div>
       </main>
+
+      {/* Nexus AI Chatbot */}
+      <NexusAIChat />
     </div>
   );
 }

@@ -142,6 +142,8 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
       localStorage.setItem("userId", data.userId);
+      localStorage.setItem("firstName", data.firstName || "");
+      localStorage.setItem("lastName", data.lastName || "");
       // Also store a user object for compatibility with SyllabusRepository
       localStorage.setItem(
         "user",

@@ -93,7 +93,6 @@ CREATE TABLE role_permissions (
     role ENUM('Student', 'Admin', 'Faculty', 'Staff') NOT NULL,  -- Role
     permission_id VARCHAR(10) NOT NULL,                           -- Permission ID
     is_allowed BOOLEAN DEFAULT FALSE,                             -- Permission flag (true/false)
-
     PRIMARY KEY (role, permission_id),                            -- Composite primary key
     FOREIGN KEY (permission_id) REFERENCES rbac_permissions(permission_id) ON DELETE CASCADE
 );
@@ -117,7 +116,6 @@ CREATE TABLE departments (
     description TEXT,                                -- Optional description
     head_user_id INT,                                -- FK: Department head (employee)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
     FOREIGN KEY (head_user_id) REFERENCES users(user_id) ON DELETE SET NULL
 );
 ALTER TABLE departments ADD COLUMN status ENUM('Active','Inactive','Pending') DEFAULT 'Active';
@@ -138,7 +136,6 @@ CREATE TABLE courses (
     semester_offer VARCHAR(100) NOT NULL,
     status ENUM('Active', 'Inactive') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
     FOREIGN KEY (department_id) REFERENCES departments(department_id) ON DELETE CASCADE,
     FOREIGN KEY (instructor_id) REFERENCES users(user_id) ON DELETE SET NULL
 );
@@ -157,7 +154,6 @@ CREATE TABLE programs (
     department_id INT,                               -- FK to department offering the program
     status ENUM('Active', 'Inactive') DEFAULT 'Active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
     FOREIGN KEY (department_id) REFERENCES departments(department_id) ON DELETE SET NULL
 );
 
@@ -174,7 +170,6 @@ CREATE TABLE academic_periods (
     is_active BOOLEAN DEFAULT FALSE,                 -- Only one period can be active at a time
     status ENUM('Upcoming', 'Active', 'Closed') DEFAULT 'Upcoming',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
     UNIQUE KEY unique_period (school_year, semester)
 );
 
@@ -202,21 +197,16 @@ CREATE TABLE enrollments (
     student_id INT NOT NULL,                        -- FK to users.user_id (student)
     course_id INT NOT NULL,                         -- FK to courses.course_id
     period_id INT NOT NULL,                         -- FK to academic_periods.period_id
-    
     enrollment_date DATE NOT NULL,                  -- Date student enrolled in course
     status ENUM('Enrolled', 'Dropped', 'Completed', 'Failed') DEFAULT 'Enrolled',
-    
     -- Grades
     midterm_grade DECIMAL(5,2),                     -- Midterm grade (0-100 or 0.00-5.00)
     final_grade DECIMAL(5,2),                       -- Final grade
     remarks TEXT,                                    -- Additional notes or comments
-    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
     -- Prevent duplicate enrollments
     UNIQUE KEY unique_enrollment (student_id, course_id, period_id),
-    
     FOREIGN KEY (student_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (course_id) REFERENCES courses(course_id) ON DELETE CASCADE,
     FOREIGN KEY (period_id) REFERENCES academic_periods(period_id) ON DELETE CASCADE
@@ -228,7 +218,6 @@ CREATE TABLE enrollments (
 -- ===========================
 CREATE TABLE admissions (
     admission_id INT AUTO_INCREMENT PRIMARY KEY,
-    
     -- Applicant Information
     first_name VARCHAR(100) NOT NULL,
     middle_name VARCHAR(100),
@@ -238,30 +227,24 @@ CREATE TABLE admissions (
     date_of_birth DATE,
     gender VARCHAR(50),
     address TEXT,
-    
     -- Academic Background
     previous_school VARCHAR(255),
     year_graduated YEAR,
     program_applied VARCHAR(150),                   -- Program/course applying for
-    
     -- Application Details
     application_date DATE NOT NULL,
     entrance_exam_score DECIMAL(5,2),               -- Entrance exam score
     interview_date DATE,
     interview_notes TEXT,
-    
     -- Status & Decision
     status ENUM('Pending', 'Under Review', 'Accepted', 'Rejected', 'Enrolled') DEFAULT 'Pending',
     decision_date DATE,
     decision_by INT,                                 -- FK to users.user_id (admin who decided)
-    remarks TEXT,
-    
+    remarks TEXT,    
     -- Documents
     documents_submitted TEXT,                        -- JSON or comma-separated list
-    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
     FOREIGN KEY (decision_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
@@ -272,27 +255,21 @@ CREATE TABLE admissions (
 CREATE TABLE course_transfers (
     transfer_id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,                         -- FK to users.user_id
-    
     -- Current & Target Information
     current_program VARCHAR(150),
     target_program VARCHAR(150) NOT NULL,
     reason TEXT,
-    
     -- Request Details
     request_date DATE NOT NULL,
     status ENUM('Pending', 'Under Review', 'Approved', 'Rejected') DEFAULT 'Pending',
-    
     -- Approval
     reviewed_by INT,                                 -- FK to users.user_id (admin/dean)
     review_date DATE,
-    review_notes TEXT,
-    
+    review_notes TEXT,    
     -- Effectivity
     effective_period_id INT,                         -- FK to academic_periods.period_id
-    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
     FOREIGN KEY (student_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (reviewed_by) REFERENCES users(user_id) ON DELETE SET NULL,
     FOREIGN KEY (effective_period_id) REFERENCES academic_periods(period_id) ON DELETE SET NULL
@@ -306,23 +283,18 @@ CREATE TABLE academic_history (
     history_id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,                         -- FK to users.user_id
     period_id INT NOT NULL,                          -- FK to academic_periods.period_id
-    
     -- Academic Standing
     year_level VARCHAR(50),
     semester_gpa DECIMAL(4,2),                       -- GPA for the semester
     cumulative_gpa DECIMAL(4,2),                     -- Overall GPA
     units_taken INT,
     units_passed INT,
-    
     -- Status & Remarks
     academic_status ENUM('Regular', 'Irregular', 'Probation', 'Dean''s List', 'Dismissed') DEFAULT 'Regular',
     honors VARCHAR(100),                             -- Dean's List, President's List, etc.
     remarks TEXT,
-    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
     UNIQUE KEY unique_history (student_id, period_id),
-    
     FOREIGN KEY (student_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (period_id) REFERENCES academic_periods(period_id) ON DELETE CASCADE
 );
@@ -335,7 +307,6 @@ CREATE TABLE clearances (
     clearance_id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,                         -- FK to users.user_id
     period_id INT NOT NULL,                          -- FK to academic_periods.period_id
-    
     -- Clearance Requirements
     library_cleared BOOLEAN DEFAULT FALSE,
     registrar_cleared BOOLEAN DEFAULT FALSE,
@@ -343,7 +314,6 @@ CREATE TABLE clearances (
     dean_cleared BOOLEAN DEFAULT FALSE,
     guidance_cleared BOOLEAN DEFAULT FALSE,
     student_affairs_cleared BOOLEAN DEFAULT FALSE,
-    
     -- Details
     library_remarks TEXT,
     registrar_remarks TEXT,
@@ -351,16 +321,12 @@ CREATE TABLE clearances (
     dean_remarks TEXT,
     guidance_remarks TEXT,
     student_affairs_remarks TEXT,
-    
     -- Overall Status
     overall_status ENUM('Incomplete', 'Pending', 'Cleared') DEFAULT 'Incomplete',
     cleared_date DATE,
-    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
     UNIQUE KEY unique_clearance (student_id, period_id),
-    
     FOREIGN KEY (student_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (period_id) REFERENCES academic_periods(period_id) ON DELETE CASCADE
 );
@@ -434,7 +400,6 @@ CREATE TABLE IF NOT EXISTS faculty_evaluations (
     academic_period_id INT NOT NULL,
     course_id INT,
     evaluation_date DATE,
-    
     -- Evaluation criteria (1-5 scale)
     teaching_effectiveness INT CHECK (teaching_effectiveness BETWEEN 1 AND 5),
     subject_knowledge INT CHECK (subject_knowledge BETWEEN 1 AND 5),
@@ -442,7 +407,6 @@ CREATE TABLE IF NOT EXISTS faculty_evaluations (
     communication_skills INT CHECK (communication_skills BETWEEN 1 AND 5),
     professionalism INT CHECK (professionalism BETWEEN 1 AND 5),
     student_engagement INT CHECK (student_engagement BETWEEN 1 AND 5),
-    
     overall_rating DECIMAL(3,2),
     comments TEXT,
     recommendations TEXT,
@@ -602,7 +566,6 @@ CREATE TABLE IF NOT EXISTS syllabus (
     FOREIGN KEY (period_id) REFERENCES academic_periods(period_id) ON DELETE SET NULL,
     FOREIGN KEY (uploaded_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
-
 -- ===========================
 -- Indexes for Academic Management
 -- ===========================
@@ -615,29 +578,10 @@ CREATE INDEX idx_events_date ON academic_events(start_date);
 CREATE INDEX idx_events_type ON academic_events(event_type);
 CREATE INDEX idx_syllabus_course ON syllabus(course_id);
 CREATE INDEX idx_syllabus_period ON syllabus(period_id);
-
 -- ===========================
 -- ATTENDANCE MANAGEMENT MODULE
 -- ===========================
-
 -- ===========================
--- 27. RFID Cards Table
--- Stores RFID card information for attendance tracking
--- ===========================
-CREATE TABLE IF NOT EXISTS rfid_cards (
-    rfid_id INT PRIMARY KEY AUTO_INCREMENT,
-    card_number VARCHAR(50) UNIQUE NOT NULL,
-    user_id INT NOT NULL,                        -- FK to users.user_id
-    card_type ENUM('student', 'faculty', 'staff') NOT NULL,
-    issue_date DATE NOT NULL,
-    expiry_date DATE,
-    status ENUM('active', 'inactive', 'lost', 'damaged') DEFAULT 'active',
-    last_used TIMESTAMP NULL,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-);
 
 -- ===========================
 -- 28. Staff Attendance Table
@@ -3003,4 +2947,18 @@ ALTER TABLE scholarship_eligibility_screening ADD COLUMN IF NOT EXISTS academic_
                 response TEXT,
                 submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-            )
+            );
+/* add niyo uli ito  */
+-- Migration: Add HR and Accounting roles to role_permissions ENUM
+-- Run this against your database to support HR and Accounting in RBAC.
+
+-- Step 1: Expand the ENUM on role_permissions to include HR and Accounting
+ALTER TABLE role_permissions
+  MODIFY COLUMN role ENUM('Student', 'Admin', 'Faculty', 'Staff', 'HR', 'Accounting') NOT NULL;
+
+-- Step 2: Seed default (denied) rows for HR and Accounting for every existing permission
+INSERT IGNORE INTO role_permissions (role, permission_id, is_allowed)
+SELECT 'HR', permission_id, FALSE FROM rbac_permissions;
+
+INSERT IGNORE INTO role_permissions (role, permission_id, is_allowed)
+SELECT 'Accounting', permission_id, FALSE FROM rbac_permissions;

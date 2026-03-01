@@ -14,31 +14,6 @@ import {
   GraduationCap,
 } from "lucide-react";
 
-const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
-  <div className="flex justify-between items-center mt-4 text-sm text-slate-700">
-    <span>
-      Page {currentPage} of {totalPages} | Total: {totalItems}
-    </span>
-    <div className="flex gap-1">
-      <button
-        onClick={() => setPage((p) => Math.max(p - 1, 1))}
-        disabled={currentPage === 1}
-        className="p-1.5 rounded-md border disabled:opacity-50 hover:bg-slate-100"
-      >
-        <ChevronLeft size={16} />
-      </button>
-      <span className="px-2 py-1">{currentPage}</span>
-      <button
-        onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-        disabled={currentPage === totalPages}
-        className="p-1.5 rounded-md border disabled:opacity-50 hover:bg-slate-100"
-      >
-        <ChevronRight size={16} />
-      </button>
-    </div>
-  </div>
-);
-
 const AdvisoryModal = ({
   isOpen,
   onClose,
@@ -100,182 +75,224 @@ const AdvisoryModal = ({
     onClose();
   };
 
+  const selectStyles = {
+    control: (base) => ({
+      ...base,
+      minHeight: "38px",
+      fontSize: "14px",
+      borderColor: "rgb(203 213 225)",
+      "&:hover": { borderColor: "rgb(148 163 184)" },
+    }),
+  };
+
   return (
     <div
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
       onClick={handleClose}
     >
       <div
-        className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 m-4"
+        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold">
-            {mode === "add"
-              ? "New Advisory Assignment"
-              : "Edit Advisory Assignment"}
-          </h3>
-          <button onClick={handleClose}>
-            <X size={20} />
-          </button>
+        {/* Sticky Header */}
+        <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 rounded-t-lg">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold text-slate-800">
+              {mode === "add"
+                ? "New Advisory Assignment"
+                : "Edit Advisory Assignment"}
+            </h2>
+            <button
+              onClick={handleClose}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <Plus size={24} className="rotate-45" />
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {formError && (
-            <div className="text-red-600 text-sm mb-2">{formError}</div>
-          )}
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Faculty Advisor *
-            </label>
-            {/* Debug output for faculty select */}
-            {console.log(
-              "faculty_id:",
-              formData.faculty_id,
-              "faculty options:",
-              faculty,
+        {/* Form Wrapper */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col flex-1 overflow-hidden"
+        >
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            {formError && (
+              <div className="text-red-600 text-sm bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+                {formError}
+              </div>
             )}
-            <Select
-              value={
-                faculty.find(
-                  (f) => String(f.value) === String(formData.faculty_id),
-                ) || null
-              }
-              onChange={(selected) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  faculty_id: selected?.value || null,
-                }))
-              }
-              options={faculty}
-              placeholder="Select faculty..."
-            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Faculty Advisor *
+                </label>
+                <Select
+                  value={
+                    faculty.find(
+                      (f) => String(f.value) === String(formData.faculty_id),
+                    ) || null
+                  }
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      faculty_id: selected?.value || null,
+                    }))
+                  }
+                  options={faculty}
+                  placeholder="Select faculty..."
+                  className="text-sm"
+                  styles={selectStyles}
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Student *
+                </label>
+                <Select
+                  value={
+                    students.find((s) => s.value === formData.student_id) ||
+                    null
+                  }
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      student_id: selected?.value || null,
+                    }))
+                  }
+                  options={students}
+                  placeholder="Select student..."
+                  isDisabled={mode === "edit"}
+                  className="text-sm"
+                  styles={selectStyles}
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Academic Period *
+                </label>
+                <Select
+                  value={
+                    periods.find((p) => p.value === formData.period_id) || null
+                  }
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      period_id: selected?.value || null,
+                    }))
+                  }
+                  options={periods}
+                  placeholder="Select period..."
+                  className="text-sm"
+                  styles={selectStyles}
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Program
+                </label>
+                <Select
+                  value={
+                    programs.find((p) => p.value === formData.program_id) ||
+                    null
+                  }
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      program_id: selected?.value || null,
+                    }))
+                  }
+                  options={programs}
+                  placeholder="Select program..."
+                  isClearable
+                  className="text-sm"
+                  styles={selectStyles}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Year Level
+                </label>
+                <select
+                  value={formData.year_level}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      year_level: e.target.value,
+                    }))
+                  }
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">Select year level...</option>
+                  <option value="1st Year">1st Year</option>
+                  <option value="2nd Year">2nd Year</option>
+                  <option value="3rd Year">3rd Year</option>
+                  <option value="4th Year">4th Year</option>
+                  <option value="5th Year">5th Year</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Advisory Type
+                </label>
+                <select
+                  value={formData.advisory_type}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      advisory_type: e.target.value,
+                    }))
+                  }
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="Academic">Academic</option>
+                  <option value="Personal">Personal</option>
+                  <option value="Career">Career</option>
+                  <option value="General">General</option>
+                </select>
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Notes
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, notes: e.target.value }))
+                  }
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  rows={3}
+                  placeholder="Additional notes..."
+                />
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Student *</label>
-            <Select
-              value={
-                students.find((s) => s.value === formData.student_id) || null
-              }
-              onChange={(selected) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  student_id: selected?.value || null,
-                }))
-              }
-              options={students}
-              placeholder="Select student..."
-              isDisabled={mode === "edit"}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Academic Period *
-            </label>
-            <Select
-              value={
-                periods.find((p) => p.value === formData.period_id) || null
-              }
-              onChange={(selected) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  period_id: selected?.value || null,
-                }))
-              }
-              options={periods}
-              placeholder="Select period..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Program</label>
-            <Select
-              value={
-                programs.find((p) => p.value === formData.program_id) || null
-              }
-              onChange={(selected) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  program_id: selected?.value || null,
-                }))
-              }
-              options={programs}
-              placeholder="Select program..."
-              isClearable
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Year Level</label>
-            <select
-              value={formData.year_level}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  year_level: e.target.value,
-                }))
-              }
-              className="w-full px-3 py-2 border rounded-md"
-            >
-              <option value="">Select year level...</option>
-              <option value="1st Year">1st Year</option>
-              <option value="2nd Year">2nd Year</option>
-              <option value="3rd Year">3rd Year</option>
-              <option value="4th Year">4th Year</option>
-              <option value="5th Year">5th Year</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Advisory Type
-            </label>
-            <select
-              value={formData.advisory_type}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  advisory_type: e.target.value,
-                }))
-              }
-              className="w-full px-3 py-2 border rounded-md"
-            >
-              <option value="Academic">Academic</option>
-              <option value="Personal">Personal</option>
-              <option value="Career">Career</option>
-              <option value="General">General</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Notes</label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, notes: e.target.value }))
-              }
-              className="w-full px-3 py-2 border rounded-md"
-              rows={3}
-              placeholder="Additional notes..."
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border rounded-md hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-            >
-              {mode === "add" ? "Create" : "Update"}
-            </button>
+          {/* Sticky Footer */}
+          <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-lg">
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={handleClose}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+              >
+                {mode === "add" ? "Create Assignment" : "Update Assignment"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -433,23 +450,49 @@ const FacultyAdvisoryAssignment = () => {
   };
 
   return (
-    <div className="p-4">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <ClipboardList size={24} /> Faculty Advisory Assignments
-        </h1>
-        <p className="text-sm text-slate-600 mt-1">
-          Assign faculty advisors to students for academic guidance.
-        </p>
-      </div>
+    <div className="p-3 sm:p-4 transition-colors duration-500">
+      <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
+        {/* Header */}
+        <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <ClipboardList size={24} className="text-indigo-600" />
+            Faculty Advisory Assignments
+          </h2>
+          <span className="text-sm text-slate-500 font-medium">
+            Data Integrity: Online
+          </span>
+        </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 mb-4">
-        <div className="flex-1">
-          <div className="relative">
-            <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
-              size={18}
-            />
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Total Assignments</p>
+            <p className="text-2xl font-bold text-indigo-600">
+              {advisories.length}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Faculty Advisors</p>
+            <p className="text-2xl font-bold text-blue-600">{faculty.length}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Students</p>
+            <p className="text-2xl font-bold text-green-600">
+              {students.length}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Academic Periods</p>
+            <p className="text-2xl font-bold text-purple-600">
+              {periods.length}
+            </p>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Search Input - LEFT */}
+          <div className="relative flex-grow max-w-xs">
             <input
               type="text"
               placeholder="Search by faculty or student name..."
@@ -458,132 +501,177 @@ const FacultyAdvisoryAssignment = () => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-10 pr-3 py-2 border rounded-md"
+              className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all shadow-inner"
             />
+            <Search
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+              size={14}
+            />
+          </div>
+
+          {/* Filters - RIGHT */}
+          <div className="flex items-center gap-2">
+            <Select
+              value={filterFaculty}
+              onChange={(selected) => {
+                setFilterFaculty(selected);
+                setPage(1);
+              }}
+              options={faculty}
+              placeholder="Filter by Faculty"
+              isClearable
+              className="w-56 text-sm"
+              styles={{
+                control: (base) => ({
+                  ...base,
+                  minHeight: "36px",
+                  fontSize: "14px",
+                  borderColor: "rgb(203 213 225)",
+                  "&:hover": { borderColor: "rgb(148 163 184)" },
+                }),
+              }}
+            />
+            <button
+              onClick={() => openModal("add")}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-md shadow-indigo-500/30"
+            >
+              <Plus size={14} />
+              New Assignment
+            </button>
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <Select
-            value={filterFaculty}
-            onChange={(selected) => {
-              setFilterFaculty(selected);
-              setPage(1);
-            }}
-            options={faculty}
-            placeholder="Filter by Faculty"
-            isClearable
-            className="w-56"
-          />
-          <button
-            onClick={() => openModal("add")}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md flex items-center gap-2 hover:bg-indigo-700"
-          >
-            <Plus size={16} /> New Assignment
-          </button>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto rounded border">
-        <table className="min-w-full divide-y">
-          <thead className="bg-slate-100">
-            <tr>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Faculty Advisor
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Student
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Period
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Advisory Type
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Notes
-              </th>
-              <th className="px-3 py-2 text-right text-sm font-semibold">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y">
-            {displayed.length > 0 ? (
-              displayed.map((advisory) => (
-                <tr key={advisory.advisory_id} className="hover:bg-slate-50">
-                  <td className="px-3 py-2 text-sm">
-                    {advisory.faculty_name || "N/A"}
-                  </td>
-                  <td className="px-3 py-2 text-sm">
-                    {advisory.student_name || "N/A"}
-                  </td>
-                  <td className="px-3 py-2 text-sm">
-                    {advisory.school_year} {advisory.semester}
-                  </td>
-                  <td className="px-3 py-2 text-sm">
-                    {advisory.advisory_type || "-"}
-                  </td>
-                  <td className="px-3 py-2 text-xs">
-                    {advisory.notes
-                      ? advisory.notes.substring(0, 50) + "..."
-                      : "-"}
-                  </td>
-                  <td className="px-3 py-2 text-right flex justify-end gap-2">
-                    <button
-                      onClick={() => openModal("edit", advisory)}
-                      className="text-indigo-600 hover:text-indigo-800"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(advisory.advisory_id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
+        {/* Advisory Table */}
+        <div>
+          <h2 className="text-xl font-bold mb-4 text-slate-800">
+            Advisory List
+          </h2>
+          <div className="overflow-x-auto rounded border border-slate-200">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-100">
+                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700">
+                  <th className="px-4 py-2.5">Faculty Advisor</th>
+                  <th className="px-4 py-2.5">Student</th>
+                  <th className="px-4 py-2.5">Period</th>
+                  <th className="px-4 py-2.5">Advisory Type</th>
+                  <th className="px-4 py-2.5">Notes</th>
+                  <th className="px-4 py-2.5 w-1/12 text-right">Actions</th>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="text-center py-4 text-slate-500 italic"
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {displayed.length > 0 ? (
+                  displayed.map((advisory) => (
+                    <tr
+                      key={advisory.advisory_id}
+                      className="text-sm text-slate-700 hover:bg-indigo-50/50 transition duration-150"
+                    >
+                      <td className="px-4 py-2 font-medium">
+                        {advisory.faculty_name || "N/A"}
+                      </td>
+                      <td className="px-4 py-2">
+                        {advisory.student_name || "N/A"}
+                      </td>
+                      <td className="px-4 py-2">
+                        {advisory.school_year} {advisory.semester}
+                      </td>
+                      <td className="px-4 py-2">
+                        {advisory.advisory_type || "-"}
+                      </td>
+                      <td className="px-4 py-2 text-xs text-slate-500">
+                        {advisory.notes
+                          ? advisory.notes.substring(0, 50) + "..."
+                          : "-"}
+                      </td>
+                      <td className="px-4 py-2 text-right space-x-1">
+                        <button
+                          onClick={() => openModal("edit", advisory)}
+                          className="text-indigo-600 hover:text-indigo-800 transition-colors p-1 rounded-full hover:bg-slate-200"
+                          title="Edit"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(advisory.advisory_id)}
+                          className="text-red-600 hover:text-red-800 transition-colors p-1 rounded-full hover:bg-slate-200"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="p-4 text-center text-slate-500 italic"
+                    >
+                      No advisory assignments found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700">
+            <span className="text-xs sm:text-sm">
+              Page <span className="font-semibold">{page}</span> of{" "}
+              <span className="font-semibold">{totalPages || 1}</span> | Total
+              Records: {filtered.length}
+            </span>
+            <div className="flex gap-1 mt-2 sm:mt-0">
+              <button
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+                className="p-1.5 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
+              >
+                <ChevronLeft size={16} className="text-slate-600" />
+              </button>
+              {[...Array(totalPages || 1)].map((_, i) => (
+                <button
+                  key={i + 1}
+                  onClick={() => setPage(i + 1)}
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                    page === i + 1
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "border-slate-300 text-slate-700 hover:bg-slate-100"
+                  }`}
                 >
-                  No advisory assignments found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                  {i + 1}
+                </button>
+              ))}
+              <button
+                onClick={() => setPage(Math.min(totalPages || 1, page + 1))}
+                disabled={page === (totalPages || 1)}
+                className="p-1.5 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
+              >
+                <ChevronRight size={16} className="text-slate-600" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <AdvisoryModal
+          isOpen={modalOpen}
+          onClose={() => {
+            setModalOpen(false);
+            setCurrentRecord(null);
+          }}
+          onSubmit={(data, resetForm) => {
+            handleSubmit(data);
+            if (resetForm) resetForm();
+          }}
+          mode={modalMode}
+          initialData={currentRecord}
+          faculty={faculty}
+          students={students}
+          periods={periods}
+          programs={programs}
+          resetTrigger={modalOpen === false}
+        />
       </div>
-
-      <Pagination
-        currentPage={page}
-        totalPages={totalPages}
-        setPage={setPage}
-        totalItems={filtered.length}
-      />
-
-      <AdvisoryModal
-        isOpen={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          setCurrentRecord(null);
-        }}
-        onSubmit={(data, resetForm) => {
-          handleSubmit(data);
-          if (resetForm) resetForm();
-        }}
-        mode={modalMode}
-        initialData={currentRecord}
-        faculty={faculty}
-        students={students}
-        periods={periods}
-        programs={programs}
-        resetTrigger={modalOpen === false}
-      />
     </div>
   );
 };

@@ -14,31 +14,6 @@ import {
   Users,
 } from "lucide-react";
 
-const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
-  <div className="flex justify-between items-center mt-4 text-sm text-slate-700">
-    <span>
-      Page {currentPage} of {totalPages} | Total: {totalItems}
-    </span>
-    <div className="flex gap-1">
-      <button
-        onClick={() => setPage((p) => Math.max(p - 1, 1))}
-        disabled={currentPage === 1}
-        className="p-1.5 rounded-md border disabled:opacity-50 hover:bg-slate-100"
-      >
-        <ChevronLeft size={16} />
-      </button>
-      <span className="px-2 py-1">{currentPage}</span>
-      <button
-        onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-        disabled={currentPage === totalPages}
-        className="p-1.5 rounded-md border disabled:opacity-50 hover:bg-slate-100"
-      >
-        <ChevronRight size={16} />
-      </button>
-    </div>
-  </div>
-);
-
 const AssignmentModal = ({
   isOpen,
   onClose,
@@ -171,237 +146,307 @@ const AssignmentModal = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 m-4"
+        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold">
-            {mode === "add"
-              ? "New Course Assignment"
-              : "Edit Course Assignment"}
-          </h3>
-          <button onClick={onClose}>
-            <X size={20} />
-          </button>
+        {/* Sticky Header */}
+        <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 rounded-t-lg">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold text-slate-800">
+              {mode === "add"
+                ? "New Course Assignment"
+                : "Edit Course Assignment"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <Plus size={24} className="rotate-45" />
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Faculty Member *
-            </label>
-            <Select
-              value={
-                faculty.find((f) => f.value === formData.faculty_id) || null
-              }
-              onChange={(selected) => {
-                setFormData((prev) => ({
-                  ...prev,
-                  faculty_id: selected ? selected.value : null,
-                }));
-              }}
-              options={faculty}
-              placeholder="Select faculty..."
-              isDisabled={mode === "edit"}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Course *</label>
-            <Select
-              value={
-                courses.find((c) => c.value === formData.course_id) || null
-              }
-              onChange={(selected) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  course_id: selected?.value || null,
-                }))
-              }
-              options={courses}
-              placeholder="Select course..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Academic Period *
-            </label>
-            <Select
-              value={
-                periods.find((p) => p.value === formData.period_id) || null
-              }
-              onChange={(selected) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  period_id: selected?.value || null,
-                }))
-              }
-              options={periods}
-              placeholder="Select period..."
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Section</label>
-              <Select
-                options={sectionOptions}
-                value={
-                  sectionOptions.find((o) => o.value === formData.section) ||
-                  null
-                }
-                onChange={(selected) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    section: selected ? selected.value : "",
-                  }))
-                }
-                placeholder="Select section..."
-                isClearable
-                classNamePrefix="react-select"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Room</label>
-              <Select
-                options={roomOptions}
-                value={
-                  roomOptions.find((o) => o.value === formData.room) || null
-                }
-                onChange={(selected) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    room: selected ? selected.value : "",
-                  }))
-                }
-                placeholder="Select room..."
-                isClearable
-                classNamePrefix="react-select"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Schedules</label>
-            {formData.schedules.map((sched, idx) => (
-              <div key={idx} className="grid grid-cols-3 gap-4 mb-2">
-                <input
-                  type="text"
-                  value={sched.schedule_day}
-                  onChange={(e) => {
-                    const newSchedules = [...formData.schedules];
-                    newSchedules[idx].schedule_day = e.target.value;
+        {/* Form Wrapper */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col flex-1 overflow-hidden"
+        >
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Faculty Member *
+                </label>
+                <Select
+                  value={
+                    faculty.find((f) => f.value === formData.faculty_id) || null
+                  }
+                  onChange={(selected) => {
                     setFormData((prev) => ({
                       ...prev,
-                      schedules: newSchedules,
+                      faculty_id: selected ? selected.value : null,
                     }));
                   }}
-                  className="w-full px-3 py-2 border rounded-md"
-                  placeholder="e.g., MWF"
+                  options={faculty}
+                  placeholder="Select faculty..."
+                  isDisabled={mode === "edit"}
+                  className="text-sm"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      minHeight: "38px",
+                      borderColor: "rgb(203 213 225)",
+                      "&:hover": { borderColor: "rgb(148 163 184)" },
+                    }),
+                  }}
                 />
-                <input
-                  type="time"
-                  value={sched.schedule_time_start}
-                  onChange={(e) => {
-                    const newSchedules = [...formData.schedules];
-                    newSchedules[idx].schedule_time_start = e.target.value;
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Course *
+                </label>
+                <Select
+                  value={
+                    courses.find((c) => c.value === formData.course_id) || null
+                  }
+                  onChange={(selected) =>
                     setFormData((prev) => ({
                       ...prev,
-                      schedules: newSchedules,
-                    }));
+                      course_id: selected?.value || null,
+                    }))
+                  }
+                  options={courses}
+                  placeholder="Select course..."
+                  className="text-sm"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      minHeight: "38px",
+                      borderColor: "rgb(203 213 225)",
+                      "&:hover": { borderColor: "rgb(148 163 184)" },
+                    }),
                   }}
-                  className="w-full px-3 py-2 border rounded-md"
                 />
-                <div className="flex gap-2">
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Academic Period *
+                </label>
+                <Select
+                  value={
+                    periods.find((p) => p.value === formData.period_id) || null
+                  }
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      period_id: selected?.value || null,
+                    }))
+                  }
+                  options={periods}
+                  placeholder="Select period..."
+                  className="text-sm"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      minHeight: "38px",
+                      borderColor: "rgb(203 213 225)",
+                      "&:hover": { borderColor: "rgb(148 163 184)" },
+                    }),
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Section
+                </label>
+                <Select
+                  options={sectionOptions}
+                  value={
+                    sectionOptions.find((o) => o.value === formData.section) ||
+                    null
+                  }
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      section: selected ? selected.value : "",
+                    }))
+                  }
+                  placeholder="Select section..."
+                  isClearable
+                  className="text-sm"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      minHeight: "38px",
+                      borderColor: "rgb(203 213 225)",
+                      "&:hover": { borderColor: "rgb(148 163 184)" },
+                    }),
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Room
+                </label>
+                <Select
+                  options={roomOptions}
+                  value={
+                    roomOptions.find((o) => o.value === formData.room) || null
+                  }
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      room: selected ? selected.value : "",
+                    }))
+                  }
+                  placeholder="Select room..."
+                  isClearable
+                  className="text-sm"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      minHeight: "38px",
+                      borderColor: "rgb(203 213 225)",
+                      "&:hover": { borderColor: "rgb(148 163 184)" },
+                    }),
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Max Students
+                </label>
+                <input
+                  type="number"
+                  value={formData.max_students}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      max_students: e.target.value,
+                    }))
+                  }
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g., 40"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Schedules
+              </label>
+              {formData.schedules.map((sched, idx) => (
+                <div key={idx} className="grid grid-cols-3 gap-3 mb-2">
                   <input
-                    type="time"
-                    value={sched.schedule_time_end}
+                    type="text"
+                    value={sched.schedule_day}
                     onChange={(e) => {
                       const newSchedules = [...formData.schedules];
-                      newSchedules[idx].schedule_time_end = e.target.value;
+                      newSchedules[idx].schedule_day = e.target.value;
                       setFormData((prev) => ({
                         ...prev,
                         schedules: newSchedules,
                       }));
                     }}
-                    className="w-full px-3 py-2 border rounded-md"
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="e.g., MWF"
                   />
-                  {formData.schedules.length > 1 && (
-                    <button
-                      type="button"
-                      className="px-2 py-2 bg-red-100 text-red-600 rounded-md ml-2"
-                      onClick={() => {
+                  <input
+                    type="time"
+                    value={sched.schedule_time_start}
+                    onChange={(e) => {
+                      const newSchedules = [...formData.schedules];
+                      newSchedules[idx].schedule_time_start = e.target.value;
+                      setFormData((prev) => ({
+                        ...prev,
+                        schedules: newSchedules,
+                      }));
+                    }}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="time"
+                      value={sched.schedule_time_end}
+                      onChange={(e) => {
+                        const newSchedules = [...formData.schedules];
+                        newSchedules[idx].schedule_time_end = e.target.value;
                         setFormData((prev) => ({
                           ...prev,
-                          schedules: prev.schedules.filter((_, i) => i !== idx),
+                          schedules: newSchedules,
                         }));
                       }}
-                      title="Remove schedule"
-                    >
-                      &times;
-                    </button>
-                  )}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    {formData.schedules.length > 1 && (
+                      <button
+                        type="button"
+                        className="px-2 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                        onClick={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            schedules: prev.schedules.filter(
+                              (_, i) => i !== idx,
+                            ),
+                          }));
+                        }}
+                        title="Remove schedule"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-            <button
-              type="button"
-              className="mt-2 px-3 py-1 bg-green-100 text-green-700 rounded-md"
-              onClick={() =>
-                setFormData((prev) => ({
-                  ...prev,
-                  schedules: [
-                    ...prev.schedules,
-                    {
-                      schedule_day: "",
-                      schedule_time_start: "",
-                      schedule_time_end: "",
-                    },
-                  ],
-                }))
-              }
-            >
-              + Add Schedule
-            </button>
+              ))}
+              <button
+                type="button"
+                className="mt-1 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors border border-indigo-200"
+                onClick={() =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    schedules: [
+                      ...prev.schedules,
+                      {
+                        schedule_day: "",
+                        schedule_time_start: "",
+                        schedule_time_end: "",
+                      },
+                    ],
+                  }))
+                }
+              >
+                <Plus size={12} /> Add Schedule
+              </button>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Max Students
-            </label>
-            <input
-              type="number"
-              value={formData.max_students}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  max_students: e.target.value,
-                }))
-              }
-              className="w-full px-3 py-2 border rounded-md"
-              placeholder="e.g., 40"
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border rounded-md hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-            >
-              {mode === "add" ? "Create" : "Update"}
-            </button>
+          {/* Sticky Footer */}
+          <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-lg">
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+              >
+                {mode === "add" ? "Create Assignment" : "Update Assignment"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -542,23 +587,49 @@ const FacultyAssignCourse = () => {
   };
 
   return (
-    <div className="p-4">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BookOpen size={24} /> Faculty Course Assignments
-        </h1>
-        <p className="text-sm text-slate-600 mt-1">
-          Assign courses to faculty members for each academic period.
-        </p>
-      </div>
+    <div className="p-3 sm:p-4 transition-colors duration-500">
+      <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
+        {/* Header */}
+        <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <BookOpen size={24} className="text-indigo-600" />
+            Faculty Course Assignments
+          </h2>
+          <span className="text-sm text-slate-500 font-medium">
+            Data Integrity: Online
+          </span>
+        </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 mb-4">
-        <div className="flex-1">
-          <div className="relative">
-            <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
-              size={18}
-            />
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Total Assignments</p>
+            <p className="text-2xl font-bold text-indigo-600">
+              {assignments.length}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Faculty Members</p>
+            <p className="text-2xl font-bold text-blue-600">{faculty.length}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Courses</p>
+            <p className="text-2xl font-bold text-green-600">
+              {courses.length}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Academic Periods</p>
+            <p className="text-2xl font-bold text-purple-600">
+              {periods.length}
+            </p>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Search Input - LEFT */}
+          <div className="relative flex-grow max-w-xs">
             <input
               type="text"
               placeholder="Search by faculty or course..."
@@ -567,144 +638,180 @@ const FacultyAssignCourse = () => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-10 pr-3 py-2 border rounded-md"
+              className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all shadow-inner"
             />
+            <Search
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+              size={14}
+            />
+          </div>
+
+          {/* Filters - RIGHT */}
+          <div className="flex items-center gap-2">
+            <Select
+              value={filterFaculty}
+              onChange={(selected) => {
+                setFilterFaculty(selected);
+                setPage(1);
+              }}
+              options={faculty}
+              placeholder="Filter by Faculty"
+              isClearable
+              className="w-56 text-sm"
+              styles={{
+                control: (base) => ({
+                  ...base,
+                  minHeight: "36px",
+                  fontSize: "14px",
+                  borderColor: "rgb(203 213 225)",
+                  "&:hover": { borderColor: "rgb(148 163 184)" },
+                }),
+              }}
+            />
+            <button
+              onClick={() => openModal("add")}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-md shadow-indigo-500/30"
+            >
+              <Plus size={14} />
+              New Assignment
+            </button>
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <Select
-            value={filterFaculty}
-            onChange={(selected) => {
-              setFilterFaculty(selected);
-              setPage(1);
-            }}
-            options={faculty}
-            placeholder="Filter by Faculty"
-            isClearable
-            className="w-56"
-          />
-          <button
-            onClick={() => openModal("add")}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md flex items-center gap-2 hover:bg-indigo-700"
-          >
-            <Plus size={16} /> New Assignment
-          </button>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto rounded border">
-        <table className="min-w-full divide-y">
-          <thead className="bg-slate-100">
-            <tr>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Faculty
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Course
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Period
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Section
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Room
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Schedule
-              </th>
-              <th className="px-3 py-2 text-right text-sm font-semibold">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y">
-            {displayed.length > 0 ? (
-              displayed.map((assignment) => (
-                <tr
-                  key={assignment.assignment_id}
-                  className="hover:bg-slate-50"
-                >
-                  <td className="px-3 py-2 text-sm">
-                    {assignment.faculty_name || "N/A"}
-                  </td>
-                  <td className="px-3 py-2 text-sm">
-                    {assignment.course_code} - {assignment.course_title}
-                  </td>
-                  <td className="px-3 py-2 text-sm">
-                    {assignment.school_year} {assignment.semester}
-                  </td>
-                  <td className="px-3 py-2 text-sm">
-                    {assignment.section || "-"}
-                  </td>
-                  <td className="px-3 py-2 text-sm">
-                    {assignment.room || "-"}
-                  </td>
-                  <td className="px-3 py-2 text-sm">
-                    {Array.isArray(assignment.schedules)
-                      ? assignment.schedules.map((s, i) => (
-                          <div key={i}>
-                            {s.schedule_day} {s.schedule_time_start} -{" "}
-                            {s.schedule_time_end}
-                          </div>
-                        ))
-                      : assignment.schedule
-                        ? assignment.schedule
-                        : "-"}
-                  </td>
-                  <td className="px-3 py-2 text-right flex justify-end gap-2">
-                    <button
-                      onClick={() => openModal("edit", assignment)}
-                      className="text-indigo-600 hover:text-indigo-800"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(assignment.assignment_id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
+        {/* Assignments Table */}
+        <div>
+          <h2 className="text-xl font-bold mb-4 text-slate-800">
+            Assignment List
+          </h2>
+          <div className="overflow-x-auto rounded border border-slate-200">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-100">
+                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700">
+                  <th className="px-4 py-2.5">Faculty</th>
+                  <th className="px-4 py-2.5">Course</th>
+                  <th className="px-4 py-2.5">Period</th>
+                  <th className="px-4 py-2.5">Section</th>
+                  <th className="px-4 py-2.5">Room</th>
+                  <th className="px-4 py-2.5">Schedule</th>
+                  <th className="px-4 py-2.5 w-1/12 text-right">Actions</th>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td
-                  colSpan={7}
-                  className="text-center py-4 text-slate-500 italic"
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {displayed.length > 0 ? (
+                  displayed.map((assignment) => (
+                    <tr
+                      key={assignment.assignment_id}
+                      className="text-sm text-slate-700 hover:bg-indigo-50/50 transition duration-150"
+                    >
+                      <td className="px-4 py-2 font-medium">
+                        {assignment.faculty_name || "N/A"}
+                      </td>
+                      <td className="px-4 py-2">
+                        {assignment.course_code} - {assignment.course_title}
+                      </td>
+                      <td className="px-4 py-2">
+                        {assignment.school_year} {assignment.semester}
+                      </td>
+                      <td className="px-4 py-2">{assignment.section || "-"}</td>
+                      <td className="px-4 py-2">{assignment.room || "-"}</td>
+                      <td className="px-4 py-2">
+                        {Array.isArray(assignment.schedules)
+                          ? assignment.schedules.map((s, i) => (
+                              <div key={i}>
+                                {s.schedule_day} {s.schedule_time_start} –{" "}
+                                {s.schedule_time_end}
+                              </div>
+                            ))
+                          : assignment.schedule
+                            ? assignment.schedule
+                            : "-"}
+                      </td>
+                      <td className="px-4 py-2 text-right space-x-1">
+                        <button
+                          onClick={() => openModal("edit", assignment)}
+                          className="text-indigo-600 hover:text-indigo-800 transition-colors p-1 rounded-full hover:bg-slate-200"
+                          title="Edit"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(assignment.assignment_id)}
+                          className="text-red-600 hover:text-red-800 transition-colors p-1 rounded-full hover:bg-slate-200"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="p-4 text-center text-slate-500 italic"
+                    >
+                      No course assignments found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700">
+            <span className="text-xs sm:text-sm">
+              Page <span className="font-semibold">{page}</span> of{" "}
+              <span className="font-semibold">{totalPages || 1}</span> | Total
+              Records: {filtered.length}
+            </span>
+            <div className="flex gap-1 mt-2 sm:mt-0">
+              <button
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1}
+                className="p-1.5 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
+              >
+                <ChevronLeft size={16} className="text-slate-600" />
+              </button>
+              {[...Array(totalPages || 1)].map((_, i) => (
+                <button
+                  key={i + 1}
+                  onClick={() => setPage(i + 1)}
+                  className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                    page === i + 1
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "border-slate-300 text-slate-700 hover:bg-slate-100"
+                  }`}
                 >
-                  No course assignments found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                  {i + 1}
+                </button>
+              ))}
+              <button
+                onClick={() => setPage(Math.min(totalPages || 1, page + 1))}
+                disabled={page === (totalPages || 1)}
+                className="p-1.5 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
+              >
+                <ChevronRight size={16} className="text-slate-600" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <AssignmentModal
+          isOpen={modalOpen}
+          onClose={() => {
+            setModalOpen(false);
+            setCurrentRecord(null);
+          }}
+          onSubmit={handleSubmit}
+          mode={modalMode}
+          initialData={currentRecord}
+          subjectSections={subjectSections}
+          faculty={faculty}
+          courses={courses}
+          periods={periods}
+        />
       </div>
-
-      <Pagination
-        currentPage={page}
-        totalPages={totalPages}
-        setPage={setPage}
-        totalItems={filtered.length}
-      />
-
-      <AssignmentModal
-        isOpen={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          setCurrentRecord(null);
-        }}
-        onSubmit={handleSubmit}
-        mode={modalMode}
-        initialData={currentRecord}
-        subjectSections={subjectSections}
-        faculty={faculty}
-        courses={courses}
-        periods={periods}
-      />
     </div>
   );
 };

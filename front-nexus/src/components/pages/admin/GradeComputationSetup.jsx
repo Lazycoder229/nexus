@@ -45,6 +45,7 @@ const GradeComputationSetup = () => {
     fetchCourses();
     fetchSections();
     fetchPeriods();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchSettings = async () => {
@@ -199,25 +200,19 @@ const GradeComputationSetup = () => {
 
   const getComponentTypeBadge = (type) => {
     const typeColors = {
-      exam: "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400",
-      quiz: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400",
-      assignment:
-        "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400",
-      project:
-        "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400",
-      attendance:
-        "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400",
-      participation:
-        "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-400",
-      other:
-        "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300",
+      exam: "bg-red-100 text-red-800",
+      quiz: "bg-yellow-100 text-yellow-800",
+      assignment: "bg-blue-100 text-blue-800",
+      project: "bg-purple-100 text-purple-800",
+      attendance: "bg-green-100 text-green-800",
+      participation: "bg-indigo-100 text-indigo-800",
+      other: "bg-slate-100 text-slate-800",
     };
 
     return (
       <span
         className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-          typeColors[type] ||
-          "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-300"
+          typeColors[type] || "bg-slate-100 text-slate-800"
         }`}
       >
         {type}
@@ -226,38 +221,34 @@ const GradeComputationSetup = () => {
   };
 
   return (
-    <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
+    <div className=" p-3 sm:p-4 transition-colors duration-500">
       <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
         {/* Header */}
-        <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+        <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
             <FileText size={24} className="text-indigo-600" />
             Grade Computation Setup
           </h2>
-          <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+          <span className="text-sm text-slate-500 font-medium">
             Data Integrity: Online
           </span>
         </div>
 
         {/* Weight Status Card */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm text-slate-600 dark:text-slate-400">
-                Total Weight
-              </h3>
+              <h3 className="text-sm text-slate-600">Total Weight</h3>
               <div className="flex items-center gap-4 mt-2">
                 <p
                   className={`text-2xl font-bold ${
-                    totalWeight === 100
-                      ? "text-green-600 dark:text-green-400"
-                      : "text-red-600 dark:text-red-400"
+                    totalWeight === 100 ? "text-green-600" : "text-red-600"
                   }`}
                 >
                   {totalWeight.toFixed(2)}%
                 </p>
                 {totalWeight !== 100 && (
-                  <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+                  <div className="flex items-center gap-2 text-orange-600">
                     <AlertCircle size={16} />
                     <span className="text-sm font-medium">
                       {totalWeight < 100
@@ -283,7 +274,7 @@ const GradeComputationSetup = () => {
               onChange={(e) =>
                 setFilters({ ...filters, search: e.target.value })
               }
-              className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
+              className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all shadow-inner"
             />
             <Search
               className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -296,7 +287,7 @@ const GradeComputationSetup = () => {
             <input
               type="text"
               placeholder="Course ID"
-              className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-32"
+              className="px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm w-32"
               value={filters.course_id}
               onChange={(e) =>
                 setFilters({ ...filters, course_id: e.target.value })
@@ -305,7 +296,7 @@ const GradeComputationSetup = () => {
             <input
               type="text"
               placeholder="Period ID"
-              className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-32"
+              className="px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm w-32"
               value={filters.period_id}
               onChange={(e) =>
                 setFilters({ ...filters, period_id: e.target.value })
@@ -314,7 +305,7 @@ const GradeComputationSetup = () => {
             <input
               type="text"
               placeholder="Section ID"
-              className="px-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white text-sm w-32"
+              className="px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm w-32"
               value={filters.section_id}
               onChange={(e) =>
                 setFilters({ ...filters, section_id: e.target.value })
@@ -322,13 +313,13 @@ const GradeComputationSetup = () => {
             />
             <button
               onClick={handleFilter}
-              className="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-md hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-sm font-medium shadow-sm"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors text-sm font-medium shadow-sm"
             >
               Apply Filters
             </button>
             <button
               onClick={() => handleOpenModal()}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-sm border shadow-md shadow-indigo-500/30"
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-md shadow-indigo-500/30"
             >
               <Plus size={14} />
               Add Component
@@ -338,13 +329,13 @@ const GradeComputationSetup = () => {
 
         {/* Settings Table */}
         <div>
-          <h2 className="text-xl font-bold mb-4 text-slate-800 dark:text-slate-100">
+          <h2 className="text-xl font-bold mb-4 text-slate-800">
             Grade Component Settings
           </h2>
-          <div className="overflow-x-auto rounded border border-slate-200 dark:border-slate-700">
-            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-              <thead className="bg-slate-100 dark:bg-slate-700/70">
-                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+          <div className="overflow-x-auto rounded border border-slate-200">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-100">
+                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700">
                   <th className="px-4 py-2.5">Component Name</th>
                   <th className="px-4 py-2.5">Type</th>
                   <th className="px-4 py-2.5">Course</th>
@@ -355,7 +346,7 @@ const GradeComputationSetup = () => {
                   <th className="px-4 py-2.5 w-1/12 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700 bg-white dark:bg-slate-800">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {loading ? (
                   <tr>
                     <td
@@ -432,7 +423,7 @@ const GradeComputationSetup = () => {
           </div>
 
           {/* Pagination */}
-          <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700 dark:text-slate-200">
+          <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700">
             <span className="text-xs sm:text-sm">
               Page <span className="font-semibold">{currentPage}</span> of{" "}
               <span className="font-semibold">
@@ -475,12 +466,9 @@ const GradeComputationSetup = () => {
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="p-1.5 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                className="p-1.5 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
               >
-                <ChevronLeft
-                  size={16}
-                  className="text-slate-600 dark:text-slate-400"
-                />
+                <ChevronLeft size={16} className="text-slate-600" />
               </button>
               {(() => {
                 const searchTerm = filters.search.toLowerCase();
@@ -506,7 +494,7 @@ const GradeComputationSetup = () => {
                     className={`px-3 py-1.5 text-xs rounded border transition-colors ${
                       currentPage === i + 1
                         ? "bg-indigo-600 text-white border-indigo-600"
-                        : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                        : "border-slate-300 text-slate-700 hover:bg-slate-100"
                     }`}
                   >
                     {i + 1}
@@ -550,12 +538,9 @@ const GradeComputationSetup = () => {
                     Math.ceil(filtered.length / itemsPerPage) || 1;
                   return currentPage === totalPages;
                 })()}
-                className="p-1.5 rounded border border-slate-300 dark:border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                className="p-1.5 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
               >
-                <ChevronRight
-                  size={16}
-                  className="text-slate-600 dark:text-slate-400"
-                />
+                <ChevronRight size={16} className="text-slate-600" />
               </button>
             </div>
           </div>
@@ -568,17 +553,17 @@ const GradeComputationSetup = () => {
             onClick={handleCloseModal}
           >
             <div
-              className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-4xl transform transition-transform duration-300 scale-100 border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-lg shadow-2xl w-full max-w-4xl transform transition-transform duration-300 scale-100 border border-slate-200 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="sticky top-0 flex justify-between items-center px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 rounded-t-lg z-10">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              <div className="sticky top-0 flex justify-between items-center px-4 py-3 border-b border-slate-200 bg-slate-50 rounded-t-lg z-10">
+                <h3 className="text-lg font-bold text-slate-900">
                   {editingSetting ? "Edit" : "Add"} Grade Component
                 </h3>
                 <button
                   onClick={handleCloseModal}
-                  className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                  className="p-1 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   <Plus size={18} className="rotate-45" />
                 </button>
@@ -588,7 +573,7 @@ const GradeComputationSetup = () => {
               <form onSubmit={handleSubmit} className="p-4 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
                       Component Name *
                     </label>
                     <input
@@ -600,13 +585,13 @@ const GradeComputationSetup = () => {
                           component_name: e.target.value,
                         })
                       }
-                      className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
                       Component Type *
                     </label>
                     <select
@@ -617,7 +602,7 @@ const GradeComputationSetup = () => {
                           component_type: e.target.value,
                         })
                       }
-                      className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                       required
                     >
                       <option value="quiz">Quiz</option>
@@ -631,7 +616,7 @@ const GradeComputationSetup = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
                       Course ID *
                     </label>
                     <Select
@@ -665,7 +650,7 @@ const GradeComputationSetup = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
                       Section ID
                     </label>
                     <Select
@@ -697,7 +682,7 @@ const GradeComputationSetup = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
                       Period ID *
                     </label>
                     <Select
@@ -731,7 +716,7 @@ const GradeComputationSetup = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
                       Weight (%) *
                     </label>
                     <input
@@ -741,13 +726,13 @@ const GradeComputationSetup = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, weight: e.target.value })
                       }
-                      className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
                       Computation Method *
                     </label>
                     <select
@@ -758,7 +743,7 @@ const GradeComputationSetup = () => {
                           computation_method: e.target.value,
                         })
                       }
-                      className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                       required
                     >
                       <option value="average">Average</option>
@@ -769,7 +754,7 @@ const GradeComputationSetup = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
                       Required
                     </label>
                     <select
@@ -780,7 +765,7 @@ const GradeComputationSetup = () => {
                           is_required: e.target.value === "true",
                         })
                       }
-                      className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                     >
                       <option value="true">Yes</option>
                       <option value="false">No</option>
@@ -789,11 +774,11 @@ const GradeComputationSetup = () => {
                 </div>
 
                 {/* Modal Footer */}
-                <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={handleCloseModal}
-                    className="px-3 py-1.5 text-sm bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors border border-slate-300 dark:border-slate-600"
+                    className="px-3 py-1.5 text-sm bg-slate-200 text-slate-700 rounded-md hover:bg-slate-300 transition-colors border border-slate-300"
                   >
                     Cancel
                   </button>

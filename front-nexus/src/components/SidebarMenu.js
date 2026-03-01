@@ -98,11 +98,11 @@ const Menu = {
       title: "Faculty Management",
       icons: GraduationCap,
       submenu: [
-        {
+        /*  {
           label: "Faculty Management",
           icons: Users,
           link: "/admin/admin_faculty_management",
-        },
+        }, */
         {
           label: "Assign Courses",
           icons: BookOpen,
@@ -300,11 +300,11 @@ const Menu = {
           icons: Settings,
           link: "/admin/admin_general_setting",
         },
-        {
+        /* {
           label: "Email & SMS gateway",
           icons: Mail,
           link: "/admin/admin_email_sms_gateway",
-        },
+        }, */
         {
           label: "System logs",
           icons: FileText,

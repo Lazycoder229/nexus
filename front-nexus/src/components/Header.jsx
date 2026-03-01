@@ -3,8 +3,11 @@ import React, { useState, useEffect } from "react";
 import { Menu, Bell, Settings, LogOut, ChevronDown } from "lucide-react";
 
 const Header = ({ toggleSidebar, sidebarWidth, onLogout }) => {
-  const userName = "Admin User";
-  const userRole = "Admin";
+  const firstName = localStorage.getItem("firstName") || "";
+  const lastName = localStorage.getItem("lastName") || "";
+  const userName =
+    firstName || lastName ? `${firstName} ${lastName}`.trim() : "User";
+  const userRole = localStorage.getItem("role") || "";
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [countdown, setCountdown] = useState(5);

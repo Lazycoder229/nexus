@@ -23,6 +23,7 @@ import {
   ArrowLeft,
   ChevronRight,
   ChevronLeft,
+  Search,
 } from "lucide-react";
 
 /* -------------------------
@@ -391,6 +392,8 @@ function UserManagement() {
   const [departments, setDepartments] = useState([]); // Added departments state
   const [programs, setPrograms] = useState([]); // Added programs state
   const [rbac, setRbac] = useState(INITIAL_RBAC_STATE);
+  const [rbacSaving, setRbacSaving] = useState(false);
+  const [rbacSaved, setRbacSaved] = useState(false);
 
   // modals & form state
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -451,6 +454,50 @@ function UserManagement() {
     }
   };
 
+  const fetchRbac = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/api/rbac`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      // Merge fetched data with INITIAL_RBAC_STATE structure
+      // so any role missing from DB still shows all permissions
+      const fetched = response.data;
+      setRbac((prev) => {
+        const merged = { ...prev };
+        for (const role of Object.keys(prev)) {
+          if (fetched[role]) {
+            merged[role] = fetched[role];
+          }
+        }
+        return merged;
+      });
+    } catch (error) {
+      console.error("Error fetching RBAC config:", error);
+    }
+  };
+
+  const handleSaveRbac = async () => {
+    setRbacSaving(true);
+    setRbacSaved(false);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`${import.meta.env.VITE_API_BASE_URL}/api/rbac`, rbac, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setRbacSaved(true);
+      setTimeout(() => setRbacSaved(false), 3000);
+    } catch (error) {
+      console.error("Error saving RBAC config:", error);
+      alert(
+        error.response?.data?.message || "Failed to save RBAC configuration.",
+      );
+    } finally {
+      setRbacSaving(false);
+    }
+  };
+
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -470,6 +517,7 @@ function UserManagement() {
     fetchUsers();
     fetchDepartments();
     fetchPrograms();
+    fetchRbac();
   }, []);
 
   /* -------------------------
@@ -1357,92 +1405,92 @@ function UserManagement() {
 
   const renderUserList = () => (
     <>
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-3 gap-3">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold text-gray-700">
-            All Users ({users.length})
-          </h2>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Search name, email, id..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="p-1.5 border border-gray-300 rounded-md text-sm"
-            />
-            <SelectInput
-              name=""
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              className="w-40"
-            >
-              <option value="">All Roles</option>
-              <option value="Student">Student</option>
-              <option value="Admin">Admin</option>
-              <option value="Faculty">Faculty</option>
-              <option value="Staff">Staff</option>
-              <option value="HR">HR</option>
-              <option value="Accounting">Accounting</option>
-            </SelectInput>
-          </div>
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        {/* Search - LEFT */}
+        <div className="relative flex-grow max-w-xs">
+          <input
+            type="text"
+            placeholder="Search name, email, id..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all shadow-inner"
+          />
+          <Search
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+            size={14}
+          />
         </div>
 
+        {/* Controls - RIGHT */}
         <div className="flex items-center gap-2">
-          {/* Export CSV */}
+          <select
+            value={filterRole}
+            onChange={(e) => setFilterRole(e.target.value)}
+            className="px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm w-36"
+          >
+            <option value="">All Roles</option>
+            <option value="Student">Student</option>
+            <option value="Admin">Admin</option>
+            <option value="Faculty">Faculty</option>
+            <option value="Staff">Staff</option>
+            <option value="HR">HR</option>
+            <option value="Accounting">Accounting</option>
+          </select>
+
           <div className="relative group">
             <button
               onClick={exportCSV}
-              className="p-2 border rounded-md  border-slate-400 text-sm hover:bg-gray-100 transition"
+              className="p-2 border border-slate-300 rounded-md text-slate-600 hover:bg-slate-100 transition"
             >
-              <FileDown size={18} />
+              <FileDown size={16} />
             </button>
-            <span
-              className="absolute left-1/2 -translate-x-1/2 mt-1 hidden group-hover:block 
-                     bg-black text-white text-xs px-2 py-1 rounded shadow-lg"
-            >
+            <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-10">
               Export CSV
             </span>
           </div>
 
-          {/* Export PDF */}
           <div className="relative group">
             <button
               onClick={exportPDF}
-              className="p-2 border rounded-md text-sm  border-slate-400 hover:bg-gray-100 transition"
+              className="p-2 border border-slate-300 rounded-md text-slate-600 hover:bg-slate-100 transition"
             >
-              <FileText size={18} />
+              <FileText size={16} />
             </button>
-            <span
-              className="absolute left-1/2 -translate-x-1/2 mt-1 hidden group-hover:block 
-                     bg-black text-white text-xs px-2 py-1 rounded shadow-lg"
-            >
+            <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-10">
               Export PDF
             </span>
           </div>
+
           <button
             onClick={handleAddNew}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-3 py-2 rounded-md shadow-sm text-sm"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-md shadow-indigo-500/30"
           >
-            <UserPlus className="w-4 h-4" /> New User
+            <UserPlus size={14} /> New User
           </button>
         </div>
       </div>
 
-      <div className="bg-white  rounded overflow-hidden border border-gray-100">
-        <table className="min-w-full leading-normal">
-          <thead className="bg-gray-50">
-            <tr className="text-left text-gray-600 uppercase text-xs tracking-wider border-b">
-              <th className="px-3 py-2">Name & Email</th>
-              <th className="px-3 py-2">Role</th>
-              <th className="px-3 py-2">ID / Title</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2 text-right">Actions</th>
+      {/* Table */}
+      <h2 className="text-xl font-bold mb-4 text-slate-800">User List</h2>
+      <div className="overflow-x-auto rounded border border-slate-200">
+        <table className="min-w-full divide-y divide-slate-200">
+          <thead className="bg-slate-100">
+            <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700">
+              <th className="px-4 py-2.5">Name & Email</th>
+              <th className="px-4 py-2.5">Role</th>
+              <th className="px-4 py-2.5">ID / Title</th>
+              <th className="px-4 py-2.5">Status</th>
+              <th className="px-4 py-2.5 text-right w-1/12">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100 bg-white">
             {paged.length === 0 ? (
               <tr>
-                <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
+                <td
+                  colSpan="5"
+                  className="p-4 text-center text-slate-500 italic"
+                >
                   No user accounts found.
                 </td>
               </tr>
@@ -1454,68 +1502,68 @@ function UserManagement() {
                 return (
                   <tr
                     key={user.user_id}
-                    className="border-b border-gray-100 hover:bg-indigo-50 transition duration-150"
+                    className="text-sm text-slate-700 hover:bg-indigo-50/50 transition duration-150"
                   >
-                    <td className="px-3 py-2">
-                      <p className="text-gray-900 whitespace-nowrap font-semibold">
+                    <td className="px-4 py-2">
+                      <p className="font-semibold text-slate-900 whitespace-nowrap">
                         {user.first_name} {user.last_name}
                       </p>
                       <p className="text-indigo-600 text-xs">{user.email}</p>
                     </td>
 
-                    <td className="px-3 py-2">
+                    <td className="px-4 py-2">
                       <span
-                        className={`px-2 py-1 inline-flex items-center gap-1 text-xs font-bold rounded-full ${roleConfig.color} border`}
+                        className={`px-2 py-0.5 inline-flex items-center gap-1 text-xs font-bold rounded-full ${roleConfig.color} border`}
                       >
                         <RoleIcon className="w-3 h-3" />
                         {user.role}
                       </span>
                     </td>
 
-                    <td className="px-3 py-2 text-sm text-gray-700">
-                      {user.role === "Student"
-                        ? user.student_number
-                        : user.employee_id}
-                      <p className="text-xs text-gray-500 mt-0.5">
+                    <td className="px-4 py-2">
+                      <span className="text-slate-800">
+                        {user.role === "Student"
+                          ? user.student_number
+                          : user.employee_id}
+                      </span>
+                      <p className="text-xs text-slate-500 mt-0.5">
                         {user.position_title || user.course || "—"}
                       </p>
                     </td>
 
-                    <td className="px-3 py-2 text-sm">
+                    <td className="px-4 py-2">
                       <span
                         className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
                           user.status === "Active"
-                            ? "bg-green-500 text-white"
-                            : "bg-yellow-500 text-white"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-yellow-100 text-yellow-800"
                         }`}
                       >
                         {user.status || "Active"}
                       </span>
                     </td>
 
-                    <td className="px-3 py-2 text-right text-sm flex justify-end space-x-1">
+                    <td className="px-4 py-2 text-right space-x-1">
                       <button
                         onClick={() => handleViewUser(user)}
-                        className="text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-blue-100 transition"
+                        className="text-blue-600 hover:text-blue-800 transition-colors p-1 rounded-full hover:bg-slate-200"
                         title="View Details"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye size={14} />
                       </button>
-
                       <button
                         onClick={() => handleEdit(user)}
-                        className="text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-100 transition"
+                        className="text-indigo-600 hover:text-indigo-800 transition-colors p-1 rounded-full hover:bg-slate-200"
                         title="Edit Record"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit size={14} />
                       </button>
-
                       <button
                         onClick={() => handleDelete(user.user_id)}
-                        className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition"
+                        className="text-red-600 hover:text-red-800 transition-colors p-1 rounded-full hover:bg-slate-200"
                         title="Delete Record"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 size={14} />
                       </button>
                     </td>
                   </tr>
@@ -1527,45 +1575,44 @@ function UserManagement() {
       </div>
 
       {/* Pagination */}
-      <div className="mt-3 flex items-center justify-between text-sm">
-        {/* Showing X - Y of Z */}
-        <div className="text-gray-600">
-          Showing {(page - 1) * pageSize + 1} -{" "}
-          {Math.min(page * pageSize, filteredSorted.length)} of{" "}
-          {filteredSorted.length}
-        </div>
-
-        {/* Pagination Controls */}
-        <div className="flex items-center gap-3">
-          {/* Prev Button */}
-          <div className="relative group">
+      <div className="flex flex-col sm:flex-row justify-between items-center mt-3 text-sm text-slate-700">
+        <span className="text-xs sm:text-sm">
+          Showing{" "}
+          <span className="font-semibold">{(page - 1) * pageSize + 1}</span>–
+          <span className="font-semibold">
+            {Math.min(page * pageSize, filteredSorted.length)}
+          </span>{" "}
+          of <span className="font-semibold">{filteredSorted.length}</span>{" "}
+          users
+        </span>
+        <div className="flex gap-1 mt-2 sm:mt-0">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="p-1.5 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
+          >
+            <ChevronLeft size={16} className="text-slate-600" />
+          </button>
+          {[...Array(pageCount)].map((_, i) => (
             <button
-              className="p-1 border rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
+              key={i + 1}
+              onClick={() => setPage(i + 1)}
+              className={`px-3 py-1.5 text-xs rounded border transition-colors ${
+                page === i + 1
+                  ? "bg-indigo-600 text-white border-indigo-600"
+                  : "border-slate-300 text-slate-700 hover:bg-slate-100"
+              }`}
             >
-              <ChevronLeft size={18} />
+              {i + 1}
             </button>
-          </div>
-
-          {/* Page Indicator */}
-          <div className="text-gray-700">
-            Page{" "}
-            <strong>
-              {page} / {pageCount}
-            </strong>
-          </div>
-
-          {/* Next Button */}
-          <div className="relative group">
-            <button
-              className="p-1 border rounded-md disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100 transition"
-              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-              disabled={page === pageCount}
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
+          ))}
+          <button
+            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+            disabled={page === pageCount}
+            className="p-1.5 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
+          >
+            <ChevronRight size={16} className="text-slate-600" />
+          </button>
         </div>
       </div>
     </>
@@ -1662,9 +1709,18 @@ function UserManagement() {
         </table>
       </div>
 
-      <div className="mt-4 pt-3 border-t text-right">
-        <button className="px-4 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition shadow text-sm">
-          Save RBAC Configuration
+      <div className="mt-4 pt-3 border-t text-right flex items-center justify-end gap-3">
+        {rbacSaved && (
+          <span className="text-sm text-green-600 font-medium">
+            ✓ Configuration saved!
+          </span>
+        )}
+        <button
+          onClick={handleSaveRbac}
+          disabled={rbacSaving}
+          className="px-4 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition shadow text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {rbacSaving ? "Saving..." : "Save RBAC Configuration"}
         </button>
       </div>
     </div>
@@ -1674,116 +1730,145 @@ function UserManagement() {
      MAIN RENDER
      ------------------------- */
 
+  // Derived stats
+  const totalStudents = users.filter((u) => u.role === "Student").length;
+  const totalFacultyStaff = users.filter((u) =>
+    ["Faculty", "Staff", "HR", "Accounting"].includes(u.role),
+  ).length;
+  const totalAdmins = users.filter((u) => u.role === "Admin").length;
+
   return (
-    <div className="p-3 max-w-7xl mx-auto font-sans">
-      <div className="flex items-center gap-2 mb-3">
-        <User2Icon className="w-7 h-7 text-indigo-600" />
-        <h1 className="text-2xl font-extrabold text-gray-800">
-          User Management
-        </h1>
-      </div>
+    <div className="p-3 sm:p-4 transition-colors duration-500">
+      <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
+        {/* Header */}
+        <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <User2Icon className="w-6 h-6 text-indigo-600" />
+            User Management
+          </h2>
+          <span className="text-sm text-slate-500 font-medium">
+            Data Integrity: Online
+          </span>
+        </div>
 
-      <div className="flex border-b border-gray-300 mb-3">
-        {/* Manage Users */}
-        <button
-          onClick={() => setCurrentPage("users")}
-          className={`flex items-center gap-2 px-4 py-1.5 font-semibold text-sm transition duration-150
-      ${
-        currentPage === "users"
-          ? "border-b-2 border-indigo-600 text-indigo-600"
-          : "text-gray-500 hover:text-indigo-600"
-      }
-    `}
-        >
-          <Users className="w-4 h-4" /> Manage Users
-        </button>
-
-        {/* Access Control */}
-        <button
-          onClick={() => setCurrentPage("roles")}
-          className={`flex items-center gap-2 px-4 py-1.5 font-semibold text-sm transition duration-150
-      ${
-        currentPage === "roles"
-          ? "border-b-2 border-indigo-600 text-indigo-600"
-          : "text-gray-500 hover:text-indigo-600"
-      }
-    `}
-        >
-          <ListChecks className="w-4 h-4" /> Access Control (RBAC)
-        </button>
-      </div>
-
-      <div className="py-1">
-        {currentPage === "users" && renderUserList()}
-        {currentPage === "roles" && renderAccessControl()}
-      </div>
-
-      {/* CREATE/EDIT MODAL */}
-      <Modal
-        isOpen={isFormModalOpen}
-        onClose={closeFormModal}
-        title={isEditing ? "Edit User Record" : "Create New User Account"}
-        size="lg"
-      >
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4 p-2 bg-gray-50 rounded-xl border border-gray-200">
-            <label className="block text-gray-700 font-bold mb-1 text-sm">
-              Define User Role
-            </label>
-            <SelectInput
-              name="role"
-              placeholder="Select Role"
-              value={selectedRole}
-              onChange={handleRoleChange}
-              className="md:w-1/3 bg-white"
-              required
-              disabled={isEditing}
-            >
-              <option value="Student">Student</option>
-              <option value="Admin">Admin</option>
-              <option value="Faculty">Faculty</option>
-              <option value="Staff">Staff</option>
-              <option value="HR">HR</option>
-              <option value="Accounting">Accounting</option>
-            </SelectInput>
-            <p className="text-xs text-gray-500 mt-2">
-              The role determines the specific fields required below. Role
-              cannot be changed while editing.
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Total Users</p>
+            <p className="text-2xl font-bold text-indigo-600">{users.length}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Students</p>
+            <p className="text-2xl font-bold text-blue-600">{totalStudents}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Faculty &amp; Staff</p>
+            <p className="text-2xl font-bold text-green-600">
+              {totalFacultyStaff}
             </p>
           </div>
-
-          {renderCommonFields()}
-          {selectedRole === "Student" && renderStudentFields()}
-          {["Admin", "Faculty", "Staff", "HR", "Accounting"].includes(
-            selectedRole,
-          ) && renderEmployeeFields()}
-
-          <div className="flex justify-end space-x-3 mt-4 pt-3 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={closeFormModal}
-              className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition shadow text-sm"
-            >
-              {isEditing ? "Save Changes" : "Create Account"}
-            </button>
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-sm text-slate-600">Admins</p>
+            <p className="text-2xl font-bold text-purple-600">{totalAdmins}</p>
           </div>
-        </form>
-      </Modal>
+        </div>
 
-      {/* VIEW DETAILS MODAL */}
-      {viewingUser && (
-        <ViewUserModal
-          isOpen={isViewModalOpen}
-          onClose={closeViewModal}
-          user={viewingUser}
-        />
-      )}
+        {/* Tabs */}
+        <div className="flex border-b border-slate-200">
+          <button
+            onClick={() => setCurrentPage("users")}
+            className={`flex items-center gap-2 px-4 py-2 font-semibold text-sm transition duration-150 ${
+              currentPage === "users"
+                ? "border-b-2 border-indigo-600 text-indigo-600"
+                : "text-slate-500 hover:text-indigo-600"
+            }`}
+          >
+            <Users className="w-4 h-4" /> Manage Users
+          </button>
+          <button
+            onClick={() => setCurrentPage("roles")}
+            className={`flex items-center gap-2 px-4 py-2 font-semibold text-sm transition duration-150 ${
+              currentPage === "roles"
+                ? "border-b-2 border-indigo-600 text-indigo-600"
+                : "text-slate-500 hover:text-indigo-600"
+            }`}
+          >
+            <ListChecks className="w-4 h-4" /> Access Control (RBAC)
+          </button>
+        </div>
+
+        <div>
+          {currentPage === "users" && renderUserList()}
+          {currentPage === "roles" && renderAccessControl()}
+        </div>
+
+        {/* CREATE/EDIT MODAL */}
+        <Modal
+          isOpen={isFormModalOpen}
+          onClose={closeFormModal}
+          title={isEditing ? "Edit User Record" : "Create New User Account"}
+          size="lg"
+        >
+          <form onSubmit={handleSubmit}>
+            <div className="mb-4 p-2 bg-gray-50 rounded-xl border border-gray-200">
+              <label className="block text-gray-700 font-bold mb-1 text-sm">
+                Define User Role
+              </label>
+              <SelectInput
+                name="role"
+                placeholder="Select Role"
+                value={selectedRole}
+                onChange={handleRoleChange}
+                className="md:w-1/3 bg-white"
+                required
+                disabled={isEditing}
+              >
+                <option value="Student">Student</option>
+                <option value="Admin">Admin</option>
+                <option value="Faculty">Faculty</option>
+                <option value="Staff">Staff</option>
+                <option value="HR">HR</option>
+                <option value="Accounting">Accounting</option>
+              </SelectInput>
+              <p className="text-xs text-gray-500 mt-2">
+                The role determines the specific fields required below. Role
+                cannot be changed while editing.
+              </p>
+            </div>
+
+            {renderCommonFields()}
+            {selectedRole === "Student" && renderStudentFields()}
+            {["Admin", "Faculty", "Staff", "HR", "Accounting"].includes(
+              selectedRole,
+            ) && renderEmployeeFields()}
+
+            <div className="flex justify-end gap-3 mt-4 pt-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={closeFormModal}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+              >
+                {isEditing ? "Save Changes" : "Create Account"}
+              </button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* VIEW DETAILS MODAL */}
+        {viewingUser && (
+          <ViewUserModal
+            isOpen={isViewModalOpen}
+            onClose={closeViewModal}
+            user={viewingUser}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -6,14 +6,16 @@ export const getAllClearances = async () => {
   const [rows] = await db.query(
     `SELECT 
         c.*,
+        c.overall_status AS status,
         CONCAT(u.first_name, ' ', u.last_name) AS student_name,
         sd.student_number,
-        ap.school_year, ap.semester
+        ap.school_year AS academic_year,
+        ap.semester
      FROM clearances c
      JOIN users u ON c.student_id = u.user_id
      LEFT JOIN student_details sd ON c.student_id = sd.user_id
      JOIN academic_periods ap ON c.period_id = ap.period_id
-     ORDER BY c.created_at DESC`
+     ORDER BY c.created_at DESC`,
   );
   return rows;
 };
@@ -26,7 +28,7 @@ export const getClearancesByStudent = async (studentId) => {
      JOIN academic_periods ap ON c.period_id = ap.period_id
      WHERE c.student_id = ?
      ORDER BY ap.start_date DESC`,
-    [studentId]
+    [studentId],
   );
   return rows;
 };
@@ -43,7 +45,7 @@ export const getClearanceById = async (id) => {
      LEFT JOIN student_details sd ON c.student_id = sd.user_id
      JOIN academic_periods ap ON c.period_id = ap.period_id
      WHERE c.clearance_id = ?`,
-    [id]
+    [id],
   );
   return rows[0];
 };
@@ -74,7 +76,7 @@ export const createClearance = async (data) => {
       data.student_affairs_remarks,
       data.overall_status || "Incomplete",
       data.cleared_date,
-    ]
+    ],
   );
   return getClearanceById(result.insertId);
 };
@@ -105,7 +107,7 @@ export const updateClearance = async (id, data) => {
       data.overall_status,
       data.cleared_date,
       id,
-    ]
+    ],
   );
   return getClearanceById(id);
 };
@@ -120,7 +122,7 @@ export const deleteClearance = async (id) => {
 export const checkClearanceExists = async (studentId, periodId) => {
   const [rows] = await db.query(
     `SELECT clearance_id FROM clearances WHERE student_id = ? AND period_id = ?`,
-    [studentId, periodId]
+    [studentId, periodId],
   );
   return rows.length > 0;
 };

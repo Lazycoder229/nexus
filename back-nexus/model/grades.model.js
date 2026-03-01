@@ -7,6 +7,7 @@ const GradesModel = {
       let query = `
         SELECT 
           g.*,
+          CONCAT(u.first_name, ' ', u.last_name) AS student_name,
           u.first_name,
           u.last_name,
           sd.student_number AS student_id,
@@ -14,7 +15,16 @@ const GradesModel = {
           c.title AS course_title,
           c.units,
           ap.school_year AS period_name,
-          ap.semester AS year
+          ap.semester AS year,
+          ROUND(
+            (COALESCE(g.prelim_grade, 0) * CASE WHEN g.prelim_grade IS NOT NULL THEN 1 ELSE 0 END +
+             COALESCE(g.midterm_grade, 0) * CASE WHEN g.midterm_grade IS NOT NULL THEN 1 ELSE 0 END +
+             COALESCE(g.finals_grade, 0) * CASE WHEN g.finals_grade IS NOT NULL THEN 1 ELSE 0 END) /
+            NULLIF(
+              (CASE WHEN g.prelim_grade IS NOT NULL THEN 1 ELSE 0 END +
+               CASE WHEN g.midterm_grade IS NOT NULL THEN 1 ELSE 0 END +
+               CASE WHEN g.finals_grade IS NOT NULL THEN 1 ELSE 0 END), 0
+            ), 2) AS raw_grade
         FROM grades g
         LEFT JOIN users u ON g.student_user_id = u.user_id
         LEFT JOIN student_details sd ON u.user_id = sd.user_id
@@ -59,6 +69,7 @@ const GradesModel = {
       const [rows] = await pool.query(
         `SELECT 
           g.*,
+          CONCAT(u.first_name, ' ', u.last_name) AS student_name,
           u.first_name,
           u.last_name,
           sd.student_number AS student_id,
@@ -66,7 +77,16 @@ const GradesModel = {
           c.title AS course_title,
           c.units,
           ap.school_year AS period_name,
-          ap.semester AS year
+          ap.semester AS year,
+          ROUND(
+            (COALESCE(g.prelim_grade, 0) * CASE WHEN g.prelim_grade IS NOT NULL THEN 1 ELSE 0 END +
+             COALESCE(g.midterm_grade, 0) * CASE WHEN g.midterm_grade IS NOT NULL THEN 1 ELSE 0 END +
+             COALESCE(g.finals_grade, 0) * CASE WHEN g.finals_grade IS NOT NULL THEN 1 ELSE 0 END) /
+            NULLIF(
+              (CASE WHEN g.prelim_grade IS NOT NULL THEN 1 ELSE 0 END +
+               CASE WHEN g.midterm_grade IS NOT NULL THEN 1 ELSE 0 END +
+               CASE WHEN g.finals_grade IS NOT NULL THEN 1 ELSE 0 END), 0
+            ), 2) AS raw_grade
         FROM grades g
         LEFT JOIN users u ON g.student_user_id = u.user_id
         LEFT JOIN student_details sd ON u.user_id = sd.user_id

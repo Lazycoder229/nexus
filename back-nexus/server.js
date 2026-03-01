@@ -64,6 +64,8 @@ import systemSettingsRoutes from "./routes/systemSettings.routes.js"; // system 
 import lmsMaterialsRoutes from "./routes/lmsMaterials.routes.js"; // LMS materials routes
 import lmsAssignmentsRoutes from "./routes/lmsAssignments.routes.js"; // LMS assignments routes
 import lmsDiscussionsRoutes from "./routes/lmsDiscussions.routes.js"; // LMS discussions routes
+import rbacRoutes from "./routes/rbac.routes.js"; // RBAC routes
+import aiRoutes from "./routes/ai.routes.js"; // Nexus AI chat route
 
 dotenv.config(); // load env variables
 
@@ -184,10 +186,16 @@ app.use("/api/reports", reportsRoutes);
 // System Settings routes
 app.use("/api/system-settings", systemSettingsRoutes);
 
+// RBAC routes
+app.use("/api", rbacRoutes);
+
 // LMS routes
 app.use("/api/lms/materials", lmsMaterialsRoutes);
 app.use("/api/lms/assignments", lmsAssignmentsRoutes);
 app.use("/api/lms/discussions", lmsDiscussionsRoutes);
+
+// Nexus AI routes
+app.use("/api", aiRoutes);
 
 /* import bcrypt from "bcrypt";
 

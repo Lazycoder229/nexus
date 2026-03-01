@@ -104,6 +104,8 @@ export const loginUser = async (req, res) => {
       token,
       role: user.role,
       userId: user.userId,
+      firstName: user.firstName,
+      lastName: user.lastName,
     });
   } catch (error) {
     console.error("Error logging in:", error);
