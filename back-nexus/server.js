@@ -66,6 +66,8 @@ import lmsAssignmentsRoutes from "./routes/lmsAssignments.routes.js"; // LMS ass
 import lmsDiscussionsRoutes from "./routes/lmsDiscussions.routes.js"; // LMS discussions routes
 import rbacRoutes from "./routes/rbac.routes.js"; // RBAC routes
 import aiRoutes from "./routes/ai.routes.js"; // Nexus AI chat route
+import calendarRoutes from "./routes/calendar.routes.js"; // unified calendar routes
+import roomsRoutes from "./routes/rooms.routes.js"; // rooms management routes
 
 dotenv.config(); // load env variables
 
@@ -176,6 +178,12 @@ app.use("/api/feedback", feedbackRoutes);
 app.use("/api/events/scheduling", eventsRoutes);
 app.use("/api/events/calendar", schoolCalendarRoutes);
 app.use("/api/events/public", publicEventsRoutes);
+
+// Unified Calendar routes
+app.use("/api/calendar", calendarRoutes);
+
+// Rooms Management routes
+app.use("/api/rooms", roomsRoutes);
 
 // Inventory Management routes
 app.use("/api/inventory", inventoryRoutes);

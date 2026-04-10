@@ -8,8 +8,8 @@ import {
   DollarSign,
   ChevronLeft,
   ChevronRight,
+  SendHorizonal,
 } from "lucide-react";
-
 
 const TuitionFeeSetup = () => {
   const [fees, setFees] = useState([]);
@@ -24,6 +24,8 @@ const TuitionFeeSetup = () => {
     year_level: "",
     search: "",
   });
+  const [generatingId, setGeneratingId] = useState(null);
+  const [genFeedback, setGenFeedback] = useState(null); // { type: 'success'|'error', message }
 
   const [formData, setFormData] = useState({
     fee_setup_id: null,
@@ -126,6 +128,36 @@ const TuitionFeeSetup = () => {
     }
   };
 
+  const handleGenerateInvoices = async (feeSetupId) => {
+    if (
+      !window.confirm(
+        "Generate invoices for all matching enrolled students who don't have one yet for this period?",
+      )
+    )
+      return;
+    setGeneratingId(feeSetupId);
+    setGenFeedback(null);
+    try {
+      const res = await api.post(
+        `/api/tuition-fees/${feeSetupId}/generate-invoices`,
+      );
+      const { created, skipped } = res.data.data || {};
+      setGenFeedback({
+        type: "success",
+        message: `Done! ${created} invoice(s) created, ${skipped} already existed.`,
+      });
+    } catch (error) {
+      setGenFeedback({
+        type: "error",
+        message:
+          error.response?.data?.message || "Failed to generate invoices.",
+      });
+    } finally {
+      setGeneratingId(null);
+      setTimeout(() => setGenFeedback(null), 5000);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       fee_setup_id: null,
@@ -170,6 +202,19 @@ const TuitionFeeSetup = () => {
             Data Integrity: Online
           </span>
         </div>
+
+        {/* Generate feedback toast */}
+        {genFeedback && (
+          <div
+            className={`px-4 py-2.5 rounded-md text-sm font-medium ${
+              genFeedback.type === "success"
+                ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300"
+                : "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
+            }`}
+          >
+            {genFeedback.message}
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -306,15 +351,34 @@ const TuitionFeeSetup = () => {
                       </td>
                       <td className="px-4 py-2">
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${fee.is_active
-                            ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                            : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
-                            }`}
+                          className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${
+                            fee.is_active
+                              ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                              : "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                          }`}
                         >
                           {fee.is_active ? "Active" : "Inactive"}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-right space-x-2">
+                        <button
+                          onClick={() =>
+                            handleGenerateInvoices(fee.fee_setup_id)
+                          }
+                          title="Generate Invoices for matching students"
+                          disabled={
+                            generatingId === fee.fee_setup_id || !fee.is_active
+                          }
+                          className="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {generatingId === fee.fee_setup_id ? (
+                            <span className="text-[10px] font-bold animate-pulse">
+                              ...
+                            </span>
+                          ) : (
+                            <SendHorizonal size={14} />
+                          )}
+                        </button>
                         <button
                           onClick={() => handleEdit(fee)}
                           title="Edit"

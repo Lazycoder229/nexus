@@ -30,38 +30,56 @@ const StudentDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      const userId = localStorage.getItem("userId");
+      const API_BASE =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
       // Fetch from real backend endpoints
       const [
-        enrollmentsRes,
+        enrollmentsScheduleRes,
         gradesRes,
         attendanceRes,
         announcementsRes,
         invoicesRes,
         scholarshipRes,
-      ] = await Promise.all([
-        api.get(`/api/enrollments`),
+        tuitionSetupRes,
+      ] = await Promise.allSettled([
+        fetch(`${API_BASE}/api/enrollments/student/${userId}`).then((r) =>
+          r.json(),
+        ),
         api.get(`/api/grades`),
         api.get(`/api/student-attendance`),
         api.get(`/api/events/announcements`),
         api.get(`/api/invoices`),
-        api.get(
-          `/api/scholarships/student/${localStorage.getItem("userId") || 0}`,
-        ),
+        api.get(`/api/scholarships/student/${userId || 0}`),
+        api.get(`/api/tuition-fees/student-schedule`),
       ]);
 
-      // Aggregate dashboard data from real endpoints
-      const enrollments = Array.isArray(enrollmentsRes.data)
-        ? enrollmentsRes.data
-        : enrollmentsRes.data?.data || [];
-      const grades = Array.isArray(gradesRes.data)
-        ? gradesRes.data
-        : gradesRes.data?.data || [];
-      const attendance = Array.isArray(attendanceRes.data)
-        ? attendanceRes.data
-        : attendanceRes.data?.data || [];
-      const announcementsData = announcementsRes.data || [];
-      const invoices = invoicesRes.data || [];
-      const scholarships = scholarshipRes.data.data || [];
+      const getValue = (res, fallback = []) =>
+        res.status === "fulfilled"
+          ? (res.value.data?.data ?? res.value.data ?? fallback)
+          : fallback;
+
+      // Aggregate dashboard data from real endpoints - using STUDENT-SPECIFIC enrollments only
+      const enrollments =
+        enrollmentsScheduleRes?.status === "fulfilled"
+          ? enrollmentsScheduleRes.value?.data || []
+          : [];
+      const grades = getValue(gradesRes, []);
+      const attendance = getValue(attendanceRes, []);
+      const announcementsData = getValue(announcementsRes, []);
+      const invoices = getValue(invoicesRes, []);
+      const scholarships = getValue(scholarshipRes, []);
+      const tuitionSetup =
+        tuitionSetupRes.status === "fulfilled"
+          ? tuitionSetupRes.value.data?.data || {}
+          : {};
+
+      // Get enrollments with schedule
+      const enrollmentsWithSchedule =
+        enrollmentsScheduleRes?.status === "fulfilled"
+          ? enrollmentsScheduleRes.value?.data || []
+          : [];
 
       // Calculate dashboard summary
       const totalPresent = attendance.filter(
@@ -77,17 +95,27 @@ const StudentDashboard = () => {
       let scholarshipDeduction = 0;
       if (activeGrant) {
         if (activeGrant.discount_type === "Percentage") {
-          // We'd need tuition fee setup to be exact, but for dashboard let's use a simpler heuristic or just show the grant info
-          // For now, let's keep it simple: if percentage, we might need another fetch or just show fixed deduction if present
-          scholarshipDeduction = 0; // Placeholder until tuition fees are fetched here too, or just subtract fixed allowance
+          const tuitionBase = parseFloat(tuitionSetup?.tuition_fee || 0);
+          scholarshipDeduction =
+            tuitionBase * (parseFloat(activeGrant.discount_value) / 100);
         } else {
           scholarshipDeduction = parseFloat(activeGrant.discount_value) || 0;
         }
       }
 
-      const pendingBalance = invoices
-        .filter((inv) => inv.status === "pending" || inv.status === "unpaid")
-        .reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0);
+      const invoiceList = Array.isArray(invoices) ? invoices : [];
+      const pendingBalance = invoiceList
+        .filter(
+          (inv) =>
+            inv.status === "Pending" ||
+            inv.status === "Overdue" ||
+            inv.status === "Partially Paid",
+        )
+        .reduce(
+          (sum, inv) =>
+            sum + (parseFloat(inv.balance ?? inv.total_amount) || 0),
+          0,
+        );
 
       const finalBalance = Math.max(0, pendingBalance - scholarshipDeduction);
 
@@ -113,9 +141,10 @@ const StudentDashboard = () => {
       // Set recent grades
       setRecentGrades(
         grades.slice(0, 5).map((g) => ({
-          subject: g.course_name || g.subject_name || "N/A",
-          assessment: g.assessment_type || "Final",
-          grade: g.grade || g.final_grade || "N/A",
+          subject: g.course_title || "N/A",
+          code: g.course_code || "",
+          assessment: "Final",
+          grade: g.final_grade || g.raw_grade || "N/A",
         })),
       );
 
@@ -128,16 +157,76 @@ const StudentDashboard = () => {
         })),
       );
 
-      // Set upcoming classes (from enrollments/schedules)
-      setUpcomingClasses(
-        enrollments.slice(0, 3).map((e) => ({
-          subject_name: e.course_name || e.subject_name || "N/A",
+      // Get today's day name (e.g., "Monday")
+      const today = new Date();
+      const dayNames = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
+      const todayName = dayNames[today.getDay()];
+
+      // Set today's classes from enrollments with schedule
+      const todayClasses = enrollmentsWithSchedule
+        .filter((e) => {
+          const scheduleDay = e.final_schedule_day || e.schedule_day;
+          if (!scheduleDay) return false;
+
+          // Check if today's day is in the schedule (e.g., "MWF" contains "M" for Monday)
+          const dayMap = {
+            Sunday: "U",
+            Monday: "M",
+            Tuesday: "T",
+            Wednesday: "W",
+            Thursday: "TH",
+            Friday: "F",
+            Saturday: "S",
+          };
+          const dayCode = dayMap[todayName];
+
+          // Handle compound day codes like "TH"
+          if (todayName === "Thursday") {
+            return scheduleDay.includes("TH");
+          }
+
+          return scheduleDay.includes(dayCode);
+        })
+        .sort((a, b) =>
+          (a.final_schedule_time_start || "00:00").localeCompare(
+            b.final_schedule_time_start || "00:00",
+          ),
+        )
+        .slice(0, 3)
+        .map((e) => ({
+          subject_name: e.course_title || e.subject_name || "N/A",
+          code: e.course_code || "N/A",
           room: e.room || "TBA",
           instructor: e.instructor_name || "TBA",
-          time: e.schedule || "TBA",
-          duration: e.duration || "2 hours",
-        })),
-      );
+          time: `${e.final_schedule_time_start?.substring(0, 5) || "TBA"} - ${e.final_schedule_time_end?.substring(0, 5) || "TBA"}`,
+          duration:
+            e.final_schedule_time_start && e.final_schedule_time_end
+              ? (() => {
+                  const [startH, startM] = (
+                    e.final_schedule_time_start || "0:0"
+                  )
+                    .split(":")
+                    .map(Number);
+                  const [endH, endM] = (e.final_schedule_time_end || "0:0")
+                    .split(":")
+                    .map(Number);
+                  const diff = endH * 60 + endM - (startH * 60 + startM);
+                  return diff > 0
+                    ? `${Math.floor(diff / 60)}h ${diff % 60}m`
+                    : "N/A";
+                })()
+              : "N/A",
+        }));
+
+      setUpcomingClasses(todayClasses.length > 0 ? todayClasses : []);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -263,6 +352,9 @@ const StudentDashboard = () => {
                           <p className="font-semibold text-slate-900 dark:text-white">
                             {classItem.subject_name}
                           </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mb-1">
+                            {classItem.code}
+                          </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400">
                             {classItem.room} • {classItem.instructor}
                           </p>
@@ -293,6 +385,7 @@ const StudentDashboard = () => {
                   <thead>
                     <tr className="text-left text-xs font-bold uppercase text-slate-600 dark:text-slate-400">
                       <th className="pb-2">Subject</th>
+                      <th className="pb-2">Code</th>
                       <th className="pb-2">Assessment</th>
                       <th className="pb-2 text-right">Grade</th>
                     </tr>
@@ -301,7 +394,7 @@ const StudentDashboard = () => {
                     {recentGrades.length === 0 ? (
                       <tr>
                         <td
-                          colSpan="3"
+                          colSpan="4"
                           className="py-4 text-center text-slate-500 dark:text-slate-400"
                         >
                           No recent grades
@@ -313,12 +406,17 @@ const StudentDashboard = () => {
                           <td className="py-2 font-medium text-slate-900 dark:text-white">
                             {grade.subject}
                           </td>
+                          <td className="py-2 text-slate-600 dark:text-slate-400 font-mono text-xs">
+                            {grade.code}
+                          </td>
                           <td className="py-2 text-slate-600 dark:text-slate-400">
                             {grade.assessment}
                           </td>
                           <td className="py-2 text-right">
                             <span className="font-bold text-green-600 dark:text-green-400">
-                              {grade.grade}
+                              {typeof grade.grade === "number"
+                                ? grade.grade.toFixed(2)
+                                : grade.grade}
                             </span>
                           </td>
                         </tr>
@@ -369,39 +467,6 @@ const StudentDashboard = () => {
                     </div>
                   ))
                 )}
-              </div>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
-                Quick Stats
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">
-                    Pending Assignments
-                  </span>
-                  <span className="font-bold text-orange-600 dark:text-orange-400">
-                    {dashboardData?.pending_assignments || 0}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">
-                    Upcoming Exams
-                  </span>
-                  <span className="font-bold text-red-600 dark:text-red-400">
-                    {dashboardData?.upcoming_exams || 0}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600 dark:text-slate-400">
-                    Completed Units
-                  </span>
-                  <span className="font-bold text-green-600 dark:text-green-400">
-                    {dashboardData?.completed_units || 0}
-                  </span>
-                </div>
               </div>
             </div>
           </div>

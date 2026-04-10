@@ -15,6 +15,9 @@ import {
 const ExamSetup = () => {
   const [exams, setExams] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [faculty, setFaculty] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -29,6 +32,9 @@ const ExamSetup = () => {
   const [formData, setFormData] = useState({
     exam_name: "",
     course_id: "",
+    section_id: "",
+    room_id: "",
+    proctor_id: "",
     exam_type: "quiz",
     exam_date: "",
     exam_time: "",
@@ -42,6 +48,7 @@ const ExamSetup = () => {
   useEffect(() => {
     fetchExams();
     fetchCourses();
+    fetchSections();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -63,24 +70,103 @@ const ExamSetup = () => {
     }
   };
 
+  const fetchSections = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/sections");
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setSections(data);
+      } else if (data.success && Array.isArray(data.data)) {
+        setSections(data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching sections:", error);
+    }
+  };
+
   const fetchCourses = async () => {
     try {
       const response = await fetch("http://localhost:5000/api/course/courses");
       const data = await response.json();
+      console.log("Courses API response:", data); // Debug
+
+      // Handle both array response and { success, data } format
       if (Array.isArray(data)) {
         setCourses(data);
+        console.log("Courses loaded (array format):", data);
+      } else if (data.success && Array.isArray(data.data)) {
+        setCourses(data.data);
+        console.log("Courses loaded (object format):", data.data);
       }
     } catch (error) {
       console.error("Error fetching courses:", error);
     }
   };
 
+  const fetchAllRooms = () => {
+    try {
+      console.log("Fetching all rooms"); // Debug
+
+      // Get ALL unique rooms from all sections (regardless of course or department)
+      const allRoomsMap = new Map();
+      sections.forEach((s) => {
+        if (s.room) {
+          const key = s.room;
+          if (!allRoomsMap.has(key)) {
+            allRoomsMap.set(key, {
+              room_id: s.section_id,
+              room_name: s.room,
+              room_number: s.room,
+            });
+          }
+        }
+      });
+
+      const allRooms = Array.from(allRoomsMap.values());
+      setRooms(allRooms);
+      console.log("All rooms set:", allRooms); // Debug
+    } catch (error) {
+      console.error("Error fetching rooms:", error);
+      setRooms([]);
+    }
+  };
+
+  const fetchFacultyByDepartment = async (departmentId) => {
+    if (!departmentId) {
+      setFaculty([]);
+      return;
+    }
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/faculty/department/${departmentId}`,
+      );
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setFaculty(data);
+      }
+    } catch (error) {
+      console.error("Error fetching faculty:", error);
+      setFaculty([]);
+    }
+  };
+
   const handleOpenModal = (exam = null) => {
     if (exam) {
       setEditingExam(exam);
+      // Fetch all rooms and faculty based on course department
+      const selectedCourse = courses.find((c) => c.id === exam.course_id);
+      if (selectedCourse) {
+        fetchAllRooms();
+        if (selectedCourse.department_id) {
+          fetchFacultyByDepartment(selectedCourse.department_id);
+        }
+      }
       setFormData({
         exam_name: exam.exam_name || "",
         course_id: exam.course_id || "",
+        section_id: exam.section_id || "",
+        room_id: exam.room_id || "",
+        proctor_id: exam.proctor_id || "",
         exam_type: exam.exam_type || "quiz",
         exam_date: exam.exam_date || "",
         exam_time: exam.exam_time || "",
@@ -92,9 +178,14 @@ const ExamSetup = () => {
       });
     } else {
       setEditingExam(null);
+      setRooms([]);
+      setFaculty([]);
       setFormData({
         exam_name: "",
         course_id: "",
+        section_id: "",
+        room_id: "",
+        proctor_id: "",
         exam_type: "quiz",
         exam_date: "",
         exam_time: "",
@@ -111,9 +202,14 @@ const ExamSetup = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingExam(null);
+    setRooms([]);
+    setFaculty([]);
     setFormData({
       exam_name: "",
       course_id: "",
+      section_id: "",
+      room_id: "",
+      proctor_id: "",
       exam_type: "quiz",
       exam_date: "",
       exam_time: "",
@@ -318,11 +414,13 @@ const ExamSetup = () => {
                 <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700">
                   <th className="px-4 py-2.5">Exam Name</th>
                   <th className="px-4 py-2.5">Course</th>
+                  <th className="px-4 py-2.5">Section</th>
+                  <th className="px-4 py-2.5">Room</th>
+                  <th className="px-4 py-2.5">Proctor</th>
                   <th className="px-4 py-2.5">Type</th>
-                  <th className="px-4 py-2.5">Total Points</th>
+                  <th className="px-4 py-2.5">Points</th>
                   <th className="px-4 py-2.5">Duration</th>
                   <th className="px-4 py-2.5">Status</th>
-                  <th className="px-4 py-2.5">Created By</th>
                   <th className="px-4 py-2.5 w-1/12 text-right">Actions</th>
                 </tr>
               </thead>
@@ -332,7 +430,7 @@ const ExamSetup = () => {
                     return (
                       <tr>
                         <td
-                          colSpan={8}
+                          colSpan={10}
                           className="p-4 text-center text-slate-500 italic"
                         >
                           Loading...
@@ -360,7 +458,7 @@ const ExamSetup = () => {
                     return (
                       <tr>
                         <td
-                          colSpan={8}
+                          colSpan={10}
                           className="p-4 text-center text-slate-500 italic"
                         >
                           No exams found matching your search criteria.
@@ -378,6 +476,15 @@ const ExamSetup = () => {
                         {exam.exam_name}
                       </td>
                       <td className="px-4 py-2">{exam.course_code}</td>
+                      <td className="px-4 py-2">{exam.section_name || "-"}</td>
+                      <td className="px-4 py-2">
+                        {exam.room_number || exam.room || "-"}
+                      </td>
+                      <td className="px-4 py-2">
+                        {exam.proctor_first_name && exam.proctor_last_name
+                          ? `${exam.proctor_first_name} ${exam.proctor_last_name}`
+                          : "-"}
+                      </td>
                       <td className="px-4 py-2">
                         {getExamTypeBadge(exam.exam_type)}
                       </td>
@@ -389,9 +496,6 @@ const ExamSetup = () => {
                       </td>
                       <td className="px-4 py-2">
                         {getStatusBadge(exam.status)}
-                      </td>
-                      <td className="px-4 py-2">
-                        {exam.creator_first_name} {exam.creator_last_name}
                       </td>
                       <td className="px-4 py-2 text-right space-x-2">
                         <button
@@ -587,12 +691,34 @@ const ExamSetup = () => {
                               }
                             : null
                         }
-                        onChange={(option) =>
+                        onChange={(option) => {
+                          console.log("Course selected:", option); // Debug
                           setFormData({
                             ...formData,
                             course_id: option?.value || "",
-                          })
-                        }
+                          });
+                          // Fetch rooms from sections for this course and faculty based on course department
+                          const selectedCourse = courses.find(
+                            (c) => c.id === option?.value,
+                          );
+                          console.log(
+                            "Selected course details:",
+                            selectedCourse,
+                          ); // Debug
+                          if (selectedCourse) {
+                            console.log("Fetching all rooms"); // Debug
+                            fetchAllRooms();
+                          }
+                          if (selectedCourse && selectedCourse.department_id) {
+                            fetchFacultyByDepartment(
+                              selectedCourse.department_id,
+                            );
+                          } else {
+                            console.log(
+                              "No department_id found in selected course",
+                            ); // Debug
+                          }
+                        }}
                         className="text-sm"
                         placeholder="Select course..."
                         isClearable
@@ -628,6 +754,168 @@ const ExamSetup = () => {
                         <option value="practical">Practical</option>
                         <option value="project">Project</option>
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                        Section
+                      </label>
+                      <Select
+                        options={sections.map((section) => ({
+                          value: section.section_id || section.id,
+                          label: section.section_name || section.name,
+                          room: section.room, // Include room data
+                        }))}
+                        value={
+                          formData.section_id
+                            ? {
+                                value: formData.section_id,
+                                label:
+                                  sections.find(
+                                    (s) =>
+                                      (s.section_id || s.id) ===
+                                      formData.section_id,
+                                  )?.section_name ||
+                                  sections.find(
+                                    (s) =>
+                                      (s.section_id || s.id) ===
+                                      formData.section_id,
+                                  )?.name ||
+                                  "",
+                              }
+                            : null
+                        }
+                        onChange={(option) => {
+                          const selectedSection = sections.find(
+                            (s) => (s.section_id || s.id) === option?.value,
+                          );
+                          setFormData({
+                            ...formData,
+                            section_id: option?.value || "",
+                            // Don't auto-set room_id - keep it for Room dropdown selection
+                            // The section's room is just reference info
+                          });
+                        }}
+                        className="text-sm"
+                        placeholder="Select section..."
+                        isClearable
+                        styles={{
+                          control: (base) => ({
+                            ...base,
+                            minHeight: "38px",
+                            borderColor: "rgb(203 213 225)",
+                            "&:hover": { borderColor: "rgb(148 163 184)" },
+                          }),
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                        Room
+                        <span className="text-slate-400 ml-1 font-normal text-xs">
+                          ({rooms.length} available)
+                        </span>
+                      </label>
+                      {!formData.course_id && (
+                        <p className="text-xs text-yellow-600 mb-2">
+                          ⚠️ Select a course first to load available rooms
+                        </p>
+                      )}
+                      <Select
+                        options={rooms.map((room) => ({
+                          value: room.room_id,
+                          label: room.room_name || room.room_number,
+                        }))}
+                        value={
+                          formData.room_id
+                            ? {
+                                value: formData.room_id,
+                                label: rooms.find(
+                                  (r) => r.room_id === formData.room_id,
+                                )
+                                  ? rooms.find(
+                                      (r) => r.room_id === formData.room_id,
+                                    ).room_name ||
+                                    rooms.find(
+                                      (r) => r.room_id === formData.room_id,
+                                    ).room_number
+                                  : "",
+                              }
+                            : null
+                        }
+                        onChange={(option) =>
+                          setFormData({
+                            ...formData,
+                            room_id: option?.value || "",
+                          })
+                        }
+                        className="text-sm"
+                        placeholder={
+                          formData.course_id
+                            ? rooms.length > 0
+                              ? "Select a room..."
+                              : "No rooms available for this course"
+                            : "Select course first..."
+                        }
+                        isClearable
+                        isDisabled={!formData.course_id}
+                        noOptionsMessage={() =>
+                          formData.course_id
+                            ? "No rooms available for this course"
+                            : "Select a course first"
+                        }
+                        styles={{
+                          control: (base) => ({
+                            ...base,
+                            minHeight: "38px",
+                            borderColor: "rgb(203 213 225)",
+                            "&:hover": { borderColor: "rgb(148 163 184)" },
+                          }),
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                        Proctor (Faculty)
+                      </label>
+                      <Select
+                        options={faculty.map((fac) => ({
+                          value: fac.user_id,
+                          label: `${fac.first_name} ${fac.last_name}${fac.specialization ? ` (${fac.specialization})` : ""}`,
+                        }))}
+                        value={
+                          formData.proctor_id
+                            ? {
+                                value: formData.proctor_id,
+                                label: faculty.find(
+                                  (f) => f.user_id === formData.proctor_id,
+                                )
+                                  ? `${faculty.find((f) => f.user_id === formData.proctor_id).first_name} ${faculty.find((f) => f.user_id === formData.proctor_id).last_name}${faculty.find((f) => f.user_id === formData.proctor_id).specialization ? ` (${faculty.find((f) => f.user_id === formData.proctor_id).specialization})` : ""}`
+                                  : "",
+                              }
+                            : null
+                        }
+                        onChange={(option) =>
+                          setFormData({
+                            ...formData,
+                            proctor_id: option?.value || "",
+                          })
+                        }
+                        className="text-sm"
+                        placeholder="Select proctor..."
+                        isClearable
+                        isDisabled={!formData.course_id}
+                        styles={{
+                          control: (base) => ({
+                            ...base,
+                            minHeight: "38px",
+                            borderColor: "rgb(203 213 225)",
+                            "&:hover": { borderColor: "rgb(148 163 184)" },
+                          }),
+                        }}
+                      />
                     </div>
 
                     <div>

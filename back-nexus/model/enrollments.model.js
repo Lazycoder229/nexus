@@ -69,6 +69,7 @@ export const getEnrollmentsByStudent = async (studentId) => {
     `SELECT 
         e.enrollment_id,
         e.course_id,
+        e.section_id,
         c.code AS course_code,
         c.title AS course_title,
         c.units,
@@ -84,12 +85,25 @@ export const getEnrollmentsByStudent = async (studentId) => {
         e.remarks,
         e.created_at,
         e.updated_at,
+        
+        s.section_name,
+        s.room,
+        s.schedule_day,
+        s.schedule_time_start,
+        s.schedule_time_end,
+        
+        COALESCE(s.schedule_day, fas.schedule_day) AS final_schedule_day,
+        COALESCE(s.schedule_time_start, fas.schedule_time_start) AS final_schedule_time_start,
+        COALESCE(s.schedule_time_end, fas.schedule_time_end) AS final_schedule_time_end,
+        
         CONCAT(fu.first_name, ' ', fu.last_name) AS instructor_name
      FROM enrollments e
      JOIN courses c ON e.course_id = c.course_id
      JOIN academic_periods ap ON e.period_id = ap.period_id
+     LEFT JOIN sections s ON e.section_id = s.section_id
      LEFT JOIN faculty_course_assignments fca 
        ON e.course_id = fca.course_id AND e.period_id = fca.academic_period_id
+     LEFT JOIN faculty_assignment_schedules fas ON fca.assignment_id = fas.assignment_id
      LEFT JOIN users fu ON fca.faculty_user_id = fu.user_id
      WHERE e.student_id = ?
      ORDER BY e.created_at DESC`,

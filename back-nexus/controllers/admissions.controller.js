@@ -3,6 +3,18 @@ import * as admissionService from "../services/admissions.service.js";
 
 export const getAllAdmissions = async (req, res) => {
   try {
+    const { email } = req.query;
+
+    // If email query param is provided, fetch student's specific admissions only
+    if (email) {
+      const admissions = await admissionService.listAdmissions();
+      const filtered = admissions.filter(
+        (a) => a.email && a.email.toLowerCase() === email.toLowerCase(),
+      );
+      return res.json(filtered);
+    }
+
+    // Otherwise return all admissions (for admin views)
     const admissions = await admissionService.listAdmissions();
     res.json(admissions);
   } catch (err) {

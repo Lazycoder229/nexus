@@ -102,6 +102,19 @@ export const getEmployeeSummary = async (req, res) => {
   }
 };
 
+// Get employee by user ID
+export const getEmployeeByUserId = async (req, res) => {
+  try {
+    const results = await EmployeeRecords.getByUserId(req.params.userId);
+    res.json({ success: true, data: results });
+  } catch (err) {
+    console.error("Error fetching employee by user ID:", err);
+    res
+      .status(500)
+      .json({ message: "Error fetching employee", error: err.message });
+  }
+};
+
 export default {
   getAllEmployees,
   getEmployeeById,
@@ -109,4 +122,5 @@ export default {
   updateEmployee,
   deleteEmployee,
   getEmployeeSummary,
+  getEmployeeByUserId,
 };

@@ -111,7 +111,8 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
               ? studentProfile.date_of_birth.split("T")[0]
               : "",
             gender: studentProfile.gender || "",
-            address: studentProfile.address || "",
+            address:
+              studentProfile.permanent_address || studentProfile.address || "",
             program_applied: "",
             application_date: new Date().toISOString().split("T")[0],
             status: "Pending",
@@ -180,329 +181,359 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 overflow-y-auto"
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-lg w-full max-w-6xl p-6 m-4 max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform transition-transform duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold">
+        <div className="sticky top-0 bg-white border-b p-2.5 flex justify-between items-center z-10 rounded-t-xl">
+          <h3 className="text-lg font-bold text-gray-800">
             {mode === "add"
               ? "New Admission Application"
               : mode === "edit"
                 ? "Edit Admission Application"
                 : "View Admission Application"}
           </h3>
-          <button onClick={onClose}>
-            <X size={20} />
+          <button
+            onClick={onClose}
+            className="p-1.5 text-gray-500 hover:text-gray-900 rounded-full hover:bg-gray-100 transition"
+            aria-label="Close modal"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
+        <div className="p-3">
+          <form onSubmit={handleSubmit} className="space-y-3 px-3 pb-3">
+            {/* Student Information Section */}
+            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+              <h4 className="text-sm font-semibold mb-2 text-slate-700 uppercase tracking-wider">
+                Student Information
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                    First Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.first_name}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        first_name: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm bg-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    required
+                    disabled={true}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                    Middle Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.middle_name}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        middle_name: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm bg-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    disabled={true}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                    Last Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.last_name}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        last_name: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm bg-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    required
+                    disabled={true}
+                  />
+                </div>
+              </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Student Information Section */}
-          <div className="bg-slate-50 p-4 rounded-lg">
-            <h4 className="text-md font-semibold mb-3 text-slate-700">
-              Student Information
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  First Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.first_name}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      first_name: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border rounded-md bg-gray-100"
-                  required
-                  disabled={true}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                <div>
+                  <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm bg-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    required
+                    disabled={true}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        phone: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm bg-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    disabled={true}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Middle Name
-                </label>
-                <input
-                  type="text"
-                  value={formData.middle_name}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      middle_name: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border rounded-md bg-gray-100"
-                  disabled={true}
-                />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                <div>
+                  <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                    Date of Birth
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.date_of_birth}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        date_of_birth: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm bg-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    disabled={true}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                    Gender
+                  </label>
+                  <select
+                    value={formData.gender}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        gender: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm bg-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    disabled={true}
+                  >
+                    <option value="">Select...</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Last Name *
+
+              <div className="mt-2">
+                <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                  Address
                 </label>
-                <input
-                  type="text"
-                  value={formData.last_name}
+                <textarea
+                  value={formData.address}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      last_name: e.target.value,
+                      address: e.target.value,
                     }))
                   }
-                  className="w-full px-3 py-2 border rounded-md bg-gray-100"
-                  required
+                  className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm bg-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  rows={2}
                   disabled={true}
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, email: e.target.value }))
-                  }
-                  className="w-full px-3 py-2 border rounded-md bg-gray-100"
-                  required
-                  disabled={true}
-                />
+            {/* Academic Information Section */}
+            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+              <h4 className="text-sm font-semibold mb-2 text-slate-700 uppercase tracking-wider">
+                Academic Information
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                    Program Applied *
+                  </label>
+                  <select
+                    value={formData.program_applied}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        program_applied: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    required
+                    disabled={
+                      mode === "view" || (mode === "edit" && initialData)
+                    }
+                  >
+                    <option value="">Select Program...</option>
+                    {programs.map((program) => (
+                      <option
+                        key={program.id || program.program_id}
+                        value={program.name || program.program_name}
+                      >
+                        {program.code
+                          ? `${program.code} - ${program.name}`
+                          : program.name || program.program_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                    Application Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.application_date}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        application_date: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm bg-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    disabled={true}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Phone</label>
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, phone: e.target.value }))
-                  }
-                  className="w-full px-3 py-2 border rounded-md bg-gray-100"
-                  disabled={true}
-                />
+
+              {/* Previous Education Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                <div>
+                  <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                    Previous School
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.previous_school}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        previous_school: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="e.g. SDS High School"
+                    disabled={mode === "view"}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                    Year Graduated
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.year_graduated}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        year_graduated: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="e.g. 2024"
+                    disabled={mode === "view"}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 mt-2">
+                <div>
+                  <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                    Entrance Exam Score
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.entrance_exam_score}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        entrance_exam_score: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="e.g. 85.5"
+                    disabled={mode === "view"}
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Date of Birth
-                </label>
-                <input
-                  type="date"
-                  value={formData.date_of_birth}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      date_of_birth: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border rounded-md bg-gray-100"
-                  disabled={true}
-                />
+            {/* Status Section */}
+            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+              <h4 className="text-sm font-semibold mb-2 text-slate-700 uppercase tracking-wider">
+                Application Status
+              </h4>
+              <div className="grid grid-cols-1 gap-2">
+                <div>
+                  <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                    Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        status: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm bg-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    disabled={true}
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Under Review">Under Review</option>
+                    <option value="Accepted">Accepted</option>
+                    <option value="Rejected">Rejected</option>
+                    <option value="Enrolled">Enrolled</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Gender</label>
-                <select
-                  value={formData.gender}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, gender: e.target.value }))
-                  }
-                  className="w-full px-3 py-2 border rounded-md bg-gray-100"
-                  disabled={true}
+            </div>
+
+            {mode !== "view" && (
+              <div className="flex justify-end gap-2 mt-3 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-3 py-1.5 border border-slate-300 rounded text-slate-700 hover:bg-slate-100 transition text-sm font-medium"
                 >
-                  <option value="">Select...</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <label className="block text-sm font-medium mb-1">Address</label>
-              <textarea
-                value={formData.address}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, address: e.target.value }))
-                }
-                className="w-full px-3 py-2 border rounded-md bg-gray-100"
-                rows={2}
-                disabled={true}
-              />
-            </div>
-          </div>
-
-          {/* Academic Information Section */}
-          <div className="bg-slate-50 p-4 rounded-lg">
-            <h4 className="text-md font-semibold mb-3 text-slate-700">
-              Academic Information
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Program Applied *
-                </label>
-                <select
-                  value={formData.program_applied}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      program_applied: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border rounded-md"
-                  required
-                  disabled={mode === "view" || (mode === "edit" && initialData)}
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition text-sm font-medium"
                 >
-                  <option value="">Select Program...</option>
-                  {programs.map((program) => (
-                    <option
-                      key={program.id || program.program_id}
-                      value={program.name || program.program_name}
-                    >
-                      {program.code
-                        ? `${program.code} - ${program.name}`
-                        : program.name || program.program_name}
-                    </option>
-                  ))}
-                </select>
+                  {mode === "add" ? "Submit Application" : "Update Application"}
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Application Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.application_date}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      application_date: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border rounded-md bg-gray-100"
-                  disabled={true}
-                />
-              </div>
-            </div>
-
-            {/* Previous Education Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Previous School
-                </label>
-                <input
-                  type="text"
-                  value={formData.previous_school}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      previous_school: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border rounded-md"
-                  placeholder="e.g. SDS High School"
-                  disabled={mode === "view"}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Year Graduated
-                </label>
-                <input
-                  type="text"
-                  value={formData.year_graduated}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      year_graduated: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border rounded-md"
-                  placeholder="e.g. 2024"
-                  disabled={mode === "view"}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Entrance Exam Score
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.entrance_exam_score}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      entrance_exam_score: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border rounded-md"
-                  placeholder="e.g. 85.5"
-                  disabled={mode === "view"}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Status Section */}
-          <div className="bg-slate-50 p-4 rounded-lg">
-            <h4 className="text-md font-semibold mb-3 text-slate-700">
-              Application Status
-            </h4>
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, status: e.target.value }))
-                  }
-                  className="w-full px-3 py-2 border rounded-md bg-gray-100"
-                  disabled={true}
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Under Review">Under Review</option>
-                  <option value="Accepted">Accepted</option>
-                  <option value="Rejected">Rejected</option>
-                  <option value="Enrolled">Enrolled</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {mode !== "view" && (
-            <div className="flex justify-end gap-2 mt-6">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 border rounded-md hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-              >
-                {mode === "add" ? "Submit Application" : "Update Application"}
-              </button>
-            </div>
-          )}
-        </form>
+            )}
+          </form>
+        </div>
       </div>
     </div>
   );

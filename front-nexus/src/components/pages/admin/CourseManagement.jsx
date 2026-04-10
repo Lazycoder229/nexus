@@ -8,7 +8,6 @@ import {
   File,
   FileArchive,
   Eye,
-  X,
   ChevronLeft,
   ChevronRight,
   BookAIcon,
@@ -23,10 +22,11 @@ import { saveAs } from "file-saver";
 // --- Status Badge Component ---
 const StatusBadge = ({ status }) => (
   <span
-    className={`px-2 py-1 rounded-full text-xs font-semibold ${status === "Active"
-      ? "bg-green-100 text-green-800"
-      : "bg-red-100 text-red-800"
-      }`}
+    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+      status === "Active"
+        ? "bg-green-100 text-green-800"
+        : "bg-red-100 text-red-800"
+    }`}
   >
     {status}
   </span>
@@ -120,211 +120,266 @@ const CourseModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+    <div
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
       <div
-        className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6"
+        className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            <BookOpenText size={24} />
-            {mode === "add" ? "Add Course" : "Edit Course"}
-          </h3>
+        {/* Sticky Header */}
+        <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 rounded-t-lg">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-800">
+              {mode === "add" ? "Add Course" : "Edit Course"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <Plus size={24} className="rotate-45" />
+            </button>
+          </div>
         </div>
 
+        {/* Form Wrapper */}
         <form
           onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          className="flex flex-col flex-1 overflow-hidden"
         >
-          {/* Code */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Code</label>
-            <input
-              name="code"
-              value={formData.code}
-              onChange={handleChange}
-              placeholder="ex. CCS-2025"
-              required
-              className="w-full px-3 py-1 rounded-md border border-slate-300"
-            />
-          </div>
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Code */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Code
+                </label>
+                <input
+                  name="code"
+                  value={formData.code}
+                  onChange={handleChange}
+                  placeholder="ex. CCS-2025"
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
 
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Title</label>
-            <input
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="ex. Introduction to Programming"
-              required
-              className="w-full px-3 py-1 rounded-md border border-slate-300"
-            />
-          </div>
+              {/* Title */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Title
+                </label>
+                <input
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
+                  placeholder="ex. Introduction to Programming"
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
 
-          {/* Description */}
-          <div className="md:col-span-2">
-            <label className="block text-sm font-small mb-1">Description</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              placeholder="Focus on INTRO"
-              onChange={handleChange}
-              rows={3}
-              className="w-full px-3 py-1 border rounded-md  border-slate-300"
-            />
-          </div>
+            {/* Description */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Description
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
+                placeholder="Focus on INTRO"
+                onChange={handleChange}
+                rows={3}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
 
-          {/* Units */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Units</label>
-            <input
-              name="units"
-              type="number"
-              min={1}
-              value={formData.units}
-              onChange={handleChange}
-              className="w-full px-3 py-1  rounded-md border border-slate-300 "
-            />
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Units */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Units
+                </label>
+                <input
+                  name="units"
+                  type="number"
+                  min={1}
+                  value={formData.units}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
 
-          {/* Department */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Department</label>
-            <Select
-              value={
-                formData.department_id
-                  ? departments
-                    .map((d) => ({
-                      value: d.department_id || d.id,
-                      label: d.name,
+              {/* Department */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Department
+                </label>
+                <Select
+                  value={
+                    formData.department_id
+                      ? departments
+                          .map((d) => ({
+                            value: d.department_id || d.id,
+                            label: d.name,
+                          }))
+                          .find((o) => o.value === formData.department_id)
+                      : null
+                  }
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      department_id: selected ? selected.value : null,
                     }))
-                    .find((o) => o.value === formData.department_id)
-                  : null
-              }
-              onChange={(selected) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  department_id: selected ? selected.value : null,
-                }))
-              }
-              options={departments.map((d) => ({
-                value: d.department_id || d.id,
-                label: d.name,
-              }))}
-              placeholder="Select department..."
-              isClearable
-              styles={{
-                control: (base, state) => ({
-                  ...base,
-                  borderColor: "#CBD5E1", // slate-300
-                  boxShadow: state.isFocused ? "0 0 0 1px #CBD5E1" : "none",
-                  "&:hover": { borderColor: "#CBD5E1" },
-                  minHeight: "20px",
-                  padding: "0px",
-                }),
-                valueContainer: (base) => ({
-                  ...base,
-                  padding: "0 4px",
-                }),
-                menu: (base) => ({
-                  ...base,
-                  zIndex: 9999,
-                }),
-                option: (base, state) => ({
-                  ...base,
-                  backgroundColor: state.isFocused
-                    ? "#2563EB"
-                    : base.backgroundColor, // blue on hover
-                  color: state.isFocused ? "white" : "black",
-                }),
-              }}
-            />
-          </div>
+                  }
+                  options={departments.map((d) => ({
+                    value: d.department_id || d.id,
+                    label: d.name,
+                  }))}
+                  placeholder="Select department..."
+                  isClearable
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      borderColor: "#CBD5E1",
+                      backgroundColor: "#FFFFFF",
+                      fontSize: "0.875rem",
+                      boxShadow: "none",
+                      minHeight: "42px",
+                      "&:hover": {
+                        borderColor: "#CBD5E1",
+                      },
+                      "&:focus-within": {
+                        borderColor: "#4F46E5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+                      },
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "#1E293B",
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
+                      color: state.isSelected ? "#FFFFFF" : "#1E293B",
+                      "&:hover": {
+                        backgroundColor: "#EEF2FF",
+                        color: "#1E293B",
+                      },
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      zIndex: 9999,
+                    }),
+                  }}
+                />
+              </div>
+            </div>
 
-          {/* Instructor */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Instructor</label>
-            <Select
-              value={
-                formData.instructor_id
-                  ? instructors
-                    .map((i) => ({
-                      value: i.user_id,
-                      label: `${i.first_name} ${i.last_name}`,
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Instructor */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Instructor
+                </label>
+                <Select
+                  value={
+                    formData.instructor_id
+                      ? instructors
+                          .map((i) => ({
+                            value: i.user_id,
+                            label: `${i.first_name} ${i.last_name}`,
+                          }))
+                          .find((o) => o.value === formData.instructor_id)
+                      : null
+                  }
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      instructor_id: selected ? selected.value : null,
                     }))
-                    .find((o) => o.value === formData.instructor_id)
-                  : null
-              }
-              onChange={(selected) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  instructor_id: selected ? selected.value : null,
-                }))
-              }
-              options={instructors.map((i) => ({
-                value: i.user_id,
-                label: `${i.first_name} ${i.last_name}`,
-              }))}
-              placeholder="Select instructor..."
-              isClearable
-              styles={{
-                control: (base, state) => ({
-                  ...base,
-                  borderColor: "#CBD5E1", // slate-300
-                  boxShadow: state.isFocused ? "0 0 0 1px #CBD5E1" : "none",
-                  "&:hover": { borderColor: "#CBD5E1" },
-                  minHeight: "20px",
-                  padding: "0px",
-                }),
-                valueContainer: (base) => ({
-                  ...base,
-                  padding: "0 4px",
-                }),
-                menu: (base) => ({
-                  ...base,
-                  zIndex: 9999,
-                }),
-                option: (base, state) => ({
-                  ...base,
-                  backgroundColor: state.isFocused
-                    ? "#2563EB"
-                    : base.backgroundColor, // blue on hover
-                  color: state.isFocused ? "white" : "black",
-                }),
-              }}
-            />
+                  }
+                  options={instructors.map((i) => ({
+                    value: i.user_id,
+                    label: `${i.first_name} ${i.last_name}`,
+                  }))}
+                  placeholder="Select instructor..."
+                  isClearable
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      borderColor: "#CBD5E1",
+                      backgroundColor: "#FFFFFF",
+                      fontSize: "0.875rem",
+                      boxShadow: "none",
+                      minHeight: "42px",
+                      "&:hover": {
+                        borderColor: "#CBD5E1",
+                      },
+                      "&:focus-within": {
+                        borderColor: "#4F46E5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+                      },
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "#1E293B",
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
+                      color: state.isSelected ? "#FFFFFF" : "#1E293B",
+                      "&:hover": {
+                        backgroundColor: "#EEF2FF",
+                        color: "#1E293B",
+                      },
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      zIndex: 9999,
+                    }),
+                  }}
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
           </div>
 
-          {/* Status */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Status</label>
-            <select
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              className="w-full px-3 py-1 rounded-md border border-slate-300"
-            >
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </div>
-
-          {/* Buttons */}
-          <div className="md:col-span-2 flex justify-end gap-2 mt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-slate-200 rounded-lg hover:bg-slate-300 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-            >
-              {mode === "add" ? "Add" : "Save"}
-            </button>
+          {/* Sticky Footer */}
+          <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-lg">
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+              >
+                {mode === "add" ? "Add Course" : "Update Course"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -447,7 +502,7 @@ const CourseManagement = () => {
   const fetchCourses = async () => {
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/course/courses`
+        `${import.meta.env.VITE_API_BASE_URL}/api/course/courses`,
       );
       console.log("course", res.data);
       setCourses(res.data);
@@ -459,7 +514,7 @@ const CourseManagement = () => {
   const fetchDepartments = async () => {
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`
+        `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`,
       );
       console.log("dept", res.data);
       setDepartments(res.data);
@@ -471,8 +526,9 @@ const CourseManagement = () => {
   const fetchInstructors = async () => {
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL
-        }/api/dept/departments/eligible-heads`
+        `${
+          import.meta.env.VITE_API_BASE_URL
+        }/api/dept/departments/eligible-heads`,
       );
       console.log("inst", res.data);
       setInstructors(res.data);
@@ -493,15 +549,15 @@ const CourseManagement = () => {
       courses.filter(
         (c) =>
           (c.code || "").toLowerCase().includes(search.toLowerCase()) ||
-          (c.title || "").toLowerCase().includes(search.toLowerCase())
+          (c.title || "").toLowerCase().includes(search.toLowerCase()),
       ),
-    [courses, search]
+    [courses, search],
   );
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const displayed = filtered.slice(
     (page - 1) * rowsPerPage,
-    page * rowsPerPage
+    page * rowsPerPage,
   );
 
   // Export
@@ -547,24 +603,15 @@ const CourseManagement = () => {
       if (modalMode === "add") {
         res = await axios.post(
           `${import.meta.env.VITE_API_BASE_URL}/api/course/courses`,
-          data
+          data,
         );
-        setCourses((prev) => [...prev, res.data]);
+        await fetchCourses();
       } else {
         res = await axios.put(
           `${import.meta.env.VITE_API_BASE_URL}/api/course/courses/${data.id}`,
-          data
+          data,
         );
-        setCourses((prev) =>
-          prev.map((c) =>
-            c.id === data.id
-              ? {
-                ...c, // keep department_name, instructor_name
-                ...data, // update code, title, units, status, etc.
-              }
-              : c
-          )
-        );
+        await fetchCourses();
       }
       setModalOpen(false);
     } catch (err) {
@@ -576,9 +623,9 @@ const CourseManagement = () => {
     if (!confirm("Are you sure you want to delete this course?")) return;
     try {
       await axios.delete(
-        `${import.meta.env.VITE_API_BASE_URL}/api/course/courses/${id}`
+        `${import.meta.env.VITE_API_BASE_URL}/api/course/courses/${id}`,
       );
-      setCourses((prev) => prev.filter((c) => c.course_id !== id));
+      setCourses((prev) => prev.filter((c) => c.id !== id));
     } catch (err) {
       console.error(err);
     }

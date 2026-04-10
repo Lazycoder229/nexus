@@ -19,6 +19,12 @@ router.get("/details", tuitionFeeController.getFeeByDetails);
 // Get fee schedule for current student
 router.get("/student-schedule", tuitionFeeController.getStudentSchedule);
 
+// Generate invoices for all matching enrolled students (accounting use)
+router.post(
+  "/:id/generate-invoices",
+  tuitionFeeController.generateInvoicesForSetup,
+);
+
 // Get tuition fee by ID
 router.get("/:id", tuitionFeeController.getTuitionFeeById);
 

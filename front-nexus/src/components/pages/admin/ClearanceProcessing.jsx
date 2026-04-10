@@ -8,7 +8,6 @@ import {
   Eye,
   Pencil,
   Trash2,
-  X,
   ChevronLeft,
   ChevronRight,
   Printer,
@@ -163,195 +162,286 @@ const ClearanceModal = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 overflow-y-auto"
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-lg w-full max-w-3xl p-6 m-4 max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold">
-            {mode === "add"
-              ? "New Clearance"
-              : mode === "edit"
-              ? "Edit Clearance"
-              : "View Clearance"}
-          </h3>
-          <button onClick={onClose}>
-            <X size={20} />
-          </button>
+        {/* Sticky Header */}
+        <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 rounded-t-lg">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-800">
+              {mode === "add"
+                ? "New Clearance"
+                : mode === "edit"
+                  ? "Edit Clearance"
+                  : "View Clearance"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <Plus size={24} className="rotate-45" />
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Academic Period *
-              </label>
-              <Select
-                value={
-                  periods.find((p) => p.value === formData.period_id) || null
-                }
-                onChange={(selected) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    period_id: selected?.value || null,
-                    student_id: null, // Reset student when period changes
-                  }))
-                }
-                options={periods}
-                placeholder="Select period..."
-                isDisabled={mode === "edit" || mode === "view"}
-                required
-              />
+        {/* Form Wrapper */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col flex-1 overflow-hidden"
+        >
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            {/* Academic Period and Student */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Academic Period *
+                </label>
+                <Select
+                  value={
+                    periods.find((p) => p.value === formData.period_id) || null
+                  }
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      period_id: selected?.value || null,
+                      student_id: null, // Reset student when period changes
+                    }))
+                  }
+                  options={periods}
+                  placeholder="Select period..."
+                  isDisabled={mode === "edit" || mode === "view"}
+                  required
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      borderColor: "#CBD5E1",
+                      backgroundColor: "#FFFFFF",
+                      fontSize: "0.875rem",
+                      boxShadow: "none",
+                      minHeight: "42px",
+                      "&:hover": {
+                        borderColor: "#CBD5E1",
+                      },
+                      "&:focus-within": {
+                        borderColor: "#4F46E5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+                      },
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "#1E293B",
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
+                      color: state.isSelected ? "#FFFFFF" : "#1E293B",
+                      "&:hover": {
+                        backgroundColor: "#EEF2FF",
+                        color: "#1E293B",
+                      },
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      zIndex: 9999,
+                    }),
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Student *
+                </label>
+                <Select
+                  value={
+                    availableStudents.find(
+                      (s) => s.value === formData.student_id,
+                    ) || null
+                  }
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      student_id: selected?.value || null,
+                    }))
+                  }
+                  options={availableStudents}
+                  placeholder={
+                    !formData.period_id
+                      ? "Select period first..."
+                      : availableStudents.length === 0
+                        ? "No available students"
+                        : "Select student..."
+                  }
+                  isDisabled={
+                    mode === "edit" || mode === "view" || !formData.period_id
+                  }
+                  required
+                  noOptionsMessage={() =>
+                    !formData.period_id
+                      ? "Please select a period first"
+                      : "All students have clearance records for this period"
+                  }
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      borderColor: "#CBD5E1",
+                      backgroundColor: "#FFFFFF",
+                      fontSize: "0.875rem",
+                      boxShadow: "none",
+                      minHeight: "42px",
+                      "&:hover": {
+                        borderColor: "#CBD5E1",
+                      },
+                      "&:focus-within": {
+                        borderColor: "#4F46E5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+                      },
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "#1E293B",
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
+                      color: state.isSelected ? "#FFFFFF" : "#1E293B",
+                      "&:hover": {
+                        backgroundColor: "#EEF2FF",
+                        color: "#1E293B",
+                      },
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      zIndex: 9999,
+                    }),
+                  }}
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Student *
-              </label>
-              <Select
-                value={
-                  availableStudents.find(
-                    (s) => s.value === formData.student_id
-                  ) || null
-                }
-                onChange={(selected) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    student_id: selected?.value || null,
-                  }))
-                }
-                options={availableStudents}
-                placeholder={
-                  !formData.period_id
-                    ? "Select period first..."
-                    : availableStudents.length === 0
-                    ? "No available students"
-                    : "Select student..."
-                }
-                isDisabled={
-                  mode === "edit" || mode === "view" || !formData.period_id
-                }
-                required
-                noOptionsMessage={() =>
-                  !formData.period_id
-                    ? "Please select a period first"
-                    : "All students have clearance records for this period"
-                }
-              />
-            </div>
-          </div>
-
-          <div className="border-t pt-4">
-            <h4 className="font-semibold mb-3">Department Clearances</h4>
-            <div className="space-y-3">
-              {departments.map((dept) => (
-                <div
-                  key={dept.key}
-                  className="border rounded-md p-3 bg-slate-50"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="font-medium">{dept.label}</label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formData[`${dept.key}_cleared`] === 1}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            [`${dept.key}_cleared`]: e.target.checked ? 1 : 0,
-                          }))
-                        }
-                        className="w-4 h-4"
-                        disabled={mode === "view"}
-                      />
-                      <span className="text-sm">Cleared</span>
-                    </label>
+            {/* Department Clearances */}
+            <div className="border-t border-slate-200 pt-4">
+              <h4 className="font-semibold mb-3 text-slate-800">
+                Department Clearances
+              </h4>
+              <div className="space-y-3">
+                {departments.map((dept) => (
+                  <div
+                    key={dept.key}
+                    className="border border-slate-300 rounded-lg p-4 bg-slate-50 hover:bg-slate-100 transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="font-medium text-slate-800">
+                        {dept.label}
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={formData[`${dept.key}_cleared`] === 1}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              [`${dept.key}_cleared`]: e.target.checked ? 1 : 0,
+                            }))
+                          }
+                          className="w-4 h-4 text-indigo-600 rounded"
+                          disabled={mode === "view"}
+                        />
+                        <span className="text-sm text-slate-700">Cleared</span>
+                      </label>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Remarks..."
+                      value={formData[`${dept.key}_remarks`]}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          [`${dept.key}_remarks`]: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      disabled={mode === "view"}
+                    />
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Remarks..."
-                    value={formData[`${dept.key}_remarks`]}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        [`${dept.key}_remarks`]: e.target.value,
-                      }))
-                    }
-                    className="w-full px-3 py-1.5 border rounded-md text-sm"
-                    disabled={mode === "view"}
-                  />
-                </div>
-              ))}
+                ))}
+              </div>
+            </div>
+
+            {/* Overall Status and Cleared Date */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Overall Status
+                </label>
+                <select
+                  value={formData.overall_status}
+                  onChange={(e) => {
+                    const newStatus = e.target.value;
+                    setFormData((prev) => ({
+                      ...prev,
+                      overall_status: newStatus,
+                      cleared_date:
+                        newStatus === "Cleared" && !prev.cleared_date
+                          ? new Date().toISOString().split("T")[0]
+                          : prev.cleared_date,
+                    }));
+                  }}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={mode === "view"}
+                >
+                  <option value="Incomplete">Incomplete</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Cleared">Cleared</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Cleared Date {formData.overall_status === "Cleared" && "*"}
+                </label>
+                <input
+                  type="date"
+                  value={formData.cleared_date || ""}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      cleared_date: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={
+                    mode === "view" || formData.overall_status !== "Cleared"
+                  }
+                  required={formData.overall_status === "Cleared"}
+                />
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Overall Status
-              </label>
-              <select
-                value={formData.overall_status}
-                onChange={(e) => {
-                  const newStatus = e.target.value;
-                  setFormData((prev) => ({
-                    ...prev,
-                    overall_status: newStatus,
-                    cleared_date:
-                      newStatus === "Cleared" && !prev.cleared_date
-                        ? new Date().toISOString().split("T")[0]
-                        : prev.cleared_date,
-                  }));
-                }}
-                className="w-full px-3 py-2 border rounded-md"
-                disabled={mode === "view"}
-              >
-                <option value="Incomplete">Incomplete</option>
-                <option value="Pending">Pending</option>
-                <option value="Cleared">Cleared</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Cleared Date {formData.overall_status === "Cleared" && "*"}
-              </label>
-              <input
-                type="date"
-                value={formData.cleared_date || ""}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    cleared_date: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border rounded-md"
-                disabled={
-                  mode === "view" || formData.overall_status !== "Cleared"
-                }
-                required={formData.overall_status === "Cleared"}
-              />
-            </div>
-          </div>
-
+          {/* Sticky Footer */}
           {mode !== "view" && (
-            <div className="flex justify-end gap-2 mt-6">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 border rounded-md hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-              >
-                {mode === "add" ? "Create" : "Update"}
-              </button>
+            <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-lg">
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                >
+                  {mode === "add" ? "Create Clearance" : "Update Clearance"}
+                </button>
+              </div>
             </div>
           )}
         </form>
@@ -480,8 +570,8 @@ const printReceipt = (clearance) => {
       <div class="header">
         <h1>STUDENT CLEARANCE CERTIFICATE</h1>
         <h2>Academic Year ${clearance.school_year || "N/A"} - ${
-    clearance.semester || "N/A"
-  }</h2>
+          clearance.semester || "N/A"
+        }</h2>
       </div>
 
       <div class="receipt-info">
@@ -537,7 +627,7 @@ const printReceipt = (clearance) => {
                 }</div>`
               : ""
           }
-        `
+        `,
           )
           .join("")}
       </div>
@@ -639,7 +729,7 @@ const ClearanceProcessing = () => {
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const displayed = filtered.slice(
     (page - 1) * rowsPerPage,
-    page * rowsPerPage
+    page * rowsPerPage,
   );
 
   const handleSubmit = async (data) => {
@@ -649,7 +739,7 @@ const ClearanceProcessing = () => {
       } else {
         await axios.put(
           `${API_BASE}/api/clearances/${data.clearance_id}`,
-          data
+          data,
         );
       }
       fetchClearances();

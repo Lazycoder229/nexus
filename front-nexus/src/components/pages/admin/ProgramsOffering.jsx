@@ -8,7 +8,6 @@ import {
   File,
   FileArchive,
   Eye,
-  X,
   ChevronLeft,
   ChevronRight,
   GraduationCap,
@@ -117,184 +116,218 @@ const ProgramModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+    <div
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
       <div
-        className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6"
+        className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            <GraduationCap size={24} />
-            {mode === "add" ? "Add Program" : "Edit Program"}
-          </h3>
+        {/* Sticky Header */}
+        <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 rounded-t-lg">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-800">
+              {mode === "add" ? "Add Program" : "Edit Program"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <Plus size={24} className="rotate-45" />
+            </button>
+          </div>
         </div>
 
+        {/* Form Wrapper */}
         <form
           onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          className="flex flex-col flex-1 overflow-hidden"
         >
-          {/* Code */}
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Program Code
-            </label>
-            <input
-              name="code"
-              value={formData.code}
-              onChange={handleChange}
-              placeholder="e.g. BSIT"
-              required
-              className="w-full px-3 py-1 rounded-md border border-slate-300"
-            />
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Code */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Program Code
+                </label>
+                <input
+                  name="code"
+                  value={formData.code}
+                  onChange={handleChange}
+                  placeholder="e.g. BSIT"
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Name */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Program Name
+                </label>
+                <input
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="e.g. Information Technology"
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Description
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Program description..."
+                rows={3}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Degree Type */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Degree Type
+                </label>
+                <select
+                  name="degree_type"
+                  value={formData.degree_type}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="Bachelor">Bachelor</option>
+                  <option value="Associate">Associate</option>
+                  <option value="Certificate">Certificate</option>
+                  <option value="Diploma">Diploma</option>
+                </select>
+              </div>
+
+              {/* Duration */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Duration (Years)
+                </label>
+                <input
+                  name="duration_years"
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={formData.duration_years}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* Department */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Department
+              </label>
+              <Select
+                value={
+                  formData.department_id
+                    ? departments
+                        .map((d) => ({
+                          value: d.department_id || d.id,
+                          label: d.name,
+                        }))
+                        .find((o) => o.value === formData.department_id)
+                    : null
+                }
+                onChange={(selected) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    department_id: selected ? selected.value : null,
+                  }))
+                }
+                options={departments.map((d) => ({
+                  value: d.department_id || d.id,
+                  label: d.name,
+                }))}
+                placeholder="Select department..."
+                isClearable
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderColor: "#CBD5E1",
+                    backgroundColor: "#FFFFFF",
+                    fontSize: "0.875rem",
+                    boxShadow: "none",
+                    minHeight: "42px",
+                    "&:hover": {
+                      borderColor: "#CBD5E1",
+                    },
+                    "&:focus-within": {
+                      borderColor: "#4F46E5",
+                      boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+                    },
+                  }),
+                  input: (base) => ({
+                    ...base,
+                    color: "#1E293B",
+                  }),
+                  option: (base, state) => ({
+                    ...base,
+                    backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
+                    color: state.isSelected ? "#FFFFFF" : "#1E293B",
+                    "&:hover": {
+                      backgroundColor: "#EEF2FF",
+                      color: "#1E293B",
+                    },
+                  }),
+                  menu: (base) => ({
+                    ...base,
+                    zIndex: 9999,
+                  }),
+                }}
+              />
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Status
+              </label>
+              <select
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
           </div>
 
-          {/* Name */}
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Program Name
-            </label>
-            <input
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="e.g. Information Technology"
-              required
-              className="w-full px-3 py-1 rounded-md border border-slate-300"
-            />
-          </div>
-
-          {/* Description */}
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium mb-1">
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Program description..."
-              rows={3}
-              className="w-full px-3 py-1 border rounded-md border-slate-300"
-            />
-          </div>
-
-          {/* Degree Type */}
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Degree Type
-            </label>
-            <select
-              name="degree_type"
-              value={formData.degree_type}
-              onChange={handleChange}
-              className="w-full px-3 py-1 rounded-md border border-slate-300"
-            >
-              <option value="Bachelor">Bachelor</option>
-              <option value="Associate">Associate</option>
-              <option value="Certificate">Certificate</option>
-              <option value="Diploma">Diploma</option>
-            </select>
-          </div>
-
-          {/* Duration */}
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Duration (Years)
-            </label>
-            <input
-              name="duration_years"
-              type="number"
-              min={1}
-              max={10}
-              value={formData.duration_years}
-              onChange={handleChange}
-              className="w-full px-3 py-1 rounded-md border border-slate-300"
-            />
-          </div>
-
-          {/* Department */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Department</label>
-            <Select
-              value={
-                formData.department_id
-                  ? departments
-                      .map((d) => ({
-                        value: d.department_id || d.id,
-                        label: d.name,
-                      }))
-                      .find((o) => o.value === formData.department_id)
-                  : null
-              }
-              onChange={(selected) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  department_id: selected ? selected.value : null,
-                }))
-              }
-              options={departments.map((d) => ({
-                value: d.department_id || d.id,
-                label: d.name,
-              }))}
-              placeholder="Select department..."
-              isClearable
-              styles={{
-                control: (base, state) => ({
-                  ...base,
-                  borderColor: "#CBD5E1",
-                  boxShadow: state.isFocused ? "0 0 0 1px #CBD5E1" : "none",
-                  "&:hover": { borderColor: "#CBD5E1" },
-                  minHeight: "20px",
-                  padding: "0px",
-                }),
-                valueContainer: (base) => ({
-                  ...base,
-                  padding: "0 4px",
-                }),
-                menu: (base) => ({
-                  ...base,
-                  zIndex: 9999,
-                }),
-                option: (base, state) => ({
-                  ...base,
-                  backgroundColor: state.isFocused
-                    ? "#2563EB"
-                    : base.backgroundColor,
-                  color: state.isFocused ? "white" : "black",
-                }),
-              }}
-            />
-          </div>
-
-          {/* Status */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Status</label>
-            <select
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              className="w-full px-3 py-1 rounded-md border border-slate-300"
-            >
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </div>
-
-          {/* Buttons */}
-          <div className="md:col-span-2 flex justify-end gap-2 mt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-slate-200 rounded-lg hover:bg-slate-300 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-            >
-              {mode === "add" ? "Add" : "Save"}
-            </button>
+          {/* Sticky Footer */}
+          <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-lg">
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+              >
+                {mode === "add" ? "Add Program" : "Update Program"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -397,7 +430,7 @@ function ProgramsOffering() {
   const fetchPrograms = async () => {
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/programs`
+        `${import.meta.env.VITE_API_BASE_URL}/api/programs`,
       );
       setPrograms(res.data);
     } catch (err) {
@@ -408,7 +441,7 @@ function ProgramsOffering() {
   const fetchDepartments = async () => {
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`
+        `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`,
       );
       setDepartments(res.data);
     } catch (err) {
@@ -428,15 +461,15 @@ function ProgramsOffering() {
         (p) =>
           (p.code || "").toLowerCase().includes(search.toLowerCase()) ||
           (p.name || "").toLowerCase().includes(search.toLowerCase()) ||
-          (p.degree_type || "").toLowerCase().includes(search.toLowerCase())
+          (p.degree_type || "").toLowerCase().includes(search.toLowerCase()),
       ),
-    [programs, search]
+    [programs, search],
   );
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const displayed = filtered.slice(
     (page - 1) * rowsPerPage,
-    page * rowsPerPage
+    page * rowsPerPage,
   );
 
   // Export
@@ -457,7 +490,7 @@ function ProgramsOffering() {
       .join("\n");
     saveAs(
       new Blob([csv], { type: "text/csv;charset=utf-8;" }),
-      "programs.csv"
+      "programs.csv",
     );
   };
 
@@ -489,13 +522,13 @@ function ProgramsOffering() {
       if (modalMode === "add") {
         res = await axios.post(
           `${import.meta.env.VITE_API_BASE_URL}/api/programs`,
-          data
+          data,
         );
         setPrograms((prev) => [...prev, res.data]);
       } else {
         res = await axios.put(
           `${import.meta.env.VITE_API_BASE_URL}/api/programs/${data.id}`,
-          data
+          data,
         );
         setPrograms((prev) =>
           prev.map((p) =>
@@ -504,8 +537,8 @@ function ProgramsOffering() {
                   ...p,
                   ...data,
                 }
-              : p
-          )
+              : p,
+          ),
         );
       }
       setModalOpen(false);
@@ -519,7 +552,7 @@ function ProgramsOffering() {
     if (!confirm("Are you sure you want to delete this program?")) return;
     try {
       await axios.delete(
-        `${import.meta.env.VITE_API_BASE_URL}/api/programs/${id}`
+        `${import.meta.env.VITE_API_BASE_URL}/api/programs/${id}`,
       );
       setPrograms((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {

@@ -93,19 +93,35 @@ const StudentFinance = () => {
         (s) => s.status === "Approved" || s.status === "Active",
       );
 
-      // Calculate balance from invoices
-      const totalBilled = invoices.reduce(
+      // Calculate balance from invoices OR fall back to fee setup
+      let totalBilled = invoices.reduce(
         (sum, inv) => sum + (parseFloat(inv.total_amount) || 0),
         0,
       );
-      const totalPaid = invoices.reduce(
+      let totalPaid = invoices.reduce(
         (sum, inv) => sum + (parseFloat(inv.amount_paid) || 0),
         0,
       );
-      const currentBalance = invoices.reduce(
+      let currentBalance = invoices.reduce(
         (sum, inv) => sum + (parseFloat(inv.balance) || 0),
         0,
       );
+
+      // If no invoices yet but fee setup exists, use the setup totals as expected fees
+      if (invoices.length === 0 && scheduleData?.has_setup) {
+        const s = scheduleData;
+        totalBilled =
+          parseFloat(s.tuition_fee || 0) +
+          parseFloat(s.laboratory_fee || 0) +
+          parseFloat(s.library_fee || 0) +
+          parseFloat(s.athletic_fee || 0) +
+          parseFloat(s.registration_fee || 0) +
+          parseFloat(s.id_fee || 0) +
+          parseFloat(s.miscellaneous_fee || 0) +
+          parseFloat(s.other_fees || 0);
+        totalPaid = 0;
+        currentBalance = totalBilled;
+      }
 
       let scholarshipDeduction = 0;
       if (activeGrant) {
@@ -132,21 +148,61 @@ const StudentFinance = () => {
   const fetchPaymentSchedule = async () => {
     try {
       const studentId = localStorage.getItem("userId");
-      const response = await api.get(`/api/invoices`, {
-        params: { student_id: studentId },
-      });
-      const invoices = response.data.data || [];
-      setPaymentSchedule(
-        invoices.map((inv) => ({
-          schedule_id: inv.invoice_id,
-          due_date: inv.due_date,
-          description: inv.notes || "Tuition Fee",
-          amount: inv.total_amount,
-          paid_amount: inv.amount_paid,
-          balance: inv.balance,
-          status: inv.status,
-        })),
-      );
+      const [invoiceRes, setupRes] = await Promise.allSettled([
+        api.get(`/api/invoices`, { params: { student_id: studentId } }),
+        api.get(`/api/tuition-fees/student-schedule`),
+      ]);
+
+      const invoices =
+        invoiceRes.status === "fulfilled"
+          ? invoiceRes.value.data?.data || []
+          : [];
+      const scheduleData =
+        setupRes.status === "fulfilled" ? setupRes.value.data?.data || {} : {};
+
+      if (invoices.length > 0) {
+        setPaymentSchedule(
+          invoices.map((inv) => ({
+            schedule_id: inv.invoice_id,
+            due_date: inv.due_date,
+            description: inv.notes || `Invoice #${inv.invoice_number}`,
+            amount: inv.total_amount,
+            paid_amount: inv.amount_paid,
+            balance: inv.balance,
+            status: inv.status,
+          })),
+        );
+        return;
+      }
+
+      // No invoices yet — show expected fees from the tuition setup
+      if (scheduleData?.has_setup) {
+        const s = scheduleData;
+        const feeItems = [
+          { label: "Tuition Fee", amount: s.tuition_fee },
+          { label: "Laboratory Fee", amount: s.laboratory_fee },
+          { label: "Library Fee", amount: s.library_fee },
+          { label: "Athletic Fee", amount: s.athletic_fee },
+          { label: "Registration Fee", amount: s.registration_fee },
+          { label: "ID Fee", amount: s.id_fee },
+          { label: "Miscellaneous Fee", amount: s.miscellaneous_fee },
+          { label: "Other Fees", amount: s.other_fees },
+        ].filter((f) => parseFloat(f.amount) > 0);
+
+        setPaymentSchedule(
+          feeItems.map((f, idx) => ({
+            schedule_id: `setup-${idx}`,
+            due_date: new Date().toISOString(),
+            description: `${f.label} — ${s.school_year} ${s.semester} (Expected)`,
+            amount: f.amount,
+            paid_amount: 0,
+            balance: f.amount,
+            status: "Pending",
+          })),
+        );
+      } else {
+        setPaymentSchedule([]);
+      }
     } catch (error) {
       console.error("Error fetching payment schedule:", error);
     }

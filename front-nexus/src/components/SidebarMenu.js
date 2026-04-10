@@ -26,6 +26,7 @@ import {
 const Menu = {
   Admin: [
     { title: "Dashboard", path: "/admin/dashboard", icons: LayoutDashboard },
+    { title: "My Payslips", path: "/admin/my_payslips", icons: DollarSign },
     {
       title: "Department & Course Mngt",
       icons: Users,
@@ -206,11 +207,11 @@ const Menu = {
           icons: FileText,
           link: "/admin/admin_grade_computation",
         },
-        {
+        /*  {
           label: "Exam Schedule Builder",
           icons: CalendarCheck,
           link: "/admin/admin_exam_schedule_builder",
-        },
+        }, */
       ],
     },
     /* 
@@ -291,7 +292,7 @@ const Menu = {
       icons: Users,
       path: "/admin/admin_manage_users",
     },
-    {
+    /*  {
       title: "System Settings",
       icons: Settings,
       submenu: [
@@ -304,11 +305,27 @@ const Menu = {
           label: "Email & SMS gateway",
           icons: Mail,
           link: "/admin/admin_email_sms_gateway",
-        }, */
+        }, 
         {
           label: "System logs",
           icons: FileText,
           link: "/admin/admin_system_logs",
+        },
+      ],
+    }, */
+    {
+      title: "HR & Personal",
+      icons: Lock,
+      submenu: [
+        {
+          label: "My Leave Requests",
+          icons: CalendarCheck,
+          link: "/admin/admin_leave",
+        },
+        {
+          label: "Staff Leave Management",
+          icons: Users,
+          link: "/admin/admin_staff_leave",
         },
       ],
     },
@@ -324,6 +341,11 @@ const Menu = {
       title: "Profile",
       icons: Users,
       path: "/faculty/faculty_profile",
+    },
+    {
+      title: "My Payslips",
+      icons: DollarSign,
+      path: "/faculty/my_payslips",
     },
     {
       title: "My Courses",
@@ -417,6 +439,17 @@ const Menu = {
           label: "Email Student",
           icons: Mail,
           link: "/faculty/faculty_email_student",
+        },
+      ],
+    },
+    {
+      title: "HR & Personal",
+      icons: Lock,
+      submenu: [
+        {
+          label: "Leave Requests",
+          icons: CalendarCheck,
+          link: "/faculty/faculty_leave",
         },
       ],
     },
@@ -527,6 +560,11 @@ const Menu = {
       path: "/hr/hr_profile",
     },
     {
+      title: "My Payslips",
+      icons: DollarSign,
+      path: "/hr/my_payslips",
+    },
+    {
       title: "HR & Payroll",
       icons: Lock,
       submenu: [
@@ -565,6 +603,22 @@ const Menu = {
       icons: LayoutDashboard,
 
       path: "/accounting/accounting_dashboard",
+    },
+    {
+      title: "My Payslips",
+      icons: DollarSign,
+      path: "/accounting/my_payslips",
+    },
+    {
+      title: "HR & Personal",
+      icons: Lock,
+      submenu: [
+        {
+          label: "Leave Requests",
+          icons: CalendarCheck,
+          link: "/accounting/accounting_leave",
+        },
+      ],
     },
     {
       title: "Financial & Accounting",
@@ -635,6 +689,22 @@ const Menu = {
       title: "Dashboard",
       icons: LayoutDashboard,
       path: "/staff/staff_dashboard",
+    },
+    {
+      title: "My Payslips",
+      icons: DollarSign,
+      path: "/staff/my_payslips",
+    },
+    {
+      title: "HR & Personal",
+      icons: Lock,
+      submenu: [
+        {
+          label: "Leave Requests",
+          icons: CalendarCheck,
+          link: "/staff/staff_leave",
+        },
+      ],
     },
     {
       title: "Library Management",

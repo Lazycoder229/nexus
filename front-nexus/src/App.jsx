@@ -55,6 +55,8 @@ import DeductionManagement from "./components/pages/hr/DeductionManagement";
 import PayrollReports from "./components/pages/hr/PayrollReports";
 import HRDashboard from "./components/pages/hr/HRDashboard";
 import HRProfile from "./components/pages/hr/HRProfile";
+import MyPayslips from "./components/pages/employee/MyPayslips";
+import EmployeeLeavePortal from "./components/pages/employee/EmployeeLeavePortal";
 import PaymentGateway from "./components/pages/accounting/PaymentGateway";
 import BookCatalog from "./components/pages/staff/BookCatalog";
 import BorrowReturn from "./components/pages/staff/BorrowReturn";
@@ -269,6 +271,7 @@ function AppWrapper() {
         />
         <Route path="admin_payment_gateway" element={<PaymentGateway />} />
         <Route path="admin_employee_records" element={<EmployeeRecords />} />
+        <Route path="admin_leave" element={<EmployeeLeavePortal />} />
         <Route path="admin_staff_leave" element={<StaffLeave />} />
         <Route path="admin_payslip_generator" element={<PayslipGenerator />} />
         <Route
@@ -276,6 +279,7 @@ function AppWrapper() {
           element={<DeductionManagement />}
         />
         <Route path="admin_payroll_reports" element={<PayrollReports />} />
+        <Route path="my_payslips" element={<MyPayslips />} />
       </Route>
 
       {/* Student Routes */}
@@ -340,7 +344,10 @@ function AppWrapper() {
           path="faculty_assigned_subjects"
           element={<AssignedSubjects />}
         />
-        <Route path="faculty_syllabus_upload" element={<SyllabusRepository />} />
+        <Route
+          path="faculty_syllabus_upload"
+          element={<SyllabusRepository />}
+        />
         <Route path="faculty_student_list" element={<StudentList />} />
 
         {/* Attendance */}
@@ -377,6 +384,8 @@ function AppWrapper() {
           path="faculty_report_performance"
           element={<ClassPerformance />}
         />
+        <Route path="faculty_leave" element={<EmployeeLeavePortal />} />
+        <Route path="my_payslips" element={<MyPayslips />} />
       </Route>
 
       {/* Staff Routes */}
@@ -390,6 +399,8 @@ function AppWrapper() {
         <Route path="staff_borrow_return" element={<BorrowReturn />} />
         <Route path="staff_lost_damage_logs" element={<LostDamageLogs />} />
         <Route path="staff_digital_library" element={<DigitalLibrary />} />
+        <Route path="staff_leave" element={<EmployeeLeavePortal />} />
+        <Route path="my_payslips" element={<MyPayslips />} />
         {/* Add more staff routes here as needed */}
       </Route>
 
@@ -441,6 +452,8 @@ function AppWrapper() {
           path="accounting_scholarship_fund"
           element={<ScholarshipFundAllocation />}
         />
+        <Route path="accounting_leave" element={<EmployeeLeavePortal />} />
+        <Route path="my_payslips" element={<MyPayslips />} />
       </Route>
 
       {/* HR Routes */}
@@ -459,6 +472,7 @@ function AppWrapper() {
         />
         <Route path="hr_payroll_reports" element={<PayrollReports />} />
         <Route path="hr_profile" element={<HRProfile />} />
+        <Route path="my_payslips" element={<MyPayslips />} />
       </Route>
     </Routes>
   );

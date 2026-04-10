@@ -16,6 +16,9 @@ router.get("/", invoiceController.getAllInvoices);
 // Get financial summary
 router.get("/summary", invoiceController.getFinancialSummary);
 
+// Get invoices for the currently logged-in student (must be before /:id)
+router.get("/my-invoices", invoiceController.getMyInvoices);
+
 // Get invoice by ID
 router.get("/:id", invoiceController.getInvoiceById);
 

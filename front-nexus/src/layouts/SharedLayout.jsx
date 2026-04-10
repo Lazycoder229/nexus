@@ -13,12 +13,12 @@ const SharedLayout = ({ role, handleLogout }) => {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       {/* -------------------- SIDEBAR -------------------- */}
       <Sidebar isOpen={isSidebarOpen} role={role} />
 
       {/* -------------------- MAIN AREA (Header + Content) -------------------- */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header aligned next to sidebar */}
         <Header
           toggleSidebar={toggleSidebar}
@@ -29,7 +29,7 @@ const SharedLayout = ({ role, handleLogout }) => {
         />
 
         {/* Main content, below header */}
-        <main className=" p-4">
+        <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>

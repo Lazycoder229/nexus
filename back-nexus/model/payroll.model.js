@@ -131,9 +131,10 @@ const Payroll = {
 
   // Delete payslip
   deletePayslip: async (id) => {
-    const [result] = await db.query("DELETE FROM payslips WHERE payslip_id = ?", [
-      id,
-    ]);
+    const [result] = await db.query(
+      "DELETE FROM payslips WHERE payslip_id = ?",
+      [id],
+    );
     return result;
   },
 
@@ -168,19 +169,20 @@ const Payroll = {
   createPayslip: async (payslipData) => {
     const query = `
       INSERT INTO payslips (
-        payroll_setup_id, employee_id, payslip_number,
+        payroll_setup_id, employee_id, user_id, payslip_number,
         basic_salary, allowances, overtime_pay,
         bonus, other_earnings,
         sss_deduction, philhealth_deduction, pagibig_deduction,
         withholding_tax, loan_deduction, other_deductions,
         days_worked, overtime_hours, late_hours,
         absences, remarks
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const [result] = await db.query(query, [
       payslipData.payroll_setup_id,
-      payslipData.employee_id,
+      payslipData.employee_id || null,
+      payslipData.user_id || null,
       payslipData.payslip_number,
       payslipData.basic_salary || 0,
       payslipData.allowances || 0,
@@ -197,7 +199,7 @@ const Payroll = {
       payslipData.overtime_hours || 0,
       payslipData.late_hours || 0,
       payslipData.absences || 0,
-      payslipData.remarks
+      payslipData.remarks,
     ]);
     return result;
   },
@@ -206,17 +208,86 @@ const Payroll = {
   getPayslipsBySetup: async (setupId) => {
     const query = `
       SELECT p.*, 
-             u.first_name, u.last_name, 
+             COALESCE(u.first_name, u2.first_name) as first_name,
+             COALESCE(u.last_name, u2.last_name) as last_name,
              er.employee_number, er.department, er.position,
              er.bank_name, er.bank_account_number,
              er.tin_number, er.sss_number, er.philhealth_number, er.pagibig_number
       FROM payslips p
       LEFT JOIN employee_records er ON p.employee_id = er.employee_id
       LEFT JOIN users u ON er.user_id = u.user_id
+      LEFT JOIN users u2 ON p.user_id = u2.user_id
       WHERE p.payroll_setup_id = ?
-      ORDER BY u.last_name, u.first_name
+      ORDER BY COALESCE(u.last_name, u2.last_name), COALESCE(u.first_name, u2.first_name)
     `;
     const [rows] = await db.query(query, [setupId]);
+    return rows;
+  },
+
+  // Get eligible users for payslips (non-students with employee records)
+  getEligibleUsersForPayslips: async () => {
+    const query = `
+      SELECT er.employee_id, er.user_id, er.basic_salary, er.allowances,
+             u.first_name, u.last_name, u.role
+      FROM employee_records er
+      INNER JOIN users u ON er.user_id = u.user_id
+      WHERE u.role IN ('Admin', 'Faculty', 'HR', 'Accounting', 'Staff', 'Employee')
+      AND u.status = 'Active'
+      AND er.employment_status = 'Active'
+      ORDER BY u.last_name, u.first_name
+    `;
+    const [rows] = await db.query(query);
+    return rows;
+  },
+
+  // Get all non-student users (including those without employee records)
+  getAllNonStudentUsers: async () => {
+    const query = `
+      SELECT u.user_id, u.first_name, u.last_name, u.role,
+             er.employee_id, er.basic_salary, er.allowances
+      FROM users u
+      LEFT JOIN employee_records er ON u.user_id = er.user_id
+      WHERE u.role IN ('Admin', 'Faculty', 'HR', 'Accounting', 'Staff', 'Employee')
+      AND u.status = 'Active'
+      ORDER BY u.last_name, u.first_name
+    `;
+    const [rows] = await db.query(query);
+    return rows;
+  },
+
+  // Check if payslip already exists for employee in setup
+  checkPayslipExists: async (setupId, employeeId) => {
+    const query = `
+      SELECT payslip_id FROM payslips
+      WHERE payroll_setup_id = ? AND employee_id = ?
+      LIMIT 1
+    `;
+    const [rows] = await db.query(query, [setupId, employeeId]);
+    return rows;
+  },
+
+  // Get payslips for a specific user (by user_id)
+  getPayslipsByUserId: async (userId) => {
+    const query = `
+      SELECT p.*,
+             er.employee_number, er.department, er.position,
+             er.bank_name, er.bank_account_number,
+             u.first_name, u.last_name,
+             ps.payroll_period_start as start_date,
+             ps.payroll_period_end as end_date,
+             ps.pay_date
+      FROM payslips p
+      LEFT JOIN employee_records er ON p.employee_id = er.employee_id
+      LEFT JOIN users u ON COALESCE(er.user_id, p.user_id) = u.user_id
+      LEFT JOIN payroll_setup ps ON p.payroll_setup_id = ps.payroll_setup_id
+      WHERE (er.user_id = ? OR p.user_id = ?)
+      ORDER BY ps.payroll_period_start DESC, p.created_at DESC
+    `;
+    console.log("🔍 Executing query for user_id:", userId);
+    console.log("📝 Query:", query);
+    const [rows] = await db.query(query, [userId, userId]);
+    console.log("✅ Query returned", rows.length, "rows");
+    console.log("📋 Rows:", rows);
     return rows;
   },
 };

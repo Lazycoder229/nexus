@@ -23,6 +23,37 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+// Map day abbreviations to full day names
+const parseDayAbbreviations = (dayString) => {
+  if (!dayString) return [];
+
+  const dayMap = {
+    M: "Monday",
+    T: "Tuesday",
+    W: "Wednesday",
+    TH: "Thursday",
+    F: "Friday",
+    S: "Saturday",
+  };
+
+  const days = [];
+  let i = 0;
+  while (i < dayString.length) {
+    if (dayString.substring(i, i + 2) === "TH") {
+      days.push(dayMap["TH"]);
+      i += 2;
+    } else {
+      const char = dayString[i];
+      if (dayMap[char]) {
+        days.push(dayMap[char]);
+      }
+      i += 1;
+    }
+  }
+
+  return days;
+};
+
 const StudentCourses = () => {
   const [activeTab, setActiveTab] = useState("enlistment");
 
@@ -113,21 +144,74 @@ const StudentCourses = () => {
 
   const fetchTimetable = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/faculty-schedules`);
-      const schedules = response.data || [];
-      setTimetable(
-        schedules.map((s) => ({
-          day: s.day || "Monday",
-          subject_name: s.course_name || s.subject_name,
-          subject_code: s.course_code || s.subject_code,
-          start_time: s.start_time,
-          end_time: s.end_time,
-          room: s.room || s.location || "TBA",
-          instructor: s.instructor_name,
-        })),
+      const studentId = localStorage.getItem("userId");
+      if (!studentId) return;
+
+      console.log("📅 Fetching timetable for student:", studentId);
+
+      // Fetch student enrollments with schedule data
+      const response = await axios.get(
+        `${API_BASE}/api/enrollments/student/${studentId}`,
       );
+
+      const enrollments = response.data || [];
+      console.log("✅ Fetched enrollments:", enrollments);
+
+      const scheduleData = [];
+
+      enrollments.forEach((enrollment) => {
+        // Use combined schedule fields (from sections or faculty assignments)
+        const scheduleDay =
+          enrollment.final_schedule_day || enrollment.schedule_day;
+        const scheduleStart =
+          enrollment.final_schedule_time_start ||
+          enrollment.schedule_time_start;
+        const scheduleEnd =
+          enrollment.final_schedule_time_end || enrollment.schedule_time_end;
+
+        console.log(
+          `📚 ${enrollment.course_code}: Day=${scheduleDay}, Time=${scheduleStart}-${scheduleEnd}`,
+        );
+
+        if (scheduleDay && scheduleStart && scheduleEnd) {
+          // Parse day abbreviations and create entries for each day
+          const days = parseDayAbbreviations(scheduleDay);
+          days.forEach((day) => {
+            scheduleData.push({
+              day: day,
+              subject_name: enrollment.course_title,
+              subject_code: enrollment.course_code,
+              start_time: scheduleStart,
+              end_time: scheduleEnd,
+              room: enrollment.room || "TBA",
+              instructor: enrollment.instructor_name || "TBA",
+            });
+          });
+        } else {
+          console.log(
+            `⚠️ No schedule for ${enrollment.course_code}, using Monday fallback`,
+          );
+          // Fallback: add to Monday with TBA time
+          scheduleData.push({
+            day: "Monday",
+            subject_name: enrollment.course_title,
+            subject_code: enrollment.course_code,
+            start_time: "TBA",
+            end_time: "TBA",
+            room: enrollment.room || "TBA",
+            instructor: enrollment.instructor_name || "TBA",
+          });
+        }
+      });
+
+      console.log(
+        `✅ Total schedule entries: ${scheduleData.length}`,
+        scheduleData,
+      );
+      setTimetable(scheduleData);
     } catch (error) {
-      console.error("Error fetching timetable:", error);
+      console.error("❌ Error fetching timetable:", error);
+      setTimetable([]);
     }
   };
 
@@ -449,28 +533,18 @@ const StudentCourses = () => {
             </div>
           </div>
         ) : (
-          // Timetable Tab
+          // Timetable Tab with Day Selection
           <div className="space-y-4">
-            {/* Day Filter */}
+            {/* Day Filter Buttons */}
             <div className="flex gap-2 overflow-x-auto pb-2">
-              <button
-                onClick={() => setSelectedDay("all")}
-                className={`px-4 py-2 rounded-md font-medium text-sm whitespace-nowrap ${
-                  selectedDay === "all"
-                    ? "bg-indigo-600 text-white"
-                    : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                }`}
-              >
-                All Days
-              </button>
               {days.map((day) => (
                 <button
                   key={day}
                   onClick={() => setSelectedDay(day)}
-                  className={`px-4 py-2 rounded-md font-medium text-sm whitespace-nowrap ${
+                  className={`px-4 py-2 rounded-md font-medium text-sm whitespace-nowrap transition-colors ${
                     selectedDay === day
                       ? "bg-indigo-600 text-white"
-                      : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                      : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
                   }`}
                 >
                   {day}
@@ -478,68 +552,89 @@ const StudentCourses = () => {
               ))}
             </div>
 
-            {/* Timetable Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {days.map((day) => {
-                const classes = groupedByDay[day];
-                if (selectedDay !== "all" && selectedDay !== day) return null;
+            {/* Selected Day Table View */}
+            <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-3">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Calendar size={18} />
+                  {selectedDay}
+                </h3>
+              </div>
 
-                return (
-                  <div
-                    key={day}
-                    className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4"
-                  >
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                      <Calendar size={18} className="text-indigo-600" />
-                      {day}
-                    </h3>
-                    <div className="space-y-2">
-                      {classes.length === 0 ? (
-                        <p className="text-center text-slate-500 dark:text-slate-400 py-4 text-sm">
-                          No classes scheduled
-                        </p>
-                      ) : (
-                        classes.map((item, index) => (
-                          <div
-                            key={index}
-                            className="p-3 rounded-md border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="w-12 h-12 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-md flex items-center justify-center text-white font-bold text-xs">
+              {groupedByDay[selectedDay]?.length === 0 ? (
+                <div className="p-6 text-center">
+                  <p className="text-slate-500 dark:text-slate-400">
+                    No classes scheduled
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                          Time
+                        </th>
+                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                          Subject
+                        </th>
+                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                          Code
+                        </th>
+                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                          Room
+                        </th>
+                        <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                          Instructor
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                      {groupedByDay[selectedDay]?.map((item, index) => (
+                        <tr
+                          key={index}
+                          className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+                        >
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
                                 {item.start_time?.substring(0, 5)}
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-slate-900 dark:text-white truncate">
-                                  {item.subject_name}
-                                </h4>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                                  {item.subject_code}
-                                </p>
-                                <div className="flex items-center gap-3 mt-1 text-xs text-slate-600 dark:text-slate-400">
-                                  <span className="flex items-center gap-1">
-                                    <Clock size={12} />
-                                    {item.start_time} - {item.end_time}
-                                  </span>
-                                  <span className="flex items-center gap-1">
-                                    <MapPin size={12} />
-                                    {item.room}
-                                  </span>
-                                </div>
-                                {item.instructor && (
-                                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 flex items-center gap-1">
-                                    <GraduationCap size={11} />
-                                    {item.instructor}
-                                  </p>
-                                )}
-                              </div>
+                              <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">
+                                {item.start_time} - {item.end_time}
+                              </span>
                             </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                              {item.subject_name}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-sm text-slate-600 dark:text-slate-400 font-mono">
+                              {item.subject_code}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                              <MapPin
+                                size={14}
+                                className="text-indigo-600 flex-shrink-0"
+                              />
+                              {item.room}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                              {item.instructor}
+                            </p>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}

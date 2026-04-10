@@ -7,7 +7,6 @@ import {
   File,
   FileArchive,
   Eye,
-  X,
   ChevronLeft,
   ChevronRight,
   Calendar,
@@ -132,126 +131,154 @@ const AcademicPeriodModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+    <div
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
       <div
-        className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6"
+        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            <Calendar size={24} />
-            {mode === "add" ? "Add Academic Period" : "Edit Academic Period"}
-          </h3>
+        {/* Sticky Header */}
+        <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 rounded-t-lg">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-800">
+              {mode === "add" ? "Add Academic Period" : "Edit Academic Period"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <Plus size={24} className="rotate-45" />
+            </button>
+          </div>
         </div>
 
+        {/* Form Wrapper */}
         <form
           onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          className="flex flex-col flex-1 overflow-hidden"
         >
-          {/* School Year */}
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              School Year *
-            </label>
-            <input
-              name="school_year"
-              value={formData.school_year}
-              onChange={handleChange}
-              placeholder="e.g. 2024-2025"
-              required
-              className="w-full px-3 py-1 rounded-md border border-slate-300"
-            />
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* School Year */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  School Year *
+                </label>
+                <input
+                  name="school_year"
+                  value={formData.school_year}
+                  onChange={handleChange}
+                  placeholder="e.g. 2024-2025"
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Semester */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Semester *
+                </label>
+                <select
+                  name="semester"
+                  value={formData.semester}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="1st Semester">1st Semester</option>
+                  <option value="2nd Semester">2nd Semester</option>
+                  <option value="Summer">Summer</option>
+                </select>
+              </div>
+
+              {/* Start Date */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Start Date *
+                </label>
+                <input
+                  name="start_date"
+                  type="date"
+                  value={formData.start_date}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* End Date */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  End Date *
+                </label>
+                <input
+                  name="end_date"
+                  type="date"
+                  value={formData.end_date}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Status
+                </label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="Upcoming">Upcoming</option>
+                  <option value="Active">Active</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+
+              {/* Is Active Checkbox */}
+              <div className="flex items-center pt-6">
+                <input
+                  type="checkbox"
+                  name="is_active"
+                  id="is_active"
+                  checked={formData.is_active}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <label
+                  htmlFor="is_active"
+                  className="text-sm font-medium text-slate-900 ml-2"
+                >
+                  Set as Active Period
+                </label>
+              </div>
+            </div>
           </div>
 
-          {/* Semester */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Semester *</label>
-            <select
-              name="semester"
-              value={formData.semester}
-              onChange={handleChange}
-              className="w-full px-3 py-1 rounded-md border border-slate-300"
-              required
-            >
-              <option value="1st Semester">1st Semester</option>
-              <option value="2nd Semester">2nd Semester</option>
-              <option value="Summer">Summer</option>
-            </select>
-          </div>
-
-          {/* Start Date */}
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Start Date *
-            </label>
-            <input
-              name="start_date"
-              type="date"
-              value={formData.start_date}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-1 rounded-md border border-slate-300"
-            />
-          </div>
-
-          {/* End Date */}
-          <div>
-            <label className="block text-sm font-medium mb-1">End Date *</label>
-            <input
-              name="end_date"
-              type="date"
-              value={formData.end_date}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-1 rounded-md border border-slate-300"
-            />
-          </div>
-
-          {/* Status */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Status</label>
-            <select
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              className="w-full px-3 py-1 rounded-md border border-slate-300"
-            >
-              <option value="Upcoming">Upcoming</option>
-              <option value="Active">Active</option>
-              <option value="Closed">Closed</option>
-            </select>
-          </div>
-
-          {/* Is Active Checkbox */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              name="is_active"
-              id="is_active"
-              checked={formData.is_active}
-              onChange={handleChange}
-              className="mr-2 h-4 w-4 rounded border-slate-300"
-            />
-            <label htmlFor="is_active" className="text-sm font-medium">
-              Set as Active Period
-            </label>
-          </div>
-
-          {/* Buttons */}
-          <div className="md:col-span-2 flex justify-end gap-2 mt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-slate-200 rounded-lg hover:bg-slate-300 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-            >
-              {mode === "add" ? "Add" : "Save"}
-            </button>
+          {/* Sticky Footer */}
+          <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-lg">
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+              >
+                {mode === "add" ? "Add Period" : "Update Period"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -355,7 +382,7 @@ function AcademicSem() {
   const fetchAcademicPeriods = async () => {
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/academic-periods`
+        `${import.meta.env.VITE_API_BASE_URL}/api/academic-periods`,
       );
       setPeriods(res.data);
     } catch (err) {
@@ -374,15 +401,15 @@ function AcademicSem() {
         (p) =>
           (p.school_year || "").toLowerCase().includes(search.toLowerCase()) ||
           (p.semester || "").toLowerCase().includes(search.toLowerCase()) ||
-          (p.status || "").toLowerCase().includes(search.toLowerCase())
+          (p.status || "").toLowerCase().includes(search.toLowerCase()),
       ),
-    [periods, search]
+    [periods, search],
   );
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const displayed = filtered.slice(
     (page - 1) * rowsPerPage,
-    page * rowsPerPage
+    page * rowsPerPage,
   );
 
   // Export
@@ -411,7 +438,7 @@ function AcademicSem() {
       .join("\n");
     saveAs(
       new Blob([csv], { type: "text/csv;charset=utf-8;" }),
-      "academic_periods.csv"
+      "academic_periods.csv",
     );
   };
 
@@ -439,7 +466,7 @@ function AcademicSem() {
       if (modalMode === "add") {
         res = await axios.post(
           `${import.meta.env.VITE_API_BASE_URL}/api/academic-periods`,
-          data
+          data,
         );
         setPeriods((prev) => [...prev, res.data]);
       } else {
@@ -447,7 +474,7 @@ function AcademicSem() {
           `${import.meta.env.VITE_API_BASE_URL}/api/academic-periods/${
             data.id
           }`,
-          data
+          data,
         );
         setPeriods((prev) =>
           prev.map((p) =>
@@ -456,8 +483,8 @@ function AcademicSem() {
                   ...p,
                   ...data,
                 }
-              : p
-          )
+              : p,
+          ),
         );
       }
       fetchAcademicPeriods(); // Refresh to get updated active status
@@ -473,7 +500,7 @@ function AcademicSem() {
       return;
     try {
       await axios.delete(
-        `${import.meta.env.VITE_API_BASE_URL}/api/academic-periods/${id}`
+        `${import.meta.env.VITE_API_BASE_URL}/api/academic-periods/${id}`,
       );
       setPeriods((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
@@ -488,7 +515,7 @@ function AcademicSem() {
       await axios.post(
         `${
           import.meta.env.VITE_API_BASE_URL
-        }/api/academic-periods/${id}/activate`
+        }/api/academic-periods/${id}/activate`,
       );
       fetchAcademicPeriods(); // Refresh to update all active statuses
       alert("Academic period activated successfully");

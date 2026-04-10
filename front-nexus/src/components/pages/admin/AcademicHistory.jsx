@@ -7,7 +7,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  X,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -124,246 +123,335 @@ const HistoryModal = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 m-4"
+        className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold">
-            {mode === "add" ? "New Academic Record" : "Edit Academic Record"}
-          </h3>
-          <button onClick={onClose}>
-            <X size={20} />
-          </button>
+        {/* Sticky Header */}
+        <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 rounded-t-lg">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-800">
+              {mode === "add" ? "New Academic Record" : "Edit Academic Record"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <Plus size={24} className="rotate-45" />
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Student *
-              </label>
-              <Select
-                value={
-                  students.find((s) => s.value === formData.student_id) || null
-                }
-                onChange={(selected) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    student_id: selected?.value || null,
-                  }))
-                }
-                options={students}
-                placeholder="Select student..."
-                isDisabled={mode === "edit"}
-                required
-                menuPortalTarget={document.body} // Add this
-                menuPosition="fixed" // Add this
-                styles={{
-                  // Add this
-                  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-                }}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Academic Period *
-              </label>
-
-              <Select
-                value={
-                  periods.find((p) => p.value === formData.period_id) || null
-                }
-                onChange={(selected) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    period_id: selected?.value || null,
-                  }));
-                  if (mode === "add" && setLastSelectedPeriod) {
-                    setLastSelectedPeriod(selected?.value || null);
+        {/* Form Wrapper */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col flex-1 overflow-hidden"
+        >
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            {/* Student and Academic Period */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Student *
+                </label>
+                <Select
+                  value={
+                    students.find((s) => s.value === formData.student_id) ||
+                    null
                   }
-                }}
-                options={periods}
-                placeholder="Select period..."
-                isDisabled={mode === "edit"}
-                required
-                menuPortalTarget={document.body}
-                menuPosition="fixed"
-                styles={{
-                  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-                }}
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      student_id: selected?.value || null,
+                    }))
+                  }
+                  options={students}
+                  placeholder="Select student..."
+                  isDisabled={mode === "edit"}
+                  required
+                  menuPortalTarget={document.body}
+                  menuPosition="fixed"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      borderColor: "#CBD5E1",
+                      backgroundColor: "#FFFFFF",
+                      fontSize: "0.875rem",
+                      boxShadow: "none",
+                      minHeight: "42px",
+                      "&:hover": {
+                        borderColor: "#CBD5E1",
+                      },
+                      "&:focus-within": {
+                        borderColor: "#4F46E5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+                      },
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "#1E293B",
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
+                      color: state.isSelected ? "#FFFFFF" : "#1E293B",
+                      "&:hover": {
+                        backgroundColor: "#EEF2FF",
+                        color: "#1E293B",
+                      },
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      zIndex: 9999,
+                    }),
+                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                  }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Academic Period *
+                </label>
+                <Select
+                  value={
+                    periods.find((p) => p.value === formData.period_id) || null
+                  }
+                  onChange={(selected) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      period_id: selected?.value || null,
+                    }));
+                    if (mode === "add" && setLastSelectedPeriod) {
+                      setLastSelectedPeriod(selected?.value || null);
+                    }
+                  }}
+                  options={periods}
+                  placeholder="Select period..."
+                  isDisabled={mode === "edit"}
+                  required
+                  menuPortalTarget={document.body}
+                  menuPosition="fixed"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      borderColor: "#CBD5E1",
+                      backgroundColor: "#FFFFFF",
+                      fontSize: "0.875rem",
+                      boxShadow: "none",
+                      minHeight: "42px",
+                      "&:hover": {
+                        borderColor: "#CBD5E1",
+                      },
+                      "&:focus-within": {
+                        borderColor: "#4F46E5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+                      },
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "#1E293B",
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
+                      color: state.isSelected ? "#FFFFFF" : "#1E293B",
+                      "&:hover": {
+                        backgroundColor: "#EEF2FF",
+                        color: "#1E293B",
+                      },
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      zIndex: 9999,
+                    }),
+                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Year Level and Academic Status */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Year Level
+                </label>
+                <select
+                  value={formData.year_level}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      year_level: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">Select...</option>
+                  <option value="1st Year">1st Year</option>
+                  <option value="2nd Year">2nd Year</option>
+                  <option value="3rd Year">3rd Year</option>
+                  <option value="4th Year">4th Year</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Academic Status
+                </label>
+                <select
+                  value={formData.academic_status}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      academic_status: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="Regular">Regular</option>
+                  <option value="Irregular">Irregular</option>
+                  <option value="Probation">Probation</option>
+                  <option value="Dean's List">Dean's List</option>
+                  <option value="Dismissed">Dismissed</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Semester GPA and Cumulative GPA */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Semester GPA
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.semester_gpa}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      semester_gpa: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Cumulative GPA
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.cumulative_gpa}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      cumulative_gpa: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            {/* Units Taken and Units Passed */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Units Taken
+                </label>
+                <input
+                  type="number"
+                  value={formData.units_taken}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      units_taken: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Units Passed
+                </label>
+                <input
+                  type="number"
+                  value={formData.units_passed}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      units_passed: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            {/* Honors */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Honors
+              </label>
+              <input
+                type="text"
+                value={formData.honors}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, honors: e.target.value }))
+                }
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="e.g. Magna Cum Laude, Dean's Lister"
+              />
+            </div>
+
+            {/* Remarks */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Remarks
+              </label>
+              <textarea
+                value={formData.remarks}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, remarks: e.target.value }))
+                }
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                rows={2}
+                placeholder="Additional notes..."
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Year Level
-              </label>
-              <select
-                value={formData.year_level}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    year_level: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border rounded-md"
+          {/* Sticky Footer */}
+          <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-lg">
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium"
               >
-                <option value="">Select...</option>
-                <option value="1st Year">1st Year</option>
-                <option value="2nd Year">2nd Year</option>
-                <option value="3rd Year">3rd Year</option>
-                <option value="4th Year">4th Year</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Academic Status
-              </label>
-              <select
-                value={formData.academic_status}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    academic_status: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border rounded-md"
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
               >
-                <option value="Regular">Regular</option>
-                <option value="Irregular">Irregular</option>
-                <option value="Probation">Probation</option>
-                <option value="Dean's List">Dean's List</option>
-                <option value="Dismissed">Dismissed</option>
-              </select>
+                {mode === "add" ? "Create Record" : "Update Record"}
+              </button>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Semester GPA
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.semester_gpa}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    semester_gpa: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border rounded-md"
-                placeholder="0.00"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Cumulative GPA
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.cumulative_gpa}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    cumulative_gpa: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border rounded-md"
-                placeholder="0.00"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Units Taken
-              </label>
-              <input
-                type="number"
-                value={formData.units_taken}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    units_taken: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border rounded-md"
-                placeholder="0"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Units Passed
-              </label>
-              <input
-                type="number"
-                value={formData.units_passed}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    units_passed: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border rounded-md"
-                placeholder="0"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Honors</label>
-            <input
-              type="text"
-              value={formData.honors}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, honors: e.target.value }))
-              }
-              className="w-full px-3 py-2 border rounded-md"
-              placeholder="e.g. Magna Cum Laude, Dean's Lister"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Remarks</label>
-            <textarea
-              value={formData.remarks}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, remarks: e.target.value }))
-              }
-              className="w-full px-3 py-2 border rounded-md"
-              rows={2}
-              placeholder="Additional notes..."
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border rounded-md hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-            >
-              {mode === "add" ? "Create" : "Update"}
-            </button>
           </div>
         </form>
       </div>

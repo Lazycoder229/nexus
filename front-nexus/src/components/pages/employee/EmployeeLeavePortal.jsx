@@ -4,17 +4,13 @@ import {
   Plus,
   Edit,
   Trash2,
-  CheckCircle,
-  XCircle,
   Calendar,
   Search,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
-const StaffLeave = () => {
+const EmployeeLeavePortal = () => {
   const [leaves, setLeaves] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [summary, setSummary] = useState({});
@@ -23,46 +19,10 @@ const StaffLeave = () => {
   const [filters, setFilters] = useState({
     leave_type: "",
     status: "",
-    search: "",
   });
-
-  // Eligible users for leave (Admin, Faculty, HR, Accounting, Staff, Employee)
-  const [eligibleUsers, setEligibleUsers] = useState([]);
-  // Fetch eligible users on mount
-  useEffect(() => {
-    const fetchEligibleUsers = async () => {
-      try {
-        const response = await api.get(`/api/users`);
-        const users = (response.data.data || response.data || []).filter((u) =>
-          [
-            "Admin",
-            "Faculty",
-            "HR",
-            "Accounting",
-            "Staff",
-            "Employee",
-          ].includes(u.role),
-        );
-        setEligibleUsers(users);
-      } catch (error) {
-        setEligibleUsers([]);
-      }
-    };
-    fetchEligibleUsers();
-  }, []);
-
-  const [formData, setFormData] = useState({
-    leave_id: null,
-    user_id: "",
-    leave_type: "Sick Leave",
-    start_date: "",
-    end_date: "",
-    reason: "",
-    status: "Pending",
-    approved_by: "",
-    approval_date: "",
-    notes: "",
-  });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [employeeId, setEmployeeId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const leaveTypes = [
     "Sick Leave",
@@ -76,29 +36,97 @@ const StaffLeave = () => {
 
   const statuses = ["Pending", "Approved", "Rejected"];
 
+  // Get current user and fetch their employee ID
   useEffect(() => {
-    fetchLeaves();
-    fetchSummary();
+    const userData = localStorage.getItem("user");
+    // Try multiple keys for userId
+    const userId =
+      localStorage.getItem("userId") ||
+      localStorage.getItem("user_id") ||
+      (userData ? JSON.parse(userData)?.user_id : null);
+
+    if (userData && userId) {
+      const user = JSON.parse(userData);
+      setCurrentUser(user);
+      console.log("📋 Fetching employee records for userId:", userId);
+      fetchEmployeeId(userId);
+    } else {
+      console.warn("⚠️ No user data found in localStorage");
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchEmployeeId = async (userId) => {
+    try {
+      const response = await api.get(`/api/employees/by-user/${userId}`);
+      console.log("✅ Employee records response:", response.data);
+      if (response.data && response.data.data && response.data.data[0]) {
+        const empId = response.data.data[0].employee_id;
+        console.log("👤 Set employeeId to:", empId);
+        setEmployeeId(empId);
+      } else {
+        console.warn("❌ No employee record found for userId:", userId);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching employee ID:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (employeeId) {
+      fetchLeaves();
+      // Calculate summary locally from leaves instead
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
+  }, [filters, employeeId]);
 
   const fetchLeaves = async () => {
     try {
-      const response = await api.get(`/api/staff-leave`, { params: filters });
+      const params = {
+        ...filters,
+        employee_id: employeeId,
+      };
+      console.log("🔄 Fetching leaves with params:", params);
+      const response = await api.get(`/api/staff-leave`, { params });
+      console.log("✅ Leaves fetched:", response.data.data?.length, "records");
       setLeaves(response.data.data || []);
     } catch (error) {
-      console.error("Error fetching leaves:", error);
+      console.error("❌ Error fetching leaves:", error);
     }
   };
 
-  const fetchSummary = async () => {
-    try {
-      const response = await api.get(`/api/staff-leave/summary`);
-      setSummary(response.data.data || {});
-    } catch (error) {
-      console.error("Error fetching summary:", error);
+  // Calculate summary locally from leaves array instead of calling API
+  useEffect(() => {
+    if (leaves && leaves.length > 0) {
+      const calculatedSummary = {
+        total_requests: leaves.length,
+        pending_requests: leaves.filter((l) => l.status === "Pending").length,
+        approved_requests: leaves.filter((l) => l.status === "Approved").length,
+        rejected_requests: leaves.filter((l) => l.status === "Rejected").length,
+      };
+      console.log("📊 Calculated summary:", calculatedSummary);
+      setSummary(calculatedSummary);
+    } else {
+      setSummary({
+        total_requests: 0,
+        pending_requests: 0,
+        approved_requests: 0,
+        rejected_requests: 0,
+      });
     }
-  };
+  }, [leaves]);
+
+  const [formData, setFormData] = useState({
+    leave_id: null,
+    leave_type: "Sick Leave",
+    start_date: "",
+    end_date: "",
+    reason: "",
+    status: "Pending",
+    notes: "",
+  });
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -108,18 +136,37 @@ const StaffLeave = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const submitData = {
+        ...formData,
+        user_id: currentUser?.user_id,
+        status: "Pending", // Always set pending for new/edited requests
+      };
+
+      console.log("📝 Submitting leave request:", submitData);
+
       if (formData.leave_id) {
-        await api.put(`/api/staff-leave/${formData.leave_id}`, formData);
+        console.log("✏️ Updating leave ID:", formData.leave_id);
+        await api.put(`/api/staff-leave/${formData.leave_id}`, submitData);
       } else {
-        await api.post(`/api/staff-leave`, formData);
+        console.log("➕ Creating new leave request");
+        await api.post(`/api/staff-leave`, submitData);
       }
+
+      console.log("✅ Leave request saved successfully");
       setShowModal(false);
       resetForm();
-      fetchLeaves();
-      fetchSummary();
+
+      // Refetch leaves to update the table and summary
+      console.log("🔄 Refetching leaves after submission");
+      await fetchLeaves();
+
+      alert("Leave request submitted successfully!");
     } catch (error) {
-      console.error("Error saving leave:", error);
-      alert("Failed to save leave request");
+      console.error("❌ Error saving leave:", error);
+      alert(
+        "Failed to save leave request: " +
+          (error.response?.data?.message || error.message),
+      );
     }
   };
 
@@ -131,41 +178,18 @@ const StaffLeave = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Delete this leave request?")) {
       try {
+        console.log("🗑️ Deleting leave ID:", id);
         await api.delete(`/api/staff-leave/${id}`);
-        fetchLeaves();
-        fetchSummary();
-      } catch (error) {
-        console.error("Error deleting leave:", error);
-      }
-    }
-  };
+        console.log("✅ Leave deleted successfully");
 
-  const handleApprove = async (id) => {
-    if (window.confirm("Approve this leave request?")) {
-      try {
-        await api.patch(`/api/staff-leave/${id}/approve`, {
-          approved_by: 1, // Replace with actual user ID
-        });
-        fetchLeaves();
-        fetchSummary();
-      } catch (error) {
-        console.error("Error approving leave:", error);
-        alert("Failed to approve leave request");
-      }
-    }
-  };
+        // Refetch leaves to update the table
+        console.log("🔄 Refetching leaves after deletion");
+        await fetchLeaves();
 
-  const handleReject = async (id) => {
-    if (window.confirm("Reject this leave request?")) {
-      try {
-        await api.patch(`/api/staff-leave/${id}/reject`, {
-          approved_by: 1, // Replace with actual user ID
-        });
-        fetchLeaves();
-        fetchSummary();
+        alert("Leave request deleted successfully!");
       } catch (error) {
-        console.error("Error rejecting leave:", error);
-        alert("Failed to reject leave request");
+        console.error("❌ Error deleting leave:", error);
+        alert("Failed to delete leave request");
       }
     }
   };
@@ -173,17 +197,22 @@ const StaffLeave = () => {
   const resetForm = () => {
     setFormData({
       leave_id: null,
-      user_id: "",
       leave_type: "Sick Leave",
       start_date: "",
       end_date: "",
       reason: "",
       status: "Pending",
-      approved_by: "",
-      approval_date: "",
       notes: "",
     });
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-lg text-slate-600">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
@@ -192,7 +221,7 @@ const StaffLeave = () => {
         <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Calendar size={24} className="text-indigo-600" />
-            Staff Leave Management
+            My Leave Requests
           </h2>
           <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
             Data Integrity: Online
@@ -208,7 +237,7 @@ const StaffLeave = () => {
                   Total Requests
                 </p>
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-                  {summary.total_requests || 0}
+                  {leaves.length}
                 </p>
               </div>
               <Calendar
@@ -223,7 +252,7 @@ const StaffLeave = () => {
                 Pending
               </p>
               <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">
-                {summary.pending_requests || 0}
+                {leaves.filter((l) => l.status === "Pending").length}
               </p>
             </div>
           </div>
@@ -233,7 +262,7 @@ const StaffLeave = () => {
                 Approved
               </p>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">
-                {summary.approved_requests || 0}
+                {leaves.filter((l) => l.status === "Approved").length}
               </p>
             </div>
           </div>
@@ -243,7 +272,7 @@ const StaffLeave = () => {
                 Rejected
               </p>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
-                {summary.rejected_requests || 0}
+                {leaves.filter((l) => l.status === "Rejected").length}
               </p>
             </div>
           </div>
@@ -255,11 +284,7 @@ const StaffLeave = () => {
           <div className="relative flex-grow max-w-xs">
             <input
               type="text"
-              placeholder="Search employee..."
-              value={filters.search}
-              onChange={(e) =>
-                setFilters({ ...filters, search: e.target.value })
-              }
+              placeholder="Search leave type..."
               className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner"
             />
             <Search
@@ -316,7 +341,6 @@ const StaffLeave = () => {
           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
             <thead className="bg-slate-100 dark:bg-slate-700/70">
               <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                <th className="px-4 py-2.5">Employee</th>
                 <th className="px-4 py-2.5">Leave Type</th>
                 <th className="px-4 py-2.5">Start Date</th>
                 <th className="px-4 py-2.5">End Date</th>
@@ -340,16 +364,6 @@ const StaffLeave = () => {
                       key={leave.leave_id}
                       className="text-sm text-slate-700 dark:text-slate-200 hover:bg-indigo-50/50 dark:hover:bg-slate-700 transition duration-150"
                     >
-                      <td className="px-4 py-2">
-                        <div>
-                          <div className="font-medium text-slate-900 dark:text-white">
-                            {leave.first_name} {leave.last_name}
-                          </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                            {leave.employee_number}
-                          </div>
-                        </div>
-                      </td>
                       <td className="px-4 py-2">{leave.leave_type}</td>
                       <td className="px-4 py-2">
                         {new Date(leave.start_date).toLocaleDateString()}
@@ -377,45 +391,31 @@ const StaffLeave = () => {
                         {leave.status === "Pending" && (
                           <>
                             <button
-                              onClick={() => handleApprove(leave.leave_id)}
-                              title="Approve"
-                              className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
+                              onClick={() => handleEdit(leave)}
+                              title="Edit"
+                              className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
                             >
-                              <CheckCircle size={14} />
+                              <Edit size={14} />
                             </button>
                             <button
-                              onClick={() => handleReject(leave.leave_id)}
-                              title="Reject"
+                              onClick={() => handleDelete(leave.leave_id)}
+                              title="Delete"
                               className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
                             >
-                              <XCircle size={14} />
+                              <Trash2 size={14} />
                             </button>
                           </>
                         )}
-                        <button
-                          onClick={() => handleEdit(leave)}
-                          title="Edit"
-                          className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
-                        >
-                          <Edit size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(leave.leave_id)}
-                          title="Delete"
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700"
-                        >
-                          <Trash2 size={14} />
-                        </button>
                       </td>
                     </tr>
                   ))
               ) : (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={6}
                     className="p-4 text-center text-slate-500 italic"
                   >
-                    No leave requests found matching your search criteria.
+                    No leave requests found.
                   </td>
                 </tr>
               )}
@@ -490,25 +490,6 @@ const StaffLeave = () => {
             {/* Modal Body */}
             <form onSubmit={handleSubmit} className="p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Employee *
-                  </label>
-                  <select
-                    name="user_id"
-                    value={formData.user_id}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                  >
-                    <option value="">Select Employee</option>
-                    {eligibleUsers.map((u) => (
-                      <option key={u.user_id} value={u.user_id}>
-                        {u.first_name} {u.last_name} ({u.role})
-                      </option>
-                    ))}
-                  </select>
-                </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                     Leave Type *
@@ -523,24 +504,6 @@ const StaffLeave = () => {
                     {leaveTypes.map((type) => (
                       <option key={type} value={type}>
                         {type}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Status *
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-700 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                  >
-                    {statuses.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
                       </option>
                     ))}
                   </select>
@@ -625,4 +588,4 @@ const StaffLeave = () => {
   );
 };
 
-export default StaffLeave;
+export default EmployeeLeavePortal;

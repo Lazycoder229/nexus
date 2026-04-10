@@ -5,15 +5,16 @@ const CoursesController = {
     try {
       const courses = await pool.query(`
         SELECT 
-          course_id,
-          code,
-          title,
-          description,
-          credits,
-          department
-        FROM courses
-        WHERE status = 'active'
-        ORDER BY code ASC
+          c.course_id AS id,
+          c.code,
+          c.title,
+          c.description,
+          c.department_id,
+          c.credits,
+          c.status
+        FROM courses c
+        WHERE c.status = 'Active' OR c.status = 'active'
+        ORDER BY c.code ASC
       `);
 
       res.status(200).json({

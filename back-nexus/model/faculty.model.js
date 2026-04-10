@@ -47,7 +47,7 @@ const Faculty = {
   },
 
   // Get faculty by department
-  getByDepartment: (department) => {
+  getByDepartment: (departmentId) => {
     return db.query(
       `
       SELECT u.user_id, u.email, u.first_name, u.middle_name, u.last_name, 
@@ -55,10 +55,11 @@ const Faculty = {
              ed.employee_id, ed.department, ed.position_title, ed.specialization
       FROM users u
       INNER JOIN employee_details ed ON u.user_id = ed.user_id
-      WHERE ed.department = ? AND u.role = 'Faculty'
+      INNER JOIN departments d ON d.name = ed.department
+      WHERE d.department_id = ? AND u.role = 'Faculty'
       ORDER BY u.last_name, u.first_name
     `,
-      [department],
+      [departmentId],
     );
   },
 

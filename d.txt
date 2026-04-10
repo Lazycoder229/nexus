@@ -16,3 +16,12 @@ System Setting
 
 
 DepartmentMngt
+
+-- Fix ITP222 Schedule
+UPDATE sections SET schedule_day = 'TR', schedule_time_start = '09:00:00', schedule_time_end = '10:30:00' WHERE section_id = 21;
+
+-- Fix das Schedule
+UPDATE sections SET schedule_day = 'MWF', schedule_time_start = '08:00:00', schedule_time_end = '09:00:00' WHERE section_id = 23;
+
+-- Fix FGF Schedule
+UPDATE sections SET schedule_day = 'TTH', schedule_time_start = '10:00:00', schedule_time_end = '11:30:00' WHERE section_id = 26;

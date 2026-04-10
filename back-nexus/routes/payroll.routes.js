@@ -11,6 +11,8 @@ import {
   updatePayslip,
   deletePayslip,
   getPayrollSummary,
+  autoCreatePayslips,
+  getMyPayslips,
 } from "../controllers/payroll.controller.js";
 import { authenticateToken } from "../helpers/jwt.js";
 
@@ -26,12 +28,16 @@ router.post("/setups", createPayrollSetup);
 router.put("/setups/:id", updatePayrollSetup);
 router.delete("/setups/:id", deletePayrollSetup);
 
-// Payslip routes
+// User's personal payslips
+router.get("/my-payslips", getMyPayslips);
+
+// Payslip routes (admin)
 router.get("/payslips/setup/:setupId", getPayslipsBySetup);
 router.get("/payslips/:id", getPayslipById);
 router.post("/payslips", createPayslip);
 router.put("/payslips/:id", updatePayslip);
 router.delete("/payslips/:id", deletePayslip);
+router.post("/payslips/auto-create/:setupId", autoCreatePayslips);
 
 // Summary
 router.get("/summary/:setupId", getPayrollSummary);

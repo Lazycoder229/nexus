@@ -584,6 +584,25 @@ CREATE INDEX idx_syllabus_period ON syllabus(period_id);
 -- ===========================
 
 -- ===========================
+-- RFID Cards Table
+-- Tracks RFID cards assigned to users for attendance and access
+-- ===========================
+CREATE TABLE IF NOT EXISTS rfid_cards (
+    rfid_id INT PRIMARY KEY AUTO_INCREMENT,
+    card_number VARCHAR(100) NOT NULL UNIQUE,
+    user_id INT NOT NULL,
+    card_type VARCHAR(50) DEFAULT 'employee',
+    issue_date DATE,
+    expiry_date DATE,
+    status ENUM('active', 'inactive', 'lost', 'blocked') DEFAULT 'active',
+    last_used DATETIME,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- ===========================
 -- 28. Staff Attendance Table
 -- Tracks daily attendance for faculty and staff
 -- ===========================
@@ -2918,16 +2937,19 @@ CREATE TABLE IF NOT EXISTS lms_discussion_likes (
 );
 /* Ito ay add niyo sa database */
 
- ALTER TABLE scholarship_applications 
-      ADD COLUMN IF NOT EXISTS scholarship_id INT AFTER scholarship_type_id,
-      ADD COLUMN IF NOT EXISTS academic_period_id INT AFTER semester
-    ALTER TABLE scholarship_beneficiaries 
-      ADD COLUMN IF NOT EXISTS scholarship_id INT AFTER scholarship_type_id,
-      ADD COLUMN IF NOT EXISTS academic_period_id INT AFTER semester
+ALTER TABLE scholarship_applications
+    ADD COLUMN scholarship_id INT AFTER scholarship_type_id,
+    ADD COLUMN academic_period_id INT AFTER semester;
 
+ALTER TABLE scholarship_beneficiaries
+    ADD COLUMN scholarship_id INT AFTER scholarship_type_id,
+    ADD COLUMN academic_period_id INT AFTER semester;
 
-ALTER TABLE scholarship_eligibility_screening ADD COLUMN IF NOT EXISTS scholarship_id INT AFTER application_id;
-ALTER TABLE scholarship_eligibility_screening ADD COLUMN IF NOT EXISTS academic_period_id INT AFTER student_id;
+ALTER TABLE scholarship_eligibility_screening
+    ADD COLUMN scholarship_id INT AFTER application_id;
+
+ALTER TABLE scholarship_eligibility_screening
+    ADD COLUMN academic_period_id INT AFTER student_id;
 
   CREATE TABLE IF NOT EXISTS announcement_reads (
                 read_id INT AUTO_INCREMENT PRIMARY KEY,

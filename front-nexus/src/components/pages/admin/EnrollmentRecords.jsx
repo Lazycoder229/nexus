@@ -7,7 +7,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  X,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -153,158 +152,327 @@ const EnrollmentModal = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 m-4"
+        className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold">
-            {mode === "add" ? "New Enrollment" : "Edit Enrollment"}
-          </h3>
-          <button onClick={onClose}>
-            <X size={20} />
-          </button>
+        {/* Sticky Header */}
+        <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 rounded-t-lg">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-800">
+              {mode === "add" ? "New Enrollment" : "Edit Enrollment"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <Plus size={24} className="rotate-45" />
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Student *</label>
-            <Select
-              value={
-                students.find((s) => s.value === formData.student_id) || null
-              }
-              onChange={(selected) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  student_id: selected?.value || null,
-                }))
-              }
-              options={students}
-              placeholder="Select student..."
-              isDisabled={mode === "edit"}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        {/* Form Wrapper */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col flex-1 overflow-hidden"
+        >
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            {/* Student */}
             <div>
-              <label className="block text-sm font-medium mb-1">Course *</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Student *
+              </label>
               <Select
                 value={
-                  courses.find((c) => c.value === formData.course_id) || null
+                  students.find((s) => s.value === formData.student_id) || null
                 }
                 onChange={(selected) =>
                   setFormData((prev) => ({
                     ...prev,
-                    course_id: selected?.value || null,
+                    student_id: selected?.value || null,
                   }))
                 }
-                options={courses}
-                placeholder="Select course..."
+                options={students}
+                placeholder="Select student..."
                 isDisabled={mode === "edit"}
-                isClearable
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Academic Period *
-              </label>
-              <Select
-                value={
-                  periods.find((p) => p.value === formData.period_id) || null
-                }
-                onChange={(selected) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    period_id: selected?.value || null,
-                  }))
-                }
-                options={periods}
-                placeholder="Select period..."
-                isDisabled={mode === "edit"}
-                isClearable
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Section *
-              </label>
-              <Select
-                value={
-                  sections.find((s) => s.value === formData.section_id) || null
-                }
-                onChange={(selected) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    section_id: selected?.value || null,
-                  }))
-                }
-                options={sections}
-                placeholder={
-                  loadingSections ? "Loading..." : "Select section..."
-                }
-                isDisabled={
-                  !formData.course_id || !formData.period_id || loadingSections
-                }
                 required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Year Level *
-              </label>
-              <select
-                value={formData.year_level}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    year_level: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border rounded-md"
-                required
-              >
-                <option value="">Select...</option>
-                <option value="1st Year">1st Year</option>
-                <option value="2nd Year">2nd Year</option>
-                <option value="3rd Year">3rd Year</option>
-                <option value="4th Year">4th Year</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Enrollment Date *
-              </label>
-              <input
-                type="date"
-                value={formData.enrollment_date}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    enrollment_date: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border rounded-md"
-                required
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderColor: "#CBD5E1",
+                    backgroundColor: "#FFFFFF",
+                    fontSize: "0.875rem",
+                    boxShadow: "none",
+                    minHeight: "42px",
+                    "&:hover": {
+                      borderColor: "#CBD5E1",
+                    },
+                    "&:focus-within": {
+                      borderColor: "#4F46E5",
+                      boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+                    },
+                  }),
+                  input: (base) => ({
+                    ...base,
+                    color: "#1E293B",
+                  }),
+                  option: (base, state) => ({
+                    ...base,
+                    backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
+                    color: state.isSelected ? "#FFFFFF" : "#1E293B",
+                    "&:hover": {
+                      backgroundColor: "#EEF2FF",
+                      color: "#1E293B",
+                    },
+                  }),
+                  menu: (base) => ({
+                    ...base,
+                    zIndex: 9999,
+                  }),
+                }}
               />
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Course */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Course *
+                </label>
+                <Select
+                  value={
+                    courses.find((c) => c.value === formData.course_id) || null
+                  }
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      course_id: selected?.value || null,
+                    }))
+                  }
+                  options={courses}
+                  placeholder="Select course..."
+                  isDisabled={mode === "edit"}
+                  isClearable
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      borderColor: "#CBD5E1",
+                      backgroundColor: "#FFFFFF",
+                      fontSize: "0.875rem",
+                      boxShadow: "none",
+                      minHeight: "42px",
+                      "&:hover": {
+                        borderColor: "#CBD5E1",
+                      },
+                      "&:focus-within": {
+                        borderColor: "#4F46E5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+                      },
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "#1E293B",
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
+                      color: state.isSelected ? "#FFFFFF" : "#1E293B",
+                      "&:hover": {
+                        backgroundColor: "#EEF2FF",
+                        color: "#1E293B",
+                      },
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      zIndex: 9999,
+                    }),
+                  }}
+                />
+              </div>
+
+              {/* Academic Period */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Academic Period *
+                </label>
+                <Select
+                  value={
+                    periods.find((p) => p.value === formData.period_id) || null
+                  }
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      period_id: selected?.value || null,
+                    }))
+                  }
+                  options={periods}
+                  placeholder="Select period..."
+                  isDisabled={mode === "edit"}
+                  isClearable
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      borderColor: "#CBD5E1",
+                      backgroundColor: "#FFFFFF",
+                      fontSize: "0.875rem",
+                      boxShadow: "none",
+                      minHeight: "42px",
+                      "&:hover": {
+                        borderColor: "#CBD5E1",
+                      },
+                      "&:focus-within": {
+                        borderColor: "#4F46E5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+                      },
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "#1E293B",
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
+                      color: state.isSelected ? "#FFFFFF" : "#1E293B",
+                      "&:hover": {
+                        backgroundColor: "#EEF2FF",
+                        color: "#1E293B",
+                      },
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      zIndex: 9999,
+                    }),
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Section */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Section *
+                </label>
+                <Select
+                  value={
+                    sections.find((s) => s.value === formData.section_id) ||
+                    null
+                  }
+                  onChange={(selected) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      section_id: selected?.value || null,
+                    }))
+                  }
+                  options={sections}
+                  placeholder={
+                    loadingSections ? "Loading..." : "Select section..."
+                  }
+                  isDisabled={
+                    !formData.course_id ||
+                    !formData.period_id ||
+                    loadingSections
+                  }
+                  required
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      borderColor: "#CBD5E1",
+                      backgroundColor: "#FFFFFF",
+                      fontSize: "0.875rem",
+                      boxShadow: "none",
+                      minHeight: "42px",
+                      "&:hover": {
+                        borderColor: "#CBD5E1",
+                      },
+                      "&:focus-within": {
+                        borderColor: "#4F46E5",
+                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+                      },
+                    }),
+                    input: (base) => ({
+                      ...base,
+                      color: "#1E293B",
+                    }),
+                    option: (base, state) => ({
+                      ...base,
+                      backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
+                      color: state.isSelected ? "#FFFFFF" : "#1E293B",
+                      "&:hover": {
+                        backgroundColor: "#EEF2FF",
+                        color: "#1E293B",
+                      },
+                    }),
+                    menu: (base) => ({
+                      ...base,
+                      zIndex: 9999,
+                    }),
+                  }}
+                />
+              </div>
+
+              {/* Year Level */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Year Level *
+                </label>
+                <select
+                  value={formData.year_level}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      year_level: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  required
+                >
+                  <option value="">Select...</option>
+                  <option value="1st Year">1st Year</option>
+                  <option value="2nd Year">2nd Year</option>
+                  <option value="3rd Year">3rd Year</option>
+                  <option value="4th Year">4th Year</option>
+                </select>
+              </div>
+
+              {/* Enrollment Date */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Enrollment Date *
+                </label>
+                <input
+                  type="date"
+                  value={formData.enrollment_date}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      enrollment_date: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Status */}
             <div>
-              <label className="block text-sm font-medium mb-1">Status</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Status
+              </label>
               <select
                 value={formData.status}
                 onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, status: e.target.value }))
+                  setFormData((prev) => ({
+                    ...prev,
+                    status: e.target.value,
+                  }))
                 }
-                className="w-full px-3 py-2 border rounded-md"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="Enrolled">Enrolled</option>
                 <option value="Dropped">Dropped</option>
@@ -312,75 +480,86 @@ const EnrollmentModal = ({
                 <option value="Failed">Failed</option>
               </select>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Midterm Grade */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Midterm Grade
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.midterm_grade}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      midterm_grade: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="0.00"
+                />
+              </div>
+
+              {/* Final Grade */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Final Grade
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.final_grade}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      final_grade: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            {/* Remarks */}
             <div>
-              <label className="block text-sm font-medium mb-1">
-                Midterm Grade
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Remarks
               </label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.midterm_grade}
+              <textarea
+                value={formData.remarks}
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    midterm_grade: e.target.value,
+                    remarks: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 border rounded-md"
-                placeholder="0.00"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Final Grade
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={formData.final_grade}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    final_grade: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border rounded-md"
-                placeholder="0.00"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                rows={2}
+                placeholder="Additional notes..."
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Remarks</label>
-            <textarea
-              value={formData.remarks}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, remarks: e.target.value }))
-              }
-              className="w-full px-3 py-2 border rounded-md"
-              rows={2}
-              placeholder="Additional notes..."
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border rounded-md hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-            >
-              {mode === "add" ? "Create" : "Update"}
-            </button>
+          {/* Sticky Footer */}
+          <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-lg">
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+              >
+                {mode === "add" ? "Create Enrollment" : "Update Enrollment"}
+              </button>
+            </div>
           </div>
         </form>
       </div>

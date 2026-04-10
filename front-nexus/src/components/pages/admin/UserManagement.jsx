@@ -231,11 +231,6 @@ const Modal = ({ isOpen, onClose, title, children, size = "lg" }) => {
    ViewUserModal
    ------------------------- */
 const ViewUserModal = ({ isOpen, onClose, user }) => {
-  if (!user) return null;
-
-  const roleConfig = ROLE_CONFIG[user.role] || ROLE_CONFIG.Staff;
-  const RoleIcon = roleConfig.icon;
-
   // Format DOB safely
   const formatDOB = (dob) => {
     if (!dob) return "N/A";
@@ -246,6 +241,8 @@ const ViewUserModal = ({ isOpen, onClose, user }) => {
 
   // Role-specific details
   const RoleSpecificDetails = useMemo(() => {
+    if (!user) return [];
+
     const fields = [];
     if (user.role === "Student") {
       fields.push(
@@ -293,6 +290,11 @@ const ViewUserModal = ({ isOpen, onClose, user }) => {
 
     return fields;
   }, [user]);
+
+  if (!user) return null;
+
+  const roleConfig = ROLE_CONFIG[user.role] || ROLE_CONFIG.Staff;
+  const RoleIcon = roleConfig.icon;
 
   return (
     <Modal
@@ -409,8 +411,8 @@ function UserManagement() {
   // search / filter / pagination / sort
   const [query, setQuery] = useState("");
   const [filterRole, setFilterRole] = useState("");
-  const [sortField, setSortField] = useState("lastName"); // lastName or dateHired
-  const [sortDir, setSortDir] = useState("asc");
+  const sortField = "lastName"; // lastName or dateHired
+  const sortDir = "asc";
   const [page, setPage] = useState(1);
   const pageSize = 6;
 
@@ -986,14 +988,17 @@ function UserManagement() {
      Render helpers & components
      ------------------------- */
 
-  const SectionTitle = ({ icon: Icon, title, color = "text-gray-700" }) => (
-    <h3
-      className={`col-span-full flex items-center gap-2 text-lg font-extrabold ${color} border-b-2 border-dashed border-gray-200 pb-2.5 mb-3 mt-2`}
-    >
-      <Icon className="w-5 h-5" />
-      {title}
-    </h3>
-  );
+  const SectionTitle = ({ icon: Icon, title, color = "text-gray-700" }) => {
+    const iconNode = React.createElement(Icon, { className: "w-5 h-5" });
+    return (
+      <h3
+        className={`col-span-full flex items-center gap-2 text-lg font-extrabold ${color} border-b-2 border-dashed border-gray-200 pb-2.5 mb-3 mt-2`}
+      >
+        {iconNode}
+        {title}
+      </h3>
+    );
+  };
 
   const renderCommonFields = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -1738,10 +1743,10 @@ function UserManagement() {
   const totalAdmins = users.filter((u) => u.role === "Admin").length;
 
   return (
-    <div className="p-3 sm:p-4 transition-colors duration-500">
-      <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
+    <div className="w-full overflow-hidden bg-slate-50 sm:p-4 transition-colors duration-500 flex flex-col">
+      <div className="w-full mx-auto flex flex-col gap-3 font-sans flex-1 min-h-0">
         {/* Header */}
-        <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+        <div className="flex-shrink-0 flex justify-between items-center border-b border-slate-200 pb-2">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
             <User2Icon className="w-6 h-6 text-indigo-600" />
             User Management
@@ -1752,7 +1757,7 @@ function UserManagement() {
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="flex-shrink-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
             <p className="text-sm text-slate-600">Total Users</p>
             <p className="text-2xl font-bold text-indigo-600">{users.length}</p>
@@ -1774,10 +1779,10 @@ function UserManagement() {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-200">
+        <div className="flex-shrink-0 flex border-b border-slate-200">
           <button
             onClick={() => setCurrentPage("users")}
-            className={`flex items-center gap-2 px-4 py-2 font-semibold text-sm transition duration-150 ${
+            className={`flex items-center gap-2 px-3 py-1.5 font-semibold text-sm transition duration-150 ${
               currentPage === "users"
                 ? "border-b-2 border-indigo-600 text-indigo-600"
                 : "text-slate-500 hover:text-indigo-600"
@@ -1787,7 +1792,7 @@ function UserManagement() {
           </button>
           <button
             onClick={() => setCurrentPage("roles")}
-            className={`flex items-center gap-2 px-4 py-2 font-semibold text-sm transition duration-150 ${
+            className={`flex items-center gap-2 px-3 py-1.5 font-semibold text-sm transition duration-150 ${
               currentPage === "roles"
                 ? "border-b-2 border-indigo-600 text-indigo-600"
                 : "text-slate-500 hover:text-indigo-600"
@@ -1797,7 +1802,7 @@ function UserManagement() {
           </button>
         </div>
 
-        <div>
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {currentPage === "users" && renderUserList()}
           {currentPage === "roles" && renderAccessControl()}
         </div>

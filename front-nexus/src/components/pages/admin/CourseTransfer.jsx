@@ -7,7 +7,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  X,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -118,144 +117,211 @@ const TransferModal = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 m-4"
+        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-bold">
-            {mode === "add" ? "New Transfer Request" : "Edit Transfer Request"}
-          </h3>
-          <button onClick={onClose}>
-            <X size={20} />
-          </button>
+        {/* Sticky Header */}
+        <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 rounded-t-lg">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-800">
+              {mode === "add"
+                ? "New Transfer Request"
+                : "Edit Transfer Request"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <Plus size={24} className="rotate-45" />
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Student *</label>
-            <Select
-              value={
-                students.find((s) => s.value === formData.student_id) || null
-              }
-              onChange={(selected) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  student_id: selected?.value || null,
-                }))
-              }
-              options={students}
-              placeholder="Select student..."
-              isDisabled={mode === "edit"}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        {/* Form Wrapper */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col flex-1 overflow-hidden"
+        >
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            {/* Student */}
             <div>
-              <label className="block text-sm font-medium mb-1">
-                Current Program
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Student *
               </label>
-              <input
-                type="text"
-                value={formData.current_program}
-                onChange={(e) =>
+              <Select
+                value={
+                  students.find((s) => s.value === formData.student_id) || null
+                }
+                onChange={(selected) =>
                   setFormData((prev) => ({
                     ...prev,
-                    current_program: e.target.value,
+                    student_id: selected?.value || null,
                   }))
                 }
-                className="w-full px-3 py-2 border rounded-md"
-                placeholder="e.g. BSIT"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Target Program *
-              </label>
-              <input
-                type="text"
-                value={formData.target_program}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    target_program: e.target.value,
-                  }))
-                }
-                className="w-full px-3 py-2 border rounded-md"
-                placeholder="e.g. BSCS"
+                options={students}
+                placeholder="Select student..."
+                isDisabled={mode === "edit"}
                 required
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderColor: "#CBD5E1",
+                    backgroundColor: "#FFFFFF",
+                    fontSize: "0.875rem",
+                    boxShadow: "none",
+                    minHeight: "42px",
+                    "&:hover": {
+                      borderColor: "#CBD5E1",
+                    },
+                    "&:focus-within": {
+                      borderColor: "#4F46E5",
+                      boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+                    },
+                  }),
+                  input: (base) => ({
+                    ...base,
+                    color: "#1E293B",
+                  }),
+                  option: (base, state) => ({
+                    ...base,
+                    backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
+                    color: state.isSelected ? "#FFFFFF" : "#1E293B",
+                    "&:hover": {
+                      backgroundColor: "#EEF2FF",
+                      color: "#1E293B",
+                    },
+                  }),
+                  menu: (base) => ({
+                    ...base,
+                    zIndex: 9999,
+                  }),
+                }}
               />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Reason</label>
-            <textarea
-              value={formData.reason}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, reason: e.target.value }))
-              }
-              className="w-full px-3 py-2 border rounded-md"
-              rows={3}
-              placeholder="Enter reason for transfer..."
-            />
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Current Program */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Current Program
+                </label>
+                <input
+                  type="text"
+                  value={formData.current_program}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      current_program: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g. BSIT"
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
+              {/* Target Program */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Target Program *
+                </label>
+                <input
+                  type="text"
+                  value={formData.target_program}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      target_program: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g. BSCS"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Reason */}
             <div>
-              <label className="block text-sm font-medium mb-1">
-                Request Date *
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Reason
               </label>
-              <input
-                type="date"
-                value={formData.request_date}
+              <textarea
+                value={formData.reason}
                 onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    request_date: e.target.value,
-                  }))
+                  setFormData((prev) => ({ ...prev, reason: e.target.value }))
                 }
-                className="w-full px-3 py-2 border rounded-md"
-                required
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                rows={3}
+                placeholder="Enter reason for transfer..."
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, status: e.target.value }))
-                }
-                className="w-full px-3 py-2 border rounded-md"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Request Date */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Request Date *
+                </label>
+                <input
+                  type="date"
+                  value={formData.request_date}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      request_date: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Status
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      status: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Under Review">Under Review</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Sticky Footer */}
+          <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-lg">
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium"
               >
-                <option value="Pending">Pending</option>
-                <option value="Under Review">Under Review</option>
-                <option value="Approved">Approved</option>
-                <option value="Rejected">Rejected</option>
-              </select>
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+              >
+                {mode === "add" ? "Create Request" : "Update Request"}
+              </button>
             </div>
-          </div>
-
-          <div className="flex justify-end gap-2 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border rounded-md hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-            >
-              {mode === "add" ? "Create" : "Update"}
-            </button>
           </div>
         </form>
       </div>

@@ -1,6 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { Calendar as CalendarIcon, FileText, Clock, MapPin, Users, BookOpen } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  FileText,
+  Clock,
+  MapPin,
+  Users,
+  BookOpen,
+} from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -9,91 +16,142 @@ const StudentCalendar = () => {
   const [exams, setExams] = useState([]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [activeTab]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       if (activeTab === "exams") {
         await fetchExams();
       } else {
         await fetchEvents();
       }
+    } catch (err) {
+      setError(err.message);
+      console.error("Error fetching calendar data:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const fetchExams = async () => {
     try {
-      // Use events/calendar endpoint for exams
-      const response = await axios.get(`${API_BASE}/api/events/calendar`);
-      const data = response.data || [];
-      // Filter exam-type events
-      const examEvents = data.filter(e => e.type === 'exam' || e.event_type === 'exam');
-      setExams(examEvents.map(e => ({
-        exam_id: e.id || e.event_id,
-        subject_name: e.title || e.subject_name,
-        title: e.description || 'Exam',
-        exam_type: e.exam_type || 'midterm',
-        exam_date: e.date || e.event_date,
+      // Use unified calendar endpoint, filtered for exams only
+      const response = await axios.get(
+        `${API_BASE}/api/calendar/unified?type=exam`,
+        {
+          headers: {
+            user: localStorage.getItem("user"),
+          },
+        },
+      );
+
+      const data = response.data?.data || [];
+
+      // Map unified response to component format
+      const examEvents = data.map((e) => ({
+        exam_id: e.id,
+        subject_name: e.subject || e.course_code || "Unknown",
+        title: e.title || "Exam",
+        exam_type: e.exam_type || "midterm",
+        exam_date: e.date,
         start_time: e.start_time,
         end_time: e.end_time,
-        room: e.location || e.room,
-        description: e.notes || e.description,
-      })));
+        room: e.location || "TBA",
+        description: e.description,
+        section: e.section,
+        proctor_name:
+          e.proctor_first_name && e.proctor_last_name
+            ? `${e.proctor_first_name} ${e.proctor_last_name}`
+            : "TBA",
+        status: e.status,
+        daysRemaining: e.days_remaining,
+      }));
+
+      setExams(examEvents);
     } catch (error) {
       console.error("Error fetching exams:", error);
       setExams([]);
+      throw new Error("Failed to fetch exam schedule");
     }
   };
 
   const fetchEvents = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/events/calendar`);
-      const data = response.data || [];
-      // Filter non-exam events
-      const calendarEvents = data.filter(e => e.type !== 'exam' && e.event_type !== 'exam');
-      setEvents(calendarEvents.map(e => ({
-        event_id: e.id || e.event_id,
-        title: e.title,
-        description: e.content || e.description,
-        event_type: e.event_type || e.type || 'academic',
-        event_date: e.date || e.event_date,
-        start_time: e.start_time,
-        end_time: e.end_time,
-        location: e.location,
-        target_audience: e.target_audience || 'All Students',
-        registration_required: e.registration_required || false,
-      })));
+      // Use unified calendar endpoint, filtered for non-exam types
+      const response = await axios.get(`${API_BASE}/api/calendar/unified`, {
+        headers: {
+          user: localStorage.getItem("user"),
+        },
+      });
+
+      const data = response.data?.data || [];
+
+      // Filter out exams and calendar items, keep only events
+      const calendarEvents = data
+        .filter((e) => e.type === "event")
+        .map((e) => ({
+          event_id: e.id,
+          title: e.title,
+          description: e.description,
+          event_type: e.event_type || e.type || "academic",
+          event_date: e.date,
+          start_time: e.start_time,
+          end_time: e.end_time,
+          location: e.location,
+          target_audience: e.target_audience || "All Students",
+          registration_required: e.registration_required || false,
+          category: e.category,
+          status: e.status,
+          daysRemaining: e.days_remaining,
+        }));
+
+      setEvents(calendarEvents);
     } catch (error) {
       console.error("Error fetching events:", error);
       setEvents([]);
+      throw new Error("Failed to fetch events");
     }
   };
 
   const getExamTypeColor = (type) => {
     const colors = {
-      midterm: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-      final: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+      midterm:
+        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      final:
+        "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
       quiz: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-      prelim: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+      prelim:
+        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
     };
-    return colors[type] || "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400";
+    return (
+      colors[type] ||
+      "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400"
+    );
   };
 
   const getEventTypeColor = (type) => {
     const colors = {
-      academic: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
-      cultural: "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
-      sports: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-      social: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-      orientation: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+      academic:
+        "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+      cultural:
+        "bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400",
+      sports:
+        "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      social:
+        "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+      orientation:
+        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
     };
-    return colors[type] || "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400";
+    return (
+      colors[type] ||
+      "bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400"
+    );
   };
 
   const isUpcoming = (date) => {
@@ -127,10 +185,11 @@ const StudentCalendar = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${activeTab === tab.id
+                className={`flex items-center gap-2 px-4 py-2.5 font-medium text-sm transition-all border-b-2 whitespace-nowrap ${
+                  activeTab === tab.id
                     ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20"
                     : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                  }`}
+                }`}
               >
                 <Icon size={16} />
                 {tab.label}
@@ -139,169 +198,271 @@ const StudentCalendar = () => {
           })}
         </div>
 
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-400">
+            <p className="font-semibold">Error Loading Calendar</p>
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-8 text-center">
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+            <p className="text-slate-600 dark:text-slate-400 mt-3">
+              Loading calendar...
+            </p>
+          </div>
+        )}
+
         {/* Exam Schedule Tab */}
-        {activeTab === "exams" && (
-          <div className="space-y-3">
+        {!loading && activeTab === "exams" && (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
             {exams.length === 0 ? (
-              <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-8 text-center">
+              <div className="p-8 text-center">
                 <FileText size={48} className="mx-auto text-slate-400 mb-3" />
-                <p className="text-slate-500 dark:text-slate-400">No upcoming exams scheduled</p>
+                <p className="text-slate-500 dark:text-slate-400">
+                  No upcoming exams scheduled
+                </p>
               </div>
             ) : (
-              exams.map((exam) => (
-                <div
-                  key={exam.exam_id}
-                  className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <BookOpen size={18} className="text-indigo-600" />
-                            {exam.subject_name}
-                          </h3>
-                          <p className="text-sm text-slate-600 dark:text-slate-400">{exam.title}</p>
-                        </div>
-                        <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${getExamTypeColor(exam.exam_type)}`}>
-                          {exam.exam_type}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-4 text-sm mt-3">
-                        <div className="flex items-center gap-2">
-                          <CalendarIcon size={16} className="text-slate-400" />
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Date
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Subject
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Time
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Room
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Section
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Proctor
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Type
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {exams.map((exam) => (
+                      <tr
+                        key={exam.exam_id}
+                        className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+                      >
+                        <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">
+                          {new Date(exam.exam_date).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3">
                           <div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">Date</p>
-                            <p className="font-semibold text-slate-900 dark:text-white">
-                              {new Date(exam.exam_date).toLocaleDateString()}
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                              {exam.subject_name}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {exam.title}
                             </p>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock size={16} className="text-slate-400" />
-                          <div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">Time</p>
-                            <p className="font-semibold text-slate-900 dark:text-white">
-                              {exam.start_time && new Date(`2000-01-01T${exam.start_time}`).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} -
-                              {exam.end_time && new Date(`2000-01-01T${exam.end_time}`).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </p>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
+                          {exam.start_time &&
+                            new Date(
+                              `2000-01-01T${exam.start_time}`,
+                            ).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          {exam.end_time &&
+                            ` - ${new Date(`2000-01-01T${exam.end_time}`).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
+                          <div className="flex items-center gap-1">
+                            <MapPin
+                              size={14}
+                              className="text-slate-400 flex-shrink-0"
+                            />
+                            {exam.room}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin size={16} className="text-slate-400" />
-                          <div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">Room</p>
-                            <p className="font-semibold text-slate-900 dark:text-white">{exam.room || "TBA"}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {exam.description && (
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-3 bg-slate-50 dark:bg-slate-700/50 p-2 rounded">
-                          <strong>Notes:</strong> {exam.description}
-                        </p>
-                      )}
-                    </div>
-
-                    {isUpcoming(exam.exam_date) && (
-                      <div className="lg:text-right">
-                        <div className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">Upcoming</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          {Math.ceil((new Date(exam.exam_date) - new Date()) / (1000 * 60 * 60 * 24))} days left
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
+                          {exam.section || "N/A"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
+                          {exam.proctor_name || "TBA"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`px-2 py-0.5 text-xs rounded-full font-medium ${getExamTypeColor(exam.exam_type)}`}
+                          >
+                            {exam.exam_type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right">
+                          {isUpcoming(exam.exam_date) ? (
+                            <div>
+                              <span className="text-indigo-600 dark:text-indigo-400 font-medium text-xs">
+                                Upcoming
+                              </span>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {exam.daysRemaining !== undefined &&
+                                exam.daysRemaining !== null
+                                  ? `${Math.max(0, exam.daysRemaining)}d left`
+                                  : `${Math.ceil((new Date(exam.exam_date) - new Date()) / (1000 * 60 * 60 * 24))}d left`}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 dark:text-slate-400 text-xs">
+                              Past
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
 
         {/* School Events Tab */}
-        {activeTab === "events" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {!loading && activeTab === "events" && (
+          <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
             {events.length === 0 ? (
-              <div className="md:col-span-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-8 text-center">
-                <CalendarIcon size={48} className="mx-auto text-slate-400 mb-3" />
-                <p className="text-slate-500 dark:text-slate-400">No upcoming events</p>
+              <div className="p-8 text-center">
+                <CalendarIcon
+                  size={48}
+                  className="mx-auto text-slate-400 mb-3"
+                />
+                <p className="text-slate-500 dark:text-slate-400">
+                  No upcoming events
+                </p>
               </div>
             ) : (
-              events.map((event) => (
-                <div
-                  key={event.event_id}
-                  className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{event.title}</h3>
-                    <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${getEventTypeColor(event.event_type)}`}>
-                      {event.event_type}
-                    </span>
-                  </div>
-
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 line-clamp-2">{event.description}</p>
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 text-sm">
-                      <CalendarIcon size={16} className="text-slate-400" />
-                      <div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Event Date</p>
-                        <p className="font-semibold text-slate-900 dark:text-white">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50">
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Date
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Event Title
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Time
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Location
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Audience
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Type
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700 dark:text-slate-300 text-sm">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                    {events.map((event) => (
+                      <tr
+                        key={event.event_id}
+                        className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+                      >
+                        <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white whitespace-nowrap">
                           {new Date(event.event_date).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-
-                    {event.start_time && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock size={16} className="text-slate-400" />
-                        <div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Time</p>
-                          <p className="font-semibold text-slate-900 dark:text-white">
-                            {new Date(`2000-01-01T${event.start_time}`).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            {event.end_time && ` - ${new Date(`2000-01-01T${event.end_time}`).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {event.location && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin size={16} className="text-slate-400" />
-                        <div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Location</p>
-                          <p className="font-semibold text-slate-900 dark:text-white">{event.location}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {event.target_audience && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Users size={16} className="text-slate-400" />
-                        <div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">For</p>
-                          <p className="font-semibold text-slate-900 dark:text-white">{event.target_audience}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {event.registration_required && (
-                    <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium text-sm transition-colors">
-                      Register Now
-                    </button>
-                  )}
-
-                  {isUpcoming(event.event_date) && (
-                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 text-center">
-                      <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
-                        {Math.ceil((new Date(event.event_date) - new Date()) / (1000 * 60 * 60 * 24))} days until event
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))
+                        </td>
+                        <td className="px-4 py-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                              {event.title}
+                            </p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                              {event.description}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
+                          {event.start_time &&
+                            new Date(
+                              `2000-01-01T${event.start_time}`,
+                            ).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          {event.end_time &&
+                            ` - ${new Date(`2000-01-01T${event.end_time}`).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
+                          {event.location ? (
+                            <div className="flex items-center gap-1">
+                              <MapPin
+                                size={14}
+                                className="text-slate-400 flex-shrink-0"
+                              />
+                              {event.location}
+                            </div>
+                          ) : (
+                            "TBA"
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
+                          <div className="flex items-center gap-1">
+                            <Users
+                              size={14}
+                              className="text-slate-400 flex-shrink-0"
+                            />
+                            {event.target_audience}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`px-2 py-0.5 text-xs rounded-full font-medium ${getEventTypeColor(event.event_type)}`}
+                          >
+                            {event.event_type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right">
+                          {isUpcoming(event.event_date) ? (
+                            <div>
+                              <span className="text-indigo-600 dark:text-indigo-400 font-medium text-xs">
+                                Upcoming
+                              </span>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {event.daysRemaining !== undefined &&
+                                event.daysRemaining !== null
+                                  ? `${Math.max(0, event.daysRemaining)}d left`
+                                  : `${Math.ceil((new Date(event.event_date) - new Date()) / (1000 * 60 * 60 * 24))}d left`}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-slate-500 dark:text-slate-400 text-xs">
+                              Past
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}

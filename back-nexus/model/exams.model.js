@@ -9,15 +9,24 @@ const ExamsModel = {
         c.code AS course_code,
         c.title AS course_name,
         s.section_name,
+        s.room,
         ap.school_year,
         ap.semester,
         u.first_name AS creator_first_name,
-        u.last_name AS creator_last_name
+        u.last_name AS creator_last_name,
+        es.room_id,
+        es.proctor_id,
+        fp.first_name AS proctor_first_name,
+        fp.last_name AS proctor_last_name,
+        r.room_number
       FROM exams e
       LEFT JOIN courses c ON e.course_id = c.course_id
       LEFT JOIN sections s ON e.section_id = s.section_id
       LEFT JOIN academic_periods ap ON e.period_id = ap.period_id
       LEFT JOIN users u ON e.created_by = u.user_id
+      LEFT JOIN exam_schedules es ON e.exam_id = es.exam_id
+      LEFT JOIN users fp ON es.proctor_id = fp.user_id
+      LEFT JOIN rooms r ON es.room_id = r.room_id
       WHERE 1=1
     `;
 
@@ -62,12 +71,21 @@ const ExamsModel = {
         c.code AS course_code,
         c.title AS course_name,
         s.section_name,
+        s.room,
         ap.school_year,
-        ap.semester
+        ap.semester,
+        es.room_id,
+        es.proctor_id,
+        fp.first_name AS proctor_first_name,
+        fp.last_name AS proctor_last_name,
+        r.room_number
       FROM exams e
       LEFT JOIN courses c ON e.course_id = c.course_id
       LEFT JOIN sections s ON e.section_id = s.section_id
       LEFT JOIN academic_periods ap ON e.period_id = ap.period_id
+      LEFT JOIN exam_schedules es ON e.exam_id = es.exam_id
+      LEFT JOIN users fp ON es.proctor_id = fp.user_id
+      LEFT JOIN rooms r ON es.room_id = r.room_id
       WHERE e.exam_id = ?
     `;
     const [rows] = await pool.query(query, [examId]);

@@ -213,6 +213,113 @@ const Invoice = {
     return rows;
   },
 
+  // Bulk-create invoices for all enrolled students matching a fee setup
+  bulkCreateFromFeeSetup: async (fee_setup_id, created_by) => {
+    // 1. Get fee setup details
+    const [feeRows] = await db.query(
+      `SELECT tfs.*, p.name as program_name
+       FROM tuition_fee_setup tfs
+       JOIN programs p ON tfs.program_id = p.program_id
+       WHERE tfs.fee_setup_id = ?`,
+      [fee_setup_id],
+    );
+
+    if (!feeRows || feeRows.length === 0) {
+      throw new Error("Fee setup not found");
+    }
+
+    const fee = feeRows[0];
+    const subtotal =
+      parseFloat(fee.tuition_fee || 0) +
+      parseFloat(fee.laboratory_fee || 0) +
+      parseFloat(fee.library_fee || 0) +
+      parseFloat(fee.athletic_fee || 0) +
+      parseFloat(fee.registration_fee || 0) +
+      parseFloat(fee.id_fee || 0) +
+      parseFloat(fee.miscellaneous_fee || 0) +
+      parseFloat(fee.other_fees || 0);
+
+    // 2. Find enrolled students matching program and year level
+    const [students] = await db.query(
+      `SELECT DISTINCT sd.user_id, e.enrollment_id
+       FROM student_details sd
+       JOIN programs p ON sd.course = p.name
+       LEFT JOIN enrollments e 
+         ON e.student_id = sd.user_id 
+         AND e.academic_period_id = ?
+         AND e.status IN ('Enrolled','Active')
+       WHERE p.program_id = ? AND sd.year_level = ?`,
+      [fee.academic_period_id, fee.program_id, fee.year_level],
+    );
+
+    if (!students || students.length === 0) {
+      return { created: 0, skipped: 0, message: "No matching students found" };
+    }
+
+    // 3. Get last invoice number for numbering
+    const [lastInv] = await db.query(
+      `SELECT invoice_number FROM student_invoices ORDER BY invoice_id DESC LIMIT 1`,
+    );
+    let lastNum = 0;
+    if (lastInv.length > 0 && lastInv[0].invoice_number) {
+      lastNum = parseInt(lastInv[0].invoice_number.split("-")[1]) || 0;
+    }
+
+    let created = 0;
+    let skipped = 0;
+    const today = new Date().toISOString().split("T")[0];
+
+    for (const student of students) {
+      // Check if invoice already exists for this student+period
+      const [existing] = await db.query(
+        `SELECT invoice_id FROM student_invoices 
+         WHERE student_id = ? AND academic_period_id = ?`,
+        [student.user_id, fee.academic_period_id],
+      );
+
+      if (existing.length > 0) {
+        skipped++;
+        continue;
+      }
+
+      lastNum++;
+      const invoiceNumber = `INV-${String(lastNum).padStart(6, "0")}`;
+
+      await db.query(
+        `INSERT INTO student_invoices 
+         (invoice_number, student_id, enrollment_id, academic_period_id,
+          tuition_fee, laboratory_fee, library_fee, athletic_fee,
+          registration_fee, id_fee, miscellaneous_fee, other_fees,
+          subtotal, discount_amount, scholarship_amount, total_amount,
+          invoice_date, due_date, status, notes, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, 'Pending', ?, ?)`,
+        [
+          invoiceNumber,
+          student.user_id,
+          student.enrollment_id || null,
+          fee.academic_period_id,
+          fee.tuition_fee || 0,
+          fee.laboratory_fee || 0,
+          fee.library_fee || 0,
+          fee.athletic_fee || 0,
+          fee.registration_fee || 0,
+          fee.id_fee || 0,
+          fee.miscellaneous_fee || 0,
+          fee.other_fees || 0,
+          subtotal,
+          subtotal,
+          today,
+          today,
+          `Auto-generated from fee setup: ${fee.program_name} ${fee.year_level}`,
+          created_by,
+        ],
+      );
+      created++;
+    }
+
+    return { created, skipped, total: students.length };
+  },
+
   // Get financial summary
   getFinancialSummary: async (filters) => {
     let query = `

@@ -208,6 +208,26 @@ const invoiceController = {
     }
   },
 
+  // Get invoices for the currently logged-in student
+  getMyInvoices: async (req, res) => {
+    try {
+      const studentId = req.user.user_id;
+      const results = await Invoice.getByStudent(studentId);
+      res.status(200).json({
+        success: true,
+        data: results,
+        count: results.length,
+      });
+    } catch (err) {
+      console.error("Error fetching my invoices:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch invoices",
+        error: err.message,
+      });
+    }
+  },
+
   // Get financial summary
   getFinancialSummary: async (req, res) => {
     try {

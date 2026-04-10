@@ -1,4 +1,5 @@
 import TuitionFee from "../model/tuitionFees.model.js";
+import Invoice from "../model/invoices.model.js";
 
 const tuitionFeeController = {
   // Create new tuition fee setup
@@ -207,6 +208,28 @@ const tuitionFeeController = {
       res.status(500).json({
         success: false,
         message: "Failed to fetch student fee schedule",
+        error: err.message,
+      });
+    }
+  },
+  // Generate invoices for all enrolled students matching a fee setup
+  generateInvoicesForSetup: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const created_by = req.user.user_id;
+
+      const result = await Invoice.bulkCreateFromFeeSetup(id, created_by);
+
+      res.status(200).json({
+        success: true,
+        message: `Generated ${result.created} invoice(s). ${result.skipped} student(s) already had invoices.`,
+        data: result,
+      });
+    } catch (err) {
+      console.error("Error generating invoices:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to generate invoices",
         error: err.message,
       });
     }

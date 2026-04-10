@@ -4,7 +4,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  X,
   ChevronLeft,
   ChevronRight,
   File,
@@ -46,9 +45,9 @@ const exportCSV = (data) => {
         (h) =>
           `"${(d[h.toLowerCase()] || d[h] || "")
             .toString()
-            .replace(/"/g, '""')}"`
+            .replace(/"/g, '""')}"`,
       )
-      .join(",")
+      .join(","),
   );
   const csv = [headers.join(","), ...rows].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -92,7 +91,7 @@ const exportPDF = (data) => {
             ${data
               .map(
                 (d) =>
-                  `<tr><td>${d.id}</td><td>${d.name}</td><td>${d.head}</td><td>${d.status}</td></tr>`
+                  `<tr><td>${d.id}</td><td>${d.name}</td><td>${d.head}</td><td>${d.status}</td></tr>`,
               )
               .join("")}
           </tbody>
@@ -182,7 +181,7 @@ const CrudModal = ({
     };
 
     const headObj = eligibleHeads.find(
-      (h) => h.user_id === cleanedData.head_user_id
+      (h) => h.user_id === cleanedData.head_user_id,
     );
 
     const updatedData = {
@@ -204,121 +203,166 @@ const CrudModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+    <div
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
       <div
-        className="bg-white rounded-lg shadow-lg w-full max-w-md p-6"
+        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4 gap-2">
-          <h3 className="text-lg font-bold flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-indigo-600" />
-            {mode === "add" ? "Add Department" : "Edit Department"}
-          </h3>
+        {/* Sticky Header */}
+        <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 rounded-t-lg">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold text-slate-800">
+              {mode === "add" ? "Add Department" : "Edit Department"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <Plus size={24} className="rotate-45" />
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Name</label>
-            <input
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full px-3 py-1 border shadow border-slate-300 rounded-lg "
-              required
-            />
+        {/* Form Wrapper */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col flex-1 overflow-hidden"
+        >
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+            {/* Name */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Name
+              </label>
+              <input
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Description
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                rows={3}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            {/* Head */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Head
+              </label>
+              <Select
+                value={
+                  formData.head_user_id
+                    ? eligibleHeads
+                        .map((u) => ({
+                          value: u.user_id,
+                          label: `${u.first_name} ${u.last_name} (${u.role})`,
+                        }))
+                        .find((o) => o.value === formData.head_user_id)
+                    : null
+                }
+                onChange={(selected) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    head_user_id: selected ? selected.value : null,
+                  }))
+                }
+                options={eligibleHeads.map((u) => ({
+                  value: u.user_id,
+                  label: `${u.first_name} ${u.last_name} (${u.role})`,
+                }))}
+                placeholder="Select or type head..."
+                isClearable
+                isSearchable
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderColor: "#CBD5E1",
+                    backgroundColor: "#FFFFFF",
+                    fontSize: "0.875rem",
+                    boxShadow: "none",
+                    "&:hover": {
+                      borderColor: "#CBD5E1",
+                    },
+                    "&:focus-within": {
+                      borderColor: "#4F46E5",
+                      boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+                    },
+                  }),
+                  input: (base) => ({
+                    ...base,
+                    color: "#1E293B",
+                  }),
+                  option: (base, state) => ({
+                    ...base,
+                    backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
+                    color: state.isSelected ? "#FFFFFF" : "#1E293B",
+                    "&:hover": {
+                      backgroundColor: "#EEF2FF",
+                      color: "#1E293B",
+                    },
+                  }),
+                  menu: (base) => ({
+                    ...base,
+                    zIndex: 9999,
+                  }),
+                }}
+              />
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Status
+              </label>
+              <select
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {statusOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              rows={3}
-              className="w-full px-3 py-1 border shadow border-slate-300 rounded-lg "
-            />
-          </div>
-
-          {/* Head */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Head</label>
-            <Select
-              value={
-                formData.head_user_id
-                  ? eligibleHeads
-                      .map((u) => ({
-                        value: u.user_id,
-                        label: `${u.first_name} ${u.last_name} (${u.role})`,
-                      }))
-                      .find((o) => o.value === formData.head_user_id)
-                  : null
-              }
-              onChange={(selected) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  head_user_id: selected ? selected.value : null, // Use null if cleared
-                }))
-              }
-              options={eligibleHeads.map((u) => ({
-                value: u.user_id,
-                label: `${u.first_name} ${u.last_name} (${u.role})`,
-              }))}
-              placeholder="Select or type head..."
-              isClearable
-              isSearchable
-              styles={{
-                control: (base) => ({
-                  ...base,
-                  borderColor: "#CBD5E1", // always slate-300
-                  boxShadow: "none", // no focus ring
-                  "&:hover": {
-                    borderColor: "#CBD5E1", // stay slate-300 on hover
-                  },
-                }),
-                menu: (base) => ({
-                  ...base,
-                  zIndex: 9999, // ensure dropdown menu appears above other elements
-                }),
-              }}
-            />
-          </div>
-
-          {/* Status */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Status</label>
-            <select
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              className="w-full px-3 py-1 border shadow border-slate-300 rounded-lg"
-            >
-              {statusOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Buttons */}
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-slate-200 rounded-lg hover:bg-slate-300 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-            >
-              {mode === "add" ? "Add" : "Save"}
-            </button>
+          {/* Sticky Footer */}
+          <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-lg">
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+              >
+                {mode === "add" ? "Add Department" : "Update Department"}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -402,22 +446,22 @@ const Department = () => {
     () =>
       departments.filter((d) =>
         Object.values(d).some((v) =>
-          String(v).toLowerCase().includes(search.toLowerCase())
-        )
+          String(v).toLowerCase().includes(search.toLowerCase()),
+        ),
       ),
-    [departments, search]
+    [departments, search],
   );
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const displayed = filtered.slice(
     (page - 1) * rowsPerPage,
-    page * rowsPerPage
+    page * rowsPerPage,
   );
 
   const fetchDepartments = async () => {
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`
+        `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`,
       );
       setDepartments(res.data);
     } catch (error) {
@@ -430,7 +474,7 @@ const Department = () => {
       const res = await axios.get(
         `${
           import.meta.env.VITE_API_BASE_URL
-        }/api/dept/departments/eligible-heads`
+        }/api/dept/departments/eligible-heads`,
       );
       setEligibleHeads(res.data);
     } catch (error) {
@@ -461,11 +505,11 @@ const Department = () => {
       if (modalMode === "add") {
         res = await axios.post(
           `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`,
-          data
+          data,
         );
 
         const headObj = eligibleHeads.find(
-          (h) => h.user_id === res.data.head_user_id
+          (h) => h.user_id === res.data.head_user_id,
         );
         const newDept = {
           ...res.data,
@@ -479,11 +523,11 @@ const Department = () => {
           `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments/${
             data.id
           }`,
-          data
+          data,
         );
 
         const headObj = eligibleHeads.find(
-          (h) => h.user_id === data.head_user_id
+          (h) => h.user_id === data.head_user_id,
         );
         setDepartments((prev) =>
           prev.map((d) =>
@@ -496,8 +540,8 @@ const Department = () => {
                     : "",
                   status: data.status,
                 }
-              : d
-          )
+              : d,
+          ),
         );
       }
 
@@ -511,7 +555,7 @@ const Department = () => {
     if (!confirm("Are you sure you want to delete this department?")) return;
     try {
       await axios.delete(
-        `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments/${id}`
+        `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments/${id}`,
       );
       setDepartments((prev) => prev.filter((d) => d.id !== id));
     } catch (error) {
