@@ -12,7 +12,7 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const StaffAttendance = () => {
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [staffMembers, setStaffMembers] = useState([]);
@@ -53,7 +53,7 @@ const StaffAttendance = () => {
       if (statusFilter !== "all") params.append("status", statusFilter);
 
       const response = await fetch(
-        `http://localhost:5000/api/staff-attendance?${params}`,
+        `${API_BASE}/api/staff-attendance?${params}`,
       );
       const data = await response.json();
       if (data.success) {
@@ -68,7 +68,7 @@ const StaffAttendance = () => {
 
   const fetchStaffMembers = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/users");
+      const response = await fetch(`${API_BASE}/api/users`);
       const users = await response.json();
       // Filter for staff, faculty, admin, HR, accounting roles
       const staff = users.filter((user) =>
@@ -112,8 +112,8 @@ const StaffAttendance = () => {
       console.log("Submitting attendance data:", submitData);
 
       const url = selectedRecord
-        ? `http://localhost:5000/api/staff-attendance/${selectedRecord.attendance_id}`
-        : "http://localhost:5000/api/staff-attendance";
+        ? `${API_BASE}/api/staff-attendance/${selectedRecord.attendance_id}`
+        : `${API_BASE}/api/staff-attendance`;
       const method = selectedRecord ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -148,7 +148,7 @@ const StaffAttendance = () => {
     ) {
       try {
         const response = await fetch(
-          `http://localhost:5000/api/staff-attendance/${id}`,
+          `${API_BASE}/api/staff-attendance/${id}`,
           {
             method: "DELETE",
           },

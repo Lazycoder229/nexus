@@ -15,6 +15,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const BorrowReturn = () => {
   const [transactions, setTransactions] = useState([]);
   const [books, setBooks] = useState([]);
@@ -63,7 +65,7 @@ const BorrowReturn = () => {
       if (searchTerm) params.append("search", searchTerm);
 
       const response = await axios.get(
-        `http://localhost:5000/api/library/transactions?${params}`,
+        `${API_BASE}/api/library/transactions?${params}`,
       );
       setTransactions(response.data);
     } catch (error) {
@@ -74,7 +76,7 @@ const BorrowReturn = () => {
   const fetchBooks = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/library/books",
+        `${API_BASE}/api/library/books`,
       );
       setBooks(
         response.data.filter(
@@ -88,7 +90,7 @@ const BorrowReturn = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/users");
+      const response = await axios.get(`${API_BASE}/api/users`);
       setUsers(
         response.data.filter(
           (user) => user.role === "Student" || user.role === "Faculty",
@@ -102,7 +104,7 @@ const BorrowReturn = () => {
   const fetchStatistics = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/library/transactions/statistics",
+        `${API_BASE}/api/library/transactions/statistics`,
       );
       setStatistics(response.data);
     } catch (error) {
@@ -128,7 +130,7 @@ const BorrowReturn = () => {
     e.preventDefault();
     try {
       await axios.post(
-        "http://localhost:5000/api/library/transactions",
+        `${API_BASE}/api/library/transactions`,
         formData,
       );
       fetchTransactions();
@@ -145,7 +147,7 @@ const BorrowReturn = () => {
     e.preventDefault();
     try {
       await axios.put(
-        `http://localhost:5000/api/library/transactions/${currentTransaction.transaction_id}/return`,
+        `${API_BASE}/api/library/transactions/${currentTransaction.transaction_id}/return`,
         returnData,
       );
       fetchTransactions();

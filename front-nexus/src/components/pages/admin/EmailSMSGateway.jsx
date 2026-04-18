@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Mail, MessageSquare, Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, BarChart3, Save, X, Send, Power, CheckCircle } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const EmailSMSGateway = () => {
   const [activeTab, setActiveTab] = useState("email");
   const [gateways, setGateways] = useState([]);
@@ -40,7 +40,7 @@ const EmailSMSGateway = () => {
   const fetchGateways = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/system-settings/gateways");
+      const response = await fetch(`${API_BASE}/api/system-settings/gateways`);
       const data = await response.json();
       if (data.success) {
         setGateways(data.data);
@@ -56,8 +56,8 @@ const EmailSMSGateway = () => {
     e.preventDefault();
     try {
       const url = selectedGateway
-        ? `http://localhost:5000/api/system-settings/gateways/${selectedGateway.gateway_id}`
-        : "http://localhost:5000/api/system-settings/gateways";
+        ? `${API_BASE}/api/system-settings/gateways/${selectedGateway.gateway_id}`
+        : `${API_BASE}/api/system-settings/gateways`;
       const method = selectedGateway ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -83,7 +83,7 @@ const EmailSMSGateway = () => {
     if (!window.confirm("Are you sure you want to delete this gateway?")) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/system-settings/gateways/${id}`, {
+      const response = await fetch(`${API_BASE}/api/system-settings/gateways/${id}`, {
         method: "DELETE",
       });
 
@@ -115,7 +115,7 @@ const EmailSMSGateway = () => {
 
   const handleTest = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/system-settings/gateways/${id}/test`, {
+      const response = await fetch(`${API_BASE}/api/system-settings/gateways/${id}/test`, {
         method: "POST",
       });
       const data = await response.json();

@@ -3,8 +3,8 @@ import mysql from "mysql2/promise";
 
 const db = mysql.createPool({
   host: "localhost",
-  user: "nexusbcc",
-  password: "plantobe",
+  user: "root",
+  password: "",
   database: "nexus6",
   waitForConnections: true,
   connectionLimit: 10, // max 10 simultaneous connections

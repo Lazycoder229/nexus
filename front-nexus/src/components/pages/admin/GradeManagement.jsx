@@ -16,7 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const GradeManagement = () => {
   const [grades, setGrades] = useState([]);
   const [students, setStudents] = useState([]);
@@ -53,7 +53,7 @@ const GradeManagement = () => {
 
   const fetchGrades = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/grades");
+      const response = await axios.get(`${API_BASE}/api/grades`);
       setGrades(response.data);
     } catch (error) {
       console.error("Error fetching grades:", error);
@@ -62,7 +62,7 @@ const GradeManagement = () => {
 
   const fetchStudents = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/users");
+      const response = await axios.get(`${API_BASE}/api/users`);
       const studentsList = response.data.filter(
         (user) => user.role === "Student",
       );
@@ -75,7 +75,7 @@ const GradeManagement = () => {
   const fetchCourses = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/course/courses",
+        `${API_BASE}/api/course/courses`,
       );
       setCourses(response.data);
     } catch (error) {
@@ -86,7 +86,7 @@ const GradeManagement = () => {
   const fetchPeriods = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/academic-periods",
+        `${API_BASE}/api/academic-periods`,
       );
       setPeriods(response.data);
     } catch (error) {
@@ -140,7 +140,7 @@ const GradeManagement = () => {
     try {
       if (editMode) {
         await axios.put(
-          `http://localhost:5000/api/grades/${currentGrade.grade_id}`,
+          `${API_BASE}/api/grades/${currentGrade.grade_id}`,
           formData,
         );
       } else {
@@ -164,7 +164,7 @@ const GradeManagement = () => {
           }
         }
 
-        await axios.post("http://localhost:5000/api/grades", formData);
+        await axios.post(`${API_BASE}/api/grades`, formData);
       }
       fetchGrades();
       closeModal();
@@ -194,7 +194,7 @@ const GradeManagement = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this grade?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/grades/${id}`);
+        await axios.delete(`${API_BASE}/api/grades/${id}`);
         fetchGrades();
       } catch (error) {
         console.error("Error deleting grade:", error);
@@ -208,7 +208,7 @@ const GradeManagement = () => {
       try {
         const user = JSON.parse(localStorage.getItem("user"));
         await axios.post(
-          `http://localhost:5000/api/grades/${gradeId}/approve`,
+          `${API_BASE}/api/grades/${gradeId}/approve`,
           {
             approved_by: user.user_id,
           },

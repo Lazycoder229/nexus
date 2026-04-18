@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ClipboardList, Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, Package, History, Wrench, FileText, TrendingDown, BarChart3 } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const InventoryAssetManagement = () => {
   const [activeTab, setActiveTab] = useState("assets");
   const [assets, setAssets] = useState([]);
@@ -86,7 +86,7 @@ const InventoryAssetManagement = () => {
 
   const fetchAssets = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/inventory/assets");
+      const response = await fetch(`${API_BASE}/api/inventory/assets`);
       const data = await response.json();
       if (data.success) {
         setAssets(data.data);
@@ -98,7 +98,7 @@ const InventoryAssetManagement = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/inventory/categories");
+      const response = await fetch(`${API_BASE}/api/inventory/categories`);
       const data = await response.json();
       if (data.success) {
         setCategories(data.data);
@@ -110,7 +110,7 @@ const InventoryAssetManagement = () => {
 
   const fetchTransfers = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/inventory/transfers");
+      const response = await fetch(`${API_BASE}/api/inventory/transfers`);
       const data = await response.json();
       if (data.success) {
         setTransfers(data.data);
@@ -122,7 +122,7 @@ const InventoryAssetManagement = () => {
 
   const fetchMaintenance = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/inventory/maintenance");
+      const response = await fetch(`${API_BASE}/api/inventory/maintenance`);
       const data = await response.json();
       if (data.success) {
         setMaintenance(data.data);
@@ -134,7 +134,7 @@ const InventoryAssetManagement = () => {
 
   const fetchRequests = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/inventory/requests");
+      const response = await fetch(`${API_BASE}/api/inventory/requests`);
       const data = await response.json();
       if (data.success) {
         setRequests(data.data);
@@ -146,7 +146,7 @@ const InventoryAssetManagement = () => {
 
   const fetchSummary = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/inventory/summary");
+      const response = await fetch(`${API_BASE}/api/inventory/summary`);
       const data = await response.json();
       if (data.success) {
         setSummary(data.data);
@@ -159,7 +159,7 @@ const InventoryAssetManagement = () => {
   const handleApproveRequest = async (requestId, newStatus) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/inventory/requests/${requestId}/status`,
+        `${API_BASE}/api/inventory/requests/${requestId}/status`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -185,12 +185,12 @@ const InventoryAssetManagement = () => {
       
       if (modalType === "asset") {
         url = selectedItem
-          ? `http://localhost:5000/api/inventory/assets/${selectedItem.asset_id}`
-          : "http://localhost:5000/api/inventory/assets";
+          ? `${API_BASE}/api/inventory/assets/${selectedItem.asset_id}`
+          : `${API_BASE}/api/inventory/assets`;
         method = selectedItem ? "PUT" : "POST";
         body = formData;
       } else if (modalType === "transfer") {
-        url = "http://localhost:5000/api/inventory/transfers";
+        url = `${API_BASE}/api/inventory/transfers`;
         method = "POST";
         body = {
           asset_id: selectedItem?.asset_id,
@@ -204,7 +204,7 @@ const InventoryAssetManagement = () => {
           requested_by: 1, // TODO: Get from auth
         };
       } else if (modalType === "maintenance") {
-        url = "http://localhost:5000/api/inventory/maintenance";
+        url = `${API_BASE}/api/inventory/maintenance`;
         method = "POST";
         body = {
           asset_id: selectedItem?.asset_id,
@@ -216,7 +216,7 @@ const InventoryAssetManagement = () => {
           created_by: 1, // TODO: Get from auth
         };
       } else if (modalType === "request") {
-        url = "http://localhost:5000/api/inventory/requests";
+        url = `${API_BASE}/api/inventory/requests`;
         method = "POST";
         body = {
           request_type: formData.request_type,
@@ -247,7 +247,7 @@ const InventoryAssetManagement = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this asset?")) {
       try {
-        const response = await fetch(`http://localhost:5000/api/inventory/assets/${id}`, {
+        const response = await fetch(`${API_BASE}/api/inventory/assets/${id}`, {
           method: "DELETE",
         });
         if (response.ok) {

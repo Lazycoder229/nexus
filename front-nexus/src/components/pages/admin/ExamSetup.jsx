@@ -11,7 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const ExamSetup = () => {
   const [exams, setExams] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -57,7 +57,7 @@ const ExamSetup = () => {
       setLoading(true);
       const queryParams = new URLSearchParams(filters);
       const response = await fetch(
-        `http://localhost:5000/api/exams?${queryParams}`,
+        `${API_BASE}/api/exams?${queryParams}`,
       );
       const data = await response.json();
       if (data.success) {
@@ -72,7 +72,7 @@ const ExamSetup = () => {
 
   const fetchSections = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/sections");
+      const response = await fetch(`${API_BASE}/api/sections`);
       const data = await response.json();
       if (Array.isArray(data)) {
         setSections(data);
@@ -86,7 +86,7 @@ const ExamSetup = () => {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/course/courses");
+      const response = await fetch(`${API_BASE}/api/course/courses`);
       const data = await response.json();
       console.log("Courses API response:", data); // Debug
 
@@ -138,7 +138,7 @@ const ExamSetup = () => {
     }
     try {
       const response = await fetch(
-        `http://localhost:5000/api/faculty/department/${departmentId}`,
+        `${API_BASE}/api/faculty/department/${departmentId}`,
       );
       const data = await response.json();
       if (Array.isArray(data)) {
@@ -225,8 +225,8 @@ const ExamSetup = () => {
     e.preventDefault();
     try {
       const url = editingExam
-        ? `http://localhost:5000/api/exams/${editingExam.exam_id}`
-        : "http://localhost:5000/api/exams";
+        ? `${API_BASE}/api/exams/${editingExam.exam_id}`
+        : `${API_BASE}/api/exams`;
       const method = editingExam ? "PUT" : "POST";
 
       // Get logged-in user ID from localStorage
@@ -259,7 +259,7 @@ const ExamSetup = () => {
     if (window.confirm("Are you sure you want to delete this exam?")) {
       try {
         const response = await fetch(
-          `http://localhost:5000/api/exams/${examId}`,
+          `${API_BASE}/api/exams/${examId}`,
           { method: "DELETE" },
         );
         const data = await response.json();

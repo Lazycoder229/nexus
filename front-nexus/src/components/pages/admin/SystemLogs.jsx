@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { FileText, Search, ChevronLeft, ChevronRight, BarChart3, Trash2, AlertCircle, Activity, Database, Shield, Download } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const SystemLogs = () => {
   const [logs, setLogs] = useState([]);
   const [statistics, setStatistics] = useState(null);
@@ -40,7 +40,7 @@ const SystemLogs = () => {
         params.append("log_type", logTypeFilter);
       }
 
-      const response = await fetch(`http://localhost:5000/api/system-settings/logs?${params}`);
+      const response = await fetch(`${API_BASE}/api/system-settings/logs?${params}`);
       const data = await response.json();
       if (data.success) {
         setLogs(data.data);
@@ -54,7 +54,7 @@ const SystemLogs = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/system-settings/logs/statistics?days=${dateFilter}`);
+      const response = await fetch(`${API_BASE}/api/system-settings/logs/statistics?days=${dateFilter}`);
       const data = await response.json();
       if (data.success) {
         setStatistics(data.data);
@@ -71,7 +71,7 @@ const SystemLogs = () => {
     if (!window.confirm(`Are you sure you want to delete logs older than ${days} days? This cannot be undone.`)) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/system-settings/logs/cleanup?days=${days}`, {
+      const response = await fetch(`${API_BASE}/api/system-settings/logs/cleanup?days=${days}`, {
         method: "DELETE",
       });
 

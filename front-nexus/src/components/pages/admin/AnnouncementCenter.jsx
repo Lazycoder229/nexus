@@ -11,7 +11,7 @@ import {
   Bell,
   Eye,
 } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const AnnouncementCenter = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [statistics, setStatistics] = useState(null);
@@ -51,7 +51,7 @@ const AnnouncementCenter = () => {
       if (filterStatus) params.append("status", filterStatus);
       if (searchTerm) params.append("search", searchTerm);
       const response = await axios.get(
-        `http://localhost:5000/api/events/announcements?${params}`,
+        `${API_BASE}/api/events/announcements?${params}`,
         authHeaders(),
       );
       setAnnouncements(response.data);
@@ -63,7 +63,7 @@ const AnnouncementCenter = () => {
   const fetchStatistics = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/events/announcements/statistics",
+        `${API_BASE}/api/events/announcements/statistics`,
       );
       setStatistics(response.data);
     } catch (error) {
@@ -90,13 +90,13 @@ const AnnouncementCenter = () => {
       let response;
       if (current) {
         response = await axios.put(
-          `http://localhost:5000/api/events/announcements/${current.announcement_id}`,
+          `${API_BASE}/api/events/announcements/${current.announcement_id}`,
           submitData,
           authHeaders(),
         );
       } else {
         response = await axios.post(
-          "http://localhost:5000/api/events/announcements",
+          `${API_BASE}/api/events/announcements`,
           submitData,
           authHeaders(),
         );
@@ -150,7 +150,7 @@ const AnnouncementCenter = () => {
     if (window.confirm("Delete this announcement?")) {
       try {
         await axios.delete(
-          `http://localhost:5000/api/events/announcements/${id}`,
+          `${API_BASE}/api/events/announcements/${id}`,
           authHeaders(),
         );
         fetchData();

@@ -16,7 +16,7 @@ import {
   AlertCircle,
   TrendingUp,
 } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const StatusBadge = ({ status }) => {
   const colors = {
     active: "bg-green-100 text-green-800",
@@ -100,7 +100,7 @@ const SubjectSections = () => {
   }, []);
   const fetchSections = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/sections");
+      const response = await axios.get(`${API_BASE}/api/sections`);
       setSections(response.data);
     } catch (error) {
       console.error("Error fetching sections:", error);
@@ -109,7 +109,7 @@ const SubjectSections = () => {
   const fetchCourses = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/course/courses",
+        `${API_BASE}/api/course/courses`,
       );
       setCourses(response.data);
     } catch (error) {
@@ -119,7 +119,7 @@ const SubjectSections = () => {
   const fetchPeriods = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/academic-periods",
+        `${API_BASE}/api/academic-periods`,
       );
       setPeriods(response.data);
     } catch (error) {
@@ -138,11 +138,11 @@ const SubjectSections = () => {
     try {
       if (editMode) {
         await axios.put(
-          `http://localhost:5000/api/sections/${currentSection.section_id}`,
+          `${API_BASE}/api/sections/${currentSection.section_id}`,
           formData,
         );
       } else {
-        await axios.post("http://localhost:5000/api/sections", formData);
+        await axios.post(`${API_BASE}/api/sections`, formData);
       }
       fetchSections();
       closeModal();
@@ -170,7 +170,7 @@ const SubjectSections = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this section?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/sections/${id}`);
+        await axios.delete(`${API_BASE}/api/sections/${id}`);
         fetchSections();
       } catch (error) {
         console.error("Error deleting section:", error);

@@ -15,7 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const AcademicCalendar = () => {
   const [events, setEvents] = useState([]);
   const [periods, setPeriods] = useState([]);
@@ -65,7 +65,7 @@ const AcademicCalendar = () => {
   const fetchEvents = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/academic-events",
+        `${API_BASE}/api/academic-events`,
       );
       setEvents(response.data);
     } catch (error) {
@@ -76,7 +76,7 @@ const AcademicCalendar = () => {
   const fetchPeriods = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/academic-periods",
+        `${API_BASE}/api/academic-periods`,
       );
       setPeriods(response.data);
     } catch (error) {
@@ -98,11 +98,11 @@ const AcademicCalendar = () => {
     try {
       if (editMode) {
         await axios.put(
-          `http://localhost:5000/api/academic-events/${currentEvent.event_id}`,
+          `${API_BASE}/api/academic-events/${currentEvent.event_id}`,
           formData,
         );
       } else {
-        await axios.post("http://localhost:5000/api/academic-events", formData);
+        await axios.post(`${API_BASE}/api/academic-events`, formData);
       }
       fetchEvents();
       closeModal();
@@ -131,7 +131,7 @@ const AcademicCalendar = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this event?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/academic-events/${id}`);
+        await axios.delete(`${API_BASE}/api/academic-events/${id}`);
         fetchEvents();
       } catch (error) {
         console.error("Error deleting event:", error);

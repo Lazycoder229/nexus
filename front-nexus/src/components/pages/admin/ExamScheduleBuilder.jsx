@@ -13,7 +13,7 @@ import {
   ChevronRight,
   FileText,
 } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const ExamScheduleBuilder = () => {
   const [schedules, setSchedules] = useState([]);
   const [exams, setExams] = useState([]);
@@ -55,7 +55,7 @@ const ExamScheduleBuilder = () => {
       setLoading(true);
       const queryParams = new URLSearchParams(filters);
       const response = await fetch(
-        `http://localhost:5000/api/exam-schedules?${queryParams}`,
+        `${API_BASE}/api/exam-schedules?${queryParams}`,
       );
       const data = await response.json();
       console.log("Exam schedules response:", data);
@@ -72,7 +72,7 @@ const ExamScheduleBuilder = () => {
 
   const fetchExams = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/exams");
+      const response = await fetch(`${API_BASE}/api/exams`);
       const data = await response.json();
       if (data.success && Array.isArray(data.data)) {
         setExams(data.data);
@@ -84,7 +84,7 @@ const ExamScheduleBuilder = () => {
 
   const fetchSections = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/sections");
+      const response = await fetch(`${API_BASE}/api/sections`);
       const data = await response.json();
       if (Array.isArray(data)) {
         setSections(data);
@@ -96,7 +96,7 @@ const ExamScheduleBuilder = () => {
 
   const fetchProctors = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/faculty");
+      const response = await fetch(`${API_BASE}/api/faculty`);
       const data = await response.json();
       console.log("Proctors data:", data);
       if (Array.isArray(data)) {
@@ -151,8 +151,8 @@ const ExamScheduleBuilder = () => {
     e.preventDefault();
     try {
       const url = editingSchedule
-        ? `http://localhost:5000/api/exam-schedules/${editingSchedule.schedule_id}`
-        : "http://localhost:5000/api/exam-schedules";
+        ? `${API_BASE}/api/exam-schedules/${editingSchedule.schedule_id}`
+        : `${API_BASE}/api/exam-schedules`;
       const method = editingSchedule ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -183,7 +183,7 @@ const ExamScheduleBuilder = () => {
     if (!confirm("Are you sure you want to delete this schedule?")) return;
     try {
       const response = await fetch(
-        `http://localhost:5000/api/exam-schedules/${scheduleId}`,
+        `${API_BASE}/api/exam-schedules/${scheduleId}`,
         { method: "DELETE" },
       );
       const data = await response.json();

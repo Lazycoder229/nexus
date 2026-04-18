@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Settings, Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, BarChart3, Save, X } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const GeneralSettings = () => {
   const [settings, setSettings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +34,7 @@ const GeneralSettings = () => {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/system-settings/settings");
+      const response = await fetch(`${API_BASE}/api/system-settings/settings`);
       const data = await response.json();
       if (data.success) {
         setSettings(data.data);
@@ -49,7 +49,7 @@ const GeneralSettings = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const url = "http://localhost:5000/api/system-settings/settings";
+      const url = `${API_BASE}/api/system-settings/settings`;
       const method = "POST";
 
       const response = await fetch(url, {
@@ -75,7 +75,7 @@ const GeneralSettings = () => {
     if (!window.confirm("Are you sure you want to delete this setting?")) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/system-settings/settings/${key}`, {
+      const response = await fetch(`${API_BASE}/api/system-settings/settings/${key}`, {
         method: "DELETE",
       });
 

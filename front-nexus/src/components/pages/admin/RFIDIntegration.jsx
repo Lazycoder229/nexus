@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { CreditCard, Users, Plus, Search, Edit, Trash2, ChevronLeft, ChevronRight, X } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const RFIDIntegration = () => {
   const [rfidCards, setRfidCards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +37,7 @@ const RFIDIntegration = () => {
       if (statusFilter !== "all") params.append("status", statusFilter);
 
       const response = await fetch(
-        `http://localhost:5000/api/rfid-cards?${params}`
+        `${API_BASE}/api/rfid-cards?${params}`
       );
       const data = await response.json();
       if (data.success) {
@@ -54,8 +54,8 @@ const RFIDIntegration = () => {
     e.preventDefault();
     try {
       const url = selectedCard
-        ? `http://localhost:5000/api/rfid-cards/${selectedCard.rfid_id}`
-        : "http://localhost:5000/api/rfid-cards";
+        ? `${API_BASE}/api/rfid-cards/${selectedCard.rfid_id}`
+        : `${API_BASE}/api/rfid-cards`;
       const method = selectedCard ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -77,7 +77,7 @@ const RFIDIntegration = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this RFID card?")) {
       try {
-        const response = await fetch(`http://localhost:5000/api/rfid-cards/${id}`, {
+        const response = await fetch(`${API_BASE}/api/rfid-cards/${id}`, {
           method: "DELETE",
         });
         if (response.ok) {

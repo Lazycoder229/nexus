@@ -36,7 +36,7 @@ const StudentFinanceReceipts = () => {
 
   const handleDownloadReceipt = async (receiptId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/student/finance/receipts/${receiptId}/download`);
+      const response = await fetch(`${API_BASE}/api/student/finance/receipts/${receiptId}/download`);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");

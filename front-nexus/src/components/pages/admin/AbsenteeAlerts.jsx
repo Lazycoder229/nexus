@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Bell, AlertTriangle, CheckCircle, XCircle, Eye, Search, ChevronLeft, ChevronRight } from "lucide-react";
-
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 const AbsenteeAlerts = () => {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +24,7 @@ const AbsenteeAlerts = () => {
       if (userTypeFilter !== "all") params.append("user_type", userTypeFilter);
 
       const response = await fetch(
-        `http://localhost:5000/api/absentee-alerts?${params}`
+        `${API_BASE}/api/absentee-alerts?${params}`
       );
       const data = await response.json();
       if (data.success) {
@@ -40,7 +40,7 @@ const AbsenteeAlerts = () => {
   const handleAcknowledge = async (alertId) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/absentee-alerts/${alertId}/acknowledge`,
+        `${API_BASE}/api/absentee-alerts/${alertId}/acknowledge`,
         {
           method: "PATCH",
           headers: {

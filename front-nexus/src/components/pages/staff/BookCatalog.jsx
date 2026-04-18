@@ -13,6 +13,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const BookCatalog = () => {
   const [books, setBooks] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -71,7 +73,7 @@ const BookCatalog = () => {
       if (searchTerm) params.append("search", searchTerm);
 
       const response = await axios.get(
-        `http://localhost:5000/api/library/books?${params}`
+        `${API_BASE}/api/library/books?${params}`
       );
       setBooks(response.data);
     } catch (error) {
@@ -82,7 +84,7 @@ const BookCatalog = () => {
   const fetchCategories = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/library/books/categories"
+        `${API_BASE}/api/library/books/categories`
       );
       setCategories(response.data);
     } catch (error) {
@@ -93,7 +95,7 @@ const BookCatalog = () => {
   const fetchStatistics = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/library/books/statistics"
+        `${API_BASE}/api/library/books/statistics`
       );
       setStatistics(response.data);
     } catch (error) {
@@ -114,11 +116,11 @@ const BookCatalog = () => {
     try {
       if (editMode) {
         await axios.put(
-          `http://localhost:5000/api/library/books/${currentBook.book_id}`,
+          `${API_BASE}/api/library/books/${currentBook.book_id}`,
           formData
         );
       } else {
-        await axios.post("http://localhost:5000/api/library/books", formData);
+        await axios.post(`${API_BASE}/api/library/books`, formData);
       }
       fetchBooks();
       fetchStatistics();
@@ -163,7 +165,7 @@ const BookCatalog = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this book?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/library/books/${id}`);
+        await axios.delete(`${API_BASE}/api/library/books/${id}`);
         fetchBooks();
         fetchStatistics();
       } catch (error) {

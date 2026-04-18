@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Calendar, Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const SchoolCalendar = () => {
   const [calendarItems, setCalendarItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +32,7 @@ const SchoolCalendar = () => {
       setLoading(true);
       const queryParams = new URLSearchParams(filters);
       const response = await fetch(
-        `http://localhost:5000/api/events/calendar?${queryParams}`
+        `${API_BASE}/api/events/calendar?${queryParams}`
       );
       const data = await response.json();
       if (data.success) {
@@ -49,8 +49,8 @@ const SchoolCalendar = () => {
     e.preventDefault();
     try {
       const url = selectedItem
-        ? `http://localhost:5000/api/events/calendar/${selectedItem.calendar_id}`
-        : "http://localhost:5000/api/events/calendar";
+        ? `${API_BASE}/api/events/calendar/${selectedItem.calendar_id}`
+        : `${API_BASE}/api/events/calendar`;
 
       const response = await fetch(url, {
         method: selectedItem ? "PUT" : "POST",
@@ -74,7 +74,7 @@ const SchoolCalendar = () => {
     if (window.confirm("Are you sure you want to delete this calendar item?")) {
       try {
         const response = await fetch(
-          `http://localhost:5000/api/events/calendar/${id}`,
+          `${API_BASE}/api/events/calendar/${id}`,
           {
             method: "DELETE",
           }

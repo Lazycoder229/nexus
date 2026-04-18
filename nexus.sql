@@ -1,8 +1,8 @@
 -- ===========================
 -- Database: Nexus
 -- ===========================
-CREATE DATABASE IF NOT EXISTS nexus;
-USE nexus;
+CREATE DATABASE IF NOT EXISTS nexus6;
+USE nexus6;
 
 -- ===========================
 -- 1. Core Users Table

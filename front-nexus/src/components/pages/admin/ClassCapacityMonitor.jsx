@@ -12,7 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const ClassCapacityMonitor = () => {
   const [sections, setSections] = useState([]);
   const [periods, setPeriods] = useState([]);
@@ -32,7 +32,7 @@ const ClassCapacityMonitor = () => {
 
   const fetchSections = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/sections");
+      const response = await axios.get(`${API_BASE}/api/sections`);
       setSections(response.data);
     } catch (error) {
       console.error("Error fetching sections:", error);
@@ -42,7 +42,7 @@ const ClassCapacityMonitor = () => {
   const fetchPeriods = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/academic-periods"
+        `${API_BASE}/api/academic-periods`
       );
       setPeriods(response.data);
     } catch (error) {
@@ -53,7 +53,7 @@ const ClassCapacityMonitor = () => {
   const fetchCourses = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/course/courses"
+        `${API_BASE}/api/course/courses`
       );
       setCourses(response.data);
     } catch (error) {

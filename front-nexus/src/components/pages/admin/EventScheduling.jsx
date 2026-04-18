@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { CalendarCheck, Plus, Edit, Trash2, Users, MapPin, Clock, Search, ChevronLeft, ChevronRight } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const EventScheduling = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +33,7 @@ const EventScheduling = () => {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/events/scheduling");
+      const response = await fetch(`${API_BASE}/api/events/scheduling`);
       const data = await response.json();
       if (data.success) {
         setEvents(data.data);
@@ -57,8 +57,8 @@ const EventScheduling = () => {
       console.log("Submitting event payload:", payload);
       
       const url = selectedEvent
-        ? `http://localhost:5000/api/events/scheduling/${selectedEvent.event_id}`
-        : "http://localhost:5000/api/events/scheduling";
+        ? `${API_BASE}/api/events/scheduling/${selectedEvent.event_id}`
+        : `${API_BASE}/api/events/scheduling`;
 
       const response = await fetch(url, {
         method: selectedEvent ? "PUT" : "POST",
@@ -86,7 +86,7 @@ const EventScheduling = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this event?")) {
       try {
-        const response = await fetch(`http://localhost:5000/api/events/scheduling/${id}`, {
+        const response = await fetch(`${API_BASE}/api/events/scheduling/${id}`, {
           method: "DELETE",
         });
         if (response.ok) {

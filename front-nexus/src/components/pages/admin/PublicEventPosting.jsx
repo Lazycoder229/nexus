@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Mail, Plus, Edit, Trash2, Eye, Globe, Image as ImageIcon, Search, ChevronLeft, ChevronRight } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const PublicEventPosting = () => {
   const [publicEvents, setPublicEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ const PublicEventPosting = () => {
   const fetchPublicEvents = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/events/public");
+      const response = await fetch(`${API_BASE}/api/events/public`);
       const data = await response.json();
       if (data.success) {
         setPublicEvents(data.data);
@@ -47,8 +47,8 @@ const PublicEventPosting = () => {
     e.preventDefault();
     try {
       const url = selectedEvent
-        ? `http://localhost:5000/api/events/public/${selectedEvent.public_event_id}`
-        : "http://localhost:5000/api/events/public";
+        ? `${API_BASE}/api/events/public/${selectedEvent.public_event_id}`
+        : `${API_BASE}/api/events/public`;
 
       const response = await fetch(url, {
         method: selectedEvent ? "PUT" : "POST",
@@ -72,7 +72,7 @@ const PublicEventPosting = () => {
     if (window.confirm("Are you sure you want to delete this public event?")) {
       try {
         const response = await fetch(
-          `http://localhost:5000/api/events/public/${id}`,
+          `${API_BASE}/api/events/public/${id}`,
           {
             method: "DELETE",
           }
@@ -150,7 +150,7 @@ const PublicEventPosting = () => {
   const togglePublish = async (event) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/events/public/${event.public_event_id}`,
+        `${API_BASE}/api/events/public/${event.public_event_id}`,
         {
           method: "PUT",
           headers: {

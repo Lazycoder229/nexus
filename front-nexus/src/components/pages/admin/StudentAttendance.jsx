@@ -13,7 +13,7 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const StudentAttendance = () => {
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +53,7 @@ const StudentAttendance = () => {
 
   const fetchStudents = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/enrollments");
+      const response = await fetch(`${API_BASE}/api/enrollments`);
       const data = await response.json();
       console.log("Enrollments data:", data);
       if (Array.isArray(data)) {
@@ -78,7 +78,7 @@ const StudentAttendance = () => {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/course/courses");
+      const response = await fetch(`${API_BASE}/api/course/courses`);
       const data = await response.json();
       console.log("Courses raw response:", data);
       console.log("Is array:", Array.isArray(data));
@@ -107,7 +107,7 @@ const StudentAttendance = () => {
 
   const fetchSections = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/sections");
+      const response = await fetch(`${API_BASE}/api/sections`);
       const data = await response.json();
       console.log("Sections data:", data);
       if (Array.isArray(data)) {
@@ -121,7 +121,7 @@ const StudentAttendance = () => {
   const fetchPeriods = async () => {
     try {
       const response = await fetch(
-        "http://localhost:5000/api/academic-periods",
+        `${API_BASE}/api/academic-periods`,
       );
       const data = await response.json();
       console.log("Periods data:", data);
@@ -142,7 +142,7 @@ const StudentAttendance = () => {
       if (statusFilter !== "all") params.append("status", statusFilter);
 
       const response = await fetch(
-        `http://localhost:5000/api/student-attendance?${params}`,
+        `${API_BASE}/api/student-attendance?${params}`,
       );
       const data = await response.json();
       if (data.success) {
@@ -174,8 +174,8 @@ const StudentAttendance = () => {
       console.log("Submitting attendance data:", submitData);
 
       const url = selectedRecord
-        ? `http://localhost:5000/api/student-attendance/${selectedRecord.attendance_id}`
-        : "http://localhost:5000/api/student-attendance";
+        ? `${API_BASE}/api/student-attendance/${selectedRecord.attendance_id}`
+        : `${API_BASE}/api/student-attendance`;
       const method = selectedRecord ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -210,7 +210,7 @@ const StudentAttendance = () => {
     ) {
       try {
         const response = await fetch(
-          `http://localhost:5000/api/student-attendance/${id}`,
+          `${API_BASE}/api/student-attendance/${id}`,
           {
             method: "DELETE",
           },

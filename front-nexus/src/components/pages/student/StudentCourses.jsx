@@ -155,7 +155,7 @@ const StudentCourses = () => {
       );
 
       const enrollments = response.data || [];
-      console.log("✅ Fetched enrollments:", enrollments);
+      console.log("Fetched enrollments:", enrollments);
 
       const scheduleData = [];
 

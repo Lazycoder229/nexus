@@ -15,6 +15,8 @@ import {
   CheckCircle,
 } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const LostDamageLogs = () => {
   const [incidents, setIncidents] = useState([]);
   const [books, setBooks] = useState([]);
@@ -60,7 +62,7 @@ const LostDamageLogs = () => {
       if (filterStatus) params.append("payment_status", filterStatus);
       if (searchTerm) params.append("search", searchTerm);
 
-      const response = await axios.get(`http://localhost:5000/api/library/incidents?${params}`);
+      const response = await axios.get(`${API_BASE}/api/library/incidents?${params}`);
       setIncidents(response.data);
     } catch (error) {
       console.error("Error fetching incidents:", error);
@@ -69,7 +71,7 @@ const LostDamageLogs = () => {
 
   const fetchBooks = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/library/books");
+      const response = await axios.get(`${API_BASE}/api/library/books`);
       setBooks(response.data);
     } catch (error) {
       console.error("Error fetching books:", error);
@@ -78,7 +80,7 @@ const LostDamageLogs = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/users");
+      const response = await axios.get(`${API_BASE}/api/users`);
       setUsers(response.data);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -87,7 +89,7 @@ const LostDamageLogs = () => {
 
   const fetchStatistics = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/library/incidents/statistics");
+      const response = await axios.get(`${API_BASE}/api/library/incidents/statistics`);
       setStatistics(response.data);
     } catch (error) {
       console.error("Error fetching statistics:", error);
@@ -107,9 +109,9 @@ const LostDamageLogs = () => {
     e.preventDefault();
     try {
       if (currentIncident) {
-        await axios.put(`http://localhost:5000/api/library/incidents/${currentIncident.incident_id}`, formData);
+        await axios.put(`${API_BASE}/api/library/incidents/${currentIncident.incident_id}`, formData);
       } else {
-        await axios.post("http://localhost:5000/api/library/incidents", formData);
+        await axios.post(`${API_BASE}/api/library/incidents`, formData);
       }
       fetchIncidents();
       fetchStatistics();
@@ -140,7 +142,7 @@ const LostDamageLogs = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this incident?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/library/incidents/${id}`);
+        await axios.delete(`${API_BASE}/api/library/incidents/${id}`);
         fetchIncidents();
         fetchStatistics();
       } catch (error) {

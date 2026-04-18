@@ -15,7 +15,7 @@ import {
   Save,
   Edit2,
 } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const TimetableBuilder = () => {
   const [sections, setSections] = useState([]);
   const [periods, setPeriods] = useState([]);
@@ -70,7 +70,7 @@ const TimetableBuilder = () => {
 
   const fetchSections = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/sections");
+      const response = await axios.get(`${API_BASE}/api/sections`);
       console.log("Sections data:", response.data);
       setSections(response.data);
     } catch (error) {
@@ -81,7 +81,7 @@ const TimetableBuilder = () => {
   const fetchPeriods = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/academic-periods",
+        `${API_BASE}/api/academic-periods`,
       );
       setPeriods(response.data);
     } catch (error) {
@@ -92,7 +92,7 @@ const TimetableBuilder = () => {
   const fetchCourses = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/api/course/courses",
+        `${API_BASE}/api/course/courses`,
       );
       console.log("Courses data:", response.data);
       setCourses(response.data);
@@ -251,7 +251,7 @@ const TimetableBuilder = () => {
       console.log("Saving schedule with data:", updateData);
 
       const response = await axios.put(
-        `http://localhost:5000/api/sections/${formData.section_id}`,
+        `${API_BASE}/api/sections/${formData.section_id}`,
         updateData,
       );
 

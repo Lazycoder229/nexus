@@ -11,7 +11,7 @@ import {
   FileText,
   Plus,
 } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const GradeEntryApproval = () => {
   const [gradeEntries, setGradeEntries] = useState([]);
   const [students, setStudents] = useState([]);
@@ -51,7 +51,7 @@ const GradeEntryApproval = () => {
       setLoading(true);
       const queryParams = new URLSearchParams(filters);
       const response = await fetch(
-        `http://localhost:5000/api/grade-entries?${queryParams}`,
+        `${API_BASE}/api/grade-entries?${queryParams}`,
       );
       const data = await response.json();
       if (data.success) {
@@ -66,7 +66,7 @@ const GradeEntryApproval = () => {
 
   const fetchStudents = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/enrollments");
+      const response = await fetch(`${API_BASE}/api/enrollments`);
       const data = await response.json();
       if (Array.isArray(data)) {
         const uniqueStudents = data.reduce((acc, enrollment) => {
@@ -88,7 +88,7 @@ const GradeEntryApproval = () => {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/course/courses");
+      const response = await fetch(`${API_BASE}/api/course/courses`);
       const data = await response.json();
       if (Array.isArray(data)) {
         setCourses(data);
@@ -101,7 +101,7 @@ const GradeEntryApproval = () => {
   const fetchPeriods = async () => {
     try {
       const response = await fetch(
-        "http://localhost:5000/api/academic-periods",
+        `${API_BASE}/api/academic-periods`,
       );
       const data = await response.json();
       if (Array.isArray(data)) {
@@ -205,8 +205,8 @@ const GradeEntryApproval = () => {
     e.preventDefault();
     try {
       const url = editingEntry
-        ? `http://localhost:5000/api/grade-entries/${editingEntry.entry_id}`
-        : "http://localhost:5000/api/grade-entries";
+        ? `${API_BASE}/api/grade-entries/${editingEntry.entry_id}`
+        : `${API_BASE}/api/grade-entries`;
       const method = editingEntry ? "PUT" : "POST";
 
       // Get logged-in user ID from localStorage
@@ -244,7 +244,7 @@ const GradeEntryApproval = () => {
   const handleApprove = async (entryId) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/grade-entries/${entryId}/approve`,
+        `${API_BASE}/api/grade-entries/${entryId}/approve`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -266,7 +266,7 @@ const GradeEntryApproval = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/grade-entries/${entryId}/reject`,
+        `${API_BASE}/api/grade-entries/${entryId}/reject`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },

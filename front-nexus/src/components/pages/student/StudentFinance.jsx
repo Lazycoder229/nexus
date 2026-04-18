@@ -300,7 +300,7 @@ const StudentFinance = () => {
   const handleDownloadReceipt = async (receiptId) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/student/finance/receipts/${receiptId}/download`,
+        `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"}/api/student/finance/receipts/${receiptId}/download`,
         { method: "GET" },
       );
       const blob = await response.blob();

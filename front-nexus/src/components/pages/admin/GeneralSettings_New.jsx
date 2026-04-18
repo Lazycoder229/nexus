@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Settings, Globe, GraduationCap, Shield, Bell, Wrench, Save, RefreshCw } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const GeneralSettingsNew = () => {
   const [activeTab, setActiveTab] = useState("general");
   const [loading, setLoading] = useState(true);
@@ -81,7 +81,7 @@ const GeneralSettingsNew = () => {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const response = await fetch("http://localhost:5000/api/system-settings/settings");
+      const response = await fetch(`${API_BASE}/api/system-settings/settings`);
       const data = await response.json();
       if (data.success) {
         const settingsObj = {};
@@ -146,7 +146,7 @@ const GeneralSettingsNew = () => {
 
       // Save each setting
       for (const setting of settingsToSave) {
-        await fetch("http://localhost:5000/api/system-settings/settings", {
+        await fetch(`${API_BASE}/api/system-settings/settings`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

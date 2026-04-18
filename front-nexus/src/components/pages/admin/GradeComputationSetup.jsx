@@ -11,7 +11,7 @@ import {
   ChevronRight,
   FileText,
 } from "lucide-react";
-
+`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
 const GradeComputationSetup = () => {
   const [settings, setSettings] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -53,7 +53,7 @@ const GradeComputationSetup = () => {
       setLoading(true);
       const queryParams = new URLSearchParams(filters);
       const response = await fetch(
-        `http://localhost:5000/api/grade-computation-settings?${queryParams}`,
+        `${API_BASE}/api/grade-computation-settings?${queryParams}`,
       );
       const data = await response.json();
       if (data.success) {
@@ -74,7 +74,7 @@ const GradeComputationSetup = () => {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/course/courses");
+      const response = await fetch(`${API_BASE}/api/course/courses`);
       const data = await response.json();
       if (Array.isArray(data)) {
         setCourses(data);
@@ -86,7 +86,7 @@ const GradeComputationSetup = () => {
 
   const fetchSections = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/sections");
+      const response = await fetch(`${API_BASE}/api/sections`);
       const data = await response.json();
       if (Array.isArray(data)) {
         setSections(data);
@@ -99,7 +99,7 @@ const GradeComputationSetup = () => {
   const fetchPeriods = async () => {
     try {
       const response = await fetch(
-        "http://localhost:5000/api/academic-periods",
+        `${API_BASE}/api/academic-periods`,
       );
       const data = await response.json();
       if (Array.isArray(data)) {
@@ -152,8 +152,8 @@ const GradeComputationSetup = () => {
     e.preventDefault();
     try {
       const url = editingSetting
-        ? `http://localhost:5000/api/grade-computation-settings/${editingSetting.setting_id}`
-        : "http://localhost:5000/api/grade-computation-settings";
+        ? `${API_BASE}/api/grade-computation-settings/${editingSetting.setting_id}`
+        : `${API_BASE}/api/grade-computation-settings`;
       const method = editingSetting ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -184,7 +184,7 @@ const GradeComputationSetup = () => {
     if (!confirm("Are you sure you want to delete this setting?")) return;
     try {
       const response = await fetch(
-        `http://localhost:5000/api/grade-computation-settings/${settingId}`,
+        `${API_BASE}/api/grade-computation-settings/${settingId}`,
         { method: "DELETE" },
       );
       const data = await response.json();
