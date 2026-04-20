@@ -19,7 +19,8 @@ const __dirname = path.dirname(__filename);
 // Get all users
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await getAllUsersService();
+    const { role } = req.query;
+    const users = await getAllUsersService(role);
     res.status(200).json(users);
   } catch (error) {
     console.error("Error fetching users:", error);

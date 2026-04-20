@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Settings, Globe, GraduationCap, Shield, Bell, Wrench, Save, RefreshCw } from "lucide-react";
-`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 const GeneralSettingsNew = () => {
   const [activeTab, setActiveTab] = useState("general");
   const [loading, setLoading] = useState(true);

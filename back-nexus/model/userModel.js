@@ -40,8 +40,8 @@ export const findUserById = async (userId) => {
   return rows[0];
 };
 // Fetch all users with their student or employee details
-export const getAllUsers = async () => {
-  const [rows] = await db.query(`
+export const getAllUsers = async (role = null) => {
+  let query = `
     SELECT 
       u.*,
       s.student_number,
@@ -68,8 +68,13 @@ export const getAllUsers = async () => {
     FROM users u
     LEFT JOIN student_details s ON u.user_id = s.user_id
     LEFT JOIN employee_records er ON u.user_id = er.user_id
-    LEFT JOIN employee_details e ON u.user_id = e.user_id
-  `);
+    LEFT JOIN employee_details e ON u.user_id = e.user_id`;
+  
+  if (role) {
+    query += ` WHERE u.role = ?`;
+  }
+  
+  const [rows] = role ? await db.query(query, [role]) : await db.query(query);
   return rows;
 };
 

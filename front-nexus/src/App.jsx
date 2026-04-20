@@ -11,7 +11,7 @@ import AdminDashboard from "./components/pages/admin/AdminDashboard";
 import LoginLayout from "./components/shared/LoginLayout";
 import DepartmentMngt from "./components/pages/admin/DepartmentMngt";
 import UserManagement from "./components/pages/admin/UserManagement";
-import StudentInformation from "./components/pages/admin/StudentInformation";
+
 import Department from "./components/pages/admin/Department";
 import CourseManagement from "./components/pages/admin/CourseManagement";
 import Prerequisites from "./components/pages/admin/Prerequisites";
@@ -157,7 +157,7 @@ function AppWrapper() {
         <Route path="admin_department_managent" element={<Department />} />
         <Route path="admin_course_management" element={<CourseManagement />} />
         <Route path="admin_prerequisite" element={<Prerequisites />} />
-        <Route path="students" element={<StudentInformation />} />
+      
         <Route path="admin_manage_users" element={<UserManagement />} />
         <Route path="admin_program_offerings" element={<ProgramsOffering />} />
         <Route path="admin_academic_year" element={<AcademicSem />} />

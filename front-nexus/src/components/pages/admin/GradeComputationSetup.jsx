@@ -11,7 +11,7 @@ import {
   ChevronRight,
   FileText,
 } from "lucide-react";
-`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 const GradeComputationSetup = () => {
   const [settings, setSettings] = useState([]);
   const [courses, setCourses] = useState([]);

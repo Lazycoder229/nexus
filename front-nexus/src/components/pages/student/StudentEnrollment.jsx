@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import Select from "react-select";
 import { GraduationCap, Plus, Pencil, X } from "lucide-react";
 
 const StatusBadge = ({ status }) => {
@@ -49,9 +50,26 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
     previous_school: "",
     year_graduated: "",
     entrance_exam_score: "",
+    interview_date: "",
+    interview_notes: "",
+    documents_submitted: "",
   });
   const [studentProfile, setStudentProfile] = useState(null);
   const [programs, setPrograms] = useState([]);
+  const [selectedDocuments, setSelectedDocuments] = useState([]);
+
+  const documentOptions = [
+    { value: "Birth Certificate", label: "Birth Certificate" },
+    { value: "High School Diploma", label: "High School Diploma" },
+    { value: "Transcript", label: "Transcript" },
+    { value: "ID Card", label: "ID Card" },
+    { value: "Medical Certificate", label: "Medical Certificate" },
+    { value: "NBI Clearance", label: "NBI Clearance" },
+    { value: "Good Moral Certificate", label: "Good Moral Certificate" },
+    { value: "NCAE Score", label: "NCAE Score" },
+    { value: "Proof of Income", label: "Proof of Income" },
+    { value: "Parent/Guardian ID", label: "Parent/Guardian ID" },
+  ];
 
   useEffect(() => {
     const fetchPrograms = async () => {
@@ -122,8 +140,21 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
               studentProfile.yearGraduated ||
               "",
             entrance_exam_score: studentProfile.entrance_exam_score || "",
+            interview_date: "",
+            interview_notes: "",
+            documents_submitted: "",
           }
         : {};
+
+      const documentsArray = initialData?.documents_submitted
+        ? initialData.documents_submitted
+            .split(",")
+            .map((doc) => ({
+              value: doc.trim(),
+              label: doc.trim(),
+            }))
+        : [];
+      setSelectedDocuments(documentsArray);
 
       setFormData({
         ...baseData,
@@ -150,9 +181,15 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
           year_graduated: initialData.year_graduated || baseData.year_graduated,
           entrance_exam_score:
             initialData.entrance_exam_score || baseData.entrance_exam_score,
+          interview_date: initialData.interview_date
+            ? initialData.interview_date.split("T")[0]
+            : "",
+          interview_notes: initialData.interview_notes || "",
+          documents_submitted: initialData.documents_submitted || "",
         }),
       });
     } else if (!initialData && !studentProfile) {
+      setSelectedDocuments([]);
       setFormData({
         first_name: "",
         middle_name: "",
@@ -168,6 +205,9 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
         previous_school: "",
         year_graduated: "",
         entrance_exam_score: "",
+        interview_date: "",
+        interview_notes: "",
+        documents_submitted: "",
       });
     }
   }, [initialData, studentProfile]);
@@ -484,12 +524,29 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
               </div>
             </div>
 
-            {/* Status Section */}
+            {/* Interview Information */}
             <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
               <h4 className="text-sm font-semibold mb-2 text-slate-700 uppercase tracking-wider">
-                Application Status
+                Interview Information
               </h4>
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                    Interview Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.interview_date}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        interview_date: e.target.value,
+                      }))
+                    }
+                    className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    disabled={mode === "view"}
+                  />
+                </div>
                 <div>
                   <label className="block text-xs font-medium mb-0.5 text-slate-600">
                     Status
@@ -513,6 +570,47 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
                   </select>
                 </div>
               </div>
+              <div className="mt-2">
+                <label className="block text-xs font-medium mb-0.5 text-slate-600">
+                  Interview Notes
+                </label>
+                <textarea
+                  value={formData.interview_notes}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      interview_notes: e.target.value,
+                    }))
+                  }
+                  className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  rows={2}
+                  disabled={mode === "view"}
+                />
+              </div>
+            </div>
+
+            {/* Documents Submitted */}
+            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+              <h4 className="text-sm font-semibold mb-2 text-slate-700 uppercase tracking-wider">
+                Documents to Submit
+              </h4>
+              <Select
+                isMulti
+                options={documentOptions}
+                value={selectedDocuments}
+                onChange={(options) => {
+                  setSelectedDocuments(options || []);
+                  setFormData((prev) => ({
+                    ...prev,
+                    documents_submitted: options
+                      ? options.map((opt) => opt.value).join(", ")
+                      : "",
+                  }));
+                }}
+                isDisabled={mode === "view"}
+                placeholder="Select documents..."
+                className="text-sm"
+              />
             </div>
 
             {mode !== "view" && (
@@ -545,48 +643,71 @@ export default function StudentEnrollment() {
   const [modalMode, setModalMode] = useState("add");
   const [loading, setLoading] = useState(true);
 
+  const fetchAdmissionData = async () => {
+    try {
+      const API_BASE =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+      const userId = localStorage.getItem("userId");
+      const userObj = localStorage.getItem("user");
+      let studentId = userId;
+
+      if (!studentId && userObj) {
+        try {
+          const parsedUser = JSON.parse(userObj);
+          studentId = parsedUser.user_id;
+        } catch (e) {
+          console.error("Error parsing user object:", e);
+        }
+      }
+
+      if (studentId) {
+        // Fetch admission by user email or ID
+        const userRes = await axios.get(`${API_BASE}/api/users/${studentId}`);
+        const userEmail = userRes.data.email;
+
+        // Try to get admission by email
+        const res = await axios.get(
+          `${API_BASE}/api/admissions?email=${userEmail}`,
+        );
+
+        if (res.data && res.data.length > 0) {
+          setAdmission(res.data[0]);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching admission:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchAdmission = async () => {
-      try {
-        const API_BASE =
-          import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+    fetchAdmissionData();
+  }, []);
 
-        const userId = localStorage.getItem("userId");
-        const userObj = localStorage.getItem("user");
-        let studentId = userId;
+  // Auto-refresh admission status every 5 seconds to detect enrollment changes
+  useEffect(() => {
+    if (!admission) return;
+    
+    const interval = setInterval(() => {
+      fetchAdmissionData();
+    }, 5000); // Refresh every 5 seconds
 
-        if (!studentId && userObj) {
-          try {
-            const parsedUser = JSON.parse(userObj);
-            studentId = parsedUser.user_id;
-          } catch (e) {
-            console.error("Error parsing user object:", e);
-          }
-        }
-
-        if (studentId) {
-          // Fetch admission by user email or ID
-          const userRes = await axios.get(`${API_BASE}/api/users/${studentId}`);
-          const userEmail = userRes.data.email;
-
-          // Try to get admission by email
-          const res = await axios.get(
-            `${API_BASE}/api/admissions?email=${userEmail}`,
-          );
-
-          if (res.data && res.data.length > 0) {
-            setAdmission(res.data[0]);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching admission:", err);
-      } finally {
-        setLoading(false);
+    // Also refresh when page becomes visible (tab focus)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchAdmissionData();
       }
     };
 
-    fetchAdmission();
-  }, []);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [admission]);
 
   const openModal = (mode) => {
     setModalMode(mode);
@@ -610,6 +731,11 @@ export default function StudentEnrollment() {
       }
 
       setModalOpen(false);
+
+      // Refresh admission status after a short delay to see enrollment updates
+      setTimeout(() => {
+        fetchAdmissionData();
+      }, 500);
     } catch (err) {
       console.error("Error submitting admission:", err);
       alert("Failed to submit application. Please try again.");
@@ -697,7 +823,16 @@ export default function StudentEnrollment() {
                     : "Not specified"}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-start">
+                <button
+                  onClick={fetchAdmissionData}
+                  className="text-slate-500 hover:text-slate-700 p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                  title="Refresh status"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
                 <StatusBadge status={admission.status} />
                 {admission.status === "Pending" && (
                   <button

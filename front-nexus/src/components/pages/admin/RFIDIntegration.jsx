@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { CreditCard, Users, Plus, Search, Edit, Trash2, ChevronLeft, ChevronRight, X } from "lucide-react";
-`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 const RFIDIntegration = () => {
   const [rfidCards, setRfidCards] = useState([]);
   const [loading, setLoading] = useState(true);

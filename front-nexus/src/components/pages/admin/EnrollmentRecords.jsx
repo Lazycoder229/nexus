@@ -671,12 +671,25 @@ const EnrollmentRecords = () => {
 
   const handleSubmit = async (data) => {
     try {
+      // Validate required fields
+      if (!data.student_id || !data.course_id || !data.period_id || !data.section_id || !data.year_level) {
+        alert("Please fill in all required fields");
+        return;
+      }
+
+      // Convert empty strings to null for numeric fields
+      const cleanData = {
+        ...data,
+        midterm_grade: data.midterm_grade === "" ? null : parseFloat(data.midterm_grade),
+        final_grade: data.final_grade === "" ? null : parseFloat(data.final_grade),
+      };
+
       if (modalMode === "add") {
-        await axios.post(`${API_BASE}/api/enrollments`, data);
+        await axios.post(`${API_BASE}/api/enrollments`, cleanData);
       } else {
         await axios.put(
-          `${API_BASE}/api/enrollments/${data.enrollment_id}`,
-          data,
+          `${API_BASE}/api/enrollments/${cleanData.enrollment_id}`,
+          cleanData,
         );
       }
       fetchEnrollments();

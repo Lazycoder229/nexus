@@ -58,20 +58,14 @@ const StudentCourses = () => {
   const [activeTab, setActiveTab] = useState("enlistment");
 
   // Enlistment state
-  const [availableSubjects, setAvailableSubjects] = useState([]);
   const [enrolledSubjects, setEnrolledSubjects] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
   const [enrollmentStatus, setEnrollmentStatus] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState(null);
-  const [filterYear, setFilterYear] = useState("all");
-  const [filterSemester, setFilterSemester] = useState("all");
 
   // Timetable state
   const [timetable, setTimetable] = useState([]);
-  const [selectedDay, setSelectedDay] = useState("all");
+  const [selectedDay, setSelectedDay] = useState("Monday");
 
   useEffect(() => {
     if (activeTab === "enlistment") {
@@ -81,6 +75,20 @@ const StudentCourses = () => {
       fetchTimetable();
     }
   }, [activeTab]);
+
+  // Convert 24-hour time (HH:MM:SS) to 12-hour format with AM/PM
+  const formatTime = (timeString) => {
+    if (!timeString) return "";
+    
+    const [hours, minutes] = timeString.split(":").slice(0, 2);
+    const hour = parseInt(hours, 10);
+    const minute = minutes || "00";
+    
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 || 12;
+    
+    return `${displayHour}:${minute} ${ampm}`;
+  };
 
   const fetchEnrollmentStatus = async () => {
     try {
@@ -105,37 +113,49 @@ const StudentCourses = () => {
     try {
       const studentId = localStorage.getItem("userId");
       if (!studentId) return;
-      const [coursesRes, enrolledRes] = await Promise.all([
-        axios.get(`${API_BASE}/api/course/courses`),
-        axios.get(`${API_BASE}/api/enrollments/student/${studentId}`),
-      ]);
-      const courses = coursesRes.data || [];
-      const enrolled = enrolledRes.data || [];
-      setAvailableSubjects(
-        courses.map((c) => ({
-          subject_id: c.course_id || c.id,
-          subject_code: c.code || c.course_code,
-          subject_name: c.title || c.course_name,
-          units: c.units || 3,
-          schedule: c.schedule || "TBA",
-          instructor: c.instructor_name || "TBA",
-          capacity: c.capacity || 40,
-          enrolled: c.enrolled_count || 0,
-          year_level: c.year_level,
-          semester: c.semester,
-          prerequisites: c.prerequisites,
-        })),
+      const enrolledRes = await axios.get(
+        `${API_BASE}/api/enrollments/student/${studentId}`,
       );
+      const enrolled = enrolledRes.data || [];
+      console.log("📚 Enrolled data from API:", enrolled);
+      
       setEnrolledSubjects(
-        enrolled.map((e) => ({
-          enrollment_id: e.enrollment_id,
-          subject_id: e.course_id,
-          subject_code: e.course_code,
-          subject_name: e.course_title,
-          units: e.units || 3,
-          schedule: e.schedule || "TBA",
-          instructor: e.instructor_name || "TBA",
-        })),
+        enrolled.map((e) => {
+          let schedule = "TBA";
+          
+          // Check if schedules array exists (from faculty assignments)
+          if (Array.isArray(e.schedules) && e.schedules.length > 0) {
+            schedule = e.schedules
+              .map(
+                (s) =>
+                  `${s.schedule_day || ""} ${formatTime(s.schedule_time_start || "")}-${formatTime(s.schedule_time_end || "")}`.trim(),
+              )
+              .filter((s) => s && s !== "-")
+              .join(", ");
+          }
+          // Check if final_schedule_day has a value
+          else if (e.final_schedule_day && e.final_schedule_day.trim()) {
+            schedule = `${e.final_schedule_day} ${formatTime(e.final_schedule_time_start || "")}-${formatTime(e.final_schedule_time_end || "")}`.trim();
+          }
+          // Check if schedule_day has a value
+          else if (e.schedule_day && e.schedule_day.trim()) {
+            schedule = `${e.schedule_day} ${formatTime(e.schedule_time_start || "")}-${formatTime(e.schedule_time_end || "")}`.trim();
+          }
+          // Fallback to single schedule field
+          else if (e.schedule && e.schedule.trim()) {
+            schedule = e.schedule;
+          }
+
+          return {
+            enrollment_id: e.enrollment_id,
+            subject_id: e.course_id,
+            subject_code: e.course_code,
+            subject_name: e.course_title,
+            units: e.units || 3,
+            schedule: schedule,
+            instructor: e.instructor_name || "TBA",
+          };
+        }),
       );
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -160,47 +180,76 @@ const StudentCourses = () => {
       const scheduleData = [];
 
       enrollments.forEach((enrollment) => {
-        // Use combined schedule fields (from sections or faculty assignments)
-        const scheduleDay =
-          enrollment.final_schedule_day || enrollment.schedule_day;
-        const scheduleStart =
-          enrollment.final_schedule_time_start ||
-          enrollment.schedule_time_start;
-        const scheduleEnd =
-          enrollment.final_schedule_time_end || enrollment.schedule_time_end;
+        // First check if schedules array exists (from faculty assignments)
+        if (Array.isArray(enrollment.schedules) && enrollment.schedules.length > 0) {
+          enrollment.schedules.forEach((schedule) => {
+            const scheduleDay = schedule.schedule_day;
+            const scheduleStart = schedule.schedule_time_start;
+            const scheduleEnd = schedule.schedule_time_end;
 
-        console.log(
-          `📚 ${enrollment.course_code}: Day=${scheduleDay}, Time=${scheduleStart}-${scheduleEnd}`,
-        );
+            console.log(
+              `📚 ${enrollment.course_code}: Day=${scheduleDay}, Time=${scheduleStart}-${scheduleEnd}`,
+            );
 
-        if (scheduleDay && scheduleStart && scheduleEnd) {
-          // Parse day abbreviations and create entries for each day
-          const days = parseDayAbbreviations(scheduleDay);
-          days.forEach((day) => {
+            if (scheduleDay && scheduleStart && scheduleEnd) {
+              // Parse day abbreviations and create entries for each day
+              const days = parseDayAbbreviations(scheduleDay);
+              days.forEach((day) => {
+                scheduleData.push({
+                  day: day,
+                  subject_name: enrollment.course_title,
+                  subject_code: enrollment.course_code,
+                  start_time: formatTime(scheduleStart),
+                  end_time: formatTime(scheduleEnd),
+                  room: enrollment.room || "TBA",
+                  instructor: enrollment.instructor_name || "TBA",
+                });
+              });
+            }
+          });
+        } else {
+          // Fallback to combined schedule fields (from sections)
+          const scheduleDay =
+            enrollment.final_schedule_day || enrollment.schedule_day;
+          const scheduleStart =
+            enrollment.final_schedule_time_start ||
+            enrollment.schedule_time_start;
+          const scheduleEnd =
+            enrollment.final_schedule_time_end || enrollment.schedule_time_end;
+
+          console.log(
+            `📚 ${enrollment.course_code}: Day=${scheduleDay}, Time=${scheduleStart}-${scheduleEnd}`,
+          );
+
+          if (scheduleDay && scheduleStart && scheduleEnd) {
+            // Parse day abbreviations and create entries for each day
+            const days = parseDayAbbreviations(scheduleDay);
+            days.forEach((day) => {
+              scheduleData.push({
+                day: day,
+                subject_name: enrollment.course_title,
+                subject_code: enrollment.course_code,
+                start_time: formatTime(scheduleStart),
+                end_time: formatTime(scheduleEnd),
+                room: enrollment.room || "TBA",
+                instructor: enrollment.instructor_name || "TBA",
+              });
+            });
+          } else {
+            console.log(
+              `⚠️ No schedule for ${enrollment.course_code}, using Monday fallback`,
+            );
+            // Fallback: add to Monday with TBA time
             scheduleData.push({
-              day: day,
+              day: "Monday",
               subject_name: enrollment.course_title,
               subject_code: enrollment.course_code,
-              start_time: scheduleStart,
-              end_time: scheduleEnd,
+              start_time: "TBA",
+              end_time: "TBA",
               room: enrollment.room || "TBA",
               instructor: enrollment.instructor_name || "TBA",
             });
-          });
-        } else {
-          console.log(
-            `⚠️ No schedule for ${enrollment.course_code}, using Monday fallback`,
-          );
-          // Fallback: add to Monday with TBA time
-          scheduleData.push({
-            day: "Monday",
-            subject_name: enrollment.course_title,
-            subject_code: enrollment.course_code,
-            start_time: "TBA",
-            end_time: "TBA",
-            room: enrollment.room || "TBA",
-            instructor: enrollment.instructor_name || "TBA",
-          });
+          }
         }
       });
 
@@ -215,10 +264,10 @@ const StudentCourses = () => {
     }
   };
 
-  const handleEnlist = async (subject) => {
+/*   const handleEnlist = async (subject) => {
     setSelectedSubject(subject);
     setShowConfirmModal(true);
-  };
+  }; */
 
   const confirmEnlist = async () => {
     try {
@@ -254,18 +303,6 @@ const StudentCourses = () => {
     console.log("Downloading enrollment form...");
   };
 
-  const filteredSubjects = availableSubjects.filter(
-    (subject) =>
-      subject.subject_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      subject.subject_code?.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  const totalPages = Math.ceil(filteredSubjects.length / itemsPerPage);
-  const currentSubjects = filteredSubjects.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
-
   const days = [
     "Monday",
     "Tuesday",
@@ -288,8 +325,8 @@ const StudentCourses = () => {
   ];
 
   return (
-    <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
-      <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
+   <div className="dark:bg-slate-900 px-4 py-3 transition-colors duration-500">
+      <div className="w-full space-y-2 font-sans">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -400,7 +437,7 @@ const StudentCourses = () => {
             )}
 
             {/* Enrolled Subjects Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg p-5 text-white shadow-lg">
                 <p className="text-xs font-medium text-indigo-100 uppercase mb-1">
                   Enrolled Subjects
@@ -414,12 +451,6 @@ const StudentCourses = () => {
                 <p className="text-3xl font-bold">
                   {enrolledSubjects.reduce((sum, s) => sum + (s.units || 0), 0)}
                 </p>
-              </div>
-              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-5 text-white shadow-lg">
-                <p className="text-xs font-medium text-blue-100 uppercase mb-1">
-                  Available Subjects
-                </p>
-                <p className="text-3xl font-bold">{availableSubjects.length}</p>
               </div>
             </div>
 
@@ -596,14 +627,9 @@ const StudentCourses = () => {
                           className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
                         >
                           <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                                {item.start_time?.substring(0, 5)}
-                              </div>
-                              <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">
-                                {item.start_time} - {item.end_time}
-                              </span>
-                            </div>
+                            <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">
+                              {item.start_time} - {item.end_time}
+                            </span>
                           </td>
                           <td className="px-4 py-3">
                             <p className="text-sm font-semibold text-slate-900 dark:text-white">

@@ -111,8 +111,8 @@ const StudentAttendance = () => {
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
-      <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
+   <div className="dark:bg-slate-900 px-4 py-3 transition-colors duration-500">
+      <div className="w-full space-y-2 font-sans">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">

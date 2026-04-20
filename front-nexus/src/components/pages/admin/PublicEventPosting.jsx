@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Mail, Plus, Edit, Trash2, Eye, Globe, Image as ImageIcon, Search, ChevronLeft, ChevronRight } from "lucide-react";
-`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 const PublicEventPosting = () => {
   const [publicEvents, setPublicEvents] = useState([]);
   const [loading, setLoading] = useState(true);

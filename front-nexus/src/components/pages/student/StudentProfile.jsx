@@ -107,13 +107,21 @@ const StudentProfile = () => {
       setSubmitting(true);
       setSaveError(null);
       const userId = localStorage.getItem("userId");
+      
+      // Format date to YYYY-MM-DD to match database DATE type
+      const formatDate = (dateValue) => {
+        if (!dateValue) return null;
+        const date = new Date(dateValue);
+        return date.toISOString().split('T')[0]; // Returns YYYY-MM-DD
+      };
+      
       await api.put(`/api/users/student/${userId}`, {
         email: formData.email,
         firstName: formData.first_name,
         middleName: formData.middle_name,
         lastName: formData.last_name,
         suffix: formData.suffix,
-        dateOfBirth: formData.date_of_birth,
+        dateOfBirth: formatDate(formData.date_of_birth),
         gender: formData.gender,
         phone: formData.phone,
         permanentAddress: formData.permanent_address,
@@ -138,8 +146,8 @@ const StudentProfile = () => {
   };
 
   return (
-    <div className="dark:bg-slate-900 p-3 sm:p-6 transition-colors duration-500">
-      <div className="w-full max-w-5xl mx-auto space-y-4 font-sans">
+   <div className="dark:bg-slate-900 px-4 py-3 transition-colors duration-500">
+      <div className="w-full space-y-2 font-sans">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">

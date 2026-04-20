@@ -11,8 +11,8 @@ import {
 } from "../model/userModel.js";
 
 // Get all users
-export const getAllUsersService = async () => {
-  return await getAllUsers();
+export const getAllUsersService = async (role = null) => {
+  return await getAllUsers(role);
 };
 
 // Get user by ID

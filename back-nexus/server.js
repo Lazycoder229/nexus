@@ -5,9 +5,12 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv"; //  ESM import
+import path from "path";
+import { fileURLToPath } from "url";
 
-import departmentRoutes from "./routes/departmentRoutes.js"; // your route file
-import courseRoutes from "./routes/courses.routes.js"; // your route file
+
+import departmentRoutes from "./routes/departmentRoutes.js"; 
+import courseRoutes from "./routes/courses.routes.js"; 
 import programRoutes from "./routes/programs.routes.js"; // programs route file
 import academicPeriodRoutes from "./routes/academicPeriods.routes.js"; // academic periods route file
 import prerequisiteRoutes from "./routes/prerequisites.routes.js"; // prerequisites route file
@@ -84,7 +87,7 @@ const limiter = rateLimit({
 // CORS
 app.use(
   cors({
-    origin: "http://192.168.254.103:5173",
+    origin: ["http://localhost:5173", "http://10.21.58.32:5173"],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
     exposedHeaders: ["Authorization"],
@@ -94,8 +97,6 @@ app.use(
 // Security headers
 app.use(helmet());
 
-import path from "path";
-import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

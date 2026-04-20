@@ -23,6 +23,20 @@ const StudentDashboard = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Convert 24-hour time (HH:MM:SS) to 12-hour format with AM/PM
+  const formatTime = (timeString) => {
+    if (!timeString) return "";
+    
+    const [hours, minutes] = timeString.split(":").slice(0, 2);
+    const hour = parseInt(hours, 10);
+    const minute = minutes || "00";
+    
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 || 12;
+    
+    return `${displayHour}:${minute} ${ampm}`;
+  };
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -63,8 +77,14 @@ const StudentDashboard = () => {
       // Aggregate dashboard data from real endpoints - using STUDENT-SPECIFIC enrollments only
       const enrollments =
         enrollmentsScheduleRes?.status === "fulfilled"
-          ? enrollmentsScheduleRes.value?.data || []
+          ? Array.isArray(enrollmentsScheduleRes.value)
+            ? enrollmentsScheduleRes.value
+            : (enrollmentsScheduleRes.value?.data || [])
           : [];
+      
+      console.log("📊 Enrollments Response:", enrollmentsScheduleRes);
+      console.log("📚 Enrollments Data:", enrollments);
+      
       const grades = getValue(gradesRes, []);
       const attendance = getValue(attendanceRes, []);
       const announcementsData = getValue(announcementsRes, []);
@@ -78,7 +98,9 @@ const StudentDashboard = () => {
       // Get enrollments with schedule
       const enrollmentsWithSchedule =
         enrollmentsScheduleRes?.status === "fulfilled"
-          ? enrollmentsScheduleRes.value?.data || []
+          ? Array.isArray(enrollmentsScheduleRes.value)
+            ? enrollmentsScheduleRes.value
+            : (enrollmentsScheduleRes.value?.data || [])
           : [];
 
       // Calculate dashboard summary
@@ -169,11 +191,44 @@ const StudentDashboard = () => {
         "Saturday",
       ];
       const todayName = dayNames[today.getDay()];
+      
+      console.log("📅 Today's day:", todayName);
+      console.log("📋 All enrollments with schedule:", enrollmentsWithSchedule);
 
       // Set today's classes from enrollments with schedule
       const todayClasses = enrollmentsWithSchedule
         .filter((e) => {
           const scheduleDay = e.final_schedule_day || e.schedule_day;
+          const scheduleStart = e.final_schedule_time_start || e.schedule_time_start;
+          const scheduleEnd = e.final_schedule_time_end || e.schedule_time_end;
+          
+          console.log(`🔍 Checking: ${e.course_code} - Day:"${scheduleDay}", Start:"${scheduleStart}", End:"${scheduleEnd}"`);
+          
+          // If no schedule_day but has schedules array, check if it has valid times
+          if ((!scheduleDay || scheduleDay.trim() === "") && Array.isArray(e.schedules) && e.schedules.length > 0) {
+            // Check if any schedule in the array matches today
+            const hasToday = e.schedules.some(s => {
+              const dayMap = {
+                Sunday: "U",
+                Monday: "M",
+                Tuesday: "T",
+                Wednesday: "W",
+                Thursday: "TH",
+                Friday: "F",
+                Saturday: "S",
+              };
+              const dayCode = dayMap[todayName];
+              const sDayCode = s.schedule_day || "";
+              
+              if (todayName === "Thursday") {
+                return sDayCode.includes("TH");
+              }
+              return sDayCode.includes(dayCode);
+            });
+            console.log(`✅ Has schedules array with today match:`, e.schedules, hasToday);
+            return hasToday;
+          }
+          
           if (!scheduleDay) return false;
 
           // Check if today's day is in the schedule (e.g., "MWF" contains "M" for Monday)
@@ -195,36 +250,79 @@ const StudentDashboard = () => {
 
           return scheduleDay.includes(dayCode);
         })
-        .sort((a, b) =>
-          (a.final_schedule_time_start || "00:00").localeCompare(
-            b.final_schedule_time_start || "00:00",
-          ),
-        )
+        .sort((a, b) => {
+          // Get start time from schedules array or fallback to final_schedule_time_start
+          const getStartTime = (enrollment) => {
+            if (Array.isArray(enrollment.schedules) && enrollment.schedules.length > 0) {
+              return enrollment.schedules[0].schedule_time_start || "00:00";
+            }
+            return enrollment.final_schedule_time_start || "00:00";
+          };
+          return getStartTime(a).localeCompare(getStartTime(b));
+        })
         .slice(0, 3)
-        .map((e) => ({
-          subject_name: e.course_title || e.subject_name || "N/A",
-          code: e.course_code || "N/A",
-          room: e.room || "TBA",
-          instructor: e.instructor_name || "TBA",
-          time: `${e.final_schedule_time_start?.substring(0, 5) || "TBA"} - ${e.final_schedule_time_end?.substring(0, 5) || "TBA"}`,
-          duration:
-            e.final_schedule_time_start && e.final_schedule_time_end
-              ? (() => {
-                  const [startH, startM] = (
-                    e.final_schedule_time_start || "0:0"
-                  )
-                    .split(":")
-                    .map(Number);
-                  const [endH, endM] = (e.final_schedule_time_end || "0:0")
-                    .split(":")
-                    .map(Number);
-                  const diff = endH * 60 + endM - (startH * 60 + startM);
-                  return diff > 0
-                    ? `${Math.floor(diff / 60)}h ${diff % 60}m`
-                    : "N/A";
-                })()
-              : "N/A",
-        }));
+        .map((e) => {
+          // Extract time from schedules array or fallback to final_schedule_time fields
+          let startTime = "TBA";
+          let endTime = "TBA";
+          
+          if (Array.isArray(e.schedules) && e.schedules.length > 0) {
+            // For today's classes, get the first schedule that matches today
+            const todaySchedule = e.schedules.find(s => {
+              const dayMap = {
+                Sunday: "U",
+                Monday: "M",
+                Tuesday: "T",
+                Wednesday: "W",
+                Thursday: "TH",
+                Friday: "F",
+                Saturday: "S",
+              };
+              const dayCode = dayMap[todayName];
+              const sDayCode = s.schedule_day || "";
+              
+              if (todayName === "Thursday") {
+                return sDayCode.includes("TH");
+              }
+              return sDayCode.includes(dayCode);
+            });
+            
+            if (todaySchedule) {
+              startTime = formatTime(todaySchedule.schedule_time_start) || "TBA";
+              endTime = formatTime(todaySchedule.schedule_time_end) || "TBA";
+            }
+          } else if (e.final_schedule_time_start && e.final_schedule_time_end) {
+            startTime = formatTime(e.final_schedule_time_start);
+            endTime = formatTime(e.final_schedule_time_end);
+          } else if (e.schedule_time_start && e.schedule_time_end) {
+            startTime = formatTime(e.schedule_time_start);
+            endTime = formatTime(e.schedule_time_end);
+          }
+          
+          return {
+            subject_name: e.course_title || e.subject_name || "N/A",
+            code: e.course_code || "N/A",
+            room: e.room || "TBA",
+            instructor: e.instructor_name || "TBA",
+            time: `${startTime} - ${endTime}`,
+            duration:
+              startTime !== "TBA" && endTime !== "TBA"
+                ? (() => {
+                    const parseTime = (timeStr) => {
+                      const parts = timeStr.match(/(\d+):(\d+)/);
+                      if (!parts) return { h: 0, m: 0 };
+                      return { h: parseInt(parts[1], 10), m: parseInt(parts[2], 10) };
+                    };
+                    const start = parseTime(startTime);
+                    const end = parseTime(endTime);
+                    const diff = end.h * 60 + end.m - (start.h * 60 + start.m);
+                    return diff > 0
+                      ? `${Math.floor(diff / 60)}h ${diff % 60}m`
+                      : "N/A";
+                  })()
+                : "N/A",
+          };
+        });
 
       setUpcomingClasses(todayClasses.length > 0 ? todayClasses : []);
     } catch (error) {
@@ -235,8 +333,8 @@ const StudentDashboard = () => {
   };
 
   return (
-    <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
-      <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
+   <div className="dark:bg-slate-900 px-4 py-3 transition-colors duration-500">
+      <div className="w-full space-y-2 font-sans">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -363,9 +461,6 @@ const StudentDashboard = () => {
                       <div className="text-right">
                         <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
                           {classItem.time}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {classItem.duration}
                         </p>
                       </div>
                     </div>

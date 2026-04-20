@@ -71,12 +71,16 @@ const CourseModal = ({
   initialData,
   departments,
   instructors,
+  semesters,
 }) => {
   const [formData, setFormData] = useState({
     code: "",
     title: "",
     description: "",
     units: 3,
+    hours: 3,
+    type: "Major",
+    semester_offer: "",
     department_id: null,
     instructor_id: null,
     status: "Active",
@@ -88,10 +92,13 @@ const CourseModal = ({
         title: initialData.title || "",
         description: initialData.description || "",
         units: initialData.units || 3,
+        hours: initialData.hours || 3,
+        type: initialData.type || "Major",
+        semester_offer: initialData.semester_offer || "",
         department_id: initialData.department_id || null,
         instructor_id: initialData.instructor_id || null,
         status: initialData?.status || "Active",
-        id: initialData.id, // <-- use id
+        id: initialData.id,
       });
     } else {
       setFormData({
@@ -99,6 +106,9 @@ const CourseModal = ({
         title: "",
         description: "",
         units: 3,
+        hours: 3,
+        type: "Major",
+        semester_offer: "",
         department_id: null,
         instructor_id: null,
         status: "Active",
@@ -197,7 +207,7 @@ const CourseModal = ({
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Units */}
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
@@ -212,6 +222,65 @@ const CourseModal = ({
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
+
+              {/* Hours */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Hours
+                </label>
+                <input
+                  name="hours"
+                  type="number"
+                  min={1}
+                  value={formData.hours}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Type */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Course Type
+                </label>
+                <select
+                  name="type"
+                  value={formData.type}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="Major">Major</option>
+                  <option value="Minor">Minor</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              {/* Semester Offer */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Semester Offered
+                </label>
+                <select
+                  name="semester_offer"
+                  value={formData.semester_offer}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">Select a semester...</option>
+                  {semesters.map((sem) => (
+                    <option key={sem} value={sem}>
+                      {sem}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
               {/* Department */}
               <div>
@@ -489,6 +558,7 @@ const CourseManagement = () => {
   const [courses, setCourses] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [instructors, setInstructors] = useState([]);
+  const [semesters, setSemesters] = useState([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(10);
@@ -537,10 +607,24 @@ const CourseManagement = () => {
     }
   };
 
+  const fetchSemesters = async () => {
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/api/academic-periods`,
+      );
+      // Extract unique semesters from academic periods
+      const uniqueSemesters = [...new Set(res.data.map((period) => period.semester))];
+      setSemesters(uniqueSemesters);
+    } catch (err) {
+      console.error("Failed to fetch semesters:", err);
+    }
+  };
+
   useEffect(() => {
     fetchCourses();
     fetchDepartments();
     fetchInstructors();
+    fetchSemesters();
   }, []);
 
   // Filter & paginate
@@ -792,6 +876,7 @@ const CourseManagement = () => {
         initialData={currentRecord}
         departments={departments}
         instructors={instructors}
+        semesters={semesters}
       />
       <CourseViewModal
         isOpen={viewModalOpen}

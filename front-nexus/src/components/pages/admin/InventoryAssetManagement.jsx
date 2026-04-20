@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ClipboardList, Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, Package, History, Wrench, FileText, TrendingDown, BarChart3 } from "lucide-react";
-`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 const InventoryAssetManagement = () => {
   const [activeTab, setActiveTab] = useState("assets");
   const [assets, setAssets] = useState([]);

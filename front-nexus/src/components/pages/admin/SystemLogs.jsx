@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { FileText, Search, ChevronLeft, ChevronRight, BarChart3, Trash2, AlertCircle, Activity, Database, Shield, Download } from "lucide-react";
-`r`nconst API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";`r`n
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 const SystemLogs = () => {
   const [logs, setLogs] = useState([]);
   const [statistics, setStatistics] = useState(null);

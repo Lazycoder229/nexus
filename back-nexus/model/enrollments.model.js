@@ -92,11 +92,15 @@ export const getEnrollmentsByStudent = async (studentId) => {
         s.schedule_time_start,
         s.schedule_time_end,
         
-        COALESCE(s.schedule_day, fas.schedule_day) AS final_schedule_day,
-        COALESCE(s.schedule_time_start, fas.schedule_time_start) AS final_schedule_time_start,
-        COALESCE(s.schedule_time_end, fas.schedule_time_end) AS final_schedule_time_end,
+        CONCAT(fu.first_name, ' ', fu.last_name) AS instructor_name,
         
-        CONCAT(fu.first_name, ' ', fu.last_name) AS instructor_name
+        JSON_ARRAYAGG(
+          JSON_OBJECT(
+            'schedule_day', COALESCE(fas.schedule_day, s.schedule_day, ''),
+            'schedule_time_start', COALESCE(fas.schedule_time_start, s.schedule_time_start, ''),
+            'schedule_time_end', COALESCE(fas.schedule_time_end, s.schedule_time_end, '')
+          )
+        ) AS schedules
      FROM enrollments e
      JOIN courses c ON e.course_id = c.course_id
      JOIN academic_periods ap ON e.period_id = ap.period_id
@@ -106,6 +110,30 @@ export const getEnrollmentsByStudent = async (studentId) => {
      LEFT JOIN faculty_assignment_schedules fas ON fca.assignment_id = fas.assignment_id
      LEFT JOIN users fu ON fca.faculty_user_id = fu.user_id
      WHERE e.student_id = ?
+     GROUP BY 
+        e.enrollment_id,
+        e.course_id,
+        e.section_id,
+        c.code,
+        c.title,
+        c.units,
+        e.period_id,
+        ap.school_year,
+        ap.semester,
+        e.enrollment_date,
+        e.status,
+        e.midterm_grade,
+        e.final_grade,
+        e.remarks,
+        e.created_at,
+        e.updated_at,
+        s.section_name,
+        s.room,
+        s.schedule_day,
+        s.schedule_time_start,
+        s.schedule_time_end,
+        fu.first_name,
+        fu.last_name
      ORDER BY e.created_at DESC`,
     [studentId],
   );

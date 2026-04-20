@@ -71,31 +71,88 @@ const AdmissionModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
     program_applied: "",
     application_date: new Date().toISOString().split("T")[0],
     entrance_exam_score: "",
+    interview_date: "",
+    interview_notes: "",
     status: "Pending",
+    decision_date: "",
+    decision_by: "",
+    remarks: "",
+    documents_submitted: [],
   });
+  const [admins, setAdmins] = useState([]);
+  const [selectedDocuments, setSelectedDocuments] = useState([]);
+
+  const documentOptions = [
+    { value: "Birth Certificate", label: "Birth Certificate" },
+    { value: "High School Diploma", label: "High School Diploma" },
+    { value: "Transcript", label: "Transcript" },
+    { value: "ID Card", label: "ID Card" },
+    { value: "Medical Certificate", label: "Medical Certificate" },
+    { value: "NBI Clearance", label: "NBI Clearance" },
+    { value: "Good Moral Certificate", label: "Good Moral Certificate" },
+    { value: "NCAE Score", label: "NCAE Score" },
+    { value: "Proof of Income", label: "Proof of Income" },
+    { value: "Parent/Guardian ID", label: "Parent/Guardian ID" },
+  ];
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    return dateString.split("T")[0];
+  };
+
+  useEffect(() => {
+    const fetchAdmins = async () => {
+      try {
+        const API_BASE =
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+        const res = await axios.get(`${API_BASE}/api/users?role=Admin`);
+        setAdmins(res.data || []);
+      } catch (err) {
+        console.error("Error fetching admins:", err);
+      }
+    };
+    fetchAdmins();
+  }, [isOpen]);
 
   useEffect(() => {
     if (initialData) {
+      const documentsArray = initialData.documents_submitted
+        ? initialData.documents_submitted
+            .split(",")
+            .map((doc) => ({
+              value: doc.trim(),
+              label: doc.trim(),
+            }))
+        : [];
+      setSelectedDocuments(documentsArray);
       setFormData({
         first_name: initialData.first_name || "",
         middle_name: initialData.middle_name || "",
         last_name: initialData.last_name || "",
         email: initialData.email || "",
         phone: initialData.phone || "",
-        date_of_birth: initialData.date_of_birth || "",
+        date_of_birth: formatDate(initialData.date_of_birth),
         gender: initialData.gender || "",
         address: initialData.address || "",
         previous_school: initialData.previous_school || "",
         year_graduated: initialData.year_graduated || "",
         program_applied: initialData.program_applied || "",
-        application_date:
+        application_date: formatDate(
           initialData.application_date ||
-          new Date().toISOString().split("T")[0],
+            new Date().toISOString().split("T")[0]
+        ),
         entrance_exam_score: initialData.entrance_exam_score || "",
+        interview_date: formatDate(initialData.interview_date),
+        interview_notes: initialData.interview_notes || "",
         status: initialData.status || "Pending",
+        decision_date: formatDate(initialData.decision_date),
+        decision_by: initialData.decision_by || "",
+        remarks: initialData.remarks || "",
+        documents_submitted: initialData.documents_submitted || "",
         admission_id: initialData.admission_id,
       });
     } else {
+      setSelectedDocuments([]);
       setFormData({
         first_name: "",
         middle_name: "",
@@ -110,10 +167,16 @@ const AdmissionModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
         program_applied: "",
         application_date: new Date().toISOString().split("T")[0],
         entrance_exam_score: "",
+        interview_date: "",
+        interview_notes: "",
         status: "Pending",
+        decision_date: "",
+        decision_by: "",
+        remarks: "",
+        documents_submitted: "",
       });
     }
-  }, [initialData]);
+  }, [initialData, isOpen]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -394,24 +457,155 @@ const AdmissionModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
               </div>
             </div>
 
+            {/* Interview Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Interview Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.interview_date}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      interview_date: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={mode === "view"}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Status
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, status: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={mode === "view"}
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Under Review">Under Review</option>
+                  <option value="Accepted">Accepted</option>
+                  <option value="Rejected">Rejected</option>
+                  <option value="Enrolled">Enrolled</option>
+                </select>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                Status
+                Interview Notes
               </label>
-              <select
-                value={formData.status}
+              <textarea
+                value={formData.interview_notes}
                 onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, status: e.target.value }))
+                  setFormData((prev) => ({
+                    ...prev,
+                    interview_notes: e.target.value,
+                  }))
                 }
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                rows={2}
                 disabled={mode === "view"}
-              >
-                <option value="Pending">Pending</option>
-                <option value="Under Review">Under Review</option>
-                <option value="Accepted">Accepted</option>
-                <option value="Rejected">Rejected</option>
-                <option value="Enrolled">Enrolled</option>
-              </select>
+              />
+            </div>
+
+            {/* Decision Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Decision Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.decision_date}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      decision_date: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={mode === "view"}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Decision By
+                </label>
+                <Select
+                  options={admins.map((admin) => ({
+                    value: admin.user_id,
+                    label: admin.first_name + " " + admin.last_name,
+                  }))}
+                  value={
+                    formData.decision_by && admins.length > 0
+                      ? admins
+                          .filter((admin) => admin.user_id === formData.decision_by)
+                          .map((admin) => ({
+                            value: admin.user_id,
+                            label: admin.first_name + " " + admin.last_name,
+                          }))[0] || null
+                      : null
+                  }
+                  onChange={(option) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      decision_by: option ? option.value : "",
+                    }))
+                  }
+                  isDisabled={mode === "view"}
+                  isClearable
+                  placeholder="Select Admin..."
+                  className="text-sm"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Remarks
+              </label>
+              <textarea
+                value={formData.remarks}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    remarks: e.target.value,
+                  }))
+                }
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                rows={2}
+                disabled={mode === "view"}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Documents Submitted (Select one or more)
+              </label>
+              <Select
+                isMulti
+                options={documentOptions}
+                value={selectedDocuments}
+                onChange={(options) => {
+                  setSelectedDocuments(options || []);
+                  setFormData((prev) => ({
+                    ...prev,
+                    documents_submitted: options
+                      ? options.map((opt) => opt.value).join(", ")
+                      : "",
+                  }));
+                }}
+                isDisabled={mode === "view"}
+                placeholder="Select documents..."
+                className="text-sm"
+              />
             </div>
           </div>
 

@@ -421,7 +421,7 @@ const Menu = {
         },
       ],
     },
-    {
+   /*  {
       title: "Communication",
       icons: Mail,
       submenu: [
@@ -441,7 +441,7 @@ const Menu = {
           link: "/faculty/faculty_email_student",
         },
       ],
-    },
+    }, */
     {
       title: "HR & Personal",
       icons: Lock,
