@@ -491,8 +491,8 @@ const AdmissionModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
                   <option value="Pending">Pending</option>
                   <option value="Under Review">Under Review</option>
                   <option value="Accepted">Accepted</option>
-                  <option value="Rejected">Rejected</option>
                   <option value="Enrolled">Enrolled</option>
+                  <option value="Rejected">Rejected</option>
                 </select>
               </div>
             </div>

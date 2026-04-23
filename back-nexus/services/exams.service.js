@@ -104,10 +104,46 @@ const ExamsService = {
 
   // Helper function to calculate end time
   calculateEndTime: (startTime, durationMinutes) => {
-    if (!startTime || !durationMinutes) return null;
+    if (!startTime || durationMinutes === undefined || durationMinutes === null)
+      return null;
 
-    const [hours, minutes] = startTime.split(":").map(Number);
-    const totalMinutes = hours * 60 + minutes + durationMinutes;
+    const normalizedStartTime = String(startTime).trim();
+    const parsedDuration = parseInt(durationMinutes, 10);
+
+    if (Number.isNaN(parsedDuration) || parsedDuration < 0) {
+      return null;
+    }
+
+    let hours;
+    let minutes;
+
+    const twelveHourMatch = normalizedStartTime.match(
+      /^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i,
+    );
+    if (twelveHourMatch) {
+      hours = parseInt(twelveHourMatch[1], 10);
+      minutes = parseInt(twelveHourMatch[2], 10);
+      const meridiem = twelveHourMatch[3].toUpperCase();
+
+      if (hours === 12) {
+        hours = meridiem === "AM" ? 0 : 12;
+      } else if (meridiem === "PM") {
+        hours += 12;
+      }
+    } else {
+      const twentyFourHourMatch = normalizedStartTime.match(
+        /^(\d{1,2}):(\d{2})(?::\d{2})?$/,
+      );
+
+      if (!twentyFourHourMatch) {
+        return null;
+      }
+
+      hours = parseInt(twentyFourHourMatch[1], 10);
+      minutes = parseInt(twentyFourHourMatch[2], 10);
+    }
+
+    const totalMinutes = hours * 60 + minutes + parsedDuration;
     const endHours = Math.floor(totalMinutes / 60) % 24;
     const endMinutes = totalMinutes % 60;
     return `${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(2, "0")}`;

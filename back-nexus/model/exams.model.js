@@ -1,95 +1,90 @@
 import pool from "../config/db.js";
 
+const buildExamSelectQuery = ({ includeRooms = true, byId = false } = {}) => `
+  SELECT 
+    e.*,
+    c.code AS course_code,
+    c.title AS course_name,
+    s.section_name,
+    s.room,
+    ap.school_year,
+    ap.semester,
+    u.first_name AS creator_first_name,
+    u.last_name AS creator_last_name,
+    es.room_id,
+    es.proctor_id,
+    fp.first_name AS proctor_first_name,
+    fp.last_name AS proctor_last_name,
+    ${includeRooms ? "r.room_number" : "NULL AS room_number"}
+  FROM exams e
+  LEFT JOIN courses c ON e.course_id = c.course_id
+  LEFT JOIN sections s ON e.section_id = s.section_id
+  LEFT JOIN academic_periods ap ON e.period_id = ap.period_id
+  LEFT JOIN users u ON e.created_by = u.user_id
+  LEFT JOIN exam_schedules es ON e.exam_id = es.exam_id
+  LEFT JOIN users fp ON es.proctor_id = fp.user_id
+  ${includeRooms ? "LEFT JOIN rooms r ON es.room_id = r.room_id" : ""}
+  WHERE 1=1
+  ${byId ? "AND e.exam_id = ?" : ""}
+`;
+
+const withRoomsFallback = async (queryFn) => {
+  try {
+    return await queryFn(true);
+  } catch (error) {
+    if (error?.code !== "ER_NO_SUCH_TABLE") {
+      throw error;
+    }
+    return await queryFn(false);
+  }
+};
+
 const ExamsModel = {
   // Get all exams with filters
   getAll: async (filters = {}) => {
-    let query = `
-      SELECT 
-        e.*,
-        c.code AS course_code,
-        c.title AS course_name,
-        s.section_name,
-        s.room,
-        ap.school_year,
-        ap.semester,
-        u.first_name AS creator_first_name,
-        u.last_name AS creator_last_name,
-        es.room_id,
-        es.proctor_id,
-        fp.first_name AS proctor_first_name,
-        fp.last_name AS proctor_last_name,
-        r.room_number
-      FROM exams e
-      LEFT JOIN courses c ON e.course_id = c.course_id
-      LEFT JOIN sections s ON e.section_id = s.section_id
-      LEFT JOIN academic_periods ap ON e.period_id = ap.period_id
-      LEFT JOIN users u ON e.created_by = u.user_id
-      LEFT JOIN exam_schedules es ON e.exam_id = es.exam_id
-      LEFT JOIN users fp ON es.proctor_id = fp.user_id
-      LEFT JOIN rooms r ON es.room_id = r.room_id
-      WHERE 1=1
-    `;
+    return withRoomsFallback(async (includeRooms) => {
+      let query = buildExamSelectQuery({ includeRooms });
+      const params = [];
 
-    const params = [];
+      if (filters.course_id) {
+        query += " AND e.course_id = ?";
+        params.push(filters.course_id);
+      }
 
-    if (filters.course_id) {
-      query += " AND e.course_id = ?";
-      params.push(filters.course_id);
-    }
+      if (filters.section_id) {
+        query += " AND e.section_id = ?";
+        params.push(filters.section_id);
+      }
 
-    if (filters.section_id) {
-      query += " AND e.section_id = ?";
-      params.push(filters.section_id);
-    }
+      if (filters.period_id) {
+        query += " AND e.period_id = ?";
+        params.push(filters.period_id);
+      }
 
-    if (filters.period_id) {
-      query += " AND e.period_id = ?";
-      params.push(filters.period_id);
-    }
+      if (filters.exam_type) {
+        query += " AND e.exam_type = ?";
+        params.push(filters.exam_type);
+      }
 
-    if (filters.exam_type) {
-      query += " AND e.exam_type = ?";
-      params.push(filters.exam_type);
-    }
+      if (filters.status) {
+        query += " AND e.status = ?";
+        params.push(filters.status);
+      }
 
-    if (filters.status) {
-      query += " AND e.status = ?";
-      params.push(filters.status);
-    }
+      query += " ORDER BY e.created_at DESC";
 
-    query += " ORDER BY e.created_at DESC";
-
-    const [rows] = await pool.query(query, params);
-    return rows;
+      const [rows] = await pool.query(query, params);
+      return rows;
+    });
   },
 
   // Get exam by ID
   getById: async (examId) => {
-    const query = `
-      SELECT 
-        e.*,
-        c.code AS course_code,
-        c.title AS course_name,
-        s.section_name,
-        s.room,
-        ap.school_year,
-        ap.semester,
-        es.room_id,
-        es.proctor_id,
-        fp.first_name AS proctor_first_name,
-        fp.last_name AS proctor_last_name,
-        r.room_number
-      FROM exams e
-      LEFT JOIN courses c ON e.course_id = c.course_id
-      LEFT JOIN sections s ON e.section_id = s.section_id
-      LEFT JOIN academic_periods ap ON e.period_id = ap.period_id
-      LEFT JOIN exam_schedules es ON e.exam_id = es.exam_id
-      LEFT JOIN users fp ON es.proctor_id = fp.user_id
-      LEFT JOIN rooms r ON es.room_id = r.room_id
-      WHERE e.exam_id = ?
-    `;
-    const [rows] = await pool.query(query, [examId]);
-    return rows[0];
+    return withRoomsFallback(async (includeRooms) => {
+      const query = buildExamSelectQuery({ includeRooms, byId: true });
+      const [rows] = await pool.query(query, [examId]);
+      return rows[0];
+    });
   },
 
   // Create new exam

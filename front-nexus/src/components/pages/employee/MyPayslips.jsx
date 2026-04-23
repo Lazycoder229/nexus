@@ -20,28 +20,16 @@ const MyPayslips = () => {
   const itemsPerPage = 5;
 
   useEffect(() => {
-    console.log("🚀 MyPayslips component mounted");
+    
     fetchMyPayslips();
   }, []);
-
-  useEffect(() => {
-    console.log("📌 Payslips state updated:", payslips);
-    console.log(`📊 Total payslips: ${payslips.length}`);
-  }, [payslips]);
-
   const fetchMyPayslips = async () => {
     try {
       setLoading(true);
-      console.log("🔍 Fetching payslips for current user...");
       const response = await api.get(`/api/payroll/my-payslips`);
-      console.log("📊 API Response:", response.data);
-      console.log("📋 Payslips Data:", response.data.data);
-      console.log("✅ Number of payslips:", response.data.data?.length || 0);
       setPayslips(response.data.data || []);
     } catch (error) {
-      console.error("❌ Error fetching payslips:", error);
-      console.error("Response Status:", error.response?.status);
-      console.error("Response Data:", error.response?.data);
+      console.error("Error fetching payslips:", error);
     } finally {
       setLoading(false);
     }
@@ -55,8 +43,6 @@ const MyPayslips = () => {
   const handleDownloadPDF = async (payslip) => {
     try {
       setDownloadingPayslipId(payslip.payslip_id);
-      console.log("📥 Starting PDF download for:", payslip.payslip_number);
-
       // Wait for library to be available
       if (!window.html2pdf) {
         console.error("❌ html2pdf library not loaded");
@@ -87,7 +73,7 @@ const MyPayslips = () => {
         performPDFGeneration(payslip);
       }
     } catch (error) {
-      console.error("❌ Error downloading PDF:", error);
+      console.error("Error downloading PDF:", error);
       setDownloadingPayslipId(null);
       alert("Failed to download payslip");
     }
@@ -98,11 +84,6 @@ const MyPayslips = () => {
     requestAnimationFrame(() => {
       setTimeout(() => {
         try {
-          console.log(
-            "🔍 Creating clean PDF HTML for:",
-            `payslip-${payslip.payslip_id}`,
-          );
-
           // Create a clean container with simple CSS (no Tailwind)
           const pdfContainer = document.createElement("div");
           pdfContainer.style.cssText = `
@@ -295,7 +276,7 @@ const MyPayslips = () => {
 
   return (
     <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
-      <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
+      <div className="w-full max-w-8xl mx-auto space-y-4 font-sans">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">

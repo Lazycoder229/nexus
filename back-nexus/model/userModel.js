@@ -54,20 +54,16 @@ export const getAllUsers = async (role = null) => {
       s.father_name,
       s.mother_name,
       s.parent_phone,
-      er.employee_id,
-      er.department,
-      er.position,
-      er.hire_date,
-      er.employment_status,
-      e.position_title as detail_position_title,
-      e.department as detail_department,
+      e.employee_id,
+      e.department,
+      e.position_title,
+      e.date_hired,
       e.specialization,
       e.educational_attainment,
       e.license_number,
       e.access_level
     FROM users u
     LEFT JOIN student_details s ON u.user_id = s.user_id
-    LEFT JOIN employee_records er ON u.user_id = er.user_id
     LEFT JOIN employee_details e ON u.user_id = e.user_id`;
   
   if (role) {
@@ -304,13 +300,24 @@ export const updateStudentUser = async (userId, userData) => {
 
     await connection.query(query, updateUserFields);
 
-    // 2️ Update student_details table
+    // 2️ Upsert student_details so legacy users without a row can still save profile data.
     await connection.query(
-      `UPDATE student_details
-       SET student_number = ?, course = ?, major = ?, year_level = ?, previous_school = ?, 
-           year_graduated = ?, mailing_address = ?, father_name = ?, mother_name = ?, parent_phone = ?
-       WHERE user_id = ?`,
+      `INSERT INTO student_details
+       (user_id, student_number, course, major, year_level, previous_school, year_graduated, mailing_address, father_name, mother_name, parent_phone)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         student_number = VALUES(student_number),
+         course = VALUES(course),
+         major = VALUES(major),
+         year_level = VALUES(year_level),
+         previous_school = VALUES(previous_school),
+         year_graduated = VALUES(year_graduated),
+         mailing_address = VALUES(mailing_address),
+         father_name = VALUES(father_name),
+         mother_name = VALUES(mother_name),
+         parent_phone = VALUES(parent_phone)`,
       [
+        userId,
         studentNumber,
         course,
         major,
@@ -321,7 +328,6 @@ export const updateStudentUser = async (userId, userData) => {
         fatherName,
         motherName,
         parentPhone,
-        userId,
       ],
     );
 
@@ -389,7 +395,12 @@ export const updateEmployeeUser = async (userId, userData) => {
     Object.keys(employeeMappings).forEach((key) => {
       if (userData[key] !== undefined) {
         employeeFields.push(`${employeeMappings[key]} = ?`);
-        employeeValues.push(userData[key]);
+        // Convert empty strings to null for date fields
+        if (key === "dateHired" && userData[key] === "") {
+          employeeValues.push(null);
+        } else {
+          employeeValues.push(userData[key]);
+        }
       }
     });
 

@@ -1,6 +1,20 @@
 // model/admissions.model.js
 import db from "../config/db.js";
 
+const normalizeOptionalDate = (value) => {
+  if (!value) return null;
+  return String(value).trim() === "" ? null : value;
+};
+
+const normalizeOptionalInt = (value) => {
+  if (value === null || value === undefined) return null;
+  const stringValue = String(value).trim();
+  if (stringValue === "") return null;
+
+  const parsed = Number.parseInt(stringValue, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
 // Get all admissions
 export const getAllAdmissions = async () => {
   const [rows] = await db.query(
@@ -40,19 +54,19 @@ export const createAdmission = async (data) => {
       data.last_name,
       data.email,
       data.phone,
-      data.date_of_birth,
+      normalizeOptionalDate(data.date_of_birth),
       data.gender,
       data.address,
       data.previous_school,
       data.year_graduated,
       data.program_applied,
-      data.application_date,
+      normalizeOptionalDate(data.application_date),
       data.entrance_exam_score,
-      data.interview_date,
+      normalizeOptionalDate(data.interview_date),
       data.interview_notes,
       data.status || "Pending",
-      data.decision_date,
-      data.decision_by,
+      normalizeOptionalDate(data.decision_date),
+      normalizeOptionalInt(data.decision_by),
       data.remarks,
       data.documents_submitted,
     ]
@@ -76,19 +90,19 @@ export const updateAdmission = async (id, data) => {
       data.last_name,
       data.email,
       data.phone,
-      data.date_of_birth,
+      normalizeOptionalDate(data.date_of_birth),
       data.gender,
       data.address,
       data.previous_school,
       data.year_graduated,
       data.program_applied,
-      data.application_date,
+      normalizeOptionalDate(data.application_date),
       data.entrance_exam_score,
-      data.interview_date,
+      normalizeOptionalDate(data.interview_date),
       data.interview_notes,
       data.status,
-      data.decision_date,
-      data.decision_by,
+      normalizeOptionalDate(data.decision_date),
+      normalizeOptionalInt(data.decision_by),
       data.remarks,
       data.documents_submitted,
       id,

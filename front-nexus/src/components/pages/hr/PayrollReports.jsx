@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import { Download, FileText, Calendar, Search } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { generateCSV, downloadCSV, downloadPDF } from "../../../utils/exportHelpers";
 
 const PayrollReports = () => {
   const [payrollSetups, setPayrollSetups] = useState([]);
@@ -59,75 +62,104 @@ const PayrollReports = () => {
       return;
     }
 
-    // Create CSV content
-    const csvContent = convertToCSV(reportData);
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `payroll_${reportType}_${new Date().toISOString().split("T")[0]
-      }.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    // Transform payslips data for export
+    const exportData = reportData.payslips.map((p) => ({
+      employee_number: p.employee_number || "",
+      employee_name: `${p.first_name} ${p.last_name}`,
+      department: p.department || "",
+      position: p.position || "",
+      basic_pay: parseFloat(p.basic_pay || 0).toFixed(2),
+      overtime_pay: parseFloat(p.overtime_pay || 0).toFixed(2),
+      holiday_pay: parseFloat(p.holiday_pay || 0).toFixed(2),
+      night_differential: parseFloat(p.night_differential || 0).toFixed(2),
+      allowances: parseFloat(p.allowances || 0).toFixed(2),
+      bonus: parseFloat(p.bonus || 0).toFixed(2),
+      gross_pay: parseFloat(p.gross_pay || 0).toFixed(2),
+      sss_deduction: parseFloat(p.sss_deduction || 0).toFixed(2),
+      philhealth_deduction: parseFloat(p.philhealth_deduction || 0).toFixed(2),
+      pagibig_deduction: parseFloat(p.pagibig_deduction || 0).toFixed(2),
+      tax_deduction: parseFloat(p.tax_deduction || 0).toFixed(2),
+      loan_deduction: parseFloat(p.loan_deduction || 0).toFixed(2),
+      other_deductions: parseFloat(p.other_deductions || 0).toFixed(2),
+      total_deductions: parseFloat(p.total_deductions || 0).toFixed(2),
+      net_pay: parseFloat(p.net_pay || 0).toFixed(2),
+      bank_name: p.bank_name || "",
+      bank_account_number: p.bank_account_number || "",
+    }));
+
+    const csv = generateCSV(exportData, {
+      headers: [
+        "employee_number",
+        "employee_name",
+        "department",
+        "position",
+        "basic_pay",
+        "overtime_pay",
+        "holiday_pay",
+        "night_differential",
+        "allowances",
+        "bonus",
+        "gross_pay",
+        "sss_deduction",
+        "philhealth_deduction",
+        "pagibig_deduction",
+        "tax_deduction",
+        "loan_deduction",
+        "other_deductions",
+        "total_deductions",
+        "net_pay",
+        "bank_name",
+        "bank_account_number",
+      ],
+      includeTimestamps: false,
+    });
+
+    const filename = `payroll_${reportType.toLowerCase()}_${new Date().toISOString().split("T")[0]}.csv`;
+    downloadCSV(csv, filename);
   };
 
-  const convertToCSV = (data) => {
-    if (!data || !data.payslips || data.payslips.length === 0) {
-      return "No data available";
+  const downloadReportPDF = () => {
+    if (!reportData) {
+      alert("Generate a report first");
+      return;
     }
 
-    // Headers
-    const headers = [
-      "Employee Number",
-      "Employee Name",
-      "Department",
-      "Position",
-      "Basic Pay",
-      "Overtime",
-      "Holiday Pay",
-      "Night Diff",
-      "Allowances",
-      "Bonus",
-      "Gross Pay",
-      "SSS",
-      "PhilHealth",
-      "Pag-IBIG",
-      "Tax",
-      "Loan",
-      "Other",
-      "Total Deductions",
-      "Net Pay",
-      "Bank Name",
-      "Account Number",
-    ];
+    // Transform payslips data for PDF export
+    const exportData = reportData.payslips.map((p) => ({
+      employee_number: p.employee_number || "",
+      employee_name: `${p.first_name} ${p.last_name}`,
+      department: p.department || "",
+      position: p.position || "",
+      basic_pay: parseFloat(p.basic_pay || 0).toFixed(2),
+      gross_pay: parseFloat(p.gross_pay || 0).toFixed(2),
+      sss_deduction: parseFloat(p.sss_deduction || 0).toFixed(2),
+      philhealth_deduction: parseFloat(p.philhealth_deduction || 0).toFixed(2),
+      pagibig_deduction: parseFloat(p.pagibig_deduction || 0).toFixed(2),
+      tax_deduction: parseFloat(p.tax_deduction || 0).toFixed(2),
+      total_deductions: parseFloat(p.total_deductions || 0).toFixed(2),
+      net_pay: parseFloat(p.net_pay || 0).toFixed(2),
+    }));
 
-    // Rows
-    const rows = data.payslips.map((p) => [
-      p.employee_number || "",
-      `"${p.first_name} ${p.last_name}"`,
-      p.department || "",
-      p.position || "",
-      parseFloat(p.basic_pay || 0).toFixed(2),
-      parseFloat(p.overtime_pay || 0).toFixed(2),
-      parseFloat(p.holiday_pay || 0).toFixed(2),
-      parseFloat(p.night_differential || 0).toFixed(2),
-      parseFloat(p.allowances || 0).toFixed(2),
-      parseFloat(p.bonus || 0).toFixed(2),
-      parseFloat(p.gross_pay || 0).toFixed(2),
-      parseFloat(p.sss_deduction || 0).toFixed(2),
-      parseFloat(p.philhealth_deduction || 0).toFixed(2),
-      parseFloat(p.pagibig_deduction || 0).toFixed(2),
-      parseFloat(p.tax_deduction || 0).toFixed(2),
-      parseFloat(p.loan_deduction || 0).toFixed(2),
-      parseFloat(p.other_deductions || 0).toFixed(2),
-      parseFloat(p.total_deductions || 0).toFixed(2),
-      parseFloat(p.net_pay || 0).toFixed(2),
-      p.bank_name || "",
-      p.bank_account_number || "",
-    ]);
-
-    // Combine
-    return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const filename = `Payroll ${reportType} Report`;
+    downloadPDF(jsPDF, autoTable, exportData, {
+      title: filename,
+      orientation: "landscape",
+      headers: [
+        "employee_number",
+        "employee_name",
+        "department",
+        "position",
+        "basic_pay",
+        "gross_pay",
+        "sss_deduction",
+        "philhealth_deduction",
+        "pagibig_deduction",
+        "tax_deduction",
+        "total_deductions",
+        "net_pay",
+      ],
+      includeTimestamps: false,
+    });
   };
 
   return (
@@ -191,13 +223,22 @@ const PayrollReports = () => {
                 {loading ? "Generating..." : "Generate"}
               </button>
               {reportData && (
-                <button
-                  onClick={downloadReport}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-colors text-sm border shadow-sm whitespace-nowrap bg-green-600 text-white hover:bg-green-700 border-green-700 dark:border-green-600 shadow-md shadow-green-500/30"
-                >
-                  <Download size={14} />
-                  CSV
-                </button>
+                <>
+                  <button
+                    onClick={downloadReport}
+                    className="flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-colors text-sm border shadow-sm whitespace-nowrap bg-green-600 text-white hover:bg-green-700 border-green-700 dark:border-green-600 shadow-md shadow-green-500/30"
+                  >
+                    <Download size={14} />
+                    CSV
+                  </button>
+                  <button
+                    onClick={downloadReportPDF}
+                    className="flex items-center gap-2 px-3 py-2 rounded-md font-medium transition-colors text-sm border shadow-sm whitespace-nowrap bg-red-600 text-white hover:bg-red-700 border-red-700 dark:border-red-600 shadow-md shadow-red-500/30"
+                  >
+                    <Download size={14} />
+                    PDF
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -399,7 +440,7 @@ const PayrollReports = () => {
           </div>
         )}
       </div>
-    </div >
+   </div>
   );
 };
 

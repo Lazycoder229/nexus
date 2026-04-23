@@ -11,7 +11,33 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+const runtimeHostApiBase =
+  typeof window !== "undefined"
+    ? `http://${window.location.hostname}:5000`
+    : "http://localhost:5000";
+
+const apiBaseCandidates = [
+  import.meta.env.VITE_API_BASE_URL,
+  runtimeHostApiBase,
+  "http://localhost:5000",
+].filter((value, index, arr) => value && arr.indexOf(value) === index);
+
+const apiFetch = async (path, options = {}) => {
+  let lastError;
+
+  for (const base of apiBaseCandidates) {
+    try {
+      const response = await fetch(`${base}${path}`, options);
+      return response;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError;
+};
+
 const ExamSetup = () => {
   const [exams, setExams] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -56,9 +82,7 @@ const ExamSetup = () => {
     try {
       setLoading(true);
       const queryParams = new URLSearchParams(filters);
-      const response = await fetch(
-        `${API_BASE}/api/exams?${queryParams}`,
-      );
+      const response = await apiFetch(`/api/exams?${queryParams}`);
       const data = await response.json();
       if (data.success) {
         setExams(data.data);
@@ -72,7 +96,7 @@ const ExamSetup = () => {
 
   const fetchSections = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/sections`);
+      const response = await apiFetch("/api/sections");
       const data = await response.json();
       if (Array.isArray(data)) {
         setSections(data);
@@ -86,7 +110,7 @@ const ExamSetup = () => {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/course/courses`);
+      const response = await apiFetch("/api/course/courses");
       const data = await response.json();
       console.log("Courses API response:", data); // Debug
 
@@ -137,8 +161,8 @@ const ExamSetup = () => {
       return;
     }
     try {
-      const response = await fetch(
-        `${API_BASE}/api/faculty/department/${departmentId}`,
+      const response = await apiFetch(
+        `/api/faculty/department/${departmentId}`,
       );
       const data = await response.json();
       if (Array.isArray(data)) {
@@ -224,9 +248,9 @@ const ExamSetup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const url = editingExam
-        ? `${API_BASE}/api/exams/${editingExam.exam_id}`
-        : `${API_BASE}/api/exams`;
+      const path = editingExam
+        ? `/api/exams/${editingExam.exam_id}`
+        : "/api/exams";
       const method = editingExam ? "PUT" : "POST";
 
       // Get logged-in user ID from localStorage
@@ -237,7 +261,7 @@ const ExamSetup = () => {
         ? formData
         : { ...formData, created_by: userId };
 
-      const response = await fetch(url, {
+      const response = await apiFetch(path, {
         method,
         headers: {
           "Content-Type": "application/json",
@@ -258,10 +282,9 @@ const ExamSetup = () => {
   const handleDelete = async (examId) => {
     if (window.confirm("Are you sure you want to delete this exam?")) {
       try {
-        const response = await fetch(
-          `${API_BASE}/api/exams/${examId}`,
-          { method: "DELETE" },
-        );
+        const response = await apiFetch(`/api/exams/${examId}`, {
+          method: "DELETE",
+        });
         const data = await response.json();
         if (data.success) {
           fetchExams();
@@ -786,9 +809,6 @@ const ExamSetup = () => {
                             : null
                         }
                         onChange={(option) => {
-                          const selectedSection = sections.find(
-                            (s) => (s.section_id || s.id) === option?.value,
-                          );
                           setFormData({
                             ...formData,
                             section_id: option?.value || "",

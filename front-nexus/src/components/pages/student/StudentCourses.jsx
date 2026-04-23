@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
   BookOpen,
@@ -19,6 +19,7 @@ import {
   FileText,
   GraduationCap,
   ArrowRight,
+  X,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -54,11 +55,33 @@ const parseDayAbbreviations = (dayString) => {
   return days;
 };
 
+const isDroppedStatus = (status) => {
+  return String(status || "").trim().toLowerCase() === "dropped";
+};
+
+const isActiveEnrollment = (enrollment) => {
+  return !isDroppedStatus(enrollment?.status);
+};
+
+const formatTime = (timeString) => {
+  if (!timeString) return "";
+
+  const [hours, minutes] = timeString.split(":").slice(0, 2);
+  const hour = parseInt(hours, 10);
+  const minute = minutes || "00";
+
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+
+  return `${displayHour}:${minute} ${ampm}`;
+};
+
 const StudentCourses = () => {
   const [activeTab, setActiveTab] = useState("enlistment");
 
   // Enlistment state
   const [enrolledSubjects, setEnrolledSubjects] = useState([]);
+  const [droppedEnrollments, setDroppedEnrollments] = useState([]);
   const [enrollmentStatus, setEnrollmentStatus] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState(null);
@@ -67,37 +90,14 @@ const StudentCourses = () => {
   const [timetable, setTimetable] = useState([]);
   const [selectedDay, setSelectedDay] = useState("Monday");
 
-  useEffect(() => {
-    if (activeTab === "enlistment") {
-      fetchEnlistmentData();
-      fetchEnrollmentStatus();
-    } else {
-      fetchTimetable();
-    }
-  }, [activeTab]);
-
-  // Convert 24-hour time (HH:MM:SS) to 12-hour format with AM/PM
-  const formatTime = (timeString) => {
-    if (!timeString) return "";
-    
-    const [hours, minutes] = timeString.split(":").slice(0, 2);
-    const hour = parseInt(hours, 10);
-    const minute = minutes || "00";
-    
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour % 12 || 12;
-    
-    return `${displayHour}:${minute} ${ampm}`;
-  };
-
-  const fetchEnrollmentStatus = async () => {
+  const fetchEnrollmentStatus = useCallback(async () => {
     try {
       const studentId = localStorage.getItem("userId");
       if (!studentId) return;
       const response = await axios.get(
         `${API_BASE}/api/enrollments/student/${studentId}`,
       );
-      const enrollments = response.data || [];
+      const enrollments = (response.data || []).filter(isActiveEnrollment);
       setEnrollmentStatus({
         isOpen: true,
         message: "Enrollment is currently open",
@@ -107,81 +107,88 @@ const StudentCourses = () => {
     } catch (error) {
       console.error("Error fetching enrollment status:", error);
     }
-  };
+  }, []);
 
-  const fetchEnlistmentData = async () => {
+  const fetchEnlistmentData = useCallback(async () => {
     try {
       const studentId = localStorage.getItem("userId");
       if (!studentId) return;
       const enrolledRes = await axios.get(
         `${API_BASE}/api/enrollments/student/${studentId}`,
       );
-      const enrolled = enrolledRes.data || [];
-      console.log("📚 Enrolled data from API:", enrolled);
-      
+      const enrollments = enrolledRes.data || [];
+      console.log("📚 Enrolled data from API:", enrollments);
+
+      const activeEnrollments = enrollments.filter(isActiveEnrollment);
+      const dropped = enrollments.filter((enrollment) =>
+        isDroppedStatus(enrollment.status),
+      );
+
+      setDroppedEnrollments(dropped);
+
       setEnrolledSubjects(
-        enrolled.map((e) => {
+        activeEnrollments.map((enrollment) => {
           let schedule = "TBA";
-          
-          // Check if schedules array exists (from faculty assignments)
-          if (Array.isArray(e.schedules) && e.schedules.length > 0) {
-            schedule = e.schedules
+
+          if (
+            Array.isArray(enrollment.schedules) &&
+            enrollment.schedules.length > 0
+          ) {
+            schedule = enrollment.schedules
               .map(
                 (s) =>
                   `${s.schedule_day || ""} ${formatTime(s.schedule_time_start || "")}-${formatTime(s.schedule_time_end || "")}`.trim(),
               )
               .filter((s) => s && s !== "-")
               .join(", ");
-          }
-          // Check if final_schedule_day has a value
-          else if (e.final_schedule_day && e.final_schedule_day.trim()) {
-            schedule = `${e.final_schedule_day} ${formatTime(e.final_schedule_time_start || "")}-${formatTime(e.final_schedule_time_end || "")}`.trim();
-          }
-          // Check if schedule_day has a value
-          else if (e.schedule_day && e.schedule_day.trim()) {
-            schedule = `${e.schedule_day} ${formatTime(e.schedule_time_start || "")}-${formatTime(e.schedule_time_end || "")}`.trim();
-          }
-          // Fallback to single schedule field
-          else if (e.schedule && e.schedule.trim()) {
-            schedule = e.schedule;
+          } else if (
+            enrollment.final_schedule_day &&
+            enrollment.final_schedule_day.trim()
+          ) {
+            schedule = `${enrollment.final_schedule_day} ${formatTime(enrollment.final_schedule_time_start || "")}-${formatTime(enrollment.final_schedule_time_end || "")}`.trim();
+          } else if (enrollment.schedule_day && enrollment.schedule_day.trim()) {
+            schedule = `${enrollment.schedule_day} ${formatTime(enrollment.schedule_time_start || "")}-${formatTime(enrollment.schedule_time_end || "")}`.trim();
+          } else if (enrollment.schedule && enrollment.schedule.trim()) {
+            schedule = enrollment.schedule;
           }
 
           return {
-            enrollment_id: e.enrollment_id,
-            subject_id: e.course_id,
-            subject_code: e.course_code,
-            subject_name: e.course_title,
-            units: e.units || 3,
-            schedule: schedule,
-            instructor: e.instructor_name || "TBA",
+            enrollment_id: enrollment.enrollment_id,
+            subject_id: enrollment.course_id,
+            subject_code: enrollment.course_code,
+            subject_name: enrollment.course_title,
+            units: enrollment.units || 3,
+            schedule,
+            instructor: enrollment.instructor_name || "TBA",
           };
         }),
       );
     } catch (error) {
       console.error("Error fetching data:", error);
     }
-  };
+  }, []);
 
-  const fetchTimetable = async () => {
+  const fetchTimetable = useCallback(async () => {
     try {
       const studentId = localStorage.getItem("userId");
       if (!studentId) return;
 
       console.log("📅 Fetching timetable for student:", studentId);
 
-      // Fetch student enrollments with schedule data
       const response = await axios.get(
         `${API_BASE}/api/enrollments/student/${studentId}`,
       );
 
-      const enrollments = response.data || [];
+      const enrollments = (response.data || []).filter(isActiveEnrollment);
       console.log("Fetched enrollments:", enrollments);
 
       const scheduleData = [];
 
       enrollments.forEach((enrollment) => {
-        // First check if schedules array exists (from faculty assignments)
-        if (Array.isArray(enrollment.schedules) && enrollment.schedules.length > 0) {
+        if (
+          Array.isArray(enrollment.schedules) &&
+          enrollment.schedules.length > 0
+        ) {
           enrollment.schedules.forEach((schedule) => {
             const scheduleDay = schedule.schedule_day;
             const scheduleStart = schedule.schedule_time_start;
@@ -192,11 +199,10 @@ const StudentCourses = () => {
             );
 
             if (scheduleDay && scheduleStart && scheduleEnd) {
-              // Parse day abbreviations and create entries for each day
               const days = parseDayAbbreviations(scheduleDay);
               days.forEach((day) => {
                 scheduleData.push({
-                  day: day,
+                  day,
                   subject_name: enrollment.course_title,
                   subject_code: enrollment.course_code,
                   start_time: formatTime(scheduleStart),
@@ -208,7 +214,6 @@ const StudentCourses = () => {
             }
           });
         } else {
-          // Fallback to combined schedule fields (from sections)
           const scheduleDay =
             enrollment.final_schedule_day || enrollment.schedule_day;
           const scheduleStart =
@@ -222,11 +227,10 @@ const StudentCourses = () => {
           );
 
           if (scheduleDay && scheduleStart && scheduleEnd) {
-            // Parse day abbreviations and create entries for each day
             const days = parseDayAbbreviations(scheduleDay);
             days.forEach((day) => {
               scheduleData.push({
-                day: day,
+                day,
                 subject_name: enrollment.course_title,
                 subject_code: enrollment.course_code,
                 start_time: formatTime(scheduleStart),
@@ -239,7 +243,6 @@ const StudentCourses = () => {
             console.log(
               `⚠️ No schedule for ${enrollment.course_code}, using Monday fallback`,
             );
-            // Fallback: add to Monday with TBA time
             scheduleData.push({
               day: "Monday",
               subject_name: enrollment.course_title,
@@ -262,12 +265,16 @@ const StudentCourses = () => {
       console.error("❌ Error fetching timetable:", error);
       setTimetable([]);
     }
-  };
+  }, []);
 
-/*   const handleEnlist = async (subject) => {
-    setSelectedSubject(subject);
-    setShowConfirmModal(true);
-  }; */
+  useEffect(() => {
+    if (activeTab === "enlistment") {
+      fetchEnlistmentData();
+      fetchEnrollmentStatus();
+    } else {
+      fetchTimetable();
+    }
+  }, [activeTab, fetchEnlistmentData, fetchEnrollmentStatus, fetchTimetable]);
 
   const confirmEnlist = async () => {
     try {
@@ -378,6 +385,43 @@ const StudentCourses = () => {
         {activeTab === "enlistment" ? (
           // Subject Enlistment Tab
           <div className="space-y-4">
+            {droppedEnrollments.length > 0 && (
+              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg border border-red-200 p-6 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="bg-white rounded-full p-2 shadow-sm">
+                    <X size={18} className="text-red-500" />
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-lg font-semibold text-slate-800 mb-2">
+                      Dropped subject update
+                    </h2>
+                    <p className="text-sm text-slate-700 mb-3">
+                      You were dropped from the following subject
+                      {droppedEnrollments.length > 1 ? "s" : ""}. This does
+                      not change your semester enrollment:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {droppedEnrollments.map((enrollment) => (
+                        <span
+                          key={enrollment.enrollment_id}
+                          className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-sm font-medium text-red-700 border border-red-200"
+                        >
+                          <span className="font-semibold">
+                            {enrollment.course_title || enrollment.course_code || enrollment.course || "the course"}
+                          </span>
+                          {enrollment.school_year && enrollment.semester && (
+                            <span className="text-red-500">
+                              {enrollment.school_year} - {enrollment.semester}
+                            </span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Enrollment Status Banner */}
             {enrollmentStatus && (
               <div

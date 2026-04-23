@@ -2,6 +2,30 @@ import { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import { Users, Edit, Save, X } from "lucide-react";
 
+const resolveStoredStudentId = () => {
+  const directUserId = localStorage.getItem("userId");
+  if (directUserId) return directUserId;
+
+  const userObj = localStorage.getItem("user");
+  if (!userObj) return null;
+
+  try {
+    const parsedUser = JSON.parse(userObj);
+    return parsedUser.user_id || parsedUser.userId || parsedUser.id || null;
+  } catch (e) {
+    console.error("Error parsing user object:", e);
+    return null;
+  }
+};
+
+const pickValue = (obj, ...keys) => {
+  for (const key of keys) {
+    const value = obj?.[key];
+    if (value !== undefined && value !== null) return value;
+  }
+  return "";
+};
+
 const Field = ({ label, value }) => (
   <div>
     <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-0.5">
@@ -57,37 +81,59 @@ const StudentProfile = () => {
     try {
       setLoading(true);
       setError(null);
-      const userId = localStorage.getItem("userId");
+      const userId = resolveStoredStudentId();
       if (!userId) {
         setError("No logged-in user found. Please log in again.");
         return;
       }
-      const response = await api.get(`/api/users/${userId}`);
-      const u = response.data || {};
+      let u = null;
+
+      try {
+        const listResponse = await api.get("/api/users");
+        const users = Array.isArray(listResponse.data) ? listResponse.data : [];
+        u = users.find((user) => String(user.user_id) === String(userId)) || null;
+      } catch (listErr) {
+        console.warn("Falling back to single-user profile fetch:", listErr);
+      }
+
+      if (!u) {
+        const response = await api.get(`/api/users/${userId}`);
+        u = response.data || {};
+      }
+
       const profileData = {
-        user_id: u.user_id,
-        student_number: u.student_number,
-        first_name: u.first_name,
-        middle_name: u.middle_name,
-        last_name: u.last_name,
-        suffix: u.suffix,
-        email: u.email,
-        phone: u.phone,
-        gender: u.gender,
-        date_of_birth: u.date_of_birth,
-        permanent_address: u.permanent_address,
-        mailing_address: u.mailing_address,
-        course: u.course,
-        major: u.major,
-        year_level: u.year_level,
-        previous_school: u.previous_school,
-        father_name: u.father_name,
-        mother_name: u.mother_name,
-        parent_phone: u.parent_phone,
-        status: u.status,
-        role: u.role,
-        created_at: u.created_at,
-        profile_picture_url: u.profile_picture_url,
+        user_id: pickValue(u, "user_id", "userId", "id"),
+        student_number: pickValue(u, "student_number", "studentNumber"),
+        first_name: pickValue(u, "first_name", "firstName"),
+        middle_name: pickValue(u, "middle_name", "middleName"),
+        last_name: pickValue(u, "last_name", "lastName"),
+        suffix: pickValue(u, "suffix"),
+        email: pickValue(u, "email"),
+        phone: pickValue(u, "phone"),
+        gender: pickValue(u, "gender"),
+        date_of_birth: pickValue(u, "date_of_birth", "dateOfBirth"),
+        permanent_address: pickValue(
+          u,
+          "permanent_address",
+          "permanentAddress",
+          "address",
+        ),
+        mailing_address: pickValue(u, "mailing_address", "mailingAddress"),
+        course: pickValue(u, "course"),
+        major: pickValue(u, "major"),
+        year_level: pickValue(u, "year_level", "yearLevel"),
+        previous_school: pickValue(u, "previous_school", "previousSchool"),
+        father_name: pickValue(u, "father_name", "fatherName"),
+        mother_name: pickValue(u, "mother_name", "motherName"),
+        parent_phone: pickValue(u, "parent_phone", "parentPhone"),
+        status: pickValue(u, "status"),
+        role: pickValue(u, "role"),
+        created_at: pickValue(u, "created_at", "createdAt"),
+        profile_picture_url: pickValue(
+          u,
+          "profile_picture_url",
+          "profilePictureUrl",
+        ),
       };
       setProfile(profileData);
       setFormData(profileData);
@@ -106,7 +152,11 @@ const StudentProfile = () => {
     try {
       setSubmitting(true);
       setSaveError(null);
-      const userId = localStorage.getItem("userId");
+      const userId = resolveStoredStudentId();
+      if (!userId) {
+        setSaveError("No logged-in user found. Please log in again.");
+        return;
+      }
       
       // Format date to YYYY-MM-DD to match database DATE type
       const formatDate = (dateValue) => {

@@ -1,6 +1,7 @@
 // UserManagement.jsx
 import React, { useState, useMemo, useEffect } from "react";
 import axios from "axios";
+import Select from "react-select";
 import {
   Users,
   UserPlus,
@@ -10,21 +11,30 @@ import {
   GraduationCap,
   Briefcase,
   X,
-  Settings,
   ListChecks,
   Eye,
-  UploadCloud,
-  ChevronDown,
-  ChevronUp,
-  User2Icon,
   FileText,
   FileDown,
-  ArrowRight,
-  ArrowLeft,
   ChevronRight,
   ChevronLeft,
   Search,
+  User2Icon,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { generateCSV, downloadCSV, downloadPDF } from "../../../utils/exportHelpers";
+
+/* -------------------------
+   UTILITY FUNCTIONS
+   ------------------------- */
+const formatDateForInput = (dateValue) => {
+  if (!dateValue) return "";
+  if (typeof dateValue === "string") {
+    if (dateValue.includes("T")) return dateValue.split("T")[0];
+    return dateValue;
+  }
+  return "";
+};
 
 /* -------------------------
    INITIAL STATE TEMPLATES
@@ -37,11 +47,11 @@ const initialCommonState = {
   middleName: "",
   lastName: "",
   suffix: "",
-  dob: "",
+  dateOfBirth: "",
   gender: "",
   phone: "",
   permanentAddress: "",
-  profilePicture: "", // base64 data URI
+  profilePicture: "",
 };
 
 const studentSpecifics = {
@@ -66,14 +76,16 @@ const employeeCommon = {
 };
 
 const adminSpecifics = {
-  accessLevel: "Super Admin",
+  accessLevel: "Standard Admin",
+  specialization: "",
+  educationalAttainment: "",
+  licenseNumber: "",
 };
 
 const facultySpecifics = {
   specialization: "",
   educationalAttainment: "",
   licenseNumber: "",
-  coursesHandled: [],
 };
 
 const ROLE_CONFIG = {
@@ -133,9 +145,16 @@ const INITIAL_RBAC_STATE = {
 };
 
 /* -------------------------
-   SMALL INPUT COMPONENTS
-   (All padding reduced to p-1.5)
+   REUSABLE INPUT COMPONENTS
    ------------------------- */
+const inputClass =
+  "w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500";
+
+const FieldLabel = ({ children }) => (
+  <label className="block text-xs font-medium text-slate-700 mb-1.5">
+    {children}
+  </label>
+);
 
 const TextInput = ({
   name,
@@ -144,296 +163,729 @@ const TextInput = ({
   onChange,
   type = "text",
   required = false,
-  className = "",
+  label = "",
+  disabled = false,
 }) => (
-  <input
-    type={type}
-    name={name}
-    placeholder={placeholder}
-    value={value}
-    onChange={onChange}
-    required={required}
-    className={`w-full p-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out shadow-sm text-sm ${className}`}
-  />
+  <div>
+    {label && <FieldLabel>{label}</FieldLabel>}
+    <input
+      type={type}
+      name={name}
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      required={required}
+      disabled={disabled}
+      className={inputClass}
+    />
+  </div>
 );
 
-const SelectInput = ({
+const NativeSelect = ({ name, value, onChange, children, label = "", required = false, disabled = false }) => (
+  <div>
+    {label && <FieldLabel>{label}</FieldLabel>}
+    <select
+      name={name}
+      value={value}
+      onChange={onChange}
+      required={required}
+      disabled={disabled}
+      className={`${inputClass} appearance-none`}
+    >
+      {children}
+    </select>
+  </div>
+);
+
+const ReactSelectInput = ({
   name,
   placeholder,
   value,
   onChange,
-  children,
-  className = "",
-  required = false,
-  ...props
-}) => (
-  <select
-    name={name}
-    value={value}
-    onChange={onChange}
-    required={required}
-    className={`w-full p-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out shadow-sm text-sm appearance-none bg-white ${className}`}
-    {...props}
-  >
-    <option value="" disabled>
-      {placeholder || `Select ${name}`}
-    </option>
-    {children}
-  </select>
+  options,
+  label = "",
+  isMulti = false,
+  isClearable = true,
+  isDisabled = false,
+}) => {
+  let selectedValue = null;
+  if (isMulti && Array.isArray(value)) {
+    selectedValue = options.filter((opt) => value.includes(opt.value));
+  } else if (value) {
+    selectedValue = options.find((opt) => opt.value === value) || null;
+  }
+
+  const handleChange = (selected) => {
+    if (isMulti) {
+      onChange({ target: { name, value: selected ? selected.map((s) => s.value) : [] } });
+    } else {
+      onChange({ target: { name, value: selected ? selected.value : "" } });
+    }
+  };
+
+  return (
+    <div>
+      {label && <FieldLabel>{label}</FieldLabel>}
+      <Select
+        name={name}
+        options={options}
+        value={selectedValue}
+        onChange={handleChange}
+        placeholder={placeholder || `Select ${name}`}
+        isMulti={isMulti}
+        isClearable={isClearable}
+        isSearchable
+        isDisabled={isDisabled}
+        className="text-sm"
+        styles={{
+          control: (base) => ({
+            ...base,
+            minHeight: "38px",
+            borderColor: "rgb(203 213 225)",
+            "&:hover": { borderColor: "rgb(148 163 184)" },
+            borderRadius: "0.5rem",
+            fontSize: "14px",
+          }),
+          option: (base, state) => ({
+            ...base,
+            backgroundColor: state.isSelected
+              ? "rgb(79 70 229)"
+              : state.isFocused
+              ? "rgb(229 231 235)"
+              : "white",
+            color: state.isSelected ? "white" : "rgb(15 23 42)",
+            cursor: "pointer",
+            fontSize: "14px",
+          }),
+          menuList: (base) => ({ ...base, maxHeight: "200px" }),
+        }}
+      />
+    </div>
+  );
+};
+
+const TextAreaInput = ({ name, placeholder, value, onChange, label = "" }) => (
+  <div>
+    {label && <FieldLabel>{label}</FieldLabel>}
+    <textarea
+      name={name}
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      rows={2}
+      className={inputClass}
+    />
+  </div>
 );
 
-const TextAreaInput = ({
-  name,
-  placeholder,
-  value,
-  onChange,
-  className = "",
-}) => (
-  <textarea
-    name={name}
-    placeholder={placeholder}
-    value={value}
-    onChange={onChange}
-    className={`w-full p-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out shadow-sm text-sm h-12 ${className}`}
-  />
+const SectionDivider = ({ title }) => (
+  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider pb-2 border-b border-slate-200 mt-1 mb-3">
+    {title}
+  </p>
 );
 
 /* -------------------------
-   Modal Component
+   VIEW USER MODAL
    ------------------------- */
+const ViewUserModal = ({ isOpen, onClose, user }) => {
+  const formatDOB = (dob) => {
+    if (!dob) return "N/A";
+    const date = new Date(dob);
+    if (isNaN(date)) return "N/A";
+    return date.toLocaleDateString("en-GB");
+  };
 
-const Modal = ({ isOpen, onClose, title, children, size = "lg" }) => {
-  if (!isOpen) return null;
-  const widthClass = size === "lg" ? "max-w-4xl" : "max-w-xl";
+  const roleSpecificDetails = useMemo(() => {
+    if (!user) return [];
+    const fields = [];
+    if (user.role === "Student") {
+      fields.push(
+        { label: "Student Number", value: user.student_number },
+        { label: "Course / Major", value: `${user.course || "N/A"} / ${user.major || "N/A"}` },
+        { label: "Year Level", value: user.year_level },
+        { label: "Previous School", value: user.previous_school },
+        { label: "Parent / Guardian", value: user.father_name || user.mother_name },
+        { label: "Parent Phone", value: user.parent_phone },
+        { label: "Mailing Address", value: user.mailing_address },
+      );
+    } else {
+      fields.push(
+        { label: "Employee ID", value: user.employee_id },
+        { label: "Department", value: user.department },
+        { label: "Position Title", value: user.position_title },
+        { label: "Date Hired", value: formatDOB(user.date_hired) },
+        { label: "Employment Status", value: user.status },
+      );
+      if (user.role === "Faculty" || user.role === "Admin") {
+        fields.push(
+          { label: "Specialization", value: user.specialization },
+          { label: "Educational Attainment", value: user.educational_attainment },
+          { label: "License Number", value: user.license_number },
+        );
+      }
+      if (user.role === "Admin") {
+        fields.push({ label: "Access Level", value: user.access_level });
+      }
+    }
+    return fields;
+  }, [user]);
+
+  if (!user) return null;
+  const roleConfig = ROLE_CONFIG[user.role] || ROLE_CONFIG.Staff;
+  const RoleIcon = roleConfig.icon;
 
   return (
-    <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
       <div
-        className={`bg-white rounded-xl shadow-2xl w-full ${widthClass} max-h-[90vh] overflow-y-auto transform transition-transform duration-200 scale-100`}
+        className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-white border-b p-2.5 flex justify-between items-center z-10 rounded-t-xl">
-          <h3 className="text-lg font-bold text-gray-800">{title}</h3>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-gray-500 hover:text-gray-900 rounded-full hover:bg-gray-100 transition"
-            aria-label="Close modal"
-          >
-            <X className="w-4 h-4" />
+        <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 rounded-t-lg flex justify-between items-center">
+          <h3 className="text-xl font-bold text-slate-800">
+            Viewing: {user.first_name} {user.last_name}
+          </h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X size={24} />
           </button>
         </div>
-        <div className="p-3">{children}</div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-1 bg-slate-50 p-4 rounded-lg border border-slate-200">
+              <div className="flex flex-col items-center pb-4 border-b border-slate-200">
+                <div className="h-16 w-16 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-800 text-2xl font-bold mb-3">
+                  {user.first_name?.[0] || "?"}{user.last_name?.[0] || "?"}
+                </div>
+                <h4 className="text-lg font-bold text-slate-900">
+                  {user.first_name} {user.last_name}
+                </h4>
+                <p className="text-sm text-slate-600">{user.email}</p>
+                <span className={`mt-2 px-3 py-1 inline-flex items-center gap-1 text-xs font-bold rounded-full ${roleConfig.color} border`}>
+                  <RoleIcon className="w-3 h-3" />
+                  {user.role}
+                </span>
+              </div>
+              <div className="mt-4 space-y-3">
+                <div>
+                  <p className="text-xs font-medium text-slate-600 uppercase">Phone</p>
+                  <p className="font-semibold text-slate-900 text-sm">{user.phone || "N/A"}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-600 uppercase">DOB / Gender</p>
+                  <p className="font-semibold text-slate-900 text-sm">
+                    {formatDOB(user.date_of_birth)} / {user.gender || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-600 uppercase">Permanent Address</p>
+                  <p className="font-semibold text-slate-900 text-sm">{user.permanent_address || "N/A"}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-2 bg-slate-50 rounded-lg border border-slate-200 p-4">
+              <h5 className="font-bold text-slate-800 pb-3 border-b border-slate-200 flex items-center gap-2 mb-4">
+                <Briefcase className="w-4 h-4" /> Role Specific Details
+              </h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {roleSpecificDetails.length > 0 ? (
+                  roleSpecificDetails.map((item, idx) => (
+                    <div key={idx}>
+                      <p className="text-xs font-medium text-slate-600 uppercase">{item.label}</p>
+                      <p className="font-semibold text-slate-900 text-sm">{item.value || "N/A"}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center text-sm text-slate-500 py-4 col-span-2">
+                    No specific role details available.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-lg flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 text-sm font-medium"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
 /* -------------------------
-   ViewUserModal
+   CREATE / EDIT MODAL
    ------------------------- */
-const ViewUserModal = ({ isOpen, onClose, user }) => {
-  // Format DOB safely
-  const formatDOB = (dob) => {
-    if (!dob) return "N/A";
-    const date = new Date(dob);
-    if (isNaN(date)) return "N/A";
-    return date.toLocaleDateString("en-GB"); // DD/MM/YYYY
-  };
+const UserFormModal = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  isEditing,
+  selectedRole,
+  onRoleChange,
+  formData,
+  onInputChange,
+  departments,
+  programs,
+}) => {
+  const [activeTab, setActiveTab] = useState("personal");
 
-  // Role-specific details
-  const RoleSpecificDetails = useMemo(() => {
-    if (!user) return [];
+  useEffect(() => {
+    if (isOpen) setActiveTab("personal");
+  }, [isOpen]);
 
-    const fields = [];
-    if (user.role === "Student") {
-      fields.push(
-        { label: "Student Number", value: user.student_number || "N/A" },
-        {
-          label: "Course / Major",
-          value: `${user.course || "N/A"} / ${user.major || "N/A"}`,
-        },
-        { label: "Year Level", value: user.year_level || "N/A" },
-        { label: "Previous School", value: user.previous_school || "N/A" },
-        {
-          label: "Parent / Guardian",
-          value: user.father_name || user.mother_name || "N/A",
-        },
-        { label: "Parent Phone", value: user.parent_phone || "N/A" },
-        { label: "Mailing Address", value: user.mailing_address || "N/A" },
-      );
-    } else if (["Admin", "Faculty", "Staff"].includes(user.role)) {
-      fields.push(
-        { label: "Employee ID", value: user.employee_id || "N/A" },
-        { label: "Department", value: user.department || "N/A" },
-        { label: "Position Title", value: user.position_title || "N/A" },
-        { label: "Date Hired", value: formatDOB(user.date_hired) || "N/A" },
-        { label: "Employment Status", value: user.status || "N/A" },
-      );
-    }
+  if (!isOpen) return null;
 
-    if (user.role === "Faculty") {
-      fields.push(
-        { label: "Specialization", value: user.specialization || "N/A" },
-        {
-          label: "Educational Attainment",
-          value: user.educational_attainment || "N/A",
-        },
-        { label: "License Number", value: user.license_number || "N/A" },
-      );
-    }
+  const roleOptions = [
+    { value: "Student", label: "Student" },
+    { value: "Admin", label: "Admin" },
+    { value: "Faculty", label: "Faculty" },
+    { value: "Staff", label: "Staff" },
+    { value: "HR", label: "HR" },
+    { value: "Accounting", label: "Accounting" },
+  ];
 
-    if (user.role === "Admin") {
-      fields.push({
-        label: "Access Level",
-        value: user.access_level || "N/A",
-      });
-    }
+  const genderOptions = [
+    { value: "Male", label: "Male" },
+    { value: "Female", label: "Female" },
+    { value: "Other", label: "Other" },
+  ];
 
-    return fields;
-  }, [user]);
+  const statusOptions = [
+    { value: "Active", label: "Active" },
+    { value: "Leave", label: "On Leave" },
+    { value: "Terminated", label: "Terminated" },
+  ];
 
-  if (!user) return null;
+  const yearLevelOptions = [
+    { value: "1st Year", label: "1st Year" },
+    { value: "2nd Year", label: "2nd Year" },
+    { value: "3rd Year", label: "3rd Year" },
+    { value: "4th Year", label: "4th Year" },
+  ];
 
-  const roleConfig = ROLE_CONFIG[user.role] || ROLE_CONFIG.Staff;
-  const RoleIcon = roleConfig.icon;
+  const isEmployee = ["Admin", "Faculty", "Staff", "HR", "Accounting"].includes(selectedRole);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={`Viewing: ${user.first_name} ${user.last_name}`}
-      size="lg"
+    <div
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
     >
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Left Column */}
-        <div className="lg:col-span-1 bg-gray-50 p-2 rounded-lg border border-gray-200">
-          <div className="flex flex-col items-center pb-3 border-b border-gray-200">
-            <div className="h-16 w-16 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-800 text-2xl font-bold mb-2">
-              {user.first_name?.[0] || "?"}
-              {user.last_name?.[0] || "?"}
-            </div>
-            <h4 className="text-lg font-bold text-gray-800">
-              {user.first_name} {user.last_name}
-            </h4>
-            <p className="text-sm text-gray-600">{user.email}</p>
-            <span
-              className={`mt-1.5 px-2 py-0.5 inline-flex items-center gap-1 text-xs font-bold rounded-full ${roleConfig.color} border`}
-            >
-              <RoleIcon className="w-3 h-3" />
-              {user.role}
-            </span>
-          </div>
-
-          <div className="mt-2 space-y-1">
-            <div>
-              <p className="text-xs font-medium text-gray-500 uppercase">
-                Phone
-              </p>
-              <p className="font-semibold text-gray-800 text-sm">
-                {user.phone || "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500 uppercase">
-                DOB / Gender
-              </p>
-              <p className="font-semibold text-gray-800 text-sm">
-                {formatDOB(user.date_of_birth)} / {user.gender || "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500 uppercase">
-                Permanent Address
-              </p>
-              <p className="font-semibold text-gray-800 text-sm">
-                {user.permanent_address || "N/A"}
-              </p>
-            </div>
-          </div>
+      <div
+        className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 rounded-t-lg flex justify-between items-center">
+          <h3 className="text-xl font-bold text-slate-800">
+            {isEditing ? "Edit user record" : "Create new user account"}
+          </h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X size={24} />
+          </button>
         </div>
 
-        {/* Right Column */}
-        <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-          <h5 className="font-bold text-gray-700 p-2 border-b bg-gray-50 rounded-t-lg flex items-center gap-2">
-            <Briefcase className="w-4 h-4" /> Role Specific Details
-          </h5>
+        {/* Form */}
+        <form onSubmit={onSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-6 py-4">
 
-          <div className="mt-2 space-y-2">
-            {RoleSpecificDetails.length > 0 ? (
-              RoleSpecificDetails.map((item, idx) => (
-                <div key={idx}>
-                  <p className="text-xs font-medium text-gray-500 uppercase">
-                    {item.label}
-                  </p>
-                  <p className="font-semibold text-gray-800 text-sm">
-                    {item.value || "N/A"}
-                  </p>
+            {/* Tab bar */}
+            <div className="flex border-b border-slate-200 mb-5">
+              <button
+                type="button"
+                onClick={() => setActiveTab("personal")}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "personal"
+                    ? "border-indigo-600 text-indigo-600"
+                    : "border-transparent text-slate-500 hover:text-indigo-600"
+                }`}
+              >
+                Personal info
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("role")}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "role"
+                    ? "border-indigo-600 text-indigo-600"
+                    : "border-transparent text-slate-500 hover:text-indigo-600"
+                }`}
+              >
+                Role details
+              </button>
+            </div>
+
+            {/* ── TAB: PERSONAL INFO ── */}
+            {activeTab === "personal" && (
+              <div className="space-y-5">
+                <div>
+                  <SectionDivider title="Role & account" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <ReactSelectInput
+                      name="role"
+                      label="User role *"
+                      value={selectedRole}
+                      onChange={onRoleChange}
+                      options={roleOptions}
+                      isDisabled={isEditing}
+                      isClearable={false}
+                      placeholder="Select role"
+                    />
+                    <TextInput
+                      type="email"
+                      name="email"
+                      label="Email address *"
+                      value={formData.email}
+                      onChange={onInputChange}
+                      required
+                    />
+                    <TextInput
+                      type="password"
+                      name="password"
+                      label={isEditing ? "Password (leave blank to keep)" : "Password *"}
+                      value={formData.password}
+                      onChange={onInputChange}
+                      required={!isEditing}
+                    />
+                    <TextInput
+                      type="password"
+                      name="confirmPassword"
+                      label={isEditing ? "Confirm password (leave blank to keep)" : "Confirm password *"}
+                      value={formData.confirmPassword}
+                      onChange={onInputChange}
+                      required={!isEditing}
+                    />
+                  </div>
                 </div>
-              ))
-            ) : (
-              <p className="text-center text-sm text-gray-500 py-4">
-                No specific role details available.
-              </p>
+
+                <div>
+                  <SectionDivider title="Personal information" />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <TextInput
+                      name="firstName"
+                      label="First name *"
+                      value={formData.firstName}
+                      onChange={onInputChange}
+                      required
+                    />
+                    <TextInput
+                      name="middleName"
+                      label="Middle name"
+                      value={formData.middleName}
+                      onChange={onInputChange}
+                    />
+                    <TextInput
+                      name="lastName"
+                      label="Last name *"
+                      value={formData.lastName}
+                      onChange={onInputChange}
+                      required
+                    />
+                    <TextInput
+                      name="suffix"
+                      label="Suffix (Jr., Sr.)"
+                      value={formData.suffix}
+                      onChange={onInputChange}
+                    />
+                    <TextInput
+                      type="date"
+                      name="dateOfBirth"
+                      label="Date of birth"
+                      value={formData.dateOfBirth}
+                      onChange={onInputChange}
+                    />
+                    <ReactSelectInput
+                      name="gender"
+                      label="Gender"
+                      value={formData.gender}
+                      onChange={onInputChange}
+                      options={genderOptions}
+                      placeholder="Select gender"
+                    />
+                    <TextInput
+                      type="tel"
+                      name="phone"
+                      label="Phone number"
+                      value={formData.phone}
+                      onChange={onInputChange}
+                    />
+                    <div className="md:col-span-2">
+                      <TextAreaInput
+                        name="permanentAddress"
+                        label="Permanent address"
+                        value={formData.permanentAddress}
+                        onChange={onInputChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── TAB: ROLE DETAILS ── */}
+            {activeTab === "role" && selectedRole === "Student" && (
+              <div className="space-y-5">
+                <div>
+                  <SectionDivider title="Student academic details" />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <TextInput
+                      name="studentNumber"
+                      label="Student number *"
+                      value={formData.studentNumber}
+                      onChange={onInputChange}
+                      required
+                    />
+                    <ReactSelectInput
+                      name="course"
+                      label="Course / program *"
+                      value={formData.course}
+                      onChange={onInputChange}
+                      placeholder="Select program"
+                      options={programs.map((p) => ({
+                        value: p.code,
+                        label: `${p.code} - ${p.name}`,
+                      }))}
+                    />
+                    <ReactSelectInput
+                      name="yearLevel"
+                      label="Year level *"
+                      value={formData.yearLevel}
+                      onChange={onInputChange}
+                      options={yearLevelOptions}
+                      placeholder="Select year"
+                    />
+                    <TextInput
+                      name="major"
+                      label="Major"
+                      value={formData.major}
+                      onChange={onInputChange}
+                    />
+                    <TextInput
+                      name="previousSchool"
+                      label="Previous school"
+                      value={formData.previousSchool}
+                      onChange={onInputChange}
+                    />
+                    <TextInput
+                      name="yearGraduated"
+                      label="Year graduated"
+                      value={formData.yearGraduated}
+                      onChange={onInputChange}
+                    />
+                    <div className="md:col-span-3">
+                      <TextAreaInput
+                        name="mailingAddress"
+                        label="Mailing address (if different from permanent)"
+                        value={formData.mailingAddress}
+                        onChange={onInputChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <SectionDivider title="Parent / guardian information" />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <TextInput
+                      name="fatherName"
+                      label="Father's name"
+                      value={formData.fatherName}
+                      onChange={onInputChange}
+                    />
+                    <TextInput
+                      name="motherName"
+                      label="Mother's name"
+                      value={formData.motherName}
+                      onChange={onInputChange}
+                    />
+                    <TextInput
+                      type="tel"
+                      name="parentPhone"
+                      label="Parent's phone"
+                      value={formData.parentPhone}
+                      onChange={onInputChange}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "role" && isEmployee && (
+              <div className="space-y-5">
+                <div>
+                  <SectionDivider title="Employment details" />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <TextInput
+                      name="employeeId"
+                      label="Employee ID *"
+                      value={formData.employeeId}
+                      onChange={onInputChange}
+                      required
+                    />
+                    <ReactSelectInput
+                      name="department"
+                      label="Department *"
+                      value={formData.department}
+                      onChange={onInputChange}
+                      placeholder="Select department"
+                      options={departments.map((d) => ({
+                        value: d.name,
+                        label: d.name,
+                      }))}
+                    />
+                    <TextInput
+                      name="positionTitle"
+                      label="Position title *"
+                      value={formData.positionTitle}
+                      onChange={onInputChange}
+                      required
+                      placeholder="e.g., Professor, Instructor"
+                    />
+                    <TextInput
+                      type="date"
+                      name="dateHired"
+                      label="Date hired"
+                      value={formData.dateHired}
+                      onChange={onInputChange}
+                    />
+                    <ReactSelectInput
+                      name="status"
+                      label="Employment status"
+                      value={formData.status}
+                      onChange={onInputChange}
+                      options={statusOptions}
+                      placeholder="Select status"
+                    />
+                    {selectedRole === "Admin" && (
+                      <ReactSelectInput
+                        name="accessLevel"
+                        label="Access level"
+                        value={formData.accessLevel}
+                        onChange={onInputChange}
+                        options={[
+                          { value: "Standard Admin", label: "Standard Admin" },
+                          { value: "Super Admin", label: "Super Admin" },
+                        ]}
+                        placeholder="Select access level"
+                        isClearable={false}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {(selectedRole === "Faculty" || selectedRole === "Admin") && (
+                  <div>
+                    <SectionDivider title="Academic credentials" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <TextInput
+                        name="specialization"
+                        label="Specialization"
+                        value={formData.specialization}
+                        onChange={onInputChange}
+                        placeholder="e.g., Software Engineering"
+                      />
+                      <NativeSelect
+                        name="educationalAttainment"
+                        label="Educational attainment"
+                        value={formData.educationalAttainment}
+                        onChange={onInputChange}
+                      >
+                        <option value="">Select...</option>
+                        <option value="Bachelor's Degree">Bachelor's Degree</option>
+                        <option value="Master's Degree">Master's Degree</option>
+                        <option value="Doctorate">Doctorate</option>
+                        <option value="PhD">PhD</option>
+                      </NativeSelect>
+                      <TextInput
+                        name="licenseNumber"
+                        label="License number (PRC)"
+                        value={formData.licenseNumber}
+                        onChange={onInputChange}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
-        </div>
+
+          {/* Footer */}
+          <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-lg flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 text-sm font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
+            >
+              {isEditing ? "Save changes" : "Create account"}
+            </button>
+          </div>
+        </form>
       </div>
-    </Modal>
+    </div>
   );
 };
 
 /* -------------------------
    MAIN COMPONENT
    ------------------------- */
-
 function UserManagement() {
-  // pages/tabs
   const [currentPage, setCurrentPage] = useState("users");
 
-  // data
   const [users, setUsers] = useState([]);
-  const [departments, setDepartments] = useState([]); // Added departments state
-  const [programs, setPrograms] = useState([]); // Added programs state
+  const [departments, setDepartments] = useState([]);
+  const [programs, setPrograms] = useState([]);
   const [rbac, setRbac] = useState(INITIAL_RBAC_STATE);
   const [rbacSaving, setRbacSaving] = useState(false);
   const [rbacSaved, setRbacSaved] = useState(false);
 
-  // modals & form state
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState(null);
   const [selectedRole, setSelectedRole] = useState("Student");
   const [formData, setFormData] = useState(getInitialFormState("Student"));
 
-  // view modal
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewingUser, setViewingUser] = useState(null);
 
-  // search / filter / pagination / sort
   const [query, setQuery] = useState("");
   const [filterRole, setFilterRole] = useState("");
-  const sortField = "lastName"; // lastName or dateHired
-  const sortDir = "asc";
   const [page, setPage] = useState(1);
   const pageSize = 6;
 
-  // collapsible form sections
-  const [collapsed, setCollapsed] = useState({
-    account: false,
-    student: false,
-    employee: false,
-    admin: false,
-    faculty: false,
-    guardian: false,
-  });
+  /* ── Data fetching ── */
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_BASE_URL}/api/users`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      setUsers(response.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const fetchDepartments = async () => {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }, // Added missing closing brace and comma
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       setDepartments(response.data);
     } catch (error) {
@@ -446,9 +898,7 @@ function UserManagement() {
       const token = localStorage.getItem("token");
       const response = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/api/programs`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       setPrograms(response.data);
     } catch (error) {
@@ -463,15 +913,11 @@ function UserManagement() {
         `${import.meta.env.VITE_API_BASE_URL}/api/rbac`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
-      // Merge fetched data with INITIAL_RBAC_STATE structure
-      // so any role missing from DB still shows all permissions
       const fetched = response.data;
       setRbac((prev) => {
         const merged = { ...prev };
         for (const role of Object.keys(prev)) {
-          if (fetched[role]) {
-            merged[role] = fetched[role];
-          }
+          if (fetched[role]) merged[role] = fetched[role];
         }
         return merged;
       });
@@ -480,41 +926,6 @@ function UserManagement() {
     }
   };
 
-  const handleSaveRbac = async () => {
-    setRbacSaving(true);
-    setRbacSaved(false);
-    try {
-      const token = localStorage.getItem("token");
-      await axios.put(`${import.meta.env.VITE_API_BASE_URL}/api/rbac`, rbac, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setRbacSaved(true);
-      setTimeout(() => setRbacSaved(false), 3000);
-    } catch (error) {
-      console.error("Error saving RBAC config:", error);
-      alert(
-        error.response?.data?.message || "Failed to save RBAC configuration.",
-      );
-    } finally {
-      setRbacSaving(false);
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_BASE_URL}/api/users`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      console.log("Fetched users:", response.data);
-      setUsers(response.data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
   useEffect(() => {
     fetchUsers();
     fetchDepartments();
@@ -522,45 +933,14 @@ function UserManagement() {
     fetchRbac();
   }, []);
 
-  /* -------------------------
-     helpers
-     ------------------------- */
-  // effect to keep form role in sync
-  useEffect(() => {
-    if (!isEditing) {
-      setFormData(getInitialFormState(selectedRole));
-    }
-  }, [selectedRole, isEditing]);
-
+  /* ── Helpers ── */
   function getInitialFormState(role) {
-    let specificFields = {};
-    if (role === "Student") specificFields = studentSpecifics;
-    else if (role === "Admin")
-      specificFields = {
-        ...employeeCommon,
-        ...adminSpecifics,
-        role: "Admin",
-        employeeId: "",
-      };
-    else if (role === "Faculty")
-      specificFields = {
-        ...employeeCommon,
-        ...facultySpecifics,
-        role: "Faculty",
-        employeeId: "",
-      };
-    else if (role === "Staff")
-      specificFields = { ...employeeCommon, role: "Staff", employeeId: "" };
-    else if (role === "HR")
-      specificFields = { ...employeeCommon, role: "HR", employeeId: "" };
-    else if (role === "Accounting")
-      specificFields = {
-        ...employeeCommon,
-        role: "Accounting",
-        employeeId: "",
-      };
-
-    return { ...initialCommonState, ...specificFields, role };
+    let specific = {};
+    if (role === "Student") specific = studentSpecifics;
+    else if (role === "Admin") specific = { ...employeeCommon, ...adminSpecifics };
+    else if (role === "Faculty") specific = { ...employeeCommon, ...facultySpecifics };
+    else specific = { ...employeeCommon };
+    return { ...initialCommonState, ...specific, role };
   }
 
   const closeFormModal = () => {
@@ -569,131 +949,17 @@ function UserManagement() {
     setCurrentId(null);
     setFormData(getInitialFormState("Student"));
     setSelectedRole("Student");
-    setCollapsed({
-      account: false,
-      student: false,
-      employee: false,
-      admin: false,
-      faculty: false,
-      guardian: false,
-    });
-  };
-
-  const closeViewModal = () => {
-    setIsViewModalOpen(false);
-    setViewingUser(null);
   };
 
   const handleRoleChange = (e) => {
-    const newRole = e.target.value;
+    const newRole = e.target?.value || e.value;
     setSelectedRole(newRole);
+    setFormData(getInitialFormState(newRole));
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // image upload (base64 preview)
-  const handleProfileUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFormData((prev) => ({ ...prev, profilePicture: reader.result }));
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    try {
-      let response;
-      // Always ensure role is set in formData
-      const submitData = { ...formData, role: selectedRole };
-
-      // -------- CREATE MODE --------
-      if (!isEditing) {
-        // Password check only when creating
-        if (
-          !submitData.password ||
-          submitData.password !== submitData.confirmPassword
-        ) {
-          alert(
-            "Password and Confirm Password must match and cannot be empty.",
-          );
-          return;
-        }
-
-        // Check required fields for employee
-        if (selectedRole !== "Student") {
-          const requiredFields = [
-            "email",
-            "firstName",
-            "lastName",
-            "employeeId",
-          ];
-          const missing = requiredFields.filter(
-            (field) => !submitData[field] || submitData[field].trim() === "",
-          );
-          if (missing.length) {
-            alert(`Please fill required fields: ${missing.join(", ")}`);
-            return;
-          }
-        }
-
-        // STUDENT ACCOUNT CREATION
-        if (selectedRole === "Student") {
-          response = await axios.post(
-            `${import.meta.env.VITE_API_BASE_URL}/api/users/student`,
-            submitData,
-          );
-        }
-
-        // EMPLOYEE / ADMIN / FACULTY / STAFF CREATION
-        else {
-          response = await axios.post(
-            `${import.meta.env.VITE_API_BASE_URL}/api/users/employee`,
-            submitData,
-          );
-        }
-      }
-
-      // -------- EDIT MODE --------
-      else {
-        const userId = currentId;
-
-        // STUDENT UPDATE
-        if (selectedRole === "Student") {
-          response = await axios.put(
-            `${import.meta.env.VITE_API_BASE_URL}/api/users/student/${userId}`,
-            submitData,
-          );
-        }
-
-        // EMPLOYEE / ADMIN / FACULTY / STAFF UPDATE
-        else {
-          response = await axios.put(
-            `${import.meta.env.VITE_API_BASE_URL}/api/users/employee/${userId}`,
-            submitData,
-          );
-        }
-      }
-
-      // Handle success
-      alert(response.data.message || "Success!");
-      console.log("Server Response:", response.data);
-      fetchUsers();
-      // Optional token save
-      if (response.data.token)
-        localStorage.setItem("token", response.data.token);
-
-      closeFormModal();
-    } catch (error) {
-      console.error("Submission error:", error);
-      alert(error.response?.data?.message || "Something went wrong.");
-    }
   };
 
   const handleAddNew = () => {
@@ -714,7 +980,7 @@ function UserManagement() {
       middleName: user.middle_name || "",
       lastName: user.last_name || "",
       suffix: user.suffix || "",
-      dateOfBirth: user.dateOfBirth || "",
+      dateOfBirth: formatDateForInput(user.date_of_birth),
       gender: user.gender || "",
       phone: user.phone || "",
       permanentAddress: user.permanent_address || "",
@@ -731,7 +997,7 @@ function UserManagement() {
       employeeId: user.employee_id || "",
       department: user.department || "",
       positionTitle: user.position_title || "",
-      dateHired: user.date_hired || "",
+      dateHired: formatDateForInput(user.date_hired),
       status: user.status || "Active",
       accessLevel: user.access_level || "",
       specialization: user.specialization || "",
@@ -748,80 +1014,117 @@ function UserManagement() {
 
   const handleDelete = async (userId) => {
     if (!confirm("Delete this user? This action cannot be undone.")) return;
-
     try {
       await axios.delete(
         `${import.meta.env.VITE_API_BASE_URL}/api/users/${userId}`,
       );
-
       setUsers((prev) => prev.filter((u) => u.user_id !== userId));
-
       alert("User deleted successfully");
     } catch (err) {
       console.error(err);
-      alert(
-        `Error deleting user: ${err.response?.data?.message || err.message}`,
-      );
+      alert(`Error deleting user: ${err.response?.data?.message || err.message}`);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      let response;
+      const submitData = { ...formData, role: selectedRole };
+
+      if (!isEditing) {
+        if (!submitData.password || submitData.password !== submitData.confirmPassword) {
+          alert("Password and Confirm Password must match and cannot be empty.");
+          return;
+        }
+        if (selectedRole !== "Student") {
+          const required = ["email", "firstName", "lastName", "employeeId"];
+          const missing = required.filter((f) => !submitData[f]?.trim());
+          if (missing.length) {
+            alert(`Please fill required fields: ${missing.join(", ")}`);
+            return;
+          }
+        }
+        if (selectedRole === "Student") {
+          response = await axios.post(
+            `${import.meta.env.VITE_API_BASE_URL}/api/users/student`,
+            submitData,
+          );
+        } else {
+          response = await axios.post(
+            `${import.meta.env.VITE_API_BASE_URL}/api/users/employee`,
+            submitData,
+          );
+        }
+      } else {
+        if (selectedRole === "Student") {
+          response = await axios.put(
+            `${import.meta.env.VITE_API_BASE_URL}/api/users/student/${currentId}`,
+            submitData,
+          );
+        } else {
+          response = await axios.put(
+            `${import.meta.env.VITE_API_BASE_URL}/api/users/employee/${currentId}`,
+            submitData,
+          );
+        }
+      }
+
+      alert(response.data.message || "Success!");
+      fetchUsers();
+      if (response.data.token) localStorage.setItem("token", response.data.token);
+      closeFormModal();
+    } catch (error) {
+      console.error("Submission error:", error);
+      alert(error.response?.data?.message || "Something went wrong.");
+    }
+  };
+
+  const handleSaveRbac = async () => {
+    setRbacSaving(true);
+    setRbacSaved(false);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`${import.meta.env.VITE_API_BASE_URL}/api/rbac`, rbac, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setRbacSaved(true);
+      setTimeout(() => setRbacSaved(false), 3000);
+    } catch (error) {
+      console.error("Error saving RBAC:", error);
+      alert(error.response?.data?.message || "Failed to save RBAC configuration.");
+    } finally {
+      setRbacSaving(false);
     }
   };
 
   const handlePermissionChange = (role, permissionId, isAllowed) => {
-    setRbac((prevRbac) => ({
-      ...prevRbac,
-      [role]: prevRbac[role].map((p) =>
+    setRbac((prev) => ({
+      ...prev,
+      [role]: prev[role].map((p) =>
         p.id === permissionId ? { ...p, allowed: isAllowed } : p,
       ),
     }));
   };
 
-  /* -------------------------
-   Search, filter, sort, paginate
-   ------------------------- */
+  /* ── Search / filter / paginate ── */
   const filteredSorted = useMemo(() => {
-    // Ensure users is always an array
     const userList = Array.isArray(users) ? users : [];
-
     let result = [...userList];
-
-    // search by name, email, studentNumber, or employeeID
     if (query.trim()) {
       const q = query.toLowerCase();
       result = result.filter(
         (u) =>
-          (u.firstName || "").toLowerCase().includes(q) ||
-          (u.lastName || "").toLowerCase().includes(q) ||
+          (u.first_name || "").toLowerCase().includes(q) ||
+          (u.last_name || "").toLowerCase().includes(q) ||
           (u.email || "").toLowerCase().includes(q) ||
-          (u.studentNumber || "").toLowerCase().includes(q) ||
-          (u.employeeId || "").toLowerCase().includes(q),
+          (u.student_number || "").toLowerCase().includes(q) ||
+          (u.employee_id || "").toLowerCase().includes(q),
       );
     }
-
-    // filter by role
-    if (filterRole) {
-      result = result.filter((u) => u.role === filterRole);
-    }
-
-    // sort
-    result.sort((a, b) => {
-      let av = a[sortField] || "";
-      let bv = b[sortField] || "";
-
-      // compare as date if field is dateHired
-      if (sortField === "dateHired") {
-        av = a.dateHired ? new Date(a.dateHired).getTime() : 0;
-        bv = b.dateHired ? new Date(b.dateHired).getTime() : 0;
-      } else {
-        av = String(av).toLowerCase();
-        bv = String(bv).toLowerCase();
-      }
-
-      if (av < bv) return sortDir === "asc" ? -1 : 1;
-      if (av > bv) return sortDir === "asc" ? 1 : -1;
-      return 0;
-    });
-
+    if (filterRole) result = result.filter((u) => u.role === filterRole);
     return result;
-  }, [users, query, filterRole, sortField, sortDir]);
+  }, [users, query, filterRole]);
 
   const pageCount = Math.max(1, Math.ceil(filteredSorted.length / pageSize));
   useEffect(() => {
@@ -833,41 +1136,46 @@ function UserManagement() {
     return filteredSorted.slice(start, start + pageSize);
   }, [filteredSorted, page]);
 
-  /* -------------------------
-     Export helpers
-     ------------------------- */
+  /* ── Export ── */
   const exportCSV = () => {
     if (users.length === 0) {
       alert("No users to export.");
       return;
     }
-    const headers = [
-      "id",
-      "role",
-      "firstName",
-      "lastName",
-      "email",
-      "phone",
-      "employeeId",
-      "studentNumber",
-      "department",
-      "positionTitle",
-      "dateHired",
-      "status",
-    ];
-    const rows = users.map((u) =>
-      headers
-        .map((h) => `"${(u[h] || "")?.toString().replace(/"/g, '""')}"`)
-        .join(","),
-    );
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `users_export_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+
+    const exportData = users.map((u) => ({
+      first_name: u.first_name || "",
+      last_name: u.last_name || "",
+      email: u.email || "",
+      phone: u.phone || "",
+      role: u.role || "",
+      employee_id: u.employee_id || "",
+      student_number: u.student_number || "",
+      department: u.department || "",
+      position_title: u.position_title || "",
+      date_hired: u.date_hired || "",
+      status: u.status || "",
+    }));
+
+    const csv = generateCSV(exportData, {
+      headers: [
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "role",
+        "employee_id",
+        "student_number",
+        "department",
+        "position_title",
+        "date_hired",
+        "status",
+      ],
+      includeTimestamps: false,
+    });
+
+    const filename = `users_export_${new Date().toISOString().split("T")[0]}.csv`;
+    downloadCSV(csv, filename);
   };
 
   const exportPDF = () => {
@@ -875,559 +1183,121 @@ function UserManagement() {
       alert("No users to export.");
       return;
     }
-    // Simple printable view — user can "Save as PDF" from print dialog
-    const printWindow = window.open("", "_blank");
-    const content = `
-     <html>
-  <head>
-    <title>Users Export</title>
-    <style>
-      @media print {
-        body { margin: 0; padding: 0; }
-        header, footer { position: fixed; width: 100%; }
-        header { top: 0; }
-        footer { bottom: 0; text-align: center; font-size: 10px; }
-        table { margin-top: 100px; margin-bottom: 50px; }
-      }
 
-      body {
-        font-family: Arial, sans-serif;
-        padding: 20px;
-        color: #111;
-      }
+    const exportData = users.map((u) => ({
+      first_name: u.first_name || "",
+      last_name: u.last_name || "",
+      email: u.email || "",
+      role: u.role || "",
+      id_number:
+        u.role === "Student" ? u.student_number || "" : u.employee_id || "",
+      department:
+        u.role === "Student" ? u.course || "" : u.department || "",
+      status: u.status || "",
+    }));
 
-      header {
-        text-align: center;
-        margin-bottom: 20px;
-      }
-
-      footer {
-        text-align: center;
-        margin-top: 20px;
-        font-size: 10px;
-        color: #555;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 12px;
-      }
-
-      th, td {
-        border: 1px solid #ccc;
-        padding: 6px;
-        text-align: left;
-        font-size: 12px;
-      }
-
-      th {
-        background: #f4f4f4;
-      }
-    </style>
-  </head>
-  <body>
-    <header>
-      <h1>Baco Community College</h1>
-      <h2>Users Export</h2>
-      <p>${new Date().toLocaleString()}</p>
-    </header>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Role</th>
-          <th>ID/Number</th>
-          <th>Department / Course</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${users
-          .map(
-            (u) =>
-              `<tr>
-                <td>${u.last_name || ""}, ${u.first_name || ""}</td>
-                <td>${u.email || ""}</td>
-                <td>${u.role || ""}</td>
-                <td>${
-                  u.role === "Student"
-                    ? u.student_number || ""
-                    : u.employee_id || ""
-                }</td>
-                <td>${
-                  u.role === "Student" ? u.course || "" : u.department || ""
-                }</td>
-                <td>${u.status || ""}</td>
-              </tr>`,
-          )
-          .join("")}
-      </tbody>
-    </table>
-
-    <footer>
-      Baco Community College - Page 1
-    </footer>
-  </body>
-</html>
-
-    `;
-    printWindow.document.open();
-    printWindow.document.write(content);
-    printWindow.document.close();
-    printWindow.focus();
-    // Allow slight delay then open print dialog
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
+    const filename = `Users Export`;
+    downloadPDF(jsPDF, autoTable, exportData, {
+      title: filename,
+      orientation: "landscape",
+      headers: ["first_name", "last_name", "email", "role", "id_number", "department", "status"],
+      includeTimestamps: false,
+    });
   };
 
-  /* -------------------------
-     Render helpers & components
-     ------------------------- */
+  /* ── Derived stats ── */
+  const totalStudents = users.filter((u) => u.role === "Student").length;
+  const totalFacultyStaff = users.filter((u) =>
+    ["Faculty", "Staff", "HR", "Accounting"].includes(u.role),
+  ).length;
+  const totalAdmins = users.filter((u) => u.role === "Admin").length;
 
-  const SectionTitle = ({ icon: Icon, title, color = "text-gray-700" }) => {
-    const iconNode = React.createElement(Icon, { className: "w-5 h-5" });
-    return (
-      <h3
-        className={`col-span-full flex items-center gap-2 text-lg font-extrabold ${color} border-b-2 border-dashed border-gray-200 pb-2.5 mb-3 mt-2`}
-      >
-        {iconNode}
-        {title}
-      </h3>
-    );
-  };
-
-  const renderCommonFields = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-      <div className="col-span-full flex items-center justify-between">
-        <SectionTitle icon={Users} title="Account & Personal Information" />
-        <button
-          type="button"
-          onClick={() => setCollapsed((s) => ({ ...s, account: !s.account }))}
-          className="text-xs text-gray-500"
-        >
-          {collapsed.account ? (
-            <ChevronUp className="inline w-4 h-4" />
-          ) : (
-            <ChevronDown className="inline w-4 h-4" />
-          )}
-        </button>
-      </div>
-
-      {!collapsed.account && (
-        <>
-          <TextInput
-            type="email"
-            name="email"
-            placeholder="Email Address"
-            value={formData.email}
-            onChange={handleInputChange}
-            required
-          />
-          <TextInput
-            type="password"
-            name="password"
-            placeholder="Password (Leave blank to keep old password)"
-            value={formData.password}
-            onChange={handleInputChange}
-            required={!isEditing}
-          />
-          <TextInput
-            type="password"
-            name="confirmPassword"
-            placeholder="Confirm Password"
-            value={formData.confirmPassword}
-            onChange={handleInputChange}
-            required={!isEditing}
-          />
-          <TextInput
-            name="firstName"
-            placeholder="First Name"
-            value={formData.firstName}
-            onChange={handleInputChange}
-            required
-          />
-          <TextInput
-            name="middleName"
-            placeholder="Middle Name"
-            value={formData.middleName}
-            onChange={handleInputChange}
-          />
-          <TextInput
-            name="lastName"
-            placeholder="Last Name"
-            value={formData.lastName}
-            onChange={handleInputChange}
-            required
-          />
-          <TextInput
-            name="suffix"
-            placeholder="Suffix (Jr, Sr)"
-            value={formData.suffix}
-            onChange={handleInputChange}
-          />
-          <div className="flex flex-col">
-            <label className="text-xs text-gray-500 mb-1 ml-1">
-              Date of Birth
-            </label>
-            {/* fixed label */}
-            <TextInput
-              type="date"
-              name="dateOfBirth"
-              placeholder=""
-              value={formData.dateOfBirth}
-              onChange={handleInputChange}
-            />
-          </div>
-
-          <SelectInput
-            name="gender"
-            value={formData.gender}
-            onChange={handleInputChange}
-          >
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-            <option value="Other">Other</option>
-          </SelectInput>
-
-          <TextInput
-            type="tel"
-            name="phone"
-            placeholder="Phone Number"
-            value={formData.phone}
-            onChange={handleInputChange}
-          />
-
-          <TextAreaInput
-            name="permanentAddress"
-            placeholder="Permanent Address"
-            value={formData.permanentAddress}
-            onChange={handleInputChange}
-            className="lg:col-span-3"
-          />
-
-          {/* Profile picture upload */}
-          <div className="lg:col-span-3 flex items-center gap-3">
-            <label className="text-xs text-gray-600">Profile Picture</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleProfileUpload}
-              className="text-sm"
-            />
-            {formData.profilePicture && (
-              <img
-                src={formData.profilePicture}
-                alt="preview"
-                className="h-10 w-10 rounded-full object-cover border"
-              />
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-
-  const renderStudentFields = () => (
-    <div className="p-3 mt-4 rounded-xl bg-indigo-50 border border-indigo-200 shadow-inner">
-      <div className="flex items-center justify-between">
-        <SectionTitle
-          icon={GraduationCap}
-          title="Student Academic Details"
-          color="text-indigo-800"
-        />
-        <button
-          type="button"
-          onClick={() => setCollapsed((s) => ({ ...s, student: !s.student }))}
-          className="text-xs text-indigo-700"
-        >
-          {collapsed.student ? (
-            <ChevronUp className="inline w-4 h-4" />
-          ) : (
-            <ChevronDown className="inline w-4 h-4" />
-          )}
-        </button>
-      </div>
-
-      {!collapsed.student && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          <TextInput
-            name="studentNumber"
-            placeholder="Student Number"
-            value={formData.studentNumber}
-            onChange={handleInputChange}
-            required={selectedRole === "Student"}
-          />
-          <SelectInput
-            name="course"
-            value={formData.course}
-            onChange={handleInputChange}
-          >
-            <option value="" disabled>
-              Select Course (Program)
-            </option>
-            {programs.map((prog) => (
-              <option key={prog.id} value={prog.code}>
-                {prog.code} - {prog.name}
-              </option>
+  /* ── RBAC view ── */
+  const renderAccessControl = () => (
+    <div className="p-3 md:p-4 shadow rounded border border-gray-200">
+      <h2 className="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
+        <ShieldCheck className="w-5 h-5 text-indigo-600" /> Role-Based Access Control (RBAC)
+      </h2>
+      <p className="text-gray-600 mb-4 text-sm">
+        Define which roles have access to specific system features and permissions.
+      </p>
+      <div className="overflow-x-auto">
+        <table className="min-w-full leading-normal border-collapse">
+          <thead className="bg-gray-50 border-b-2 border-indigo-200">
+            <tr className="text-left text-gray-700 uppercase text-xs tracking-wider">
+              <th className="px-3 py-1.5 w-1/4">Permission Module</th>
+              {Object.keys(ROLE_CONFIG).map((role) => {
+                const RoleIcon = ROLE_CONFIG[role].icon;
+                return (
+                  <th key={role} className="px-3 py-1.5 text-center">
+                    <span className={`inline-flex items-center px-2 py-1 text-xs font-bold rounded-full ${ROLE_CONFIG[role].color}`}>
+                      <RoleIcon className="w-3 h-3 mr-1" />
+                      {role}
+                    </span>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {PERMISSIONS_LIST.map((permission) => (
+              <tr key={permission.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <td className="px-3 py-2">
+                  <p className="font-semibold text-gray-800 text-sm">{permission.name}</p>
+                  <p className="text-xs text-gray-500">{permission.description}</p>
+                </td>
+                {Object.keys(ROLE_CONFIG).map((role) => {
+                  const isAllowed = rbac[role].find((p) => p.id === permission.id)?.allowed;
+                  return (
+                    <td key={`${role}-${permission.id}`} className="px-3 py-2 text-center">
+                      <label className="inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isAllowed}
+                          onChange={(e) => handlePermissionChange(role, permission.id, e.target.checked)}
+                          className="form-checkbox h-4 w-4 text-indigo-600 rounded border-gray-300"
+                          disabled={role === "Student" && permission.id === "A1"}
+                        />
+                        <span className={`ml-2 text-xs font-medium hidden sm:inline ${isAllowed ? "text-green-600" : "text-red-500"}`}>
+                          {isAllowed ? "Allowed" : "Denied"}
+                        </span>
+                      </label>
+                    </td>
+                  );
+                })}
+              </tr>
             ))}
-          </SelectInput>
-          <TextInput
-            name="major"
-            placeholder="Major"
-            value={formData.major}
-            onChange={handleInputChange}
-          />
-          <SelectInput
-            name="yearLevel"
-            value={formData.yearLevel}
-            onChange={handleInputChange}
-          >
-            <option value="1st Year">1st Year</option>
-            <option value="2nd Year">2nd Year</option>
-            <option value="3rd Year">3rd Year</option>
-            <option value="4th Year">4th Year</option>
-          </SelectInput>
-          <TextInput
-            name="previousSchool"
-            placeholder="Previous School"
-            value={formData.previousSchool}
-            onChange={handleInputChange}
-          />
-          <TextInput
-            name="yearGraduated"
-            placeholder="Year Graduated"
-            value={formData.yearGraduated}
-            onChange={handleInputChange}
-          />
-          <div className="lg:col-span-3">
-            <TextAreaInput
-              name="mailingAddress"
-              placeholder="Mailing Address (if different from Permanent)"
-              value={formData.mailingAddress}
-              onChange={handleInputChange}
-            />
-          </div>
-
-          <SectionTitle
-            icon={Users}
-            title="Parent/Guardian Information"
-            color="text-indigo-800"
-          />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 col-span-full">
-            <TextInput
-              name="fatherName"
-              placeholder="Father's Name"
-              value={formData.fatherName}
-              onChange={handleInputChange}
-            />
-            <TextInput
-              name="motherName"
-              placeholder="Mother's Name"
-              value={formData.motherName}
-              onChange={handleInputChange}
-            />
-            <TextInput
-              type="tel"
-              name="parentPhone"
-              placeholder="Parent's Phone"
-              value={formData.parentPhone}
-              onChange={handleInputChange}
-            />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderEmployeeFields = () => (
-    <div className="p-3 mt-4 rounded-xl bg-gray-50 border border-gray-200 shadow-inner">
-      <div className="flex items-center justify-between">
-        <SectionTitle
-          icon={Briefcase}
-          title="Employment Details"
-          color="text-gray-800"
-        />
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-4 pt-3 border-t text-right flex items-center justify-end gap-3">
+        {rbacSaved && <span className="text-sm text-green-600 font-medium">✓ Configuration saved!</span>}
         <button
-          type="button"
-          onClick={() => setCollapsed((s) => ({ ...s, employee: !s.employee }))}
-          className="text-xs text-gray-600"
+          onClick={handleSaveRbac}
+          disabled={rbacSaving}
+          className="px-4 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm disabled:opacity-60"
         >
-          {collapsed.employee ? (
-            <ChevronUp className="inline w-4 h-4" />
-          ) : (
-            <ChevronDown className="inline w-4 h-4" />
-          )}
+          {rbacSaving ? "Saving..." : "Save RBAC Configuration"}
         </button>
       </div>
-
-      {!collapsed.employee && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {/* Only show employeeId for roles that require it */}
-          {["Admin", "Faculty", "Staff", "HR", "Accounting"].includes(
-            selectedRole,
-          ) && (
-            <TextInput
-              name="employeeId"
-              placeholder="Employee ID"
-              value={formData.employeeId}
-              onChange={handleInputChange}
-              required
-            />
-          )}
-          <SelectInput
-            name="department"
-            value={formData.department}
-            onChange={handleInputChange}
-            className={selectedRole === "Student" ? "hidden" : ""}
-            required={selectedRole !== "Student"}
-          >
-            <option value="" disabled>
-              Select Department
-            </option>
-            {departments.map((dept) => (
-              <option key={dept.id} value={dept.name}>
-                {dept.name}
-              </option>
-            ))}
-          </SelectInput>
-          <TextInput
-            name="positionTitle"
-            placeholder="Position Title"
-            value={formData.positionTitle}
-            onChange={handleInputChange}
-            required={selectedRole !== "Student"}
-          />
-
-          <div className="flex flex-col">
-            <label className="text-xs text-gray-500 -mb-1 ml-1">
-              Date Hired
-            </label>
-            <TextInput
-              type="date"
-              name="dateHired"
-              value={formData.dateHired}
-              onChange={handleInputChange}
-            />
-          </div>
-
-          <SelectInput
-            name="status"
-            value={formData.status}
-            onChange={handleInputChange}
-          >
-            <option value="Active">Active</option>
-            <option value="Leave">On Leave</option>
-            <option value="Terminated">Terminated</option>
-          </SelectInput>
-
-          {["Admin", "Faculty", "Staff"].includes(selectedRole) &&
-            (selectedRole === "Admin"
-              ? renderAdminExtras()
-              : renderFacultyExtras())}
-        </div>
-      )}
     </div>
   );
 
-  const renderAdminExtras = () => (
-    <>
-      <div className="md:col-span-2 lg:col-span-3 p-2.5 bg-green-50 rounded-lg border border-green-200">
-        <h4 className="font-bold text-green-800 mb-2">Academic Credentials</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <TextInput
-            name="specialization"
-            placeholder="Specialization (e.g., IT)"
-            value={formData.specialization}
-            onChange={handleInputChange}
-          />
-          <TextInput
-            name="educationalAttainment"
-            placeholder="Highest Educational Attainment"
-            value={formData.educationalAttainment}
-            onChange={handleInputChange}
-          />
-          <TextInput
-            name="licenseNumber"
-            placeholder="License Number (PRC)"
-            value={formData.licenseNumber}
-            onChange={handleInputChange}
-          />
-        </div>
-      </div>
-      <div className="md:col-span-2 lg:col-span-3 p-2.5 bg-red-50 rounded-lg border border-red-200 flex items-center gap-4">
-        <ShieldCheck className="w-5 h-5 text-red-600" />
-        <div className="flex-grow">
-          <label className="block text-red-800 font-bold mb-1 text-sm">
-            System Access Level
-          </label>
-          <SelectInput
-            name="accessLevel"
-            value={formData.accessLevel}
-            onChange={handleInputChange}
-            className="w-full bg-white border-red-300"
-          >
-            <option value="Admin">Standard Admin</option>
-            <option value="Super Admin">Super Admin</option>
-          </SelectInput>
-        </div>
-      </div>
-    </>
-  );
-
-  const renderFacultyExtras = () => (
-    <div className="md:col-span-2 lg:col-span-3 p-2.5 bg-green-50 rounded-lg border border-green-200">
-      <h4 className="font-bold text-green-800 mb-2">Academic Credentials</h4>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <TextInput
-          name="specialization"
-          placeholder="Specialization (e.g., IT)"
-          value={formData.specialization}
-          onChange={handleInputChange}
-        />
-        <TextInput
-          name="educationalAttainment"
-          placeholder="Highest Educational Attainment"
-          value={formData.educationalAttainment}
-          onChange={handleInputChange}
-        />
-        <TextInput
-          name="licenseNumber"
-          placeholder="License Number (PRC)"
-          value={formData.licenseNumber}
-          onChange={handleInputChange}
-        />
-      </div>
-    </div>
-  );
-
-  /* -------------------------
-     User List view (table)
-     ------------------------- */
-
+  /* ── User list view ── */
   const renderUserList = () => (
     <>
-      {/* Filter Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        {/* Search - LEFT */}
         <div className="relative flex-grow max-w-xs">
           <input
             type="text"
             placeholder="Search name, email, id..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition-all shadow-inner"
+            className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm shadow-inner"
           />
-          <Search
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-            size={14}
-          />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
         </div>
 
-        {/* Controls - RIGHT */}
         <div className="flex items-center gap-2">
           <select
             value={filterRole}
@@ -1444,10 +1314,7 @@ function UserManagement() {
           </select>
 
           <div className="relative group">
-            <button
-              onClick={exportCSV}
-              className="p-2 border border-slate-300 rounded-md text-slate-600 hover:bg-slate-100 transition"
-            >
+            <button onClick={exportCSV} className="p-2 border border-slate-300 rounded-md text-slate-600 hover:bg-slate-100">
               <FileDown size={16} />
             </button>
             <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-10">
@@ -1456,10 +1323,7 @@ function UserManagement() {
           </div>
 
           <div className="relative group">
-            <button
-              onClick={exportPDF}
-              className="p-2 border border-slate-300 rounded-md text-slate-600 hover:bg-slate-100 transition"
-            >
+            <button onClick={exportPDF} className="p-2 border border-slate-300 rounded-md text-slate-600 hover:bg-slate-100">
               <FileText size={16} />
             </button>
             <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-10">
@@ -1469,14 +1333,13 @@ function UserManagement() {
 
           <button
             onClick={handleAddNew}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors shadow-md shadow-indigo-500/30"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm shadow-md shadow-indigo-500/30"
           >
             <UserPlus size={14} /> New User
           </button>
         </div>
       </div>
 
-      {/* Table */}
       <h2 className="text-xl font-bold mb-4 text-slate-800">User List</h2>
       <div className="overflow-x-auto rounded border border-slate-200">
         <table className="min-w-full divide-y divide-slate-200">
@@ -1492,10 +1355,7 @@ function UserManagement() {
           <tbody className="divide-y divide-slate-100 bg-white">
             {paged.length === 0 ? (
               <tr>
-                <td
-                  colSpan="5"
-                  className="p-4 text-center text-slate-500 italic"
-                >
+                <td colSpan="5" className="p-4 text-center text-slate-500 italic">
                   No user accounts found.
                 </td>
               </tr>
@@ -1503,7 +1363,6 @@ function UserManagement() {
               paged.map((user) => {
                 const roleConfig = ROLE_CONFIG[user.role] || ROLE_CONFIG.Staff;
                 const RoleIcon = roleConfig.icon;
-
                 return (
                   <tr
                     key={user.user_id}
@@ -1515,57 +1374,47 @@ function UserManagement() {
                       </p>
                       <p className="text-indigo-600 text-xs">{user.email}</p>
                     </td>
-
                     <td className="px-4 py-2">
-                      <span
-                        className={`px-2 py-0.5 inline-flex items-center gap-1 text-xs font-bold rounded-full ${roleConfig.color} border`}
-                      >
+                      <span className={`px-2 py-0.5 inline-flex items-center gap-1 text-xs font-bold rounded-full ${roleConfig.color} border`}>
                         <RoleIcon className="w-3 h-3" />
                         {user.role}
                       </span>
                     </td>
-
                     <td className="px-4 py-2">
                       <span className="text-slate-800">
-                        {user.role === "Student"
-                          ? user.student_number
-                          : user.employee_id}
+                        {user.role === "Student" ? user.student_number : user.employee_id}
                       </span>
                       <p className="text-xs text-slate-500 mt-0.5">
                         {user.position_title || user.course || "—"}
                       </p>
                     </td>
-
                     <td className="px-4 py-2">
-                      <span
-                        className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
-                          user.status === "Active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
+                      <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                        user.status === "Active"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}>
                         {user.status || "Active"}
                       </span>
                     </td>
-
                     <td className="px-4 py-2 text-right space-x-1">
                       <button
                         onClick={() => handleViewUser(user)}
-                        className="text-blue-600 hover:text-blue-800 transition-colors p-1 rounded-full hover:bg-slate-200"
+                        className="text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-slate-200"
                         title="View Details"
                       >
                         <Eye size={14} />
                       </button>
                       <button
                         onClick={() => handleEdit(user)}
-                        className="text-indigo-600 hover:text-indigo-800 transition-colors p-1 rounded-full hover:bg-slate-200"
+                        className="text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-slate-200"
                         title="Edit Record"
                       >
                         <Edit size={14} />
                       </button>
                       <button
                         onClick={() => handleDelete(user.user_id)}
-                        className="text-red-600 hover:text-red-800 transition-colors p-1 rounded-full hover:bg-slate-200"
+                        className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-slate-200"
                         title="Delete Record"
                       >
                         <Trash2 size={14} />
@@ -1584,17 +1433,14 @@ function UserManagement() {
         <span className="text-xs sm:text-sm">
           Showing{" "}
           <span className="font-semibold">{(page - 1) * pageSize + 1}</span>–
-          <span className="font-semibold">
-            {Math.min(page * pageSize, filteredSorted.length)}
-          </span>{" "}
-          of <span className="font-semibold">{filteredSorted.length}</span>{" "}
-          users
+          <span className="font-semibold">{Math.min(page * pageSize, filteredSorted.length)}</span>{" "}
+          of <span className="font-semibold">{filteredSorted.length}</span> users
         </span>
         <div className="flex gap-1 mt-2 sm:mt-0">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="p-1.5 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
+            className="p-1.5 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100"
           >
             <ChevronLeft size={16} className="text-slate-600" />
           </button>
@@ -1614,7 +1460,7 @@ function UserManagement() {
           <button
             onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
             disabled={page === pageCount}
-            className="p-1.5 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 transition-colors"
+            className="p-1.5 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100"
           >
             <ChevronRight size={16} className="text-slate-600" />
           </button>
@@ -1623,140 +1469,21 @@ function UserManagement() {
     </>
   );
 
-  /* -------------------------
-     RBAC view
-     ------------------------- */
-
-  const renderAccessControl = () => (
-    <div className="p-3 md:p-4 shadow rounded border border-gray-200">
-      <h2 className="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
-        <ShieldCheck className="w-5 h-5 text-indigo-600" /> Role-Based Access
-        Control (RBAC)
-      </h2>
-      <p className="text-gray-600 mb-4 text-sm">
-        Define which roles have access to specific system features and
-        permissions.
-      </p>
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full leading-normal border-collapse">
-          <thead className="bg-gray-50 border-b-2 border-indigo-200">
-            <tr className="text-left text-gray-700 uppercase text-xs tracking-wider">
-              <th className="px-3 py-1.5 w-1/4">Permission Module</th>
-              {Object.keys(ROLE_CONFIG).map((role) => {
-                const RoleIcon = ROLE_CONFIG[role].icon;
-                return (
-                  <th key={role} className="px-3 py-1.5 text-center">
-                    <span
-                      className={`inline-flex items-center px-2 py-1 text-xs font-bold rounded-full ${ROLE_CONFIG[role].color}`}
-                    >
-                      <RoleIcon className="w-3 h-3 mr-1" />
-                      {role}
-                    </span>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {PERMISSIONS_LIST.map((permission) => (
-              <tr
-                key={permission.id}
-                className="border-b border-gray-100 hover:bg-gray-50 transition duration-150"
-              >
-                <td className="px-3 py-2">
-                  <p className="font-semibold text-gray-800 text-sm">
-                    {permission.name}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {permission.description}
-                  </p>
-                </td>
-                {Object.keys(ROLE_CONFIG).map((role) => {
-                  const isAllowed = rbac[role].find(
-                    (p) => p.id === permission.id,
-                  )?.allowed;
-                  return (
-                    <td
-                      key={`${role}-${permission.id}`}
-                      className="px-3 py-2 text-center"
-                    >
-                      <label className="inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={isAllowed}
-                          onChange={(e) =>
-                            handlePermissionChange(
-                              role,
-                              permission.id,
-                              e.target.checked,
-                            )
-                          }
-                          className="form-checkbox h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 transition duration-150 ease-in-out"
-                          disabled={
-                            role === "Student" && permission.id === "A1"
-                          }
-                        />
-                        <span
-                          className={`ml-2 text-xs font-medium ${
-                            isAllowed ? "text-green-600" : "text-red-500"
-                          } hidden sm:inline`}
-                        >
-                          {isAllowed ? "Allowed" : "Denied"}
-                        </span>
-                      </label>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-4 pt-3 border-t text-right flex items-center justify-end gap-3">
-        {rbacSaved && (
-          <span className="text-sm text-green-600 font-medium">
-            ✓ Configuration saved!
-          </span>
-        )}
-        <button
-          onClick={handleSaveRbac}
-          disabled={rbacSaving}
-          className="px-4 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition shadow text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {rbacSaving ? "Saving..." : "Save RBAC Configuration"}
-        </button>
-      </div>
-    </div>
-  );
-
-  /* -------------------------
-     MAIN RENDER
-     ------------------------- */
-
-  // Derived stats
-  const totalStudents = users.filter((u) => u.role === "Student").length;
-  const totalFacultyStaff = users.filter((u) =>
-    ["Faculty", "Staff", "HR", "Accounting"].includes(u.role),
-  ).length;
-  const totalAdmins = users.filter((u) => u.role === "Admin").length;
-
+  /* ── Main render ── */
   return (
-    <div className="w-full overflow-hidden bg-slate-50 sm:p-4 transition-colors duration-500 flex flex-col">
+    <div className="w-full overflow-hidden bg-slate-50 sm:p-4 flex flex-col">
       <div className="w-full mx-auto flex flex-col gap-3 font-sans flex-1 min-h-0">
+
         {/* Header */}
         <div className="flex-shrink-0 flex justify-between items-center border-b border-slate-200 pb-2">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
             <User2Icon className="w-6 h-6 text-indigo-600" />
             User Management
           </h2>
-          <span className="text-sm text-slate-500 font-medium">
-            Data Integrity: Online
-          </span>
+          <span className="text-sm text-slate-500 font-medium">Data Integrity: Online</span>
         </div>
 
-        {/* Statistics Cards */}
+        {/* Stats */}
         <div className="flex-shrink-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
             <p className="text-sm text-slate-600">Total Users</p>
@@ -1768,9 +1495,7 @@ function UserManagement() {
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
             <p className="text-sm text-slate-600">Faculty &amp; Staff</p>
-            <p className="text-2xl font-bold text-green-600">
-              {totalFacultyStaff}
-            </p>
+            <p className="text-2xl font-bold text-green-600">{totalFacultyStaff}</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
             <p className="text-sm text-slate-600">Admins</p>
@@ -1806,74 +1531,30 @@ function UserManagement() {
           {currentPage === "users" && renderUserList()}
           {currentPage === "roles" && renderAccessControl()}
         </div>
-
-        {/* CREATE/EDIT MODAL */}
-        <Modal
-          isOpen={isFormModalOpen}
-          onClose={closeFormModal}
-          title={isEditing ? "Edit User Record" : "Create New User Account"}
-          size="lg"
-        >
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4 p-2 bg-gray-50 rounded-xl border border-gray-200">
-              <label className="block text-gray-700 font-bold mb-1 text-sm">
-                Define User Role
-              </label>
-              <SelectInput
-                name="role"
-                placeholder="Select Role"
-                value={selectedRole}
-                onChange={handleRoleChange}
-                className="md:w-1/3 bg-white"
-                required
-                disabled={isEditing}
-              >
-                <option value="Student">Student</option>
-                <option value="Admin">Admin</option>
-                <option value="Faculty">Faculty</option>
-                <option value="Staff">Staff</option>
-                <option value="HR">HR</option>
-                <option value="Accounting">Accounting</option>
-              </SelectInput>
-              <p className="text-xs text-gray-500 mt-2">
-                The role determines the specific fields required below. Role
-                cannot be changed while editing.
-              </p>
-            </div>
-
-            {renderCommonFields()}
-            {selectedRole === "Student" && renderStudentFields()}
-            {["Admin", "Faculty", "Staff", "HR", "Accounting"].includes(
-              selectedRole,
-            ) && renderEmployeeFields()}
-
-            <div className="flex justify-end gap-3 mt-4 pt-3 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={closeFormModal}
-                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
-              >
-                {isEditing ? "Save Changes" : "Create Account"}
-              </button>
-            </div>
-          </form>
-        </Modal>
-
-        {/* VIEW DETAILS MODAL */}
-        {viewingUser && (
-          <ViewUserModal
-            isOpen={isViewModalOpen}
-            onClose={closeViewModal}
-            user={viewingUser}
-          />
-        )}
       </div>
+
+      {/* Create / Edit Modal */}
+      <UserFormModal
+        isOpen={isFormModalOpen}
+        onClose={closeFormModal}
+        onSubmit={handleSubmit}
+        isEditing={isEditing}
+        selectedRole={selectedRole}
+        onRoleChange={handleRoleChange}
+        formData={formData}
+        onInputChange={handleInputChange}
+        departments={departments}
+        programs={programs}
+      />
+
+      {/* View Modal */}
+      {viewingUser && (
+        <ViewUserModal
+          isOpen={isViewModalOpen}
+          onClose={() => { setIsViewModalOpen(false); setViewingUser(null); }}
+          user={viewingUser}
+        />
+      )}
     </div>
   );
 }

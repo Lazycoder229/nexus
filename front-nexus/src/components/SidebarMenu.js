@@ -135,11 +135,11 @@ const Menu = {
           icons: BookOpen,
           link: "/admin/admin_subject_sections",
         },
-        {
+      /*   {
           label: "Timetable Builder",
           icons: CalendarCheck,
           link: "/admin/admin_timetable",
-        },
+        }, */
         {
           label: "Academic Calendar",
           icons: Calendar,
@@ -314,7 +314,7 @@ const Menu = {
       ],
     }, */
     {
-      title: "HR & Personal",
+      title: "Leave Request",
       icons: Lock,
       submenu: [
         {
@@ -322,11 +322,11 @@ const Menu = {
           icons: CalendarCheck,
           link: "/admin/admin_leave",
         },
-        {
+       /*  {
           label: "Staff Leave Management",
           icons: Users,
           link: "/admin/admin_staff_leave",
-        },
+        }, */
       ],
     },
   ],
@@ -443,7 +443,7 @@ const Menu = {
       ],
     }, */
     {
-      title: "HR & Personal",
+      title: "Request Leave",
       icons: Lock,
       submenu: [
         {

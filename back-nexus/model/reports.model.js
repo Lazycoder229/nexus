@@ -65,7 +65,7 @@ const ReportsModel = {
       params.push(filters.date_to);
     }
 
-    query += ` GROUP BY u.user_id, e.enrollment_id, ap.period_id ORDER BY sd.student_number ASC`;
+    query += ` GROUP BY u.user_id, sd.student_number, sd.year_level, u.email, u.phone, u.gender, u.date_of_birth, u.status, u.first_name, u.middle_name, u.last_name, p.name, p.code, sd.course, e.enrollment_id, e.enrollment_date, e.status, ap.school_year, ap.semester, ap.period_id ORDER BY sd.student_number ASC`;
 
     const [rows] = await pool.query(query, params);
     return rows;
@@ -283,7 +283,7 @@ const ReportsModel = {
       params.push(filters.status);
     }
 
-    query += ` GROUP BY ps.payroll_setup_id, p.payslip_id ORDER BY ps.payroll_period_start DESC`;
+    query += ` GROUP BY ps.payroll_setup_id, p.payslip_id, ps.payroll_period_start, ps.payroll_period_end, ps.payment_date, p.gross_pay, p.total_deductions, p.net_pay, ps.status, ps.payment_method, u.first_name, u.last_name, ed.employee_id, ed.department, ed.position_title ORDER BY ps.payroll_period_start DESC`;
 
     const [rows] = await pool.query(query, params);
     return rows;

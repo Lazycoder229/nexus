@@ -28,7 +28,7 @@ CREATE TABLE users (
     
     status VARCHAR(50) DEFAULT 'Active',     -- Account status (Active, Leave, Terminated)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Creation timestamp
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ===========================
 -- 2. Student Details Table
@@ -2155,6 +2155,9 @@ CREATE INDEX idx_registrations_status ON event_registrations(attendance_status);
 -- Inventory Management Tables
 -- ===========================
 
+-- Ensure referenced parent table supports foreign keys.
+ALTER TABLE users ENGINE=InnoDB;
+
 -- Main Assets/Inventory tracking
 CREATE TABLE inventory_assets (
     asset_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -2236,10 +2239,12 @@ CREATE TABLE inventory_assets (
     INDEX idx_location (location),
     INDEX idx_department (department),
     INDEX idx_assigned_to (assigned_to),
+    INDEX idx_inventory_assets_created_by (created_by),
+    INDEX idx_inventory_assets_updated_by (updated_by),
     INDEX idx_warranty_end (warranty_end_date),
     INDEX idx_next_maintenance (next_maintenance_date),
-    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
-    FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE SET NULL
+    CONSTRAINT fk_inventory_assets_created_by FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    CONSTRAINT fk_inventory_assets_updated_by FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Asset Categories (for dropdown/organization)

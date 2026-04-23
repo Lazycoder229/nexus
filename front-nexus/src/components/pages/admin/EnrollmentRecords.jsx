@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Select from "react-select";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import {
   ClipboardList,
   Search,
@@ -10,6 +12,35 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+
+const toDateInputValue = (value) => {
+  if (!value) return "";
+  const stringValue = String(value);
+  return stringValue.includes("T") ? stringValue.split("T")[0] : stringValue;
+};
+
+const findOptionByValue = (options, value) => {
+  if (value === null || value === undefined) return null;
+  return (
+    options.find((option) => String(option.value) === String(value)) || null
+  );
+};
+
+const toEnrollmentFormData = (enrollment) => ({
+  student_id: enrollment.student_id,
+  course_id: enrollment.course_id,
+  period_id: enrollment.period_id,
+  section_id: enrollment.section_id || null,
+  year_level: enrollment.year_level || "",
+  enrollment_date: toDateInputValue(
+    enrollment.enrollment_date || new Date().toISOString().split("T")[0],
+  ),
+  status: enrollment.status || "Enrolled",
+  midterm_grade: enrollment.midterm_grade ?? "",
+  final_grade: enrollment.final_grade ?? "",
+  remarks: enrollment.remarks || "",
+  enrollment_id: enrollment.enrollment_id,
+});
 
 const StatusBadge = ({ status }) => {
   const colors = {
@@ -102,7 +133,7 @@ const EnrollmentModal = ({
             label: `${s.section_name} (${s.current_enrolled || 0}/${s.max_capacity})`,
           })),
         );
-      } catch (err) {
+      } catch {
         setSections([]);
       }
       setLoadingSections(false);
@@ -112,36 +143,42 @@ const EnrollmentModal = ({
   }, [formData.course_id, formData.period_id]);
 
   useEffect(() => {
-    if (initialData) {
-      setFormData({
-        student_id: initialData.student_id,
-        course_id: initialData.course_id,
-        period_id: initialData.period_id,
-        section_id: initialData.section_id || null,
-        year_level: initialData.year_level || "",
-        enrollment_date:
-          initialData.enrollment_date || new Date().toISOString().split("T")[0],
-        status: initialData.status || "Enrolled",
-        midterm_grade: initialData.midterm_grade || "",
-        final_grade: initialData.final_grade || "",
-        remarks: initialData.remarks || "",
-        enrollment_id: initialData.enrollment_id,
-      });
-    } else {
-      setFormData({
-        student_id: null,
-        course_id: null,
-        period_id: null,
-        section_id: null,
-        year_level: "",
-        enrollment_date: new Date().toISOString().split("T")[0],
-        status: "Enrolled",
-        midterm_grade: "",
-        final_grade: "",
-        remarks: "",
-      });
-    }
-  }, [initialData]);
+    const hydrateEditData = async () => {
+      if (!initialData) {
+        setFormData({
+          student_id: null,
+          course_id: null,
+          period_id: null,
+          section_id: null,
+          year_level: "",
+          enrollment_date: new Date().toISOString().split("T")[0],
+          status: "Enrolled",
+          midterm_grade: "",
+          final_grade: "",
+          remarks: "",
+        });
+        return;
+      }
+
+      setFormData(toEnrollmentFormData(initialData));
+
+      // Fallback for list payloads that don't include section_id yet.
+      if (!initialData.section_id && initialData.enrollment_id) {
+        try {
+          const res = await axios.get(
+            `${API_BASE}/api/enrollments/${initialData.enrollment_id}`,
+          );
+          if (res.data) {
+            setFormData(toEnrollmentFormData(res.data));
+          }
+        } catch {
+          // Keep existing form data if detailed fetch fails.
+        }
+      }
+    };
+
+    hydrateEditData();
+  }, [initialData, API_BASE]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -187,9 +224,7 @@ const EnrollmentModal = ({
                 Student *
               </label>
               <Select
-                value={
-                  students.find((s) => s.value === formData.student_id) || null
-                }
+                value={findOptionByValue(students, formData.student_id)}
                 onChange={(selected) =>
                   setFormData((prev) => ({
                     ...prev,
@@ -244,9 +279,7 @@ const EnrollmentModal = ({
                   Course *
                 </label>
                 <Select
-                  value={
-                    courses.find((c) => c.value === formData.course_id) || null
-                  }
+                  value={findOptionByValue(courses, formData.course_id)}
                   onChange={(selected) =>
                     setFormData((prev) => ({
                       ...prev,
@@ -300,9 +333,7 @@ const EnrollmentModal = ({
                   Academic Period *
                 </label>
                 <Select
-                  value={
-                    periods.find((p) => p.value === formData.period_id) || null
-                  }
+                  value={findOptionByValue(periods, formData.period_id)}
                   onChange={(selected) =>
                     setFormData((prev) => ({
                       ...prev,
@@ -358,10 +389,7 @@ const EnrollmentModal = ({
                   Section *
                 </label>
                 <Select
-                  value={
-                    sections.find((s) => s.value === formData.section_id) ||
-                    null
-                  }
+                  value={findOptionByValue(sections, formData.section_id)}
                   onChange={(selected) =>
                     setFormData((prev) => ({
                       ...prev,
@@ -686,18 +714,26 @@ const EnrollmentRecords = () => {
 
       if (modalMode === "add") {
         await axios.post(`${API_BASE}/api/enrollments`, cleanData);
+        toast.success("Enrollment added successfully", {
+          position: "top-center",
+        });
       } else {
         await axios.put(
           `${API_BASE}/api/enrollments/${cleanData.enrollment_id}`,
           cleanData,
         );
+        toast.success("Enrollment updated successfully", {
+          position: "top-center",
+        });
       }
       fetchEnrollments();
       setModalOpen(false);
       setCurrentRecord(null);
     } catch (err) {
       console.error("Error saving enrollment:", err);
-      alert(err.response?.data?.message || "Failed to save enrollment");
+      toast.error(err.response?.data?.message || "Failed to save enrollment", {
+        position: "top-center",
+      });
     }
   };
 
@@ -706,8 +742,14 @@ const EnrollmentRecords = () => {
     try {
       await axios.delete(`${API_BASE}/api/enrollments/${id}`);
       fetchEnrollments();
+      toast.success("Enrollment deleted successfully", {
+        position: "top-center",
+      });
     } catch (err) {
       console.error("Error deleting enrollment:", err);
+      toast.error(err.response?.data?.message || "Failed to delete enrollment", {
+        position: "top-center",
+      });
     }
   };
 
@@ -786,7 +828,7 @@ const EnrollmentRecords = () => {
                 Student
               </th>
               <th className="px-3 py-2 text-left text-sm font-semibold">
-                Course
+               Programs
               </th>
               <th className="px-3 py-2 text-left text-sm font-semibold">
                 Period
@@ -833,7 +875,7 @@ const EnrollmentRecords = () => {
                     {enrollment.year_level || "N/A"}
                   </td>
                   <td className="px-3 py-2 text-sm">
-                    {enrollment.enrollment_date}
+                    {toDateInputValue(enrollment.enrollment_date) || "N/A"}
                   </td>
                   <td className="px-3 py-2 text-sm">
                     <StatusBadge status={enrollment.status} />
@@ -891,6 +933,16 @@ const EnrollmentRecords = () => {
         students={students}
         courses={courses}
         periods={periods}
+      />
+
+      <ToastContainer
+        position="top-center"
+        autoClose={2500}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        draggable
       />
     </div>
   );

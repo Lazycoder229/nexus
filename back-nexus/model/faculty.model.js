@@ -105,7 +105,7 @@ const Faculty = {
           facultyData.employee_id,
           facultyData.department,
           facultyData.position_title,
-          facultyData.date_hired,
+          facultyData.date_hired || null, // Convert empty string to null
           facultyData.specialization,
           facultyData.educational_attainment,
           facultyData.license_number,
@@ -160,7 +160,7 @@ const Faculty = {
           facultyData.department,
           facultyData.position_title,
           facultyData.specialization,
-          facultyData.date_hired,
+          facultyData.date_hired || null, // Convert empty string to null
           facultyData.educational_attainment,
           facultyData.license_number,
           userId,

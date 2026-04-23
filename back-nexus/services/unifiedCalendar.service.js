@@ -26,7 +26,9 @@ const UnifiedCalendarService = {
             e.exam_name as title,
             'Exam' as description,
             e.exam_type,
+            e.exam_duration,
             es.exam_date as date,
+            es.exam_date as end_date,
             es.start_time,
             es.end_time,
             COALESCE(es.venue, 'TBA') as location,
@@ -67,10 +69,12 @@ const UnifiedCalendarService = {
         results.exams = [];
       }
 
-      // Query 2: Events
+      // Query 2: Events (general events + academic calendar events)
       try {
-        let eventParams = [];
-        let eventQuery = `
+        const generalEventParams = [];
+        const academicEventParams = [];
+
+        let generalEventsQuery = `
           SELECT 
             e.event_id as id,
             'event' as type,
@@ -78,9 +82,11 @@ const UnifiedCalendarService = {
             COALESCE(e.description, '') as description,
             COALESCE(e.event_type, 'event') as event_type,
             DATE(e.start_date) as date,
+            DATE(COALESCE(e.end_date, e.start_date)) as end_date,
             TIME(e.start_date) as start_time,
             TIME(e.end_date) as end_time,
             COALESCE(e.venue, 'TBA') as location,
+            'all' as target_audience,
             NULL as subject,
             NULL as course_code,
             NULL as section,
@@ -88,21 +94,60 @@ const UnifiedCalendarService = {
             COALESCE(e.max_participants, 0) as max_students,
             COALESCE(e.status, 'scheduled') as status,
             COALESCE(e.event_category, 'event') as category,
-            DATEDIFF(DATE(e.start_date), CURDATE()) as days_remaining
+            DATEDIFF(DATE(COALESCE(e.end_date, e.start_date)), CURDATE()) as days_remaining
           FROM events e
           WHERE 1=1
         `;
 
+        let academicEventsQuery = `
+          SELECT 
+            ae.event_id as id,
+            'event' as type,
+            COALESCE(ae.event_name, 'Academic Event') as title,
+            COALESCE(ae.description, '') as description,
+            COALESCE(ae.event_type, 'academic') as event_type,
+            DATE(ae.start_date) as date,
+            DATE(COALESCE(ae.end_date, ae.start_date)) as end_date,
+            TIME(ae.start_date) as start_time,
+            TIME(ae.end_date) as end_time,
+            COALESCE(ae.location, 'TBA') as location,
+            COALESCE(ae.target_audience, 'all') as target_audience,
+            NULL as subject,
+            NULL as course_code,
+            NULL as section,
+            NULL as proctor_id,
+            NULL as max_students,
+            'scheduled' as status,
+            'academic' as category,
+            DATEDIFF(DATE(COALESCE(ae.end_date, ae.start_date)), CURDATE()) as days_remaining
+          FROM academic_events ae
+          WHERE COALESCE(ae.target_audience, 'all') IN ('all', 'students')
+        `;
+
         if (date_from) {
-          eventParams.push(date_from);
-          eventQuery += " AND DATE(e.start_date) >= ?";
+          generalEventsQuery += " AND DATE(e.start_date) >= ?";
+          academicEventsQuery += " AND DATE(ae.start_date) >= ?";
+          generalEventParams.push(date_from);
+          academicEventParams.push(date_from);
         }
         if (date_to) {
-          eventParams.push(date_to);
-          eventQuery += " AND DATE(e.start_date) <= ?";
+          generalEventsQuery += " AND DATE(e.start_date) <= ?";
+          academicEventsQuery += " AND DATE(ae.start_date) <= ?";
+          generalEventParams.push(date_to);
+          academicEventParams.push(date_to);
         }
 
-        eventQuery += " ORDER BY e.start_date ASC LIMIT 500";
+        const eventParams = [...generalEventParams, ...academicEventParams];
+
+        const eventQuery = `
+          SELECT * FROM (
+            ${generalEventsQuery}
+            UNION ALL
+            ${academicEventsQuery}
+          ) combined_events
+          ORDER BY date ASC
+          LIMIT 500
+        `;
 
         const [eventResults] = await db.query(eventQuery, eventParams);
         results.events = Array.isArray(eventResults) ? eventResults : [];
@@ -123,6 +168,7 @@ const UnifiedCalendarService = {
             COALESCE(sc.event_description, '') as description,
             COALESCE(sc.calendar_type, 'event') as event_type,
             DATE(sc.start_date) as date,
+            DATE(COALESCE(sc.end_date, sc.start_date)) as end_date,
             NULL as start_time,
             NULL as end_time,
             NULL as location,
@@ -209,6 +255,7 @@ const UnifiedCalendarService = {
           e.exam_id,
           e.exam_name as title,
           e.exam_type,
+            e.exam_duration,
           es.exam_date as date,
           es.start_time,
           es.end_time,
@@ -248,6 +295,7 @@ const UnifiedCalendarService = {
           SELECT 
             es.schedule_id as id,
             es.exam_id,
+            e.exam_duration,
             es.exam_date as date,
             es.start_time,
             es.end_time,
@@ -278,37 +326,76 @@ const UnifiedCalendarService = {
     try {
       const { date_from, date_to } = filters;
 
-      let query = `
+      let generalEventsQuery = `
         SELECT 
           e.event_id as id,
           e.event_name as title,
           COALESCE(e.description, '') as description,
           e.event_type,
           DATE(e.start_date) as date,
+          DATE(COALESCE(e.end_date, e.start_date)) as end_date,
           TIME(e.start_date) as start_time,
           TIME(e.end_date) as end_time,
           e.venue as location,
+          'all' as target_audience,
           COALESCE(e.event_category, 'event') as event_category,
           e.status,
           e.max_participants,
           COALESCE(e.registration_required, 0) as registration_required,
-          DATEDIFF(DATE(e.start_date), CURDATE()) as days_remaining
+          DATEDIFF(DATE(COALESCE(e.end_date, e.start_date)), CURDATE()) as days_remaining
         FROM events e
         WHERE DATE(e.start_date) >= CURDATE()
       `;
 
-      const params = [];
+      let academicEventsQuery = `
+        SELECT 
+          ae.event_id as id,
+          ae.event_name as title,
+          COALESCE(ae.description, '') as description,
+          COALESCE(ae.event_type, 'academic') as event_type,
+          DATE(ae.start_date) as date,
+          DATE(COALESCE(ae.end_date, ae.start_date)) as end_date,
+          TIME(ae.start_date) as start_time,
+          TIME(ae.end_date) as end_time,
+          ae.location as location,
+          COALESCE(ae.target_audience, 'all') as target_audience,
+          'academic' as event_category,
+          'scheduled' as status,
+          NULL as max_participants,
+          0 as registration_required,
+          DATEDIFF(DATE(COALESCE(ae.end_date, ae.start_date)), CURDATE()) as days_remaining
+        FROM academic_events ae
+        WHERE DATE(ae.start_date) >= CURDATE()
+          AND COALESCE(ae.target_audience, 'all') IN ('all', 'students')
+      `;
+
+      const generalEventParams = [];
+      const academicEventParams = [];
 
       if (date_from) {
-        query += " AND DATE(e.start_date) >= ?";
-        params.push(date_from);
+        generalEventsQuery += " AND DATE(e.start_date) >= ?";
+        academicEventsQuery += " AND DATE(ae.start_date) >= ?";
+        generalEventParams.push(date_from);
+        academicEventParams.push(date_from);
       }
       if (date_to) {
-        query += " AND DATE(e.start_date) <= ?";
-        params.push(date_to);
+        generalEventsQuery += " AND DATE(e.start_date) <= ?";
+        academicEventsQuery += " AND DATE(ae.start_date) <= ?";
+        generalEventParams.push(date_to);
+        academicEventParams.push(date_to);
       }
 
-      query += " ORDER BY e.start_date ASC LIMIT 500";
+      const params = [...generalEventParams, ...academicEventParams];
+
+      const query = `
+        SELECT * FROM (
+          ${generalEventsQuery}
+          UNION ALL
+          ${academicEventsQuery}
+        ) combined_student_events
+        ORDER BY date ASC
+        LIMIT 500
+      `;
 
       try {
         const [results] = await db.query(query, params);

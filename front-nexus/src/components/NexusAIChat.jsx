@@ -13,7 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.254.102:5000";
 
 // ─────────────────────────────────────────────
 //  KB kept only as offline fallback (Gemini API is primary)
@@ -64,7 +64,7 @@ const KB = [
       "what does nexus offer",
     ],
     responses: [
-      "Nexus ERP includes the following core modules:\n\n📚 **Academic** – Admissions, Enrollment, Grades, Sections, Courses\n👥 **People** – Students, Faculty, Staff, HR, Employee Records\n💰 **Finance** – Accounting, Payroll, Payments, Invoices, Scholarships\n📖 **Library** – Books, Transactions, Lost/Damage Logs\n🖥️ **LMS** – Materials, Assignments, Discussions\n📅 **Scheduling** – Timetables, Exams, Academic Calendar\n📊 **Reports** – Student, Faculty, and Financial Reports\n⚙️ **System** – RBAC, Settings, RFID, Email/SMS Gateway\n\nWhich module would you like to know more about?",
+      "Nexus ERP includes the following core modules:\n\n **Academic** – Admissions, Enrollment, Grades, Sections, Courses\n👥 **People** – Students, Faculty, Staff, HR, Employee Records\n💰 **Finance** – Accounting, Payroll, Payments, Invoices, Scholarships\n📖 **Library** – Books, Transactions, Lost/Damage Logs\n🖥️ **LMS** – Materials, Assignments, Discussions\n📅 **Scheduling** – Timetables, Exams, Academic Calendar\n📊 **Reports** – Student, Faculty, and Financial Reports\n⚙️ **System** – RBAC, Settings, RFID, Email/SMS Gateway\n\nWhich module would you like to know more about?",
     ],
   },
 
@@ -130,7 +130,7 @@ const KB = [
       "teaching staff",
     ],
     responses: [
-      "The **Faculty Management** module covers:\n\n👨‍🏫 **Faculty Profiles** – Personal and academic credentials\n📘 **Course Assignments** – Assign faculty to courses/sections\n🗓️ **Faculty Scheduling** – Timetable and class schedules\n📋 **Advisory Assignment** – Assign advisers to student groups\n⭐ **Faculty Evaluation** – Student feedback and evaluations\n📅 **Attendance** – Staff attendance tracking\n🏖️ **Leave Management** – Staff leave requests\n\nAccessible from the **Faculty** section in the admin sidebar.",
+      "The **Faculty Management** module covers:\n\n **Faculty Profiles** – Personal and academic credentials\n📘 **Course Assignments** – Assign faculty to courses/sections\n🗓️ **Faculty Scheduling** – Timetable and class schedules\n📋 **Advisory Assignment** – Assign advisers to student groups\n⭐ **Faculty Evaluation** – Student feedback and evaluations\n📅 **Attendance** – Staff attendance tracking\n🏖️ **Leave Management** – Staff leave requests\n\nAccessible from the **Faculty** section in the admin sidebar.",
     ],
   },
 
@@ -147,7 +147,7 @@ const KB = [
       "department",
     ],
     responses: [
-      "Nexus ERP manages the full academic curriculum:\n\n🏛️ **Department Management** – Organize colleges and departments\n📚 **Course Management** – Add/edit courses, units, descriptions\n📋 **Program Offerings** – Define degree programs with course maps\n🔗 **Pre-requisite Setup** – Configure course pre-requisite chains\n📐 **Sections** – Manage class sections per course\n🕒 **Timetable Builder** – Automated schedule generation\n\nFound in the **Courses & Curriculum** menu.",
+      "Nexus ERP manages the full academic curriculum:\n\n **Department Management** – Organize colleges and departments\n📚 **Course Management** – Add/edit courses, units, descriptions\n📋 **Program Offerings** – Define degree programs with course maps\n🔗 **Pre-requisite Setup** – Configure course pre-requisite chains\n📐 **Sections** – Manage class sections per course\n🕒 **Timetable Builder** – Automated schedule generation\n\nFound in the **Courses & Curriculum** menu.",
     ],
   },
 
@@ -161,7 +161,7 @@ const KB = [
       "exam schedule",
     ],
     responses: [
-      "The **Scheduling** module includes:\n\n🗓️ **Timetable Builder** – Drag-and-drop class schedule builder\n📅 **Academic Calendar** – Mark holidays, semester dates, events\n🎓 **Exam Schedule Builder** – Plan midterm and final exams\n📊 **Class Capacity Monitor** – Track room and section limits\n🏫 **School Calendar** – Public academic calendar management\n\nThis helps avoid conflicts and ensures efficient resource use.",
+      "The **Scheduling** module includes:\n\n **Timetable Builder** – Drag-and-drop class schedule builder\n📅 **Academic Calendar** – Mark holidays, semester dates, events\n🎓 **Exam Schedule Builder** – Plan midterm and final exams\n📊 **Class Capacity Monitor** – Track room and section limits\n🏫 **School Calendar** – Public academic calendar management\n\nThis helps avoid conflicts and ensures efficient resource use.",
     ],
   },
 
@@ -179,7 +179,7 @@ const KB = [
       "tuition",
     ],
     responses: [
-      "The **Accounting & Finance** module handles:\n\n💳 **Student Payments** – Record and track fee payments\n🧾 **Invoices** – Generate student billing invoices\n💼 **Income & Expenses** – School financial records\n🏦 **Payment Gateway** – Online payment integration\n📉 **Deductions** – Track scholarship deductions from fees\n\nManaged under the **Accounting** role in Nexus ERP.",
+      "The **Accounting & Finance** module handles:\n\n **Student Payments** – Record and track fee payments\n🧾 **Invoices** – Generate student billing invoices\n💼 **Income & Expenses** – School financial records\n🏦 **Payment Gateway** – Online payment integration\n📉 **Deductions** – Track scholarship deductions from fees\n\nManaged under the **Accounting** role in Nexus ERP.",
     ],
   },
 
@@ -204,7 +204,7 @@ const KB = [
       "leave",
     ],
     responses: [
-      "The **HR (Human Resources)** module provides:\n\n👤 **Employee Records** – Full employee profiles and contracts\n📅 **Staff Attendance** – Daily attendance monitoring\n🏖️ **Staff Leave** – Leave applications and approvals\n💰 **Payroll** – Salary computation and release\n📊 **Reports** – HR analytics and reports\n\nAdministrators and HR officers can manage all personnel data here.",
+      "The **HR (Human Resources)** module provides:\n\n **Employee Records** – Full employee profiles and contracts\n📅 **Staff Attendance** – Daily attendance monitoring\n🏖️ **Staff Leave** – Leave applications and approvals\n💰 **Payroll** – Salary computation and release\n📊 **Reports** – HR analytics and reports\n\nAdministrators and HR officers can manage all personnel data here.",
     ],
   },
 
@@ -220,7 +220,7 @@ const KB = [
       "lost book",
     ],
     responses: [
-      "The **Library Management** module includes:\n\n📚 **Book Catalog** – Manage all library books and resources\n🔄 **Library Transactions** – Track borrowed and returned books\n⚠️ **Lost & Damage Logs** – Record incidents and compute fines\n🔍 **Digital Library** – Access to digital resources\n📊 **Library Reports** – Usage statistics and overdue reports\n\nBoth students and staff can interact with the library system.",
+      "The **Library Management** module includes:\n\n **Book Catalog** – Manage all library books and resources\n🔄 **Library Transactions** – Track borrowed and returned books\n⚠️ **Lost & Damage Logs** – Record incidents and compute fines\n🔍 **Digital Library** – Access to digital resources\n📊 **Library Reports** – Usage statistics and overdue reports\n\nBoth students and staff can interact with the library system.",
     ],
   },
 
@@ -237,7 +237,7 @@ const KB = [
       "online learning",
     ],
     responses: [
-      "The **LMS (Learning Management System)** module enables:\n\n📁 **Course Materials** – Faculty upload lecture notes, PDFs, videos\n📝 **Assignments** – Create, submit, and grade assignments online\n💬 **Discussions** – Forum-style discussions per class\n📊 **Student Progress** – Track completion and grades\n\nFaculty and students interact through their respective dashboards.",
+      "The **LMS (Learning Management System)** module enables:\n\n **Course Materials** – Faculty upload lecture notes, PDFs, videos\n📝 **Assignments** – Create, submit, and grade assignments online\n💬 **Discussions** – Forum-style discussions per class\n📊 **Student Progress** – Track completion and grades\n\nFaculty and students interact through their respective dashboards.",
     ],
   },
 
@@ -252,7 +252,7 @@ const KB = [
       "beneficiary",
     ],
     responses: [
-      "The **Scholarship Management** module supports:\n\n🎖️ **Scholarship Types** – Define different scholarship categories\n✅ **Eligibility** – Set GPA and requirement criteria\n📋 **Applications** – Students apply for scholarships\n🏅 **Beneficiaries** – Track current scholarship recipients\n💰 **Deductions** – Auto-apply scholarship discounts to fees\n\nAccessible from **Finance → Scholarships** in the admin menu.",
+      "The **Scholarship Management** module supports:\n\n **Scholarship Types** – Define different scholarship categories\n✅ **Eligibility** – Set GPA and requirement criteria\n📋 **Applications** – Students apply for scholarships\n🏅 **Beneficiaries** – Track current scholarship recipients\n💰 **Deductions** – Auto-apply scholarship discounts to fees\n\nAccessible from **Finance → Scholarships** in the admin menu.",
     ],
   },
 
@@ -264,19 +264,7 @@ const KB = [
     ],
   },
 
-  // ── RFID ──
-  {
-    patterns: [
-      "rfid",
-      "rfid card",
-      "id card",
-      "card integration",
-      "attendance rfid",
-    ],
-    responses: [
-      "The **RFID Integration** module allows Nexus ERP to:\n\n• Register RFID cards to students and employees\n• Track attendance automatically via RFID tap-in\n• Manage lost/deactivated cards\n• Generate attendance logs from RFID data\n\nThis ensures accurate and automated attendance monitoring.",
-    ],
-  },
+  
 
   // ── Attendance ──
   {
@@ -288,7 +276,7 @@ const KB = [
       "mark attendance",
     ],
     responses: [
-      "Nexus ERP has comprehensive **Attendance Tracking**:\n\n📌 **Student Attendance** – Mark per class session by faculty\n👔 **Staff Attendance** – HR tracks employee daily attendance\n🔔 **Absentee Alerts** – Auto-notify when students miss too many classes\n📊 **Attendance Reports** – Detailed logs and summary reports\n🪪 **RFID Integration** – Automate tap-in/tap-out attendance\n\nAccessible from both Admin and Faculty dashboards.",
+      "Nexus ERP has comprehensive **Attendance Tracking**:\n\n **Student Attendance** – Mark per class session by faculty\n👔 **Staff Attendance** – HR tracks employee daily attendance\n🔔 **Absentee Alerts** – Auto-notify when students miss too many classes\n📊 **Attendance Reports** – Detailed logs and summary reports\n🪪 **RFID Integration** – Automate tap-in/tap-out attendance\n\nAccessible from both Admin and Faculty dashboards.",
     ],
   },
 
@@ -296,7 +284,7 @@ const KB = [
   {
     patterns: ["report", "reports", "analytics", "statistics", "data"],
     responses: [
-      "Nexus ERP offers powerful **Reporting & Analytics**:\n\n📊 **Student Reports** – Enrollment, grades, attendance stats\n👩‍🏫 **Faculty Reports** – Teaching load, evaluations\n💰 **Financial Reports** – Revenue, expenses, payroll summaries\n📚 **Library Reports** – Book circulation statistics\n🔍 **System Logs** – Audit trails and system activity\n\nMost modules have built-in export options (PDF, Excel).",
+      "Nexus ERP offers powerful **Reporting & Analytics**:\n\n **Student Reports** – Enrollment, grades, attendance stats\n👩‍🏫 **Faculty Reports** – Teaching load, evaluations\n💰 **Financial Reports** – Revenue, expenses, payroll summaries\n📚 **Library Reports** – Book circulation statistics\n🔍 **System Logs** – Audit trails and system activity\n\nMost modules have built-in export options (PDF, Excel).",
     ],
   },
 
@@ -312,7 +300,7 @@ const KB = [
       "role",
     ],
     responses: [
-      "Nexus ERP uses **Role-Based Access Control (RBAC)**:\n\n🔴 **Admin** – Full system access\n🟠 **HR** – People management, payroll\n🟡 **Accounting** – Finance, billing, scholarships\n🟢 **Faculty** – Grades, schedules, LMS, attendance\n🔵 **Student** – Personal records, grades, LMS, library\n⚪ **Staff** – Library, limited admin functions\n\nAdmins can configure permissions per role from **System → User Management**.",
+      "Nexus ERP uses **Role-Based Access Control (RBAC)**:\n\n **Admin** – Full system access\n **HR** – People management, payroll\n🟡 **Accounting** – Finance, billing, scholarships\n🟢 **Faculty** – Grades, schedules, LMS, attendance\n🔵 **Student** – Personal records, grades, LMS, library\n⚪ **Staff** – Library, limited admin functions\n\nAdmins can configure permissions per role from **System → User Management**.",
     ],
   },
 
@@ -345,21 +333,6 @@ const KB = [
     ],
   },
 
-  // ── Email / SMS ──
-  {
-    patterns: [
-      "email",
-      "sms",
-      "notification",
-      "notifications",
-      "alert",
-      "alerts",
-      "gateway",
-    ],
-    responses: [
-      "The **Email & SMS Gateway** in Nexus ERP enables:\n\n📧 **Email Notifications** – Grade releases, announcements, clearances\n📱 **SMS Alerts** – Absence alerts, payment reminders\n📢 **Announcements** – Broadcast messages to students/faculty\n🔔 **Absentee Alerts** – Auto-message parents/students\n\nConfigure your SMTP or SMS provider under **System → Email/SMS Gateway**.",
-    ],
-  },
 
   // ── How to login ──
   {
@@ -380,7 +353,7 @@ const KB = [
   {
     patterns: ["dashboard", "home", "overview", "main page"],
     responses: [
-      "The **Admin Dashboard** provides a real-time overview of:\n\n📊 **Key Performance Indicators** – Total students, courses, faculty, pending admissions\n📋 **Recent System Activity** – Latest enrollments, admissions, and clearances\n📅 **Upcoming Events Calendar** – View important academic dates\n\nIt's your central command center for monitoring the institution's operations.",
+      "The **Admin Dashboard** provides a real-time overview of:\n\n **Key Performance Indicators** – Total students, courses, faculty, pending admissions\n📋 **Recent System Activity** – Latest enrollments, admissions, and clearances\n📅 **Upcoming Events Calendar** – View important academic dates\n\nIt's your central command center for monitoring the institution's operations.",
     ],
   },
 
@@ -395,7 +368,7 @@ const KB = [
       "news",
     ],
     responses: [
-      "Nexus ERP supports institutional communication:\n\n📢 **Announcements** – Post notices for students and faculty\n📅 **Event Scheduling** – Plan and manage school events\n🌐 **Public Event Posting** – Events visible on the public portal\n📆 **School Calendar** – Academic calendar with key dates\n\nKeep your community informed and engaged through these tools.",
+      "Nexus ERP supports institutional communication:\n\n **Announcements** – Post notices for students and faculty\n📅 **Event Scheduling** – Plan and manage school events\n🌐 **Public Event Posting** – Events visible on the public portal\n📆 **School Calendar** – Academic calendar with key dates\n\nKeep your community informed and engaged through these tools.",
     ],
   },
 
@@ -434,7 +407,7 @@ const KB = [
       "exam setup",
     ],
     responses: [
-      "The **Exam Management** module covers:\n\n📝 **Exam Setup** – Create and configure exam parameters\n📅 **Exam Schedule Builder** – Set exam dates, rooms, and invigilators\n📊 **Grade Integration** – Exam scores feed directly into grade computation\n\nFaculty and admins collaborate to ensure smooth examination periods.",
+      "The **Exam Management** module covers:\n\n **Exam Setup** – Create and configure exam parameters\n📅 **Exam Schedule Builder** – Set exam dates, rooms, and invigilators\n📊 **Grade Integration** – Exam scores feed directly into grade computation\n\nFaculty and admins collaborate to ensure smooth examination periods.",
     ],
   },
 
@@ -448,7 +421,7 @@ const KB = [
       "term",
     ],
     responses: [
-      "The **Academic Periods** module manages:\n\n📅 **School Year Setup** – Define academic year start/end dates\n🗓️ **Semester Management** – Configure First, Second, and Summer terms\n✅ **Active Period** – Set the current active enrollment period\n🔒 **Period Locking** – Lock grades and records after semester ends\n\nAll enrollment and grade activities are linked to an active academic period.",
+      "The **Academic Periods** module manages:\n\n **School Year Setup** – Define academic year start/end dates\n🗓️ **Semester Management** – Configure First, Second, and Summer terms\n✅ **Active Period** – Set the current active enrollment period\n🔒 **Period Locking** – Lock grades and records after semester ends\n\nAll enrollment and grade activities are linked to an active academic period.",
     ],
   },
 
@@ -456,7 +429,7 @@ const KB = [
   {
     patterns: ["inventory", "asset", "assets", "equipment", "property"],
     responses: [
-      "The **Inventory & Asset Management** module helps track:\n\n🖥️ **IT Equipment** – Computers, projectors, lab devices\n🏫 **Furniture & Fixtures** – Classroom and office assets\n📦 **Supply Inventory** – Consumable supplies stock\n🔧 **Maintenance Logs** – Track repairs and maintenance\n\nHelps the institution maintain accurate records of all school property.",
+      "The **Inventory & Asset Management** module helps track:\n\n **IT Equipment** – Computers, projectors, lab devices\n🏫 **Furniture & Fixtures** – Classroom and office assets\n📦 **Supply Inventory** – Consumable supplies stock\n🔧 **Maintenance Logs** – Track repairs and maintenance\n\nHelps the institution maintain accurate records of all school property.",
     ],
   },
 
@@ -472,7 +445,7 @@ const KB = [
       "what is your name",
     ],
     responses: [
-      "I'm **Nexus AI** 🤖 — your intelligent assistant built into the Nexus ERP system!\n\nI'm here to help you navigate the system, understand how modules work, and answer any questions about Nexus ERP. Feel free to ask me anything!",
+      "I'm **Nexus AI**  — your intelligent assistant built into the Nexus ERP system!\n\nI'm here to help you navigate the system, understand how modules work, and answer any questions about Nexus ERP. Feel free to ask me anything!",
     ],
   },
 
@@ -490,9 +463,9 @@ const KB = [
       "helpful",
     ],
     responses: [
-      "You're welcome! 😊 Is there anything else I can help you with?",
+      "You're welcome!  Is there anything else I can help you with?",
       "Glad I could help! Let me know if you have more questions about Nexus ERP.",
-      "Anytime! Don't hesitate to ask if you need more guidance. 👍",
+      "Anytime! Don't hesitate to ask if you need more guidance. ",
     ],
   },
 
@@ -500,8 +473,8 @@ const KB = [
   {
     patterns: ["bye", "goodbye", "see you", "take care", "later", "exit"],
     responses: [
-      "Goodbye! 👋 Come back anytime if you need help with Nexus ERP. Have a great day!",
-      "See you later! Don't hesitate to return if you have more questions. 😊",
+      "Goodbye!  Come back anytime if you need help with Nexus ERP. Have a great day!",
+      "See you later! Don't hesitate to return if you have more questions. Take care!",
     ],
   },
 
@@ -561,7 +534,7 @@ export default function NexusAIChat() {
     {
       id: 1,
       role: "ai",
-      text: "Hi there! 👋 I'm **Nexus AI**, your assistant for the **Nexus ERP** system. Ask me anything about the system's modules, features, or how to use them!",
+      text: "Hi there!  I'm **Nexus AI**, your assistant for the **Nexus ERP** system. Ask me anything about the system's modules, features, or how to use them!",
       time: new Date(),
     },
   ]);

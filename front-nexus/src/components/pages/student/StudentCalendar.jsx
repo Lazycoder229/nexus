@@ -59,6 +59,7 @@ const StudentCalendar = () => {
         subject_name: e.subject || e.course_code || "Unknown",
         title: e.title || "Exam",
         exam_type: e.exam_type || "midterm",
+        exam_duration: e.exam_duration,
         exam_date: e.date,
         start_time: e.start_time,
         end_time: e.end_time,
@@ -101,6 +102,7 @@ const StudentCalendar = () => {
           description: e.description,
           event_type: e.event_type || e.type || "academic",
           event_date: e.date,
+          end_date: e.end_date || e.date,
           start_time: e.start_time,
           end_time: e.end_time,
           location: e.location,
@@ -154,8 +156,146 @@ const StudentCalendar = () => {
     );
   };
 
-  const isUpcoming = (date) => {
-    return new Date(date) > new Date();
+  const getEventTimingStatus = (startDate, endDate) => {
+    const now = new Date();
+    const start = new Date(startDate);
+    const end = new Date(endDate || startDate);
+
+    // Treat end date as inclusive through the end of day.
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    if (now < start) return "upcoming";
+    if (now <= end) return "ongoing";
+    return "past";
+  };
+
+  const formatEventDateRange = (startDate, endDate) => {
+    if (!startDate) return "";
+    const start = new Date(startDate);
+    const end = new Date(endDate || startDate);
+
+    if (start.toDateString() === end.toDateString()) {
+      return start.toLocaleDateString();
+    }
+
+    return `${start.toLocaleDateString()} to ${end.toLocaleDateString()}`;
+  };
+
+  const formatClockTime = (timeValue) => {
+    if (!timeValue) return "";
+
+    const rawValue = String(timeValue).trim();
+
+    const twelveHourMatch = rawValue.match(
+      /^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i,
+    );
+    if (twelveHourMatch) {
+      const hour = parseInt(twelveHourMatch[1], 10);
+      const minute = parseInt(twelveHourMatch[2], 10);
+      const meridiem = twelveHourMatch[3].toUpperCase();
+      const normalizedHour =
+        hour === 0 ? 12 : hour > 12 ? ((hour - 1) % 12) + 1 : hour;
+      return `${String(normalizedHour).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${meridiem}`;
+    }
+
+    const twentyFourHourMatch = rawValue.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (twentyFourHourMatch) {
+      const hour = parseInt(twentyFourHourMatch[1], 10);
+      const minute = parseInt(twentyFourHourMatch[2], 10);
+      const meridiem = hour >= 12 ? "PM" : "AM";
+      const hour12 = hour % 12 || 12;
+      return `${String(hour12).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${meridiem}`;
+    }
+
+    return rawValue;
+  };
+
+  const addMinutesToTime = (startTime, durationMinutes) => {
+    if (!startTime || durationMinutes === undefined || durationMinutes === null) {
+      return "";
+    }
+
+    const parsedDuration = parseInt(durationMinutes, 10);
+    if (Number.isNaN(parsedDuration) || parsedDuration < 0) {
+      return "";
+    }
+
+    const rawValue = String(startTime).trim();
+    const twelveHourMatch = rawValue.match(
+      /^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i,
+    );
+
+    let hours;
+    let minutes;
+
+    if (twelveHourMatch) {
+      hours = parseInt(twelveHourMatch[1], 10);
+      minutes = parseInt(twelveHourMatch[2], 10);
+      const meridiem = twelveHourMatch[3].toUpperCase();
+
+      if (hours === 12) {
+        hours = meridiem === "AM" ? 0 : 12;
+      } else if (meridiem === "PM") {
+        hours += 12;
+      }
+    } else {
+      const twentyFourHourMatch = rawValue.match(
+        /^(\d{1,2}):(\d{2})(?::\d{2})?$/,
+      );
+
+      if (!twentyFourHourMatch) {
+        return "";
+      }
+
+      hours = parseInt(twentyFourHourMatch[1], 10);
+      minutes = parseInt(twentyFourHourMatch[2], 10);
+    }
+
+    const totalMinutes = hours * 60 + minutes + parsedDuration;
+    const endHours = Math.floor(totalMinutes / 60) % 24;
+    const endMinutes = totalMinutes % 60;
+
+    return formatClockTime(
+      `${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(2, "0")}`,
+    );
+  };
+
+  const formatExamTimeRange = (startTime, endTime, durationMinutes) => {
+    const formattedStart = formatClockTime(startTime);
+    const computedEnd = addMinutesToTime(startTime, durationMinutes);
+    const formattedEnd = computedEnd || formatClockTime(endTime);
+
+    if (!formattedStart && !formattedEnd) {
+      return "All day";
+    }
+
+    if (!formattedEnd || formattedStart === formattedEnd) {
+      return formattedStart || formattedEnd || "All day";
+    }
+
+    return `${formattedStart} - ${formattedEnd}`;
+  };
+
+  const formatEventTime = (startTime, endTime) => {
+    const isMidnight = (value) =>
+      value === "00:00" || value === "00:00:00" || value === "12:00 AM";
+
+    if ((!startTime && !endTime) || (isMidnight(startTime) && isMidnight(endTime))) {
+      return "All day";
+    }
+
+    const formatTime = (timeValue) => formatClockTime(timeValue);
+
+    if (startTime && endTime) {
+      return `${formatTime(startTime)} - ${formatTime(endTime)}`;
+    }
+
+    if (startTime) {
+      return formatTime(startTime);
+    }
+
+    return endTime ? formatTime(endTime) : "All day";
   };
 
   const tabs = [
@@ -279,15 +419,11 @@ const StudentCalendar = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
-                          {exam.start_time &&
-                            new Date(
-                              `2000-01-01T${exam.start_time}`,
-                            ).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          {exam.end_time &&
-                            ` - ${new Date(`2000-01-01T${exam.end_time}`).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+                          {formatExamTimeRange(
+                            exam.start_time,
+                            exam.end_time,
+                            exam.exam_duration,
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
                           <div className="flex items-center gap-1">
@@ -312,10 +448,18 @@ const StudentCalendar = () => {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-right">
-                          {isUpcoming(exam.exam_date) ? (
+                          {getEventTimingStatus(
+                            exam.exam_date,
+                            exam.exam_date,
+                          ) !== "past" ? (
                             <div>
                               <span className="text-indigo-600 dark:text-indigo-400 font-medium text-xs">
-                                Upcoming
+                                {getEventTimingStatus(
+                                  exam.exam_date,
+                                  exam.exam_date,
+                                ) === "ongoing"
+                                  ? "Ongoing"
+                                  : "Upcoming"}
                               </span>
                               <p className="text-xs text-slate-500 dark:text-slate-400">
                                 {exam.daysRemaining !== undefined &&
@@ -387,7 +531,7 @@ const StudentCalendar = () => {
                         className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
                       >
                         <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white whitespace-nowrap">
-                          {new Date(event.event_date).toLocaleDateString()}
+                          {formatEventDateRange(event.event_date, event.end_date)}
                         </td>
                         <td className="px-4 py-3">
                           <div>
@@ -400,15 +544,7 @@ const StudentCalendar = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
-                          {event.start_time &&
-                            new Date(
-                              `2000-01-01T${event.start_time}`,
-                            ).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          {event.end_time &&
-                            ` - ${new Date(`2000-01-01T${event.end_time}`).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+                          {formatEventTime(event.start_time, event.end_time)}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">
                           {event.location ? (
@@ -440,16 +576,24 @@ const StudentCalendar = () => {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-right">
-                          {isUpcoming(event.event_date) ? (
+                          {getEventTimingStatus(
+                            event.event_date,
+                            event.end_date,
+                          ) !== "past" ? (
                             <div>
                               <span className="text-indigo-600 dark:text-indigo-400 font-medium text-xs">
-                                Upcoming
+                                {getEventTimingStatus(
+                                  event.event_date,
+                                  event.end_date,
+                                ) === "ongoing"
+                                  ? "Ongoing"
+                                  : "Upcoming"}
                               </span>
                               <p className="text-xs text-slate-500 dark:text-slate-400">
                                 {event.daysRemaining !== undefined &&
                                 event.daysRemaining !== null
                                   ? `${Math.max(0, event.daysRemaining)}d left`
-                                  : `${Math.ceil((new Date(event.event_date) - new Date()) / (1000 * 60 * 60 * 24))}d left`}
+                                  : `${Math.ceil((new Date(event.end_date || event.event_date) - new Date()) / (1000 * 60 * 60 * 24))}d left`}
                               </p>
                             </div>
                           ) : (

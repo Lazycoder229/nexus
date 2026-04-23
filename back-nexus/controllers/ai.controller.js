@@ -460,7 +460,7 @@ export const chatWithNexusAI = async (req, res) => {
     ) {
       return res.status(401).json({
         error:
-          "Invalid Gemini API key. Get a free key at https://aistudio.google.com",
+          "Please wait while the model is loading, or contact support if the issue persists.",
       });
     }
 

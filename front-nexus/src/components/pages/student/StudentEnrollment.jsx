@@ -3,6 +3,90 @@ import axios from "axios";
 import Select from "react-select";
 import { GraduationCap, Plus, Pencil, X } from "lucide-react";
 
+const toDateInputValue = (value) => {
+  if (!value) return "";
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().split("T")[0];
+  }
+
+  const strValue = String(value);
+  if (strValue.includes("T")) {
+    return strValue.split("T")[0];
+  }
+
+  const parsed = new Date(strValue);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().split("T")[0];
+  }
+
+  return strValue;
+};
+
+const resolveStoredStudentId = () => {
+  const directUserId = localStorage.getItem("userId");
+  if (directUserId) return directUserId;
+
+  const userObj = localStorage.getItem("user");
+  if (!userObj) return null;
+
+  try {
+    const parsedUser = JSON.parse(userObj);
+    return parsedUser.user_id || parsedUser.userId || parsedUser.id || null;
+  } catch (e) {
+    console.error("Error parsing user object:", e);
+    return null;
+  }
+};
+
+const pickValue = (obj, ...keys) => {
+  for (const key of keys) {
+    const value = obj?.[key];
+    if (value !== undefined && value !== null) return value;
+  }
+  return "";
+};
+
+const normalizeAdmission = (admission) => {
+  if (!admission) return null;
+
+  return {
+    ...admission,
+    admission_id: pickValue(admission, "admission_id", "admissionId"),
+    first_name: pickValue(admission, "first_name", "firstName"),
+    middle_name: pickValue(admission, "middle_name", "middleName"),
+    last_name: pickValue(admission, "last_name", "lastName"),
+    email: pickValue(admission, "email"),
+    phone: pickValue(admission, "phone"),
+    date_of_birth: pickValue(admission, "date_of_birth", "dateOfBirth"),
+    gender: pickValue(admission, "gender"),
+    address: pickValue(admission, "address", "permanent_address", "permanentAddress"),
+    previous_school: pickValue(admission, "previous_school", "previousSchool"),
+    year_graduated: pickValue(admission, "year_graduated", "yearGraduated"),
+    program_applied: pickValue(admission, "program_applied", "programApplied"),
+    application_date: pickValue(admission, "application_date", "applicationDate"),
+    entrance_exam_score: pickValue(admission, "entrance_exam_score", "entranceExamScore"),
+    interview_date: pickValue(admission, "interview_date", "interviewDate"),
+    interview_notes: pickValue(admission, "interview_notes", "interviewNotes"),
+    documents_submitted: pickValue(admission, "documents_submitted", "documentsSubmitted"),
+    status: pickValue(admission, "status") || "Pending",
+    remarks: pickValue(admission, "remarks"),
+  };
+};
+
+const formatAcademicPeriodLabel = (period) => {
+  if (!period) return "";
+
+  const schoolYear =
+    period.school_year || period.academic_year || period.schoolYear || "";
+  const semester = period.semester || period.term || "";
+
+  if (schoolYear && semester) {
+    return `${schoolYear} • ${semester}`;
+  }
+
+  return schoolYear || semester || "";
+};
+
 const StatusBadge = ({ status }) => {
   const colors = {
     Pending:
@@ -12,6 +96,7 @@ const StatusBadge = ({ status }) => {
     Accepted:
       "bg-gradient-to-r from-green-400 to-emerald-400 text-white shadow-md",
     Rejected: "bg-gradient-to-r from-red-400 to-pink-400 text-white shadow-md",
+    Dropped: "bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-md",
     Enrolled:
       "bg-gradient-to-r from-purple-400 to-indigo-400 text-white shadow-md",
   };
@@ -20,6 +105,7 @@ const StatusBadge = ({ status }) => {
     "Under Review": "👀",
     Accepted: "✅",
     Rejected: "❌",
+    Dropped: "🛑",
     Enrolled: "🎓",
   };
   return (
@@ -88,18 +174,7 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
       try {
         const API_BASE =
           import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-        const userId = localStorage.getItem("userId");
-        const userObj = localStorage.getItem("user");
-        let studentId = userId;
-
-        if (!studentId && userObj) {
-          try {
-            const parsedUser = JSON.parse(userObj);
-            studentId = parsedUser.user_id;
-          } catch (e) {
-            console.error("Error parsing user object:", e);
-          }
-        }
+        const studentId = resolveStoredStudentId();
 
         if (studentId) {
           const res = await axios.get(`${API_BASE}/api/users/${studentId}`);
@@ -125,9 +200,9 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
             last_name: studentProfile.last_name || "",
             email: studentProfile.email || "",
             phone: studentProfile.phone || "",
-            date_of_birth: studentProfile.date_of_birth
-              ? studentProfile.date_of_birth.split("T")[0]
-              : "",
+            date_of_birth: toDateInputValue(
+              studentProfile.date_of_birth || studentProfile.dateOfBirth,
+            ),
             gender: studentProfile.gender || "",
             address:
               studentProfile.permanent_address || studentProfile.address || "",
@@ -159,33 +234,55 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
       setFormData({
         ...baseData,
         ...(initialData && {
-          admission_id: initialData.admission_id,
-          first_name: initialData.first_name || baseData.first_name,
-          middle_name: initialData.middle_name || baseData.middle_name,
-          last_name: initialData.last_name || baseData.last_name,
-          email: initialData.email || baseData.email,
-          phone: initialData.phone || baseData.phone,
-          date_of_birth: initialData.date_of_birth
-            ? initialData.date_of_birth.split("T")[0]
-            : baseData.date_of_birth || "",
-          gender: initialData.gender || baseData.gender,
-          address: initialData.address || baseData.address,
+          admission_id: pickValue(initialData, "admission_id", "admissionId"),
+          first_name:
+            pickValue(initialData, "first_name", "firstName") ||
+            baseData.first_name,
+          middle_name:
+            pickValue(initialData, "middle_name", "middleName") ||
+            baseData.middle_name,
+          last_name:
+            pickValue(initialData, "last_name", "lastName") ||
+            baseData.last_name,
+          email: pickValue(initialData, "email") || baseData.email,
+          phone: pickValue(initialData, "phone") || baseData.phone,
+          date_of_birth: toDateInputValue(
+            pickValue(initialData, "date_of_birth", "dateOfBirth") ||
+              baseData.date_of_birth,
+          ),
+          gender: pickValue(initialData, "gender") || baseData.gender,
+          address:
+            pickValue(
+              initialData,
+              "address",
+              "permanent_address",
+              "permanentAddress",
+            ) || baseData.address,
           program_applied:
-            initialData.program_applied || baseData.program_applied,
-          application_date: initialData.application_date
-            ? initialData.application_date.split("T")[0]
-            : baseData.application_date,
-          status: initialData.status || baseData.status,
+            pickValue(initialData, "program_applied", "programApplied") ||
+            baseData.program_applied,
+          application_date: toDateInputValue(
+            pickValue(initialData, "application_date", "applicationDate") ||
+              baseData.application_date,
+          ),
+          status: pickValue(initialData, "status") || baseData.status,
           previous_school:
-            initialData.previous_school || baseData.previous_school,
-          year_graduated: initialData.year_graduated || baseData.year_graduated,
+            pickValue(initialData, "previous_school", "previousSchool") ||
+            baseData.previous_school,
+          year_graduated:
+            pickValue(initialData, "year_graduated", "yearGraduated") ||
+            baseData.year_graduated,
           entrance_exam_score:
-            initialData.entrance_exam_score || baseData.entrance_exam_score,
-          interview_date: initialData.interview_date
-            ? initialData.interview_date.split("T")[0]
-            : "",
-          interview_notes: initialData.interview_notes || "",
-          documents_submitted: initialData.documents_submitted || "",
+            pickValue(initialData, "entrance_exam_score", "entranceExamScore") ||
+            baseData.entrance_exam_score,
+          interview_date: toDateInputValue(
+            pickValue(initialData, "interview_date", "interviewDate"),
+          ),
+          interview_notes:
+            pickValue(initialData, "interview_notes", "interviewNotes") || "",
+          documents_submitted:
+            pickValue(initialData, "documents_submitted", "documentsSubmitted") ||
+            "",
         }),
       });
     } else if (!initialData && !studentProfile) {
@@ -436,7 +533,7 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
                         value={program.name || program.program_name}
                       >
                         {program.code
-                          ? `${program.code} - ${program.name}`
+                          ? `${program.code} - ${program.name || program.program_name}`
                           : program.name || program.program_name}
                       </option>
                     ))}
@@ -642,38 +739,34 @@ export default function StudentEnrollment() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("add");
   const [loading, setLoading] = useState(true);
+  const [academicPeriod, setAcademicPeriod] = useState(null);
+
+  const enrolledPeriodLabel = formatAcademicPeriodLabel(academicPeriod);
 
   const fetchAdmissionData = async () => {
     try {
       const API_BASE =
         import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-      const userId = localStorage.getItem("userId");
-      const userObj = localStorage.getItem("user");
-      let studentId = userId;
-
-      if (!studentId && userObj) {
-        try {
-          const parsedUser = JSON.parse(userObj);
-          studentId = parsedUser.user_id;
-        } catch (e) {
-          console.error("Error parsing user object:", e);
-        }
-      }
+      const studentId = resolveStoredStudentId();
 
       if (studentId) {
-        // Fetch admission by user email or ID
+        // Fetch the logged-in student profile so we can look up the matching admission.
         const userRes = await axios.get(`${API_BASE}/api/users/${studentId}`);
-        const userEmail = userRes.data.email;
 
-        // Try to get admission by email
+        // Fetch admission by user email.
+        const userEmail = userRes.data.email;
         const res = await axios.get(
           `${API_BASE}/api/admissions?email=${userEmail}`,
         );
 
         if (res.data && res.data.length > 0) {
-          setAdmission(res.data[0]);
+          setAdmission(normalizeAdmission(res.data[0]));
+        } else {
+          setAdmission(null);
         }
+      } else {
+        setAdmission(null);
       }
     } catch (err) {
       console.error("Error fetching admission:", err);
@@ -682,17 +775,29 @@ export default function StudentEnrollment() {
     }
   };
 
+  const fetchActiveAcademicPeriod = async () => {
+    try {
+      const API_BASE =
+        import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+      const res = await axios.get(`${API_BASE}/api/academic-periods/active`);
+      setAcademicPeriod(res.data?.period || res.data || null);
+    } catch (err) {
+      console.error("Error fetching active academic period:", err);
+    }
+  };
+
   useEffect(() => {
     fetchAdmissionData();
+    fetchActiveAcademicPeriod();
   }, []);
 
-  // Auto-refresh admission status every 5 seconds to detect enrollment changes
+  // Auto-refresh admission status every 5 seconds.
   useEffect(() => {
     if (!admission) return;
-    
+
     const interval = setInterval(() => {
       fetchAdmissionData();
-    }, 5000); // Refresh every 5 seconds
+    }, 5000);
 
     // Also refresh when page becomes visible (tab focus)
     const handleVisibilityChange = () => {
@@ -721,13 +826,13 @@ export default function StudentEnrollment() {
 
       if (modalMode === "add") {
         const res = await axios.post(`${API_BASE}/api/admissions`, formData);
-        setAdmission(res.data);
+        setAdmission(normalizeAdmission(res.data));
       } else if (modalMode === "edit") {
         const res = await axios.put(
           `${API_BASE}/api/admissions/${formData.admission_id}`,
           formData,
         );
-        setAdmission(res.data);
+        setAdmission(normalizeAdmission(res.data));
       }
 
       setModalOpen(false);
@@ -775,19 +880,6 @@ export default function StudentEnrollment() {
           </button>
           <p className="text-sm text-slate-500 mt-4">
             The application process typically takes 5-10 minutes to complete
-          </p>
-        </div>
-      ) : admission.status === "Enrolled" ? (
-        <div className="text-center bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl border border-green-200 p-12 shadow-sm">
-          <div className="bg-white rounded-full p-4 w-20 h-20 mx-auto mb-6 shadow-md">
-            <GraduationCap size={48} className="mx-auto text-green-500" />
-          </div>
-          <h3 className="text-xl font-semibold text-slate-700 mb-3">
-            You are already enrolled in this semester
-          </h3>
-          <p className="text-slate-600 mb-6 max-w-md mx-auto">
-            Your application has been approved and you are officially enrolled.
-            Please check your courses and schedule in the My Courses section.
           </p>
         </div>
       ) : (
@@ -883,9 +975,27 @@ export default function StudentEnrollment() {
           {admission.status === "Accepted" && (
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6 shadow-sm">
               <p className="text-sm text-slate-600">
-                Congratulations! Your application has been accepted. Please
-                proceed to the enrollment process.
+                Congratulations! Your admission has been approved. Please wait
+                for the next enrollment instructions from the registrar.
               </p>
+            </div>
+          )}
+
+          {admission.status === "Enrolled" && (
+            <div className="rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 via-indigo-50 to-white p-6 shadow-sm">
+              <div className="space-y-3">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-purple-700 ring-1 ring-purple-200">
+                  <GraduationCap size={14} /> Enrollment Confirmed
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">
+                    You are enrolled to {enrolledPeriodLabel || "the current semester"}.
+                  </h3>
+                  <p className="mt-2 max-w-2xl text-sm text-slate-600">
+                    Your admission record is complete and tied directly to your student profile.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 

@@ -3,7 +3,7 @@ import db from "../config/db.js";
 
 // Get all enrollments with student, course, and period details
 export const getAllEnrollments = async (filters = {}) => {
-  const { course_id, period_id, section_id } = filters;
+  const { course_id, period_id, section_id, student_id } = filters;
 
   let query = `SELECT 
         e.enrollment_id,
@@ -12,10 +12,11 @@ export const getAllEnrollments = async (filters = {}) => {
         u.first_name,
         u.last_name,
         sd.student_number,
-        sd.year_level,
+        COALESCE(e.year_level, sd.year_level) AS year_level,
         sd.course AS student_course,
         
         e.course_id,
+        e.section_id,
         c.code AS course_code,
         c.title AS course_title,
         c.units,
@@ -51,6 +52,10 @@ export const getAllEnrollments = async (filters = {}) => {
   if (section_id) {
     constraints.push("e.section_id = ?");
     params.push(section_id);
+  }
+  if (student_id) {
+    constraints.push("e.student_id = ?");
+    params.push(student_id);
   }
 
   if (constraints.length > 0) {
