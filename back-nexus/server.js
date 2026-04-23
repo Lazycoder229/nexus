@@ -87,7 +87,7 @@ const limiter = rateLimit({
 // CORS
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http:// 192.168.254.102:5173"],
+    origin: ["http://localhost:5173", "https://nexus-ruddy-theta.vercel.app/"],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
     exposedHeaders: ["Authorization"],
