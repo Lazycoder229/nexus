@@ -14,5 +14,6 @@ for (let file of files) {
         console.log(`Updated ${file}`);
     } else {
         console.log(`File not found: ${file}`);
+        
     }
 }
