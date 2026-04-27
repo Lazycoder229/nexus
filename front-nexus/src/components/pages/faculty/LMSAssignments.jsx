@@ -16,6 +16,7 @@ import {
   X,
   Download,
   Upload,
+  Sparkles,
 } from "lucide-react";
 import axios from "axios";
 
@@ -42,6 +43,7 @@ const LMSAssignments = () => {
     total_points: 100,
     due_date: "",
     instructions: "",
+    model_answer: "",
     allow_late_submission: false,
     section_id: "",
     course_id: "",
@@ -92,6 +94,9 @@ const LMSAssignments = () => {
     score: 0,
     feedback: "",
   });
+
+  const [aiChecking, setAiChecking] = useState(false);
+  const [aiModelAnswer, setAiModelAnswer] = useState("");
 
   useEffect(() => {
     fetchAssignments();
@@ -258,6 +263,38 @@ const LMSAssignments = () => {
     }
   };
 
+  const handleAiCheck = async () => {
+    if (!aiModelAnswer.trim()) {
+      alert("Please enter the model/expected answer before running the AI check.");
+      return;
+    }
+
+    setAiChecking(true);
+    try {
+      const response = await axios.post(
+        `${API_BASE}/api/lms/assignments/submissions/${selectedSubmission.id}/ai-check`,
+        { model_answer: aiModelAnswer },
+      );
+
+      if (response.data.success) {
+        setGradeData({
+          score: response.data.score,
+          feedback: response.data.feedback,
+        });
+      } else {
+        alert(response.data.message || "AI check failed. Please grade manually.");
+      }
+    } catch (error) {
+      console.error("AI check error:", error);
+      alert(
+        error.response?.data?.message ||
+          "AI check failed. Please try again or grade manually.",
+      );
+    } finally {
+      setAiChecking(false);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       title: "",
@@ -266,6 +303,7 @@ const LMSAssignments = () => {
       total_points: 100,
       due_date: "",
       instructions: "",
+      model_answer: "",
       allow_late_submission: false,
       section_id: "",
       course_id: "",
@@ -544,6 +582,25 @@ const LMSAssignments = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
+
+              {formData.assignment_type !== "quiz" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Model / Expected Answer
+                    <span className="ml-2 text-xs text-indigo-500 font-normal">
+                      (Used by AI checker when grading student submissions)
+                    </span>
+                  </label>
+                  <textarea
+                    name="model_answer"
+                    value={formData.model_answer}
+                    onChange={handleInputChange}
+                    rows="4"
+                    placeholder="Enter the ideal/expected answer so the AI can compare it against student submissions..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -893,6 +950,7 @@ const LMSAssignments = () => {
                           onClick={() => {
                             setSelectedSubmission(submission);
                             setGradeData({ score: 0, feedback: "" });
+                            setAiModelAnswer(selectedAssignment.model_answer || "");
                             setShowGradeModal(true);
                           }}
                           className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm flex items-center gap-2"
@@ -931,6 +989,33 @@ const LMSAssignments = () => {
                 <p className="text-sm text-gray-600 mb-4">
                   Student: {selectedSubmission.student_name}
                 </p>
+              </div>
+
+              {/* AI-Assisted Checker Section */}
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                  <span className="text-sm font-semibold text-indigo-700">AI-Assisted Checker</span>
+                </div>
+                <p className="text-xs text-indigo-600">
+                  Enter the expected answer below and let AI suggest a score and feedback based on the student&apos;s submission.
+                </p>
+                <textarea
+                  value={aiModelAnswer}
+                  onChange={(e) => setAiModelAnswer(e.target.value)}
+                  rows="3"
+                  placeholder="Paste your model / expected answer here..."
+                  className="w-full px-3 py-2 border border-indigo-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={handleAiCheck}
+                  disabled={aiChecking}
+                  className="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm flex items-center justify-center gap-2 disabled:bg-indigo-300"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {aiChecking ? "Checking with AI..." : "Run AI Check"}
+                </button>
               </div>
 
               <div>
