@@ -597,10 +597,10 @@ Respond ONLY with valid JSON in this exact format (no markdown, no extra text):
             console.warn(`[AI Check] Skipping ${modelName}:`, err.message);
             continue;
           }
-          // JSON parse error — try to recover a partial result
+          // JSON parse error — continue to next model to attempt recovery
           if (err instanceof SyntaxError) {
-            console.warn("[AI Check] JSON parse error, returning raw text");
-            break;
+            console.warn(`[AI Check] JSON parse error for ${modelName}, trying next model`);
+            continue;
           }
           throw err;
         }
