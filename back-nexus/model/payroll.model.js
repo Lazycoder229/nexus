@@ -96,12 +96,22 @@ const Payroll = {
 
   // Delete payroll setup (also removes associated payslips)
   deleteSetup: async (id) => {
-    await db.query("DELETE FROM payslips WHERE payroll_setup_id = ?", [id]);
-    const [result] = await db.query(
-      "DELETE FROM payroll_setup WHERE payroll_setup_id = ?",
-      [id],
-    );
-    return result;
+    const conn = await db.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.query("DELETE FROM payslips WHERE payroll_setup_id = ?", [id]);
+      const [result] = await conn.query(
+        "DELETE FROM payroll_setup WHERE payroll_setup_id = ?",
+        [id],
+      );
+      await conn.commit();
+      return result;
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   },
 
   // Get payslip by ID
@@ -112,9 +122,7 @@ const Payroll = {
              COALESCE(u.first_name, u2.first_name) as first_name,
              COALESCE(u.middle_name, u2.middle_name) as middle_name,
              COALESCE(u.last_name, u2.last_name) as last_name,
-             ps.payroll_period_start, ps.payroll_period_end, ps.pay_date,
-             ps.payroll_period_start as start_date,
-             ps.payroll_period_end as end_date
+             ps.payroll_period_start as start_date, ps.payroll_period_end as end_date, ps.pay_date
       FROM payslips p
       LEFT JOIN employee_records er ON p.employee_id = er.employee_id
       LEFT JOIN users u ON er.user_id = u.user_id
