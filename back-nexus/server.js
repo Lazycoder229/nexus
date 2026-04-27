@@ -87,13 +87,13 @@ const limiter = rateLimit({
 // CORS
 app.use(
   cors({
-    origin: ["http://nexus-tau-kohl.vercel.app"],
+    origin: "http://nexus-tau-kohl.vercel.app",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
     exposedHeaders: ["Authorization"],
   }),
 );
-
+app.options('*', cors()); // handle preflight
 // Security headers
 app.use(helmet());
 
