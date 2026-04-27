@@ -74,20 +74,60 @@ const Payroll = {
     return rows;
   },
 
-  // ... skip updateSetup ...
+  // Update payroll setup
+  updateSetup: async (id, payrollData) => {
+    const query = `
+      UPDATE payroll_setup SET
+        payroll_period_start = ?, payroll_period_end = ?, pay_date = ?,
+        payroll_type = ?, status = ?, notes = ?
+      WHERE payroll_setup_id = ?
+    `;
+    const [result] = await db.query(query, [
+      payrollData.payroll_period_start,
+      payrollData.payroll_period_end,
+      payrollData.pay_date,
+      payrollData.payroll_type,
+      payrollData.status,
+      payrollData.notes,
+      id,
+    ]);
+    return result;
+  },
+
+  // Delete payroll setup (also removes associated payslips)
+  deleteSetup: async (id) => {
+    const conn = await db.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.query("DELETE FROM payslips WHERE payroll_setup_id = ?", [id]);
+      const [result] = await conn.query(
+        "DELETE FROM payroll_setup WHERE payroll_setup_id = ?",
+        [id],
+      );
+      await conn.commit();
+      return result;
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
+  },
 
   // Get payslip by ID
   getPayslipById: async (id) => {
     const query = `
-      SELECT p.*, er.employee_number, er.department, er.position,
-             u.first_name, u.middle_name, u.last_name,
-             ps.payroll_period_start, ps.payroll_period_end, ps.pay_date,
-             ps.payroll_period_start as start_date,
-             ps.payroll_period_end as end_date
+      SELECT p.*,
+             er.employee_number, er.department, er.position,
+             COALESCE(u.first_name, u2.first_name) as first_name,
+             COALESCE(u.middle_name, u2.middle_name) as middle_name,
+             COALESCE(u.last_name, u2.last_name) as last_name,
+             ps.payroll_period_start as start_date, ps.payroll_period_end as end_date, ps.pay_date
       FROM payslips p
-      INNER JOIN employee_records er ON p.employee_id = er.employee_id
-      INNER JOIN users u ON er.user_id = u.user_id
-      INNER JOIN payroll_setup ps ON p.payroll_setup_id = ps.payroll_setup_id
+      LEFT JOIN employee_records er ON p.employee_id = er.employee_id
+      LEFT JOIN users u ON er.user_id = u.user_id
+      LEFT JOIN users u2 ON p.user_id = u2.user_id
+      LEFT JOIN payroll_setup ps ON p.payroll_setup_id = ps.payroll_setup_id
       WHERE p.payslip_id = ?
     `;
     const [rows] = await db.query(query, [id]);
