@@ -192,7 +192,8 @@ const LMSAssignments = {
         file_url = VALUES(file_url),
         file_name = VALUES(file_name),
         submitted_at = NOW(),
-        status = 'submitted'
+        status = 'submitted',
+        id = LAST_INSERT_ID(id)
     `;
 
     const [result] = await db.query(query, [
@@ -203,7 +204,16 @@ const LMSAssignments = {
       file_name,
     ]);
 
-    return result.insertId || result.affectedRows;
+    if (result.insertId) {
+      return result.insertId;
+    }
+
+    const [rows] = await db.query(
+      `SELECT id FROM lms_assignment_submissions WHERE assignment_id = ? AND student_id = ? LIMIT 1`,
+      [assignment_id, student_id]
+    );
+
+    return rows[0]?.id || null;
   },
 
   // Get submissions for an assignment
