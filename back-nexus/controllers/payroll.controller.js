@@ -321,6 +321,18 @@ export const getMyPayslips = async (req, res) => {
   }
 };
 
+export const getEligibleUsers = async (req, res) => {
+  try {
+    const users = await Payroll.getAllNonStudentUsers();
+    res.json({ success: true, data: users });
+  } catch (err) {
+    console.error("Error fetching eligible users:", err);
+    res
+      .status(500)
+      .json({ message: "Error fetching eligible users", error: err.message });
+  }
+};
+
 export default {
   getAllPayrollSetups,
   getPayrollSetupById,
@@ -335,4 +347,5 @@ export default {
   getPayrollSummary,
   autoCreatePayslips,
   getMyPayslips,
+  getEligibleUsers,
 };

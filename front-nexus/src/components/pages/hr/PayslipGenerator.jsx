@@ -27,20 +27,8 @@ const PayslipGenerator = () => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const response = await api.get(`/api/users`);
-        const users = (response.data.data || response.data || []).filter(
-          (u) =>
-            u.role &&
-            [
-              "Admin",
-              "Faculty",
-              "HR",
-              "Accounting",
-              "Staff",
-              "Employee",
-            ].includes(u.role),
-        );
-        setEligibleEmployees(users);
+        const response = await api.get(`/api/payroll/eligible-users`);
+        setEligibleEmployees(response.data.data || []);
       } catch (error) {
         console.error("Error fetching employees:", error);
       }
