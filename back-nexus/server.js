@@ -93,7 +93,7 @@ app.use(
     exposedHeaders: ["Authorization"],
   }),
 );
-app.options('*', cors()); // handle preflight
+
 // Security headers
 app.use(helmet());
 
