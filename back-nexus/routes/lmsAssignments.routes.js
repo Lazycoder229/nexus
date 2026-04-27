@@ -48,4 +48,7 @@ router.get("/:assignment_id/quiz-questions", lmsAssignmentsController.getQuizQue
 // Get quiz review (secure)
 router.get("/:assignment_id/quiz-review", lmsAssignmentsController.getQuizReview);
 
+// AI-assisted check of a student submission
+router.post("/submissions/:submission_id/ai-check", lmsAssignmentsController.aiCheckSubmission);
+
 export default router;

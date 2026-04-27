@@ -15,14 +15,15 @@ const LMSAssignments = {
       academic_period_id,
       allow_late_submission,
       instructions,
+      model_answer,
     } = assignmentData;
 
     const query = `
       INSERT INTO lms_assignments 
       (faculty_id, section_id, course_id, title, description, assignment_type, 
        total_points, due_date, academic_period_id, allow_late_submission, 
-       instructions, created_at, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'active')
+       instructions, model_answer, created_at, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'active')
     `;
 
     const [result] = await db.query(query, [
@@ -37,6 +38,7 @@ const LMSAssignments = {
       academic_period_id,
       allow_late_submission || 0,
       instructions,
+      model_answer || null,
     ]);
 
     return result.insertId;

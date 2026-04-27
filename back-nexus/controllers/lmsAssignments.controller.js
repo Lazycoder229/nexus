@@ -2,6 +2,7 @@ import LMSAssignments from "../model/lmsAssignments.model.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { GoogleGenAI } from "@google/genai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -480,6 +481,156 @@ const lmsAssignmentsController = {
       });
     }
   },
-};
+  // AI-assisted check of a student submission against a model answer
+  aiCheckSubmission: async (req, res) => {
+    try {
+      const { submission_id } = req.params;
+      const { model_answer } = req.body;
 
-export default lmsAssignmentsController;
+      if (!model_answer || !model_answer.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Model answer is required for AI checking",
+        });
+      }
+
+      // Fetch the submission
+      const [submissionRows] = await (await import("../config/db.js")).default.query(
+        `SELECT las.*, la.total_points, la.title
+         FROM lms_assignment_submissions las
+         JOIN lms_assignments la ON las.assignment_id = la.id
+         WHERE las.id = ?`,
+        [submission_id]
+      );
+
+      if (!submissionRows.length) {
+        return res.status(404).json({ success: false, message: "Submission not found" });
+      }
+
+      const submission = submissionRows[0];
+      let studentText = submission.submission_text || "";
+
+      // If a file was uploaded, try to extract its text
+      if (submission.file_url) {
+        const filePath = path.join(__dirname, "../public", submission.file_url);
+        if (fs.existsSync(filePath)) {
+          const ext = path.extname(submission.file_name || submission.file_url).toLowerCase();
+          try {
+            if (ext === ".pdf") {
+              const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
+              const buffer = fs.readFileSync(filePath);
+              const pdfData = await pdfParse(buffer);
+              studentText = pdfData.text || studentText;
+            } else if (ext === ".docx" || ext === ".doc") {
+              const mammoth = (await import("mammoth")).default;
+              const result = await mammoth.extractRawText({ path: filePath });
+              studentText = result.value || studentText;
+            }
+          } catch (parseErr) {
+            console.warn("[AI Check] Could not parse file, using text fallback:", parseErr.message);
+          }
+        }
+      }
+
+      if (!studentText.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "No readable content found in the submission",
+        });
+      }
+
+      const totalPoints = submission.total_points || 100;
+
+      const prompt = `You are a fair academic grader. Given the model answer and a student's submitted answer below, evaluate the student's work.
+
+Assignment: "${submission.title}"
+Total Points: ${totalPoints}
+
+Model Answer:
+${model_answer}
+
+Student's Answer:
+${studentText}
+
+Score the student's answer on a scale of 0 to ${totalPoints}. Consider correctness, completeness, and clarity.
+Respond ONLY with valid JSON in this exact format (no markdown, no extra text):
+{"score": <number>, "feedback": "<brief constructive feedback in 2-3 sentences>"}`;
+
+      const AI_MODELS = [
+        "gemini-2.0-flash-lite",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+      ];
+
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          message: "AI checker requires GEMINI_API_KEY to be configured",
+        });
+      }
+
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      let aiResult = null;
+
+      for (const modelName of AI_MODELS) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            config: { maxOutputTokens: 256, temperature: 0.2 },
+          });
+
+          const rawText = (response.text || "").trim();
+          // Strip markdown code fences if present
+          const jsonText = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+          aiResult = JSON.parse(jsonText);
+          console.log(`[AI Check] Used model: ${modelName}`);
+          break;
+        } catch (err) {
+          const shouldSkip =
+            err.status === 429 ||
+            err.status === 404 ||
+            err.message?.includes("429") ||
+            err.message?.includes("quota") ||
+            err.message?.includes("not found");
+          if (shouldSkip) {
+            console.warn(`[AI Check] Skipping ${modelName}:`, err.message);
+            continue;
+          }
+          // JSON parse error — continue to next model to attempt recovery
+          if (err instanceof SyntaxError) {
+            console.warn(`[AI Check] JSON parse error for ${modelName}, trying next model`);
+            continue;
+          }
+          throw err;
+        }
+      }
+
+      if (!aiResult || typeof aiResult.score === "undefined") {
+        return res.status(500).json({
+          success: false,
+          message: "AI could not generate a valid score. Please try again or grade manually.",
+        });
+      }
+
+      // Clamp score to valid range
+      const clampedScore = Math.min(
+        Math.max(Math.round(Number(aiResult.score) * 100) / 100, 0),
+        totalPoints
+      );
+
+      return res.json({
+        success: true,
+        score: clampedScore,
+        feedback: aiResult.feedback || "",
+      });
+    } catch (error) {
+      console.error("Error in AI check submission:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to perform AI check",
+        error: error.message,
+      });
+    }
+  },
+};
