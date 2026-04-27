@@ -158,6 +158,16 @@ const LMSAssignments = () => {
     }
   };
 
+  const openGradeModal = (submission) => {
+    setSelectedSubmission(submission);
+    setGradeData({
+      score: submission.score ?? 0,
+      feedback: submission.feedback || "",
+    });
+    setAiModelAnswer(selectedAssignment?.model_answer || "");
+    setShowGradeModal(true);
+  };
+
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({
@@ -222,10 +232,16 @@ const LMSAssignments = () => {
     e.preventDefault();
 
     try {
+      const submissionId = selectedSubmission?.id ?? selectedSubmission?.submission_id;
+      if (!submissionId) {
+        alert("Submission not found.");
+        return;
+      }
+
       const userId = localStorage.getItem("userId");
 
       const response = await axios.put(
-        `${API_BASE}/api/lms/assignments/submissions/${selectedSubmission.id}/grade`,
+        `${API_BASE}/api/lms/assignments/submissions/${submissionId}/grade`,
         {
           ...gradeData,
           graded_by: userId,
@@ -271,9 +287,20 @@ const LMSAssignments = () => {
 
     setAiChecking(true);
     try {
+      const submissionId = selectedSubmission?.id ?? selectedSubmission?.submission_id;
+      const assignmentId = selectedAssignment?.id ?? selectedAssignment?.assignment_id;
+      if (!submissionId) {
+        alert("Submission not found.");
+        return;
+      }
+
       const response = await axios.post(
-        `${API_BASE}/api/lms/assignments/submissions/${selectedSubmission.id}/ai-check`,
-        { model_answer: aiModelAnswer },
+        `${API_BASE}/api/lms/assignments/submissions/${submissionId}/ai-check`,
+        {
+          model_answer: aiModelAnswer,
+          assignment_id: assignmentId,
+          student_id: selectedSubmission?.student_id,
+        },
       );
 
       if (response.data.success) {
@@ -944,15 +971,17 @@ const LMSAssignments = () => {
                               Feedback: {submission.feedback}
                             </p>
                           )}
+                          <button
+                            onClick={() => openGradeModal(submission)}
+                            className="mt-3 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm flex items-center gap-2"
+                          >
+                            <Award className="w-4 h-4" />
+                            Override Grade
+                          </button>
                         </div>
                       ) : (
                         <button
-                          onClick={() => {
-                            setSelectedSubmission(submission);
-                            setGradeData({ score: 0, feedback: "" });
-                            setAiModelAnswer(selectedAssignment.model_answer || "");
-                            setShowGradeModal(true);
-                          }}
+                          onClick={() => openGradeModal(submission)}
                           className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm flex items-center gap-2"
                         >
                           <Award className="w-4 h-4" />
