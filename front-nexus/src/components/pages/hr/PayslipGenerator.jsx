@@ -285,10 +285,24 @@ const PayslipGenerator = () => {
         }
       }
 
+      // Map frontend form field names to backend model field names
       const payload = {
-        ...payslipFormData,
-        employee_id: finalEmployeeId, // Use the (potentially new) ID
-        payroll_setup_id: selectedSetup, // Use selectedSetup directly as it is the ID
+        employee_id: finalEmployeeId,
+        payroll_setup_id: selectedSetup,
+        basic_salary: payslipFormData.basic_pay,
+        allowances: payslipFormData.allowances,
+        overtime_pay: payslipFormData.overtime_pay,
+        bonus: payslipFormData.bonus,
+        other_earnings:
+          (parseFloat(payslipFormData.holiday_pay) || 0) +
+          (parseFloat(payslipFormData.night_differential) || 0),
+        sss_deduction: payslipFormData.sss_deduction,
+        philhealth_deduction: payslipFormData.philhealth_deduction,
+        pagibig_deduction: payslipFormData.pagibig_deduction,
+        withholding_tax: payslipFormData.tax_deduction,
+        loan_deduction: payslipFormData.loan_deduction,
+        other_deductions: payslipFormData.other_deductions,
+        remarks: payslipFormData.notes,
       };
 
       if (payslipFormData.payslip_id) {
@@ -319,7 +333,13 @@ const PayslipGenerator = () => {
   };
 
   const handleEditPayslip = (payslip) => {
-    setPayslipFormData(payslip);
+    // Map backend field names to frontend form field names
+    setPayslipFormData({
+      ...payslip,
+      basic_pay: payslip.basic_salary ?? payslip.basic_pay ?? "",
+      tax_deduction: payslip.withholding_tax ?? payslip.tax_deduction ?? "",
+      notes: payslip.remarks ?? payslip.notes ?? "",
+    });
     setShowPayslipModal(true);
   };
 
