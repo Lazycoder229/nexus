@@ -13,6 +13,7 @@ import {
   getPayrollSummary,
   autoCreatePayslips,
   getMyPayslips,
+  getEligibleUsers,
 } from "../controllers/payroll.controller.js";
 import { authenticateToken } from "../helpers/jwt.js";
 
@@ -41,5 +42,8 @@ router.post("/payslips/auto-create/:setupId", autoCreatePayslips);
 
 // Summary
 router.get("/summary/:setupId", getPayrollSummary);
+
+// Eligible users for payslip creation (joined with employee_records)
+router.get("/eligible-users", getEligibleUsers);
 
 export default router;
