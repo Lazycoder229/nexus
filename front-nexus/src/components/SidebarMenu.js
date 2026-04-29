@@ -453,7 +453,7 @@ const Menu = {
         },
       ],
     },
-    {
+   /*  {
       title: "Reports",
       icons: ReportIcon,
       submenu: [
@@ -473,7 +473,7 @@ const Menu = {
           link: "/faculty/faculty_report_performance",
         },
       ],
-    },
+    }, */
   ],
 
   Student: [
