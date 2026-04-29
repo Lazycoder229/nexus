@@ -7,6 +7,7 @@ import {
   loginUser,
   updateStudent,
   updateEmployee,
+  changePassword,
   deleteUser,
 } from "../controllers/user.controller.js";
 
@@ -29,6 +30,9 @@ router.post("/auth/login", loginUser);
 
 // Register (unified endpoint for student registration from frontend)
 router.post("/auth/register", registerStudent);
+
+// Change password
+router.post("/auth/change-password/:userId", changePassword);
 
 // Update student
 router.put("/users/student/:userId", updateStudent);

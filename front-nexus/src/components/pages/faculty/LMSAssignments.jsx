@@ -17,8 +17,10 @@ import {
   Download,
   Upload,
   Sparkles,
+  FileUp,
 } from "lucide-react";
 import axios from "axios";
+import DocumentViewer from "../../shared/DocumentViewer.jsx";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -29,12 +31,23 @@ const LMSAssignments = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
   const [showGradeModal, setShowGradeModal] = useState(false);
+  const [showDocumentViewer, setShowDocumentViewer] = useState(false);
+  const [viewingDocument, setViewingDocument] = useState(null);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [submissions, setSubmissions] = useState([]);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [activeTab, setActiveTab] = useState("active");
+
+  // Document import state (for quiz question import)
+  const [importingDoc, setImportingDoc] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
+  // Model answer file state
+  const [modelAnswerFile, setModelAnswerFile] = useState(null);
+  const [modelAnswerFileName, setModelAnswerFileName] = useState("");
+  const [uploadingModelAnswer, setUploadingModelAnswer] = useState(false);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -71,7 +84,7 @@ const LMSAssignments = () => {
 
   const updateQuestion = (id, field, value) => {
     setQuestions(
-      questions.map((q) => (q.id === id ? { ...q, [field]: value } : q)),
+      questions.map((q) => (q.id === id ? { ...q, [field]: value } : q))
     );
   };
 
@@ -81,13 +94,84 @@ const LMSAssignments = () => {
         if (q.id === questionId) {
           const newOptions = [...q.options];
           newOptions[optionIndex] = value;
-          // If the updated option was the correct answer, update that too if needed
-          // But usually we select correct answer from dropdown
           return { ...q, options: newOptions };
         }
         return q;
-      }),
+      })
     );
+  };
+
+  // Handle quiz question import from PDF/DOCX
+  const handleDocumentImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImportingDoc(true);
+    setImportResult(null);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const base64 = event.target.result;
+          const response = await axios.post(
+            `${API_BASE}/api/lms/assignments/parse-quiz-document`,
+            { file_base64: base64, file_name: file.name }
+          );
+
+          if (response.data.success && response.data.questions.length > 0) {
+            const imported = response.data.questions.map((q) => ({
+              id: Date.now() + Math.random(),
+              question_text: q.question_text || "",
+              question_type: "multiple_choice",
+              points: q.points || 1,
+              options:
+                q.options?.length >= 4
+                  ? q.options.slice(0, 4)
+                  : [
+                      ...(q.options || []),
+                      ...Array(4 - (q.options?.length || 0)).fill(""),
+                    ],
+              correct_answer: q.correct_answer || q.options?.[0] || "",
+            }));
+
+            setQuestions((prev) => [...prev, ...imported]);
+            setImportResult({ count: imported.length, fileName: file.name });
+          } else {
+            alert(
+              response.data.message ||
+                "No questions found in the document. Please check the format."
+            );
+          }
+        } catch (err) {
+          alert(
+            err.response?.data?.message ||
+              "Failed to parse document. Please check the file format."
+          );
+        } finally {
+          setImportingDoc(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setImportingDoc(false);
+    }
+
+    e.target.value = "";
+  };
+
+  // Handle model answer file selection
+  const handleModelAnswerFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setModelAnswerFile(file);
+    setModelAnswerFileName(file.name);
+    e.target.value = "";
+  };
+
+  const clearModelAnswerFile = () => {
+    setModelAnswerFile(null);
+    setModelAnswerFileName("");
   };
 
   const [gradeData, setGradeData] = useState({
@@ -98,6 +182,10 @@ const LMSAssignments = () => {
   const [aiChecking, setAiChecking] = useState(false);
   const [aiModelAnswer, setAiModelAnswer] = useState("");
 
+  // AI grade modal: model answer file
+  const [aiModelAnswerFile, setAiModelAnswerFile] = useState(null);
+  const [aiModelAnswerFileName, setAiModelAnswerFileName] = useState("");
+
   useEffect(() => {
     fetchAssignments();
     fetchFacultyAssignments();
@@ -107,7 +195,7 @@ const LMSAssignments = () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
-        `${API_BASE}/api/faculty-assignments/faculty/${userId}`,
+        `${API_BASE}/api/faculty-assignments/faculty/${userId}`
       );
       if (response.data.success) {
         setFacultyAssignments(response.data.data);
@@ -131,7 +219,7 @@ const LMSAssignments = () => {
             faculty_id: userId,
             academic_period_id: academicPeriodId,
           },
-        },
+        }
       );
 
       if (response.data.success) {
@@ -147,9 +235,8 @@ const LMSAssignments = () => {
   const fetchSubmissions = async (assignmentId) => {
     try {
       const response = await axios.get(
-        `${API_BASE}/api/lms/assignments/${assignmentId}/submissions`,
+        `${API_BASE}/api/lms/assignments/${assignmentId}/submissions`
       );
-
       if (response.data.success) {
         setSubmissions(response.data.submissions);
       }
@@ -165,6 +252,8 @@ const LMSAssignments = () => {
       feedback: submission.feedback || "",
     });
     setAiModelAnswer(selectedAssignment?.model_answer || "");
+    setAiModelAnswerFile(null);
+    setAiModelAnswerFileName("");
     setShowGradeModal(true);
   };
 
@@ -185,21 +274,46 @@ const LMSAssignments = () => {
       const academicPeriodId =
         localStorage.getItem("currentAcademicPeriod") || 1;
 
+      let modelAnswerFileUrl = null;
+
+      // Upload model answer file if provided
+      if (modelAnswerFile) {
+        setUploadingModelAnswer(true);
+        const reader = new FileReader();
+        const base64 = await new Promise((resolve) => {
+          reader.onload = (ev) => resolve(ev.target.result);
+          reader.readAsDataURL(modelAnswerFile);
+        });
+
+        const uploadRes = await axios.post(
+          `${API_BASE}/api/lms/assignments/upload`,
+          {
+            file_base64: base64,
+            file_name: modelAnswerFile.name,
+          }
+        );
+
+        if (uploadRes.data.success) {
+          modelAnswerFileUrl = uploadRes.data.file_url;
+        }
+        setUploadingModelAnswer(false);
+      }
+
       const assignmentData = {
         ...formData,
         faculty_id: userId,
         academic_period_id: academicPeriodId,
+        model_answer_file_url: modelAnswerFileUrl,
       };
 
       const response = await axios.post(
         `${API_BASE}/api/lms/assignments`,
-        assignmentData,
+        assignmentData
       );
 
       if (response.data.success) {
         const newAssignmentId = response.data.assignmentId;
 
-        // If it's a quiz, save questions
         if (formData.assignment_type === "quiz" && questions.length > 0) {
           for (let i = 0; i < questions.length; i++) {
             const q = questions[i];
@@ -225,6 +339,7 @@ const LMSAssignments = () => {
       alert("Failed to create assignment");
     } finally {
       setLoading(false);
+      setUploadingModelAnswer(false);
     }
   };
 
@@ -232,7 +347,8 @@ const LMSAssignments = () => {
     e.preventDefault();
 
     try {
-      const submissionId = selectedSubmission?.id ?? selectedSubmission?.submission_id;
+      const submissionId =
+        selectedSubmission?.id ?? selectedSubmission?.submission_id;
       if (!submissionId) {
         alert("Submission not found.");
         return;
@@ -245,7 +361,7 @@ const LMSAssignments = () => {
         {
           ...gradeData,
           graded_by: userId,
-        },
+        }
       );
 
       if (response.data.success) {
@@ -266,7 +382,7 @@ const LMSAssignments = () => {
 
     try {
       const response = await axios.delete(
-        `${API_BASE}/api/lms/assignments/${id}`,
+        `${API_BASE}/api/lms/assignments/${id}`
       );
 
       if (response.data.success) {
@@ -280,27 +396,55 @@ const LMSAssignments = () => {
   };
 
   const handleAiCheck = async () => {
-    if (!aiModelAnswer.trim()) {
-      alert("Please enter the model/expected answer before running the AI check.");
+    if (!aiModelAnswer.trim() && !aiModelAnswerFile) {
+      alert(
+        "Please enter a model answer or upload a PDF/DOCX before running the AI check."
+      );
       return;
     }
 
     setAiChecking(true);
     try {
-      const submissionId = selectedSubmission?.id ?? selectedSubmission?.submission_id;
-      const assignmentId = selectedAssignment?.id ?? selectedAssignment?.assignment_id;
+      const submissionId =
+        selectedSubmission?.id ?? selectedSubmission?.submission_id;
+      const assignmentId =
+        selectedAssignment?.id ?? selectedAssignment?.assignment_id;
       if (!submissionId) {
         alert("Submission not found.");
         return;
+      }
+
+      let modelAnswerFileUrl = null;
+
+      // Upload the AI model answer file if provided
+      if (aiModelAnswerFile) {
+        const reader = new FileReader();
+        const base64 = await new Promise((resolve) => {
+          reader.onload = (ev) => resolve(ev.target.result);
+          reader.readAsDataURL(aiModelAnswerFile);
+        });
+
+        const uploadRes = await axios.post(
+          `${API_BASE}/api/lms/assignments/upload`,
+          {
+            file_base64: base64,
+            file_name: aiModelAnswerFile.name,
+          }
+        );
+
+        if (uploadRes.data.success) {
+          modelAnswerFileUrl = uploadRes.data.file_url;
+        }
       }
 
       const response = await axios.post(
         `${API_BASE}/api/lms/assignments/submissions/${submissionId}/ai-check`,
         {
           model_answer: aiModelAnswer,
+          model_answer_file_url: modelAnswerFileUrl,
           assignment_id: assignmentId,
           student_id: selectedSubmission?.student_id,
-        },
+        }
       );
 
       if (response.data.success) {
@@ -309,13 +453,15 @@ const LMSAssignments = () => {
           feedback: response.data.feedback,
         });
       } else {
-        alert(response.data.message || "AI check failed. Please grade manually.");
+        alert(
+          response.data.message || "AI check failed. Please grade manually."
+        );
       }
     } catch (error) {
       console.error("AI check error:", error);
       alert(
         error.response?.data?.message ||
-          "AI check failed. Please try again or grade manually.",
+          "AI check failed. Please try again or grade manually."
       );
     } finally {
       setAiChecking(false);
@@ -336,6 +482,9 @@ const LMSAssignments = () => {
       course_id: "",
     });
     setQuestions([]);
+    setImportResult(null);
+    setModelAnswerFile(null);
+    setModelAnswerFileName("");
   };
 
   const getStatusBadge = (assignment) => {
@@ -412,33 +561,23 @@ const LMSAssignments = () => {
 
       {/* Tabs */}
       <div className="mb-6 flex gap-4 border-b">
-        <button
-          onClick={() => setActiveTab("all")}
-          className={`pb-3 px-4 font-medium transition ${activeTab === "all"
-            ? "border-b-2 border-indigo-600 text-indigo-600"
-            : "text-gray-600 hover:text-gray-900"
+        {["all", "active", "past"].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`pb-3 px-4 font-medium transition capitalize ${
+              activeTab === tab
+                ? "border-b-2 border-indigo-600 text-indigo-600"
+                : "text-gray-600 hover:text-gray-900"
             }`}
-        >
-          All Assignments
-        </button>
-        <button
-          onClick={() => setActiveTab("active")}
-          className={`pb-3 px-4 font-medium transition ${activeTab === "active"
-            ? "border-b-2 border-indigo-600 text-indigo-600"
-            : "text-gray-600 hover:text-gray-900"
-            }`}
-        >
-          Active
-        </button>
-        <button
-          onClick={() => setActiveTab("past")}
-          className={`pb-3 px-4 font-medium transition ${activeTab === "past"
-            ? "border-b-2 border-indigo-600 text-indigo-600"
-            : "text-gray-600 hover:text-gray-900"
-            }`}
-        >
-          Past Due
-        </button>
+          >
+            {tab === "past"
+              ? "Past Due"
+              : tab === "all"
+              ? "All Assignments"
+              : "Active"}
+          </button>
+        ))}
       </div>
 
       {/* Search and Filter */}
@@ -516,6 +655,13 @@ const LMSAssignments = () => {
                     Submissions: {assignment.submission_count || 0} /{" "}
                     {assignment.graded_count || 0} graded
                   </div>
+                  {/* Show model answer file indicator */}
+                  {assignment.model_answer_file_url && (
+                    <div className="flex items-center gap-2 text-indigo-600">
+                      <FileUp className="w-4 h-4" />
+                      <span className="text-xs">Model answer file attached</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2">
@@ -550,9 +696,9 @@ const LMSAssignments = () => {
         </div>
       )}
 
-      {/* Create Assignment Modal */}
+      {/* ── Create Assignment Modal ─────────────────────────────────────────── */}
       {showCreateModal && (
-        <div className="fixed inset-0  flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
               <h2 className="text-2xl font-bold text-gray-900">
@@ -610,6 +756,7 @@ const LMSAssignments = () => {
                 />
               </div>
 
+              {/* ── Model / Expected Answer (non-quiz only) ─────────────────── */}
               {formData.assignment_type !== "quiz" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -618,16 +765,58 @@ const LMSAssignments = () => {
                       (Used by AI checker when grading student submissions)
                     </span>
                   </label>
+
+                  {/* Text answer */}
                   <textarea
                     name="model_answer"
                     value={formData.model_answer}
                     onChange={handleInputChange}
                     rows="4"
-                    placeholder="Enter the ideal/expected answer so the AI can compare it against student submissions..."
+                    placeholder="Type your expected answer here, or upload a PDF/DOCX below…"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
+
+                  {/* File upload option */}
+                  <div className="mt-2 flex items-center gap-3 flex-wrap">
+                    <label
+                      className={`cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition
+                        ${
+                          modelAnswerFileName
+                            ? "bg-green-50 border-green-300 text-green-700"
+                            : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+                        }`}
+                    >
+                      <FileUp className="w-4 h-4" />
+                      {modelAnswerFileName
+                        ? modelAnswerFileName
+                        : "Upload PDF/DOCX as model answer"}
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        className="hidden"
+                        onChange={handleModelAnswerFileChange}
+                      />
+                    </label>
+
+                    {modelAnswerFileName && (
+                      <button
+                        type="button"
+                        onClick={clearModelAnswerFile}
+                        className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition"
+                      >
+                        <X className="w-3 h-3" />
+                        Remove file
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-gray-400 mt-1">
+                    You can provide text, a file, or both. The AI will use the
+                    file content if uploaded.
+                  </p>
                 </div>
               )}
+              {/* ── End Model Answer ────────────────────────────────────────── */}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -637,7 +826,10 @@ const LMSAssignments = () => {
                   <select
                     name="assignment_type"
                     value={formData.assignment_type}
-                    onChange={handleInputChange}
+                    onChange={(e) => {
+                      handleInputChange(e);
+                      if (e.target.value !== "quiz") setImportResult(null);
+                    }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="assignment">Assignment</option>
@@ -694,10 +886,7 @@ const LMSAssignments = () => {
                     <option value="">Select Course</option>
                     {[
                       ...new Map(
-                        facultyAssignments.map((item) => [
-                          item.course_id,
-                          item,
-                        ]),
+                        facultyAssignments.map((item) => [item.course_id, item])
                       ).values(),
                     ].map((assignment) => (
                       <option
@@ -725,7 +914,7 @@ const LMSAssignments = () => {
                     <option value="">Select Section</option>
                     {facultyAssignments
                       .filter(
-                        (a) => a.course_id === parseInt(formData.course_id),
+                        (a) => a.course_id === parseInt(formData.course_id)
                       )
                       .map((assignment) => (
                         <option
@@ -752,20 +941,93 @@ const LMSAssignments = () => {
                 </label>
               </div>
 
+              {/* ── Quiz Questions Section ──────────────────────────────────── */}
               {formData.assignment_type === "quiz" && (
                 <div className="border-t pt-4 mt-4">
                   <div className="flex justify-between items-center mb-4">
                     <label className="block text-sm font-medium text-gray-700">
                       Quiz Questions
                     </label>
-                    <button
-                      type="button"
-                      onClick={addQuestion}
-                      className="text-indigo-600 hover:text-indigo-700 text-sm font-medium flex items-center gap-1"
-                    >
-                      <Plus className="w-4 h-4" /> Add Question
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <label
+                        className={`cursor-pointer text-sm font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition
+                          ${
+                            importingDoc
+                              ? "bg-purple-50 text-purple-400 border-purple-200 cursor-not-allowed"
+                              : "bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100"
+                          }`}
+                      >
+                        <Upload className="w-4 h-4" />
+                        {importingDoc ? "Importing…" : "Import PDF/DOCX"}
+                        <input
+                          type="file"
+                          accept=".pdf,.doc,.docx"
+                          className="hidden"
+                          disabled={importingDoc}
+                          onChange={handleDocumentImport}
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={addQuestion}
+                        className="text-indigo-600 hover:text-indigo-700 text-sm font-medium flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition"
+                      >
+                        <Plus className="w-4 h-4" /> Add Question
+                      </button>
+                    </div>
                   </div>
+
+                  {importResult && (
+                    <div className="mb-4 flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
+                      <div className="flex items-center gap-2 text-green-700 text-sm">
+                        <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                        <span>
+                          <strong>{importResult.count}</strong> question
+                          {importResult.count !== 1 ? "s" : ""} imported from{" "}
+                          <span className="font-medium">
+                            {importResult.fileName}
+                          </span>
+                          . Review and edit below before saving.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setImportResult(null)}
+                        className="text-green-500 hover:text-green-700 ml-2"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  <details className="mb-4 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg">
+                    <summary className="px-3 py-2 cursor-pointer font-medium text-gray-600 select-none">
+                      📄 Supported document format (click to expand)
+                    </summary>
+                    <div className="px-3 pb-3 pt-1 space-y-1 font-mono leading-relaxed">
+                      <p className="not-italic text-gray-500 mb-2 font-sans">
+                        Your PDF or DOCX should follow one of these patterns:
+                      </p>
+                      <pre className="whitespace-pre-wrap text-gray-700 bg-white border border-gray-200 rounded p-2">
+{`1. What is the capital of France?
+A. London
+B. Paris
+C. Berlin
+D. Madrid
+Answer: B
+
+2) Which planet is closest to the sun?
+A) Earth   B) Venus   C) Mercury   D) Mars
+Ans: C`}
+                      </pre>
+                      <p className="not-italic text-gray-500 font-sans pt-1">
+                        Supported answer labels:{" "}
+                        <code>Answer:</code> <code>Ans:</code>{" "}
+                        <code>Correct:</code> <code>Key:</code>
+                      </p>
+                    </div>
+                  </details>
 
                   <div className="space-y-6">
                     {questions.map((q, index) => (
@@ -790,7 +1052,11 @@ const LMSAssignments = () => {
                                 type="text"
                                 value={q.question_text}
                                 onChange={(e) =>
-                                  updateQuestion(q.id, "question_text", e.target.value)
+                                  updateQuestion(
+                                    q.id,
+                                    "question_text",
+                                    e.target.value
+                                  )
                                 }
                                 placeholder="Enter question text"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
@@ -805,7 +1071,11 @@ const LMSAssignments = () => {
                                 type="number"
                                 value={q.points}
                                 onChange={(e) =>
-                                  updateQuestion(q.id, "points", parseInt(e.target.value) || 0)
+                                  updateQuestion(
+                                    q.id,
+                                    "points",
+                                    parseInt(e.target.value) || 0
+                                  )
                                 }
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                                 min="1"
@@ -814,14 +1084,23 @@ const LMSAssignments = () => {
                           </div>
 
                           <div className="space-y-2">
-                            <label className="block text-xs font-medium text-gray-500">Options</label>
+                            <label className="block text-xs font-medium text-gray-500">
+                              Options
+                            </label>
                             {q.options.map((option, optIdx) => (
-                              <div key={optIdx} className="flex items-center gap-2">
-                                <span className="text-xs text-gray-400 w-4">{String.fromCharCode(65 + optIdx)}.</span>
+                              <div
+                                key={optIdx}
+                                className="flex items-center gap-2"
+                              >
+                                <span className="text-xs text-gray-400 w-4">
+                                  {String.fromCharCode(65 + optIdx)}.
+                                </span>
                                 <input
                                   type="text"
                                   value={option}
-                                  onChange={(e) => updateOption(q.id, optIdx, e.target.value)}
+                                  onChange={(e) =>
+                                    updateOption(q.id, optIdx, e.target.value)
+                                  }
                                   className="flex-1 px-3 py-1.5 border border-gray-300 rounded-md text-sm"
                                   placeholder={`Option ${optIdx + 1}`}
                                   required
@@ -831,29 +1110,54 @@ const LMSAssignments = () => {
                           </div>
 
                           <div>
-                            <label className="block text-xs font-medium text-gray-500 mb-1">Correct Answer</label>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              Correct Answer
+                            </label>
                             <select
                               value={q.correct_answer}
-                              onChange={(e) => updateQuestion(q.id, "correct_answer", e.target.value)}
+                              onChange={(e) =>
+                                updateQuestion(
+                                  q.id,
+                                  "correct_answer",
+                                  e.target.value
+                                )
+                              }
                               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                             >
                               {q.options.map((opt, i) => (
-                                <option key={i} value={opt}>{opt}</option>
+                                <option key={i} value={opt}>
+                                  {opt || `Option ${i + 1}`}
+                                </option>
                               ))}
                             </select>
                           </div>
                         </div>
                       </div>
                     ))}
+
                     {questions.length === 0 && (
-                      <p className="text-sm text-gray-500 text-center italic py-2">No questions added yet.</p>
+                      <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+                        <Upload className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500 font-medium">
+                          No questions yet
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Import from a PDF/DOCX file or add questions manually
+                        </p>
+                      </div>
                     )}
                   </div>
+
                   <div className="mt-4 text-right text-sm text-gray-600">
-                    Total Logic Points: <span className="font-bold">{questions.reduce((sum, q) => sum + (q.points || 0), 0)}</span> (Make sure this matches Total Points above)
+                    Total Logic Points:{" "}
+                    <span className="font-bold">
+                      {questions.reduce((sum, q) => sum + (q.points || 0), 0)}
+                    </span>{" "}
+                    (Make sure this matches Total Points above)
                   </div>
                 </div>
               )}
+              {/* ── End Quiz Questions Section ─────────────────────────────── */}
 
               <div className="flex gap-4 pt-4">
                 <button
@@ -868,10 +1172,14 @@ const LMSAssignments = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || uploadingModelAnswer}
                   className="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition disabled:bg-gray-400"
                 >
-                  {loading ? "Creating..." : "Create Assignment"}
+                  {uploadingModelAnswer
+                    ? "Uploading model answer…"
+                    : loading
+                    ? "Creating..."
+                    : "Create Assignment"}
                 </button>
               </div>
             </form>
@@ -879,9 +1187,9 @@ const LMSAssignments = () => {
         </div>
       )}
 
-      {/* Submissions Modal */}
+      {/* ── Submissions Modal ───────────────────────────────────────────────── */}
       {showSubmissionsModal && selectedAssignment && (
-        <div className="fixed inset-0  flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
               <div>
@@ -925,10 +1233,11 @@ const LMSAssignments = () => {
                           </p>
                         </div>
                         <span
-                          className={`px-3 py-1 rounded-full text-sm ${submission.status === "graded"
-                            ? "bg-green-100 text-green-600"
-                            : "bg-yellow-100 text-yellow-600"
-                            }`}
+                          className={`px-3 py-1 rounded-full text-sm ${
+                            submission.status === "graded"
+                              ? "bg-green-100 text-green-600"
+                              : "bg-yellow-100 text-yellow-600"
+                          }`}
                         >
                           {submission.status}
                         </span>
@@ -941,15 +1250,32 @@ const LMSAssignments = () => {
                       )}
 
                       {submission.file_url && (
-                        <a
-                          href={submission.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700 text-sm mb-3"
-                        >
-                          <Download className="w-4 h-4" />
-                          {submission.file_name}
-                        </a>
+                        <div className="flex gap-2 mb-3">
+                          <button
+                            onClick={() => {
+                              setViewingDocument({
+                                fileUrl: submission.file_url,
+                                fileName: submission.file_name,
+                              });
+                              setShowDocumentViewer(true);
+                            }}
+                            className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700 text-sm bg-indigo-50 px-3 py-2 rounded-lg hover:bg-indigo-100 transition"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Document
+                          </button>
+                          <a
+                            href={submission.file_url}
+                            download
+                            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-700 text-sm bg-gray-100 px-3 py-2 rounded-lg hover:bg-gray-200 transition"
+                          >
+                            <Download className="w-4 h-4" />
+                            Download
+                          </a>
+                          <span className="text-xs text-gray-500 self-center">
+                            {submission.file_name}
+                          </span>
+                        </div>
                       )}
 
                       {submission.status === "graded" ? (
@@ -962,7 +1288,7 @@ const LMSAssignments = () => {
                             <span className="text-sm text-gray-600">
                               Graded on:{" "}
                               {new Date(
-                                submission.graded_at,
+                                submission.graded_at
                               ).toLocaleDateString()}
                             </span>
                           </div>
@@ -997,7 +1323,7 @@ const LMSAssignments = () => {
         </div>
       )}
 
-      {/* Grade Submission Modal */}
+      {/* ── Grade Submission Modal ──────────────────────────────────────────── */}
       {showGradeModal && selectedSubmission && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
@@ -1024,18 +1350,68 @@ const LMSAssignments = () => {
               <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-indigo-600" />
-                  <span className="text-sm font-semibold text-indigo-700">AI-Assisted Checker</span>
+                  <span className="text-sm font-semibold text-indigo-700">
+                    AI-Assisted Checker
+                  </span>
                 </div>
                 <p className="text-xs text-indigo-600">
-                  Enter the expected answer below and let AI suggest a score and feedback based on the student&apos;s submission.
+                  Provide the expected answer as text, a PDF/DOCX file, or both.
+                  The AI will compare it against the student&apos;s submission.
                 </p>
+
+                {/* Text model answer */}
                 <textarea
                   value={aiModelAnswer}
                   onChange={(e) => setAiModelAnswer(e.target.value)}
                   rows="3"
-                  placeholder="Paste your model / expected answer here..."
+                  placeholder="Paste your model / expected answer here…"
                   className="w-full px-3 py-2 border border-indigo-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
                 />
+
+                {/* ── NEW: File upload for model answer inside AI checker ── */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <label
+                    className={`cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition
+                      ${
+                        aiModelAnswerFileName
+                          ? "bg-green-50 border-green-300 text-green-700"
+                          : "bg-white border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                      }`}
+                  >
+                    <FileUp className="w-4 h-4" />
+                    {aiModelAnswerFileName
+                      ? aiModelAnswerFileName
+                      : "Upload PDF/DOCX as model answer"}
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setAiModelAnswerFile(file);
+                        setAiModelAnswerFileName(file.name);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+
+                  {aiModelAnswerFileName && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAiModelAnswerFile(null);
+                        setAiModelAnswerFileName("");
+                      }}
+                      className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition"
+                    >
+                      <X className="w-3 h-3" />
+                      Remove file
+                    </button>
+                  )}
+                </div>
+                {/* ── End file upload ─────────────────────────────────────── */}
+
                 <button
                   type="button"
                   onClick={handleAiCheck}
@@ -1097,6 +1473,18 @@ const LMSAssignments = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* ── Document Viewer Modal ───────────────────────────────────────────── */}
+      {showDocumentViewer && viewingDocument && (
+        <DocumentViewer
+          fileUrl={viewingDocument.fileUrl}
+          fileName={viewingDocument.fileName}
+          onClose={() => {
+            setShowDocumentViewer(false);
+            setViewingDocument(null);
+          }}
+        />
       )}
     </div>
   );

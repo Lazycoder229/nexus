@@ -2,6 +2,7 @@ import express from "express";
 import {
   getStudentReports,
   getEnrollmentReports,
+  getEnrollmentTrends,
   getAttendanceReports,
   getPayrollReports,
   getSummaryStatistics,
@@ -18,6 +19,9 @@ router.get("/students", getStudentReports);
 
 // Enrollment reports
 router.get("/enrollments", getEnrollmentReports);
+
+// Enrollment trends and forecast
+router.get("/enrollment-trends", getEnrollmentTrends);
 
 // Attendance reports
 router.get("/attendance", getAttendanceReports);

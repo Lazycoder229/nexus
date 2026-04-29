@@ -61,7 +61,7 @@ const StudentDashboard = () => {
         fetch(`${API_BASE}/api/enrollments/student/${userId}`).then((r) =>
           r.json(),
         ),
-        api.get(`/api/grades`),
+        api.get(`/api/grades?student_user_id=${userId}`),
         api.get(`/api/student-attendance`),
         api.get(`/api/events/announcements`),
         api.get(`/api/invoices`),

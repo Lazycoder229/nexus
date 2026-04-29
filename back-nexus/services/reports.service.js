@@ -19,6 +19,15 @@ const ReportsService = {
     }
   },
 
+  // Get enrollment trends and forecast
+  async getEnrollmentTrends(filters) {
+    try {
+      return await ReportsModel.getEnrollmentTrends(filters);
+    } catch (error) {
+      throw new Error(`Error fetching enrollment trends: ${error.message}`);
+    }
+  },
+
   // Get attendance reports
   async getAttendanceReports(filters) {
     try {

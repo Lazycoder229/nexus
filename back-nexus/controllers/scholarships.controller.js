@@ -1,5 +1,49 @@
 import Scholarship from "../model/scholarships.model.js";
 
+const ALLOWED_SCHOLARSHIP_TYPES = new Set(["Full", "Partial", "Variable"]);
+const ALLOWED_DISCOUNT_TYPES = new Set(["Percentage", "Fixed Amount"]);
+
+const normalizeScholarshipType = (value) => {
+  if (value === undefined || value === null) return value;
+  const raw = String(value).trim();
+  if (!raw) return raw;
+
+  const lower = raw.toLowerCase();
+  if (ALLOWED_SCHOLARSHIP_TYPES.has(raw)) return raw;
+
+  const mapped = {
+    "merit-based": "Partial",
+    "need-based": "Partial",
+    athletic: "Partial",
+    academic: "Partial",
+    leadership: "Partial",
+    "community service": "Partial",
+    government: "Variable",
+    private: "Variable",
+  }[lower];
+
+  if (mapped) return mapped;
+  if (lower === "full") return "Full";
+  if (lower === "partial") return "Partial";
+  if (lower === "variable") return "Variable";
+
+  return raw;
+};
+
+const normalizeDiscountType = (value) => {
+  if (value === undefined || value === null) return value;
+  const raw = String(value).trim();
+  if (!raw) return raw;
+  if (ALLOWED_DISCOUNT_TYPES.has(raw)) return raw;
+
+  const lower = raw.toLowerCase();
+  if (lower === "percentage") return "Percentage";
+  if (lower === "fixed amount") return "Fixed Amount";
+  if (lower === "full scholarship") return "Percentage";
+
+  return raw;
+};
+
 const scholarshipController = {
   // ========== SCHOLARSHIP PROGRAMS ==========
 
@@ -10,6 +54,28 @@ const scholarshipController = {
         ...req.body,
         created_by: req.user.user_id,
       };
+
+      data.scholarship_type = normalizeScholarshipType(data.scholarship_type);
+      data.discount_type = normalizeDiscountType(data.discount_type);
+
+      if (!ALLOWED_SCHOLARSHIP_TYPES.has(data.scholarship_type)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid scholarship_type. Allowed values: Full, Partial, Variable.",
+        });
+      }
+
+      if (!ALLOWED_DISCOUNT_TYPES.has(data.discount_type)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid discount_type. Allowed values: Percentage, Fixed Amount.",
+        });
+      }
+
+      if (data.scholarship_type === "Full") {
+        data.discount_type = "Percentage";
+        data.discount_value = 100;
+      }
 
       const result = await Scholarship.createProgram(data);
 
@@ -86,7 +152,31 @@ const scholarshipController = {
   updateProgram: async (req, res) => {
     try {
       const { id } = req.params;
-      const data = req.body;
+      const data = {
+        ...req.body,
+      };
+
+      data.scholarship_type = normalizeScholarshipType(data.scholarship_type);
+      data.discount_type = normalizeDiscountType(data.discount_type);
+
+      if (!ALLOWED_SCHOLARSHIP_TYPES.has(data.scholarship_type)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid scholarship_type. Allowed values: Full, Partial, Variable.",
+        });
+      }
+
+      if (!ALLOWED_DISCOUNT_TYPES.has(data.discount_type)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid discount_type. Allowed values: Percentage, Fixed Amount.",
+        });
+      }
+
+      if (data.scholarship_type === "Full") {
+        data.discount_type = "Percentage";
+        data.discount_value = 100;
+      }
 
       const result = await Scholarship.updateProgram(id, data);
 

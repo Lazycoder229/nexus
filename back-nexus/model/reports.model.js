@@ -1,4 +1,71 @@
 import pool from "../config/db.js";
+import * as tf from "@tensorflow/tfjs";
+
+const formatAcademicPeriodLabel = (period) => {
+  if (!period) return "Unknown period";
+
+  const parts = [];
+  if (period.academic_year) parts.push(period.academic_year);
+  if (period.semester) parts.push(period.semester);
+
+  return parts.length ? parts.join(" - ") : `Period ${period.period_id ?? "Unknown"}`;
+};
+
+const calculateEnrollmentForecast = async (series) => {
+  if (!Array.isArray(series) || series.length < 2) {
+    const latestCount = series?.[series.length - 1]?.enrollment_count || 0;
+    return {
+      predicted_next_enrollment: latestCount,
+      method: "fallback_last_value",
+      confidence: 0,
+    };
+  }
+
+  const xValues = series.map((_, index) => index);
+  const yValues = series.map((point) => Number(point.enrollment_count || 0));
+
+  const xTensor = tf.tensor2d(xValues.map((value) => [value]), [xValues.length, 1]);
+  const yTensor = tf.tensor2d(yValues.map((value) => [value]), [yValues.length, 1]);
+
+  const model = tf.sequential();
+  model.add(tf.layers.dense({ units: 1, inputShape: [1] }));
+  model.compile({
+    loss: "meanSquaredError",
+    optimizer: tf.train.adam(0.1),
+  });
+
+  await model.fit(xTensor, yTensor, {
+    epochs: Math.min(200, 40 + xValues.length * 10),
+    verbose: 0,
+  });
+
+  const predictionTensor = model.predict(tf.tensor2d([[xValues.length]], [1, 1]));
+  const predictionValues = await predictionTensor.data();
+  const regressionPrediction = Number(predictionValues[0] || 0);
+
+  const recentWindow = yValues.slice(-3);
+  const weightedAverage =
+    recentWindow.length === 1
+      ? recentWindow[0]
+      : recentWindow.reduce((sum, value, index) => sum + value * (index + 1), 0) /
+        recentWindow.reduce((sum, _, index) => sum + (index + 1), 0);
+
+  const mixedPrediction = regressionPrediction * 0.6 + weightedAverage * 0.4;
+  const predictedNextEnrollment = Math.max(0, Math.round(mixedPrediction));
+
+  const yMean = yValues.reduce((sum, value) => sum + value, 0) / yValues.length;
+  const variance = yValues.reduce((sum, value) => sum + (value - yMean) ** 2, 0) / yValues.length;
+  const confidence = Math.max(0, Math.min(1, 1 - Math.sqrt(variance) / (yMean + 1)));
+
+  tf.dispose([xTensor, yTensor, predictionTensor]);
+  model.dispose();
+
+  return {
+    predicted_next_enrollment: predictedNextEnrollment,
+    method: "linear_regression_weighted_average",
+    confidence: Number(confidence.toFixed(2)),
+  };
+};
 
 const ReportsModel = {
   // Get student reports with filters
@@ -131,6 +198,151 @@ const ReportsModel = {
 
     const [rows] = await pool.query(query, params);
     return rows;
+  },
+
+  // Get enrollment trend data for analytics and forecasting
+  async getEnrollmentTrends(filters = {}) {
+    let query = `
+      SELECT
+        ap.period_id,
+        ap.school_year AS academic_year,
+        ap.semester,
+        p.program_id,
+        p.code AS program_code,
+        p.name AS program_name,
+        COUNT(DISTINCT e.enrollment_id) AS enrollment_count
+      FROM enrollments e
+      INNER JOIN academic_periods ap ON e.period_id = ap.period_id
+      INNER JOIN users u ON e.student_id = u.user_id
+      INNER JOIN student_details sd ON u.user_id = sd.user_id
+      LEFT JOIN programs p ON sd.course = p.name OR sd.course = p.code
+      WHERE 1=1
+    `;
+
+    const params = [];
+
+    if (filters.program_id) {
+      query += ` AND p.program_id = ?`;
+      params.push(filters.program_id);
+    } else if (filters.program_code) {
+      query += ` AND p.code = ?`;
+      params.push(filters.program_code);
+    }
+
+    if (filters.date_from) {
+      query += ` AND e.enrollment_date >= ?`;
+      params.push(filters.date_from);
+    }
+
+    if (filters.date_to) {
+      query += ` AND e.enrollment_date <= ?`;
+      params.push(filters.date_to);
+    }
+
+    query += `
+      GROUP BY ap.period_id, ap.school_year, ap.semester, p.program_id, p.code, p.name
+      ORDER BY ap.start_date ASC, p.name ASC
+    `;
+
+    const [rows] = await pool.query(query, params);
+
+    const periodMap = new Map();
+    const programMap = new Map();
+
+    for (const row of rows) {
+      const periodKey = row.period_id;
+      if (!periodMap.has(periodKey)) {
+        periodMap.set(periodKey, {
+          period_id: row.period_id,
+          academic_year: row.academic_year,
+          semester: row.semester,
+          period_label: formatAcademicPeriodLabel(row),
+          total_enrollment_count: 0,
+          programs: [],
+        });
+      }
+
+      const normalizedCount = Number(row.enrollment_count || 0);
+      const existingPeriod = periodMap.get(periodKey);
+      existingPeriod.total_enrollment_count += normalizedCount;
+      existingPeriod.programs.push({
+        program_id: row.program_id,
+        program_code: row.program_code,
+        program_name: row.program_name,
+        enrollment_count: normalizedCount,
+      });
+
+      if (row.program_id) {
+        const programKey = row.program_id;
+        if (!programMap.has(programKey)) {
+          programMap.set(programKey, {
+            program_id: row.program_id,
+            program_code: row.program_code,
+            program_name: row.program_name,
+            series: [],
+          });
+        }
+
+        programMap.get(programKey).series.push({
+          period_id: row.period_id,
+          academic_year: row.academic_year,
+          semester: row.semester,
+          period_label: formatAcademicPeriodLabel(row),
+          enrollment_count: normalizedCount,
+        });
+      }
+    }
+
+    const periods = [...periodMap.values()];
+    const programs = [...programMap.values()].map((program) => ({
+      ...program,
+      total_enrollment_count: program.series.reduce((sum, item) => sum + Number(item.enrollment_count || 0), 0),
+    }));
+
+    let trendSeries = periods.map((period) => ({
+      period_id: period.period_id,
+      academic_year: period.academic_year,
+      semester: period.semester,
+      period_label: period.period_label,
+      total_enrollment_count: period.total_enrollment_count,
+      programs: period.programs,
+    }));
+
+    let selectedProgram = null;
+    let forecast = null;
+
+    if (filters.program_id || filters.program_code) {
+      selectedProgram = programs.find((program) =>
+        filters.program_id
+          ? String(program.program_id) === String(filters.program_id)
+          : String(program.program_code || "").toLowerCase() === String(filters.program_code || "").toLowerCase(),
+      ) || null;
+
+      if (selectedProgram) {
+        trendSeries = selectedProgram.series;
+        forecast = await calculateEnrollmentForecast(selectedProgram.series);
+      }
+    } else {
+      forecast = await calculateEnrollmentForecast(
+        trendSeries.map((period) => ({
+          enrollment_count: period.total_enrollment_count,
+        })),
+      );
+    }
+
+    const nextPeriodLabel = trendSeries.length
+      ? `Next after ${trendSeries[trendSeries.length - 1].period_label}`
+      : "Next period";
+
+    return {
+      series: trendSeries,
+      programs,
+      selected_program: selectedProgram,
+      forecast: {
+        ...forecast,
+        target_period_label: nextPeriodLabel,
+      },
+    };
   },
 
   // Get attendance reports (student or staff)

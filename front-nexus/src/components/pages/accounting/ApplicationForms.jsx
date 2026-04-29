@@ -41,11 +41,11 @@ const ApplicationForms = () => {
 
   const fetchApplications = async () => {
     try {
-      const params = new URLSearchParams();
-      if (filterStatus) params.append("status", filterStatus);
-      if (searchTerm) params.append("search", searchTerm);
-      const response = await api.get(`/api/scholarships/applications?${params}`);
-      setApplications(response.data);
+      const response = await api.get(`/api/scholarships/applications`);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data?.data || [];
+      setApplications(data);
     } catch (error) {
       console.error("Error fetching applications:", error);
     }
@@ -107,8 +107,9 @@ const ApplicationForms = () => {
       } else {
         await api.post(`/api/scholarships/applications`, formData);
       }
-      fetchApplications();
-      fetchStatistics();
+      await fetchApplications();
+      await fetchStatistics();
+      setCurrentPage(1);
       closeModal();
     } catch (error) {
       console.error("Error saving application:", error);
@@ -138,8 +139,9 @@ const ApplicationForms = () => {
     if (window.confirm("Are you sure you want to delete this application?")) {
       try {
         await api.delete(`/api/scholarships/applications/${id}`);
-        fetchApplications();
-        fetchStatistics();
+        await fetchApplications();
+        await fetchStatistics();
+        setCurrentPage(1);
       } catch (error) {
         console.error("Error deleting application:", error);
         alert(error.response?.data?.error || "Error deleting application");
@@ -220,11 +222,11 @@ const ApplicationForms = () => {
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="relative flex-grow max-w-xs">
-              <input type="text" placeholder="Search applications..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner" />
+              <input type="text" placeholder="Search applications..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="w-full pl-8 pr-3 py-2 rounded-md border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:text-white text-sm transition-all shadow-inner" />
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
             </div>
             <div className="flex items-center gap-2">
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
+              <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }} className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md dark:bg-slate-800 dark:text-white focus:ring-indigo-500 focus:border-indigo-500 transition-colors">
                 <option value="">All Status</option>
                 <option value="Pending">Pending</option>
                 <option value="Under Review">Under Review</option>

@@ -12,6 +12,16 @@ import {
   Star,
   Download,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+} from "recharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { downloadPDF } from "../../../utils/exportHelpers";
@@ -55,11 +65,18 @@ const REPORT_TITLES = {
   clearances:  "Clearances Report",
 };
 
+const normalizeTrendCount = (row) => Number(row?.enrollment_count ?? row?.total_enrollment_count ?? 0);
+
 const StudentReports = () => {
   const [activeTab,        setActiveTab]        = useState("students");
   const [data,             setData]             = useState([]);
   const [loading,          setLoading]          = useState(false);
   const [statistics,       setStatistics]       = useState({ students: {}, enrollments: {}, attendance: {} });
+  const [programs,         setPrograms]         = useState([]);
+  const [selectedProgramId,setSelectedProgramId] = useState("all");
+  const [trendData,        setTrendData]        = useState([]);
+  const [trendForecast,    setTrendForecast]    = useState(null);
+  const [trendLoading,     setTrendLoading]     = useState(false);
   const [searchTerm,       setSearchTerm]       = useState("");
   const [statusFilter,     setStatusFilter]     = useState("all");
   const [yearLevelFilter,  setYearLevelFilter]  = useState("all");
@@ -76,12 +93,23 @@ const StudentReports = () => {
       .catch(console.error);
   }, []);
 
+  useEffect(() => {
+    fetch(`${BASE}/api/programs`)
+      .then((r) => r.json())
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : rows?.data || [];
+        setPrograms(Array.isArray(list) ? list : []);
+      })
+      .catch(console.error);
+  }, []);
+
   // Fetch table data on tab / filter change
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams();
     if (statusFilter !== "all") params.set("status", statusFilter);
     if (activeTab === "students" && yearLevelFilter !== "all") params.set("year_level", yearLevelFilter);
+    if (activeTab === "enrollments" && selectedProgramId !== "all") params.set("program_id", selectedProgramId);
     if (activeTab === "attendance") params.set("type", attendanceType);
 
     const ENDPOINTS = {
@@ -106,7 +134,33 @@ const StudentReports = () => {
       .finally(() => setLoading(false));
 
     return () => controller.abort();
-  }, [activeTab, statusFilter, yearLevelFilter, attendanceType]);
+  }, [activeTab, statusFilter, yearLevelFilter, attendanceType, selectedProgramId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+
+    if (selectedProgramId !== "all") params.set("program_id", selectedProgramId);
+
+    setTrendLoading(true);
+    fetch(`${BASE}/api/reports/enrollment-trends?${params}`, { signal: controller.signal })
+      .then((r) => r.json())
+      .then((j) => {
+        if (!j.success) throw new Error(j.message || "Failed to load enrollment trends");
+        setTrendData(Array.isArray(j.data?.series) ? j.data.series : []);
+        setTrendForecast(j.data?.forecast || null);
+      })
+      .catch((e) => {
+        if (e.name !== "AbortError") {
+          console.error(e);
+          setTrendData([]);
+          setTrendForecast(null);
+        }
+      })
+      .finally(() => setTrendLoading(false));
+
+    return () => controller.abort();
+  }, [selectedProgramId]);
 
   // Reset page & filters when tab changes
   useEffect(() => {
@@ -127,6 +181,21 @@ const StudentReports = () => {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
   const pageData   = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const selectedProgram = programs.find((program) => String(program.id) === String(selectedProgramId));
+
+  const trendChartData = trendData.map((row, index) => ({
+    label: row.period_label || `Period ${index + 1}`,
+    actual_enrollment: normalizeTrendCount(row),
+    forecast_enrollment: null,
+  }));
+
+  if (trendForecast?.predicted_next_enrollment !== undefined && trendForecast?.predicted_next_enrollment !== null) {
+    trendChartData.push({
+      label: trendForecast.target_period_label || "Next period",
+      actual_enrollment: null,
+      forecast_enrollment: Number(trendForecast.predicted_next_enrollment || 0),
+    });
+  }
 
   // Windowed pagination (max 7 visible page buttons)
   const pageWindow = () => {
@@ -373,6 +442,21 @@ const StudentReports = () => {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            {activeTab === "enrollments" && (
+              <select
+                value={selectedProgramId}
+                onChange={(e) => setSelectedProgramId(e.target.value)}
+                className="px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              >
+                <option value="all">All Programs</option>
+                {programs.map((program) => (
+                  <option key={program.id} value={program.id}>
+                    {program.code ? `${program.code} - ` : ""}{program.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
             {activeTab === "students" && (
               <select
                 value={yearLevelFilter}
@@ -409,7 +493,6 @@ const StudentReports = () => {
               ))}
             </select>
 
-            {/* PDF Export Button only */}
             <div className="relative group">
               <button
                 onClick={exportPDF}
@@ -423,6 +506,67 @@ const StudentReports = () => {
                 Download professional PDF report
               </span>
             </div>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-base font-semibold text-slate-900">Enrollment Trends & Forecast</h3>
+              <p className="text-sm text-slate-500">
+                {selectedProgram ? `${selectedProgram.code ? `${selectedProgram.code} - ` : ""}${selectedProgram.name}` : "All programs"}
+              </p>
+            </div>
+            <div className="text-sm text-slate-600">
+              Next predicted enrollment: <span className="font-semibold text-indigo-600">{trendForecast?.predicted_next_enrollment ?? 0}</span>
+              {typeof trendForecast?.confidence === "number" ? (
+                <span className="ml-2 text-xs text-slate-500">Confidence {Math.round(trendForecast.confidence * 100)}%</span>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="mt-4 h-72">
+            {trendLoading ? (
+              <div className="flex h-full items-center justify-center text-sm text-slate-400 italic">
+                Loading enrollment trend...
+              </div>
+            ) : trendChartData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-slate-400 italic">
+                No trend data available yet.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendChartData} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                  <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" allowDecimals={false} />
+                  <Tooltip
+                    formatter={(value, name) => [value, name === "actual_enrollment" ? "Actual" : "Forecast"]}
+                    labelStyle={{ color: "#0f172a" }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="actual_enrollment"
+                    name="Actual Enrollment"
+                    stroke="#4f46e5"
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                    connectNulls
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="forecast_enrollment"
+                    name="Forecast"
+                    stroke="#f59e0b"
+                    strokeWidth={3}
+                    strokeDasharray="6 4"
+                    dot={{ r: 4 }}
+                    connectNulls
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 

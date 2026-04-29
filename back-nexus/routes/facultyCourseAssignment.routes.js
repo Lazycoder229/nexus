@@ -7,6 +7,7 @@ import {
   createAssignment,
   updateAssignment,
   deleteAssignment,
+
 } from "../controllers/facultyCourseAssignment.controller.js";
 
 const router = express.Router();

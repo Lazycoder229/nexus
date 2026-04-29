@@ -142,6 +142,37 @@ export const updateEmployeeService = async (userId, employeeData) => {
   return true;
 };
 
+// Change password
+export const changePasswordService = async (userId, currentPassword, newPassword) => {
+  // Validate required fields
+  if (!currentPassword || !newPassword) {
+    throw new Error("Current password and new password are required");
+  }
+
+  if (currentPassword === newPassword) {
+    throw new Error("New password must be different from current password");
+  }
+
+  // Get the user
+  const user = await findUserById(userId);
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  // Verify current password
+  const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+  if (!isMatch) {
+    throw new Error("Current password is incorrect");
+  }
+
+  // Hash new password
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+
+  // Update password
+  await updateEmployeeUser(userId, { passwordHash });
+  return true;
+};
+
 // Delete user
 export const deleteUserService = async (userId) => {
   if (!userId) {

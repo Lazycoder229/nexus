@@ -41,7 +41,8 @@ const StudentAcademic = () => {
 
   const fetchGrades = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/api/grades`);
+      const userId = localStorage.getItem("userId");
+      const response = await axios.get(`${API_BASE}/api/grades?student_user_id=${userId}`);
       const gradesData = response.data || [];
       const grouped = gradesData.reduce((acc, grade) => {
         const key = `${grade.academic_year || 'Current'} - ${grade.semester || 'Semester'}`;

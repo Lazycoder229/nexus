@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS lms_assignments (
     academic_period_id INT NOT NULL,
     allow_late_submission TINYINT(1) DEFAULT 0,
     instructions TEXT,
+    model_answer_file_url TEXT NOT NULL,
     status ENUM('active', 'closed', 'draft') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NULL,

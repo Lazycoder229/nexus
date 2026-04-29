@@ -15,8 +15,9 @@ const StudentReportCard = () => {
   const fetchReportCard = async () => {
     try {
       setLoading(true);
+      const userId = localStorage.getItem("userId");
       const [gradesRes, userRes] = await Promise.all([
-        axios.get(`${API_BASE}/api/grades`),
+        axios.get(`${API_BASE}/api/grades?student_user_id=${userId}`),
         axios.get(`${API_BASE}/api/users`),
       ]);
       const grades = gradesRes.data || [];

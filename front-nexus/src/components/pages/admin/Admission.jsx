@@ -10,6 +10,8 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Users,
+  Check,
 } from "lucide-react";
 
 const StatusBadge = ({ status }) => {
@@ -634,6 +636,236 @@ const AdmissionModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
   );
 };
 
+const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
+  const [filterYear, setFilterYear] = useState("");
+  const [filterProgram, setFilterProgram] = useState("");
+  const [filterDepartment, setFilterDepartment] = useState("");
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [loading, setLoading] = useState(false);
+
+  // Get unique values for filters
+  const years = [...new Set(admissions.map(a => new Date(a.application_date).getFullYear()))].sort().reverse();
+  const programs = [...new Set(admissions.map(a => a.program_applied).filter(Boolean))].sort();
+  const departments = ["Engineering", "Science", "Business", "Arts", "Medicine", "Law"];
+
+  // Filter admissions based on criteria
+  const filteredAdmissions = admissions.filter(a => {
+    let match = a.status !== "Enrolled";
+    
+    if (filterYear) {
+      match = match && new Date(a.application_date).getFullYear() === parseInt(filterYear);
+    }
+    
+    if (filterProgram) {
+      match = match && a.program_applied === filterProgram;
+    }
+    
+    if (filterDepartment) {
+      match = match && a.program_applied?.includes(filterDepartment);
+    }
+    
+    return match;
+  });
+
+  const toggleSelect = (id) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredAdmissions.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredAdmissions.map(a => a.admission_id)));
+    }
+  };
+
+  const handleBulkEnroll = async () => {
+    if (selectedIds.size === 0) {
+      alert("Please select at least one applicant");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await onSubmit(Array.from(selectedIds));
+      setSelectedIds(new Set());
+      setFilterYear("");
+      setFilterProgram("");
+      setFilterDepartment("");
+    } catch (error) {
+      console.error("Error during bulk enroll:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-slate-100 border-b border-slate-200 px-6 py-4">
+          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <Users size={20} className="text-indigo-600" />
+            Bulk Enroll Applicants
+          </h2>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {/* Filters */}
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+            <h3 className="font-semibold text-slate-900 mb-3">Filters</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Year
+                </label>
+                <select
+                  value={filterYear}
+                  onChange={(e) => setFilterYear(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">All Years</option>
+                  {years.map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Program Applied
+                </label>
+                <select
+                  value={filterProgram}
+                  onChange={(e) => setFilterProgram(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">All Programs</option>
+                  {programs.map(prog => (
+                    <option key={prog} value={prog}>{prog}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Department
+                </label>
+                <select
+                  value={filterDepartment}
+                  onChange={(e) => setFilterDepartment(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">All Departments</option>
+                  {departments.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 mt-2">
+              Found {filteredAdmissions.length} applicant(s) matching filters
+            </p>
+          </div>
+
+          {/* Applicants List */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-slate-900">
+                Applicants ({selectedIds.size} selected)
+              </h3>
+              {filteredAdmissions.length > 0 && (
+                <button
+                  onClick={toggleSelectAll}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                >
+                  {selectedIds.size === filteredAdmissions.length ? "Deselect All" : "Select All"}
+                </button>
+              )}
+            </div>
+
+            <div className="border border-slate-200 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+              {filteredAdmissions.length > 0 ? (
+                <table className="min-w-full divide-y">
+                  <thead className="bg-slate-100 sticky top-0">
+                    <tr>
+                      <th className="px-3 py-2 text-left">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.size === filteredAdmissions.length && filteredAdmissions.length > 0}
+                          onChange={toggleSelectAll}
+                          className="rounded border-slate-300"
+                        />
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Name</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Email</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Program</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y">
+                    {filteredAdmissions.map(applicant => (
+                      <tr key={applicant.admission_id} className="hover:bg-slate-50">
+                        <td className="px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(applicant.admission_id)}
+                            onChange={() => toggleSelect(applicant.admission_id)}
+                            className="rounded border-slate-300"
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-sm text-slate-900">
+                          {applicant.first_name} {applicant.last_name}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-slate-600">{applicant.email}</td>
+                        <td className="px-3 py-2 text-sm text-slate-600">{applicant.program_applied}</td>
+                        <td className="px-3 py-2 text-sm">
+                          <StatusBadge status={applicant.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="p-8 text-center text-slate-500">
+                  No applicants match the selected filters
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="sticky bottom-0 bg-slate-50 border-t border-slate-200 px-6 py-4 rounded-b-lg">
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleBulkEnroll}
+              disabled={loading || selectedIds.size === 0}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Check size={16} />
+              {loading ? "Enrolling..." : `Enroll ${selectedIds.size} Applicant(s)`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Admission = () => {
   const [admissions, setAdmissions] = useState([]);
   const [search, setSearch] = useState("");
@@ -642,6 +874,7 @@ const Admission = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("add");
   const [currentRecord, setCurrentRecord] = useState(null);
+  const [bulkEnrollModalOpen, setBulkEnrollModalOpen] = useState(false);
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
   const fetchAdmissions = async () => {
@@ -700,6 +933,25 @@ const Admission = () => {
     }
   };
 
+  const handleBulkEnroll = async (selectedIds) => {
+    try {
+      const confirmMessage = `Are you sure you want to enroll ${selectedIds.length} applicant(s)? This action cannot be undone.`;
+      if (!window.confirm(confirmMessage)) return;
+
+      await axios.post(`${API_BASE}/api/admissions/bulk-enroll`, {
+        admission_ids: selectedIds,
+      });
+
+      alert(`Successfully enrolled ${selectedIds.length} applicant(s)`);
+      fetchAdmissions();
+      setBulkEnrollModalOpen(false);
+    } catch (err) {
+      console.error("Error during bulk enroll:", err);
+      alert(err.response?.data?.message || "Failed to enroll applicants");
+      throw err;
+    }
+  };
+
   const openModal = (mode, record = null) => {
     setModalMode(mode);
     setCurrentRecord(record);
@@ -739,6 +991,12 @@ const Admission = () => {
           className="ml-4 px-4 py-2 bg-indigo-600 text-white rounded-md flex items-center gap-2 hover:bg-indigo-700"
         >
           <Plus size={16} /> New Application
+        </button>
+        <button
+          onClick={() => setBulkEnrollModalOpen(true)}
+          className="ml-2 px-4 py-2 bg-green-600 text-white rounded-md flex items-center gap-2 hover:bg-green-700"
+        >
+          <Users size={16} /> Bulk Enroll
         </button>
       </div>
 
@@ -839,6 +1097,13 @@ const Admission = () => {
         onSubmit={handleSubmit}
         mode={modalMode}
         initialData={currentRecord}
+      />
+
+      <BulkEnrollModal
+        isOpen={bulkEnrollModalOpen}
+        onClose={() => setBulkEnrollModalOpen(false)}
+        admissions={admissions}
+        onSubmit={handleBulkEnroll}
       />
     </div>
   );

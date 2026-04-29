@@ -39,6 +39,24 @@ export const getEnrollmentReports = async (req, res) => {
   }
 };
 
+// Get Enrollment Trends + Forecast
+export const getEnrollmentTrends = async (req, res) => {
+  try {
+    const filters = {
+      program_id: req.query.program_id,
+      program_code: req.query.program_code,
+      date_from: req.query.date_from,
+      date_to: req.query.date_to,
+    };
+
+    const trends = await ReportsService.getEnrollmentTrends(filters);
+    res.json({ success: true, data: trends });
+  } catch (error) {
+    console.error("Error fetching enrollment trends:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Get Attendance Reports
 export const getAttendanceReports = async (req, res) => {
   try {

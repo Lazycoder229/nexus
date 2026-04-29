@@ -24,3 +24,33 @@ export const removeAdmission = async (id) => {
   await getAdmission(id);
   return await admissionModel.deleteAdmission(id);
 };
+
+export const bulkEnrollAdmissions = async (admissionIds) => {
+  const results = {
+    enrolled: 0,
+    failed: 0,
+    errors: [],
+  };
+
+  for (const admissionId of admissionIds) {
+    try {
+      const admission = await getAdmission(admissionId);
+
+      // Update admission status to Enrolled
+      await admissionModel.updateAdmission(admissionId, {
+        ...admission,
+        status: "Enrolled",
+      });
+
+      results.enrolled++;
+    } catch (error) {
+      results.failed++;
+      results.errors.push({
+        admission_id: admissionId,
+        error: error.message,
+      });
+    }
+  }
+
+  return results;
+};

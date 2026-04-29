@@ -6,6 +6,7 @@ import {
   loginUserService,
   updateStudentService,
   updateEmployeeService,
+  changePasswordService,
   deleteUserService,
 } from "../services/user.service.js";
 import { generateToken } from "../helpers/jwt.js";
@@ -177,6 +178,42 @@ export const updateEmployee = async (req, res) => {
     res
       .status(500)
       .json({ message: error.message || "Failed to update employee" });
+  }
+};
+
+// Change password
+export const changePassword = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { currentPassword, newPassword, newPasswordConfirm } = req.body;
+
+    // Validate that new passwords match
+    if (newPassword !== newPasswordConfirm) {
+      return res
+        .status(400)
+        .json({ message: "New passwords do not match" });
+    }
+
+    // Validate password strength
+    if (!newPassword || newPassword.length < 6) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 6 characters long" });
+    }
+
+    await changePasswordService(userId, currentPassword, newPassword);
+
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    const statusCode = error.message.includes("incorrect")
+      ? 401
+      : error.message.includes("not found")
+        ? 404
+        : 500;
+    res
+      .status(statusCode)
+      .json({ message: error.message || "Failed to change password" });
   }
 };
 

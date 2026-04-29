@@ -84,10 +84,10 @@ const limiter = rateLimit({
   message: "Too many requests from this IP, try again later",
 });
 
-// CORS
+// CORS 
 app.use(
   cors({
-    origin: "https://nexus-tau-kohl.vercel.app",
+    origin: "http://localhost:5173",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
     exposedHeaders: ["Authorization"],

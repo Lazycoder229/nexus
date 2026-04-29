@@ -67,3 +67,24 @@ export const deleteAdmission = async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 };
+
+export const bulkEnroll = async (req, res) => {
+  try {
+    const { admission_ids } = req.body;
+
+    if (!admission_ids || !Array.isArray(admission_ids) || admission_ids.length === 0) {
+      return res.status(400).json({ message: "No admission IDs provided" });
+    }
+
+    const results = await admissionService.bulkEnrollAdmissions(admission_ids);
+    res.json({
+      message: `Successfully enrolled ${results.enrolled} applicant(s)`,
+      enrolled: results.enrolled,
+      failed: results.failed,
+      errors: results.errors,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Bulk enrollment failed", error: err.message });
+  }
+};
