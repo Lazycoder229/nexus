@@ -536,7 +536,7 @@ const Menu = {
        path: "/student/student_communication",
      }, */
     {
-      title: "Finance",
+      title: "Tuition",
       icons: DollarSign,
 
       path: "/student/student_finance",
