@@ -29,6 +29,7 @@ const StudentLMS = () => {
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [selectedDiscussion, setSelectedDiscussion] = useState(null);
   const [submissionFile, setSubmissionFile] = useState(null);
+  const [isSubmittingAssignment, setIsSubmittingAssignment] = useState(false);
   const [replyContent, setReplyContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [academicPeriod, setAcademicPeriod] = useState(null);
@@ -319,7 +320,9 @@ const StudentLMS = () => {
 
   const handleAssignmentSubmit = async (e) => {
     e.preventDefault();
-    if (!submissionFile || !selectedAssignment) return;
+    if (!submissionFile || !selectedAssignment || isSubmittingAssignment) return;
+
+    setIsSubmittingAssignment(true);
 
     // Use FileReader to read the file as Base64
     const reader = new FileReader();
@@ -364,12 +367,15 @@ const StudentLMS = () => {
       } catch (error) {
         console.error("Error submitting assignment:", error);
         alert(`Failed to submit assignment: ${error.message || "Unknown error"}`);
+      } finally {
+        setIsSubmittingAssignment(false);
       }
     };
 
     reader.onerror = (error) => {
       console.error("Error reading file:", error);
       alert("Failed to read file for upload");
+      setIsSubmittingAssignment(false);
     };
   };
 
@@ -1167,16 +1173,18 @@ const StudentLMS = () => {
                       <button
                         type="button"
                         onClick={() => setSelectedAssignment(null)}
+                        disabled={isSubmittingAssignment}
                         className="px-4 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+                        disabled={isSubmittingAssignment}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2 shadow-sm"
                       >
                         <Upload size={16} />
-                        Submit Assignment
+                        {isSubmittingAssignment ? "Submitting" : "Submit Assignment"}
                       </button>
                     </div>
                   </form>
