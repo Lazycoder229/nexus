@@ -87,7 +87,7 @@ const limiter = rateLimit({
 // CORS 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "https://nexus-tau-kohl.vercel.app",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
     exposedHeaders: ["Authorization"],
