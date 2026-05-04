@@ -15,6 +15,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { exportGradeEncoding } from "../../../utils/gradeExcelExport";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -32,35 +33,40 @@ const CAMPUS_SECTION_WEIGHTS = {
   midtermExam: 30,   // exam column weight
 };
 
-const WRITTEN_OUTPUT_ITEM_WEIGHTS = [20, 20, 20, 20, 20];
-const PERFORMANCE_TASK_ITEM_WEIGHTS = [20, 20, 20, 20, 20];
+const WRITTEN_OUTPUT_ITEM_WEIGHTS = [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20];
+const PERFORMANCE_TASK_ITEM_WEIGHTS = [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20];
 
 // ─── Empty state helpers ─────────────────────────────────────────────────────
 const EMPTY_GRADE = () => ({
-  writtenOutput: ["", "", "", "", ""],
-  performanceTasks: ["", "", "", "", ""],
+  writtenOutput:    ["", "", "", "", "", "", "", "", "", "", "", ""],
+  performanceTasks: ["", "", "", "", "", "", "", "", "", "", "", ""],
   midtermExam: "",
 });
 
 const EMPTY_MAX_SCORE = () => ({
-  writtenOutput: [100, 100, 100, 100, 100],
-  performanceTasks: [100, 100, 100, 100, 100],
+  writtenOutput:    [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+  performanceTasks: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
   midtermExam: 100,
 });
 
 const EMPTY_ACTIVITY_META = () => ({
-  writtenOutput: [null, null, null, null, null],
-  performanceTasks: [null, null, null, null, null],
+  writtenOutput:    [null, null, null, null, null, null, null, null, null, null, null, null],
+  performanceTasks: [null, null, null, null, null, null, null, null, null, null, null, null],
   midtermExam: null,
 });
 
 // ─── Grade scale ─────────────────────────────────────────────────────────────
 const LETTER_SCALE = [
-  { min: 90, letter: "A", equivalent: "1.00", status: "PASSED" },
-  { min: 80, letter: "B", equivalent: "2.00", status: "PASSED" },
-  { min: 70, letter: "C", equivalent: "3.00", status: "PASSED" },
-  { min: 60, letter: "D", equivalent: "4.00", status: "PASSED" },
-  { min: 0,  letter: "F", equivalent: "5.00", status: "FAILED" },
+  { min: 97, letter: "", equivalent: "1.00", status: "PASSED" },
+  { min: 94, letter: "", equivalent: "1.25", status: "PASSED" },
+  { min: 91, letter: "", equivalent: "1.50", status: "PASSED" },
+  { min: 88, letter: "", equivalent: "1.75", status: "PASSED" },
+  { min: 85,  letter: "", equivalent: "2.00", status: "PASSED" },
+  { min: 82,  letter: "", equivalent: "2.25", status: "PASSED" },
+  { min: 79,  letter: "", equivalent: "2.50", status: "PASSED" },
+  { min: 76,  letter: "", equivalent: "2.75", status: "PASSED" },
+  { min: 70,  letter: "", equivalent: "3.00", status: "FAILED" },
+  { min: 65,  letter: "", equivalent: "4.00", status: "FAILED" },
 ];
 
 // ─── Utility fns ─────────────────────────────────────────────────────────────
@@ -94,7 +100,7 @@ const calculateMidtermWeighted = (midtermScore, midtermMax = 100) => {
 };
 
 const calculateFinalGrade = (gradeRow, maxRow) => {
-  const written    = calculateSectionStats(gradeRow.writtenOutput,   maxRow?.writtenOutput   || EMPTY_MAX_SCORE().writtenOutput,   CAMPUS_SECTION_WEIGHTS.writtenOutput);
+  const written     = calculateSectionStats(gradeRow.writtenOutput,   maxRow?.writtenOutput   || EMPTY_MAX_SCORE().writtenOutput,   CAMPUS_SECTION_WEIGHTS.writtenOutput);
   const performance = calculateSectionStats(gradeRow.performanceTasks, maxRow?.performanceTasks || EMPTY_MAX_SCORE().performanceTasks, CAMPUS_SECTION_WEIGHTS.performanceTasks);
   const midtermWeighted = calculateMidtermWeighted(gradeRow.midtermExam, maxRow?.midtermExam || EMPTY_MAX_SCORE().midtermExam);
   if (written.weightedScore === null || performance.weightedScore === null || midtermWeighted === null) return null;
@@ -106,13 +112,18 @@ const getLetterInfo = (score) => {
   return LETTER_SCALE.find((range) => score >= range.min) || LETTER_SCALE[LETTER_SCALE.length - 1];
 };
 
-// Numerical equivalent mapping for grading report
 const getNumericalEquivalent = (grade) => {
   if (grade === null) return null;
-  if (grade >= 90) return 1.00;
-  if (grade >= 80) return 2.00;
-  if (grade >= 70) return 3.00;
-  if (grade >= 60) return 4.00;
+  if (grade >= 97) return 1.00;
+  if (grade >= 94) return 1.25;
+  if (grade >= 91) return 1.50;
+  if (grade >= 88) return 1.75;
+  if (grade >= 85) return 2.00;
+  if (grade >= 82) return 2.25;
+  if (grade >= 79) return 2.50;
+  if (grade >= 76) return 2.75;
+  if (grade >= 75) return 3.00;
+
   return 5.00;
 };
 
@@ -120,6 +131,11 @@ const extractComponentOrder = (name = "") => {
   const match = String(name).match(/(\d+)/);
   return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
 };
+
+// ─── Column index arrays ──────────────────────────────────────────────────────
+const WO_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+const PT_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+const COL_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const GradeEncoding = () => {
@@ -131,22 +147,18 @@ const GradeEncoding = () => {
   const [currentPage, setCurrentPage]   = useState(1);
   const [activePeriodId, setActivePeriodId] = useState("");
   const [entryMap, setEntryMap]         = useState({});
+  const [lockedEntries, setLockedEntries] = useState({});
   const [activityMeta, setActivityMeta] = useState(EMPTY_ACTIVITY_META());
 
-  // period = "midterm" | "final"
   const [period, setPeriod] = useState("midterm");
+  const [view, setView]     = useState("encoding");
 
-  // view = "encoding" | "report"
-  const [view, setView] = useState("encoding");
-
-  // Per-period grade/max data: { midterm: { [studentId]: gradeRow }, final: ... }
   const [gradesMap, setGradesMap]       = useState({ midterm: {}, final: {} });
   const [maxScoresMap, setMaxScoresMap] = useState({ midterm: {}, final: {} });
 
   const lastAutoSyncRef = useRef(null);
   const itemsPerPage = 10;
 
-  // Convenience accessors for current period
   const grades    = gradesMap[period] || {};
   const maxScores = maxScoresMap[period] || {};
 
@@ -202,7 +214,6 @@ const GradeEncoding = () => {
       setCourses(mappedCourses);
       setStudents(mappedStudents);
 
-      // Initialise empty grades for all periods
       setGradesMap((prev) => {
         const next = { ...prev };
         PERIODS.forEach((p) => {
@@ -283,6 +294,7 @@ const GradeEncoding = () => {
       const nextGrades    = {};
       const nextMaxScores = {};
       const nextEntryMap  = {};
+      const nextLockedEntries = {};
 
       Object.entries(grouped).forEach(([studentUserId, components]) => {
         const localStudent = studentByUserId.get(studentUserId);
@@ -305,20 +317,36 @@ const GradeEncoding = () => {
         const gradeRow = EMPTY_GRADE();
         const maxRow   = EMPTY_MAX_SCORE();
 
-        assignmentEntries.slice(0, 5).forEach((entry, idx) => {
-          gradeRow.writtenOutput[idx] = entry.raw_score ?? "";
-          maxRow.writtenOutput[idx]   = Number(entry.max_score || 100);
-          nextEntryMap[`${localStudent.id}:writtenOutput:${idx}`] = entry.entry_id;
+        // Load up to 12 written output entries - match by component index in name
+        assignmentEntries.forEach((entry) => {
+          const compMatch = String(entry.component_name || "").match(/(\d+)/);
+          const colIdx = compMatch ? Number(compMatch[1]) - 1 : null;
+          if (colIdx !== null && colIdx >= 0 && colIdx < 12) {
+            gradeRow.writtenOutput[colIdx] = entry.raw_score ?? "";
+            maxRow.writtenOutput[colIdx]   = Number(entry.max_score || 100);
+            const key = `${localStudent.id}:writtenOutput:${colIdx}`;
+            nextEntryMap[key] = entry.entry_id;
+            if (entry.is_locked) nextLockedEntries[key] = true;
+          }
         });
-        quizEntries.slice(0, 5).forEach((entry, idx) => {
-          gradeRow.performanceTasks[idx] = entry.raw_score ?? "";
-          maxRow.performanceTasks[idx]   = Number(entry.max_score || 100);
-          nextEntryMap[`${localStudent.id}:performanceTasks:${idx}`] = entry.entry_id;
+        // Load up to 12 performance task entries - match by component index in name
+        quizEntries.forEach((entry) => {
+          const compMatch = String(entry.component_name || "").match(/(\d+)/);
+          const colIdx = compMatch ? Number(compMatch[1]) - 1 : null;
+          if (colIdx !== null && colIdx >= 0 && colIdx < 12) {
+            gradeRow.performanceTasks[colIdx] = entry.raw_score ?? "";
+            maxRow.performanceTasks[colIdx]   = Number(entry.max_score || 100);
+            const key = `${localStudent.id}:performanceTasks:${colIdx}`;
+            nextEntryMap[key] = entry.entry_id;
+            if (entry.is_locked) nextLockedEntries[key] = true;
+          }
         });
         if (examEntries.length > 0) {
           gradeRow.midtermExam = examEntries[0].raw_score ?? "";
           maxRow.midtermExam   = Number(examEntries[0].max_score || 100);
-          nextEntryMap[`${localStudent.id}:midtermExam`] = examEntries[0].entry_id;
+          const key = `${localStudent.id}:midtermExam`;
+          nextEntryMap[key] = examEntries[0].entry_id;
+          if (examEntries[0].is_locked) nextLockedEntries[key] = true;
         }
 
         nextGrades[localStudent.id]    = gradeRow;
@@ -328,6 +356,7 @@ const GradeEncoding = () => {
       if (Object.keys(nextGrades).length > 0)    setGrades((prev)    => ({ ...prev, ...nextGrades }));
       if (Object.keys(nextMaxScores).length > 0) setMaxScores((prev) => ({ ...prev, ...nextMaxScores }));
       setEntryMap(nextEntryMap);
+      setLockedEntries(nextLockedEntries);
     } catch (error) {
       console.error("Error loading grade entries:", error);
     }
@@ -349,12 +378,12 @@ const GradeEncoding = () => {
       const nextMeta = EMPTY_ACTIVITY_META();
       let wi = 0, pi = 0;
       courseAssignments.forEach((item) => {
-        const type    = String(item.assignment_type || "assignment").toLowerCase();
-        const label   = item.title || item.assignment_name || "Activity";
+        const type     = String(item.assignment_type || "assignment").toLowerCase();
+        const label    = item.title || item.assignment_name || "Activity";
         const maxScore = Number(item.total_points || 100);
-        if (type === "quiz")       { if (pi < 5) { nextMeta.performanceTasks[pi++] = { label, maxScore }; } return; }
+        if (type === "quiz")       { if (pi < 12) { nextMeta.performanceTasks[pi++] = { label, maxScore }; } return; }
         if (type === "exam")       { nextMeta.midtermExam = { label, maxScore }; return; }
-        if (type === "assignment") { if (wi < 5) { nextMeta.writtenOutput[wi++]    = { label, maxScore }; } }
+        if (type === "assignment") { if (wi < 12) { nextMeta.writtenOutput[wi++]    = { label, maxScore }; } }
       });
       setActivityMeta(nextMeta);
     } catch (error) {
@@ -378,10 +407,6 @@ const GradeEncoding = () => {
         { submitted_by: facultyId },
       );
       if (response.data?.success) {
-        const count = response.data.synced || 0;
-        alert(count === 0
-          ? "✓ Sync complete: No graded assignments/quizzes found yet."
-          : `✅ Synced ${count} graded assignments/quizzes from LMS`);
         await loadExistingGradeEntries();
       } else {
         alert(response.data?.message || "Sync completed but no records were synced");
@@ -409,6 +434,10 @@ const GradeEncoding = () => {
     const facultyId = Number(localStorage.getItem("userId") || localStorage.getItem("user_id") || 0);
     if (!facultyId) { alert("Faculty account not detected. Please log in again."); return; }
 
+    // Map period to label
+    const labelMap = { midterm: "midterm", final: "tentative_final" };
+    const gradeLabel = labelMap[period] || "midterm";
+
     try {
       setLoading(true);
       const requests = [];
@@ -425,6 +454,7 @@ const GradeEncoding = () => {
             raw_score: normalized, max_score: 100,
             weight: Number((CAMPUS_SECTION_WEIGHTS.writtenOutput * (WRITTEN_OUTPUT_ITEM_WEIGHTS[idx] / 100)).toFixed(2)),
             submitted_by: facultyId,
+            label: gradeLabel,
           };
           const existingId = entryMap[`${student.id}:writtenOutput:${idx}`];
           requests.push(existingId
@@ -441,6 +471,7 @@ const GradeEncoding = () => {
             raw_score: normalized, max_score: 100,
             weight: Number((CAMPUS_SECTION_WEIGHTS.performanceTasks * (PERFORMANCE_TASK_ITEM_WEIGHTS[idx] / 100)).toFixed(2)),
             submitted_by: facultyId,
+            label: gradeLabel,
           };
           const existingId = entryMap[`${student.id}:performanceTasks:${idx}`];
           requests.push(existingId
@@ -455,6 +486,7 @@ const GradeEncoding = () => {
             component_name: "Midterm Exam", component_type: "exam",
             raw_score: midterm, max_score: 100,
             weight: CAMPUS_SECTION_WEIGHTS.midtermExam, submitted_by: facultyId,
+            label: gradeLabel,
           };
           const existingId = entryMap[`${student.id}:midtermExam`];
           requests.push(existingId
@@ -479,8 +511,8 @@ const GradeEncoding = () => {
   };
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
-  const safeActivityMeta   = activityMeta || EMPTY_ACTIVITY_META();
-  const writtenMetaTotal   = safeActivityMeta.writtenOutput.reduce((s, i) => s + Number(i?.maxScore || 0), 0);
+  const safeActivityMeta     = activityMeta || EMPTY_ACTIVITY_META();
+  const writtenMetaTotal     = safeActivityMeta.writtenOutput.reduce((s, i) => s + Number(i?.maxScore || 0), 0);
   const performanceMetaTotal = safeActivityMeta.performanceTasks.reduce((s, i) => s + Number(i?.maxScore || 0), 0);
 
   const getCourseName = () => {
@@ -489,157 +521,21 @@ const GradeEncoding = () => {
     return course ? `${course.code ? `${course.code} - ` : ""}${course.name}` : "Selected Course";
   };
 
-  // ─── Export to Excel (matching UI layout) ─────────────────────────────────
-  const handleExportToExcel = () => {
-    const wb = XLSX.utils.book_new();
-
-    // ── Encoding sheet ────────────────────────────────────────────────────
-    const encRows = [];
-
-    // Title block
-    encRows.push([`GRADE ENCODING SHEET — ${PERIOD_LABELS[period].toUpperCase()}`]);
-    encRows.push(["Course:", getCourseName()]);
-    encRows.push(["Generated:", new Date().toLocaleString()]);
-    encRows.push([]);
-
-    // Header row 1 — group labels
-    encRows.push([
-      "STUDENT", "ID NUMBER",
-      `WRITTEN OUTPUT ${CAMPUS_SECTION_WEIGHTS.writtenOutput}%`, "", "", "", "", "", "", "",
-      `PERFORMANCE TASK ${CAMPUS_SECTION_WEIGHTS.performanceTasks}%`, "", "", "", "", "", "", "",
-      `${PERIOD_LABELS[period].toUpperCase()} EXAM ${CAMPUS_SECTION_WEIGHTS.midtermExam}%`, "", "",
-      "FINAL", "GRADE", "EQUIV.", "STATUS",
-    ]);
-
-    // Header row 2 — sub-columns
-    encRows.push([
-      "", "",
-      "1", "2", "3", "4", "5", "Total", "Rating", "%",
-      "1", "2", "3", "4", "5", "Total", "Rating", "%",
-      "Score", "Rating", "%",
-      "", "", "", "",
-    ]);
-
-    // Header row 3 — max scores
-    encRows.push([
-      "", "",
-      ...safeActivityMeta.writtenOutput.map((i) => (i ? i.maxScore : "-")),
-      writtenMetaTotal || "-", 100, `${CAMPUS_SECTION_WEIGHTS.writtenOutput}%`,
-      ...safeActivityMeta.performanceTasks.map((i) => (i ? i.maxScore : "-")),
-      performanceMetaTotal || "-", 100, `${CAMPUS_SECTION_WEIGHTS.performanceTasks}%`,
-      safeActivityMeta.midtermExam ? safeActivityMeta.midtermExam.maxScore : "-", 100, `${CAMPUS_SECTION_WEIGHTS.midtermExam}%`,
-      "", "", "", "",
-    ]);
-
-    // Data rows — one per student, matching UI column order exactly
-    filteredStudents.forEach((student, rowIdx) => {
-      const gradeRow = grades[student.id] || EMPTY_GRADE();
-      const maxRow   = maxScores[student.id] || EMPTY_MAX_SCORE();
-      const written     = calculateSectionStats(gradeRow.writtenOutput,   maxRow.writtenOutput,   CAMPUS_SECTION_WEIGHTS.writtenOutput);
-      const performance = calculateSectionStats(gradeRow.performanceTasks, maxRow.performanceTasks, CAMPUS_SECTION_WEIGHTS.performanceTasks);
-      const midtermWeighted = calculateMidtermWeighted(gradeRow.midtermExam, maxRow.midtermExam);
-      const finalGrade  = calculateFinalGrade(gradeRow, maxRow);
-      const letterInfo  = getLetterInfo(finalGrade);
-      const midtermRaw  = normalizeNumber(gradeRow.midtermExam);
-      const midtermRating = midtermRaw !== null
-        ? ((midtermRaw / (maxRow.midtermExam || 100)) * 100)
-        : null;
-
-      encRows.push([
-        `${student.lastName}, ${student.firstName}`.trim(),
-        student.studentId,
-        // Written Output scores
-        ...gradeRow.writtenOutput.map((s) => (s === "" ? "" : Number(s))),
-        written.totalScore    === null ? "" : written.totalScore,
-        written.percent       === null ? "" : written.percent,
-        written.weightedScore === null ? "" : written.weightedScore,
-        // Performance Task scores
-        ...gradeRow.performanceTasks.map((s) => (s === "" ? "" : Number(s))),
-        performance.totalScore    === null ? "" : performance.totalScore,
-        performance.percent       === null ? "" : performance.percent,
-        performance.weightedScore === null ? "" : performance.weightedScore,
-        // Exam
-        midtermRaw    === null ? "" : midtermRaw,
-        midtermRating === null ? "" : Number(midtermRating.toFixed(2)),
-        midtermWeighted === null ? "" : midtermWeighted,
-        // Summary
-        finalGrade === null ? "" : finalGrade,
-        letterInfo.letter,
-        letterInfo.equivalent,
-        letterInfo.status,
-      ]);
-    });
-
-    const ws = XLSX.utils.aoa_to_sheet(encRows);
-
-    // Column widths
-    ws["!cols"] = [
-      { wch: 24 }, { wch: 14 },
-      ...Array(5).fill({ wch: 8 }), { wch: 8 }, { wch: 8 }, { wch: 8 },
-      ...Array(5).fill({ wch: 8 }), { wch: 8 }, { wch: 8 }, { wch: 8 },
-      { wch: 8 }, { wch: 8 }, { wch: 8 },
-      { wch: 8 }, { wch: 7 }, { wch: 8 }, { wch: 9 },
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, `${PERIOD_LABELS[period]} Encoding`);
-
-    // ── Grading Report sheet ──────────────────────────────────────────────
-    const reportRows = [];
-    reportRows.push(["GRADING REPORT"]);
-    reportRows.push(["Course:", getCourseName()]);
-    reportRows.push(["Period:", PERIOD_LABELS[period]]);
-    reportRows.push(["Generated:", new Date().toLocaleString()]);
-    reportRows.push([]);
-    reportRows.push([
-      "#",
-      "STUDENT NAME\n(Last Name, First Name Middle Name)",
-      "I.D. Number",
-      `${PERIOD_LABELS[period]} Grade`,
-      "Tentative Final Grade",
-      "Final Grade\n(MG + TFG) / 2",
-      "Numerical Equivalent",
-      "Remarks",
-    ]);
-
-    const midtermGrades  = gradesMap["midterm"]  || {};
-    const midtermMaxMap  = maxScoresMap["midterm"] || {};
-
-    filteredStudents.forEach((student, i) => {
-      const mGradeRow = midtermGrades[student.id]  || EMPTY_GRADE();
-      const mMaxRow   = midtermMaxMap[student.id]  || EMPTY_MAX_SCORE();
-      const fGradeRow = (gradesMap["final"]   || {})[student.id] || EMPTY_GRADE();
-      const fMaxRow   = (maxScoresMap["final"] || {})[student.id] || EMPTY_MAX_SCORE();
-
-      const midtermFinal  = calculateFinalGrade(mGradeRow, mMaxRow);
-      const tentativeFinal = calculateFinalGrade(fGradeRow, fMaxRow);
-
-      // Combined final = average of midterm and final period grades
-      const combinedFinal = midtermFinal !== null && tentativeFinal !== null
-        ? Number(((midtermFinal + tentativeFinal) / 2).toFixed(2))
-        : midtermFinal ?? tentativeFinal;
-
-      const numEquiv = getNumericalEquivalent(combinedFinal);
-      const remarks  = numEquiv !== null ? (numEquiv <= 4 ? "PASSED" : "FAILED") : "-";
-
-      reportRows.push([
-        i + 1,
-        `${student.lastName}, ${student.firstName}`.trim().toUpperCase(),
-        student.studentId,
-        midtermFinal  !== null ? midtermFinal  : "",
-        tentativeFinal !== null ? tentativeFinal : 50,   // default 50 if not yet encoded
-        combinedFinal !== null ? combinedFinal  : "",
-        numEquiv !== null ? numEquiv.toFixed(2) : "",
-        remarks,
-      ]);
-    });
-
-    const ws2 = XLSX.utils.aoa_to_sheet(reportRows);
-    ws2["!cols"] = [
-      { wch: 4 }, { wch: 34 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 10 },
-    ];
-    XLSX.utils.book_append_sheet(wb, ws2, "Grading Report");
-
-    XLSX.writeFile(wb, `Grade_${getCourseName().replace(/\s+/g, "_")}_${PERIOD_LABELS[period]}_${Date.now()}.xlsx`);
+  // ─── Export to Excel ───────────────────────────────────────────────────────
+  const handleExportToExcel = async () => {
+    try {
+      await exportGradeEncoding({
+        courseName: getCourseName(),
+        students: filteredStudents,
+        gradesMap,
+        maxScoresMap,
+        activityMeta: safeActivityMeta,
+        mode: "all",
+      });
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Failed to export grades: " + error.message);
+    }
   };
 
   // ─── Import Excel ──────────────────────────────────────────────────────────
@@ -656,17 +552,20 @@ const GradeEncoding = () => {
       if (headerIndex === -1) throw new Error("Could not find the grade table header in the Excel file");
 
       const importedGrades = {};
-      rows.slice(headerIndex + 2).forEach((row) => {  // skip sub-header rows
+      rows.slice(headerIndex + 2).forEach((row) => {
         const studentName = row?.[0];
         if (!studentName) return;
         const matchingStudent = filteredStudents.find(
           (s) => `${s.lastName}, ${s.firstName}`.trim().toLowerCase() === String(studentName).toLowerCase()
         );
         if (!matchingStudent) return;
+        // Columns 2-13 = written output 1-12, 14 is total/rating/%, 17-28 = performance 1-12
         importedGrades[matchingStudent.id] = {
-          writtenOutput:  [row[2], row[3], row[4], row[5], row[6]].map((v) => (v === "" ? "" : v)),
-          performanceTasks: [row[10], row[11], row[12], row[13], row[14]].map((v) => (v === "" ? "" : v)),
-          midtermExam: row[18] === "" ? "" : row[18],
+          writtenOutput:    [row[2],  row[3],  row[4],  row[5],  row[6],  row[7],
+                             row[8],  row[9],  row[10], row[11], row[12], row[13]].map((v) => (v === "" ? "" : v)),
+          performanceTasks: [row[17], row[18], row[19], row[20], row[21], row[22],
+                             row[23], row[24], row[25], row[26], row[27], row[28]].map((v) => (v === "" ? "" : v)),
+          midtermExam: row[32] === "" ? "" : row[32],
         };
       });
 
@@ -680,15 +579,19 @@ const GradeEncoding = () => {
 
   // ─── Grading report data ───────────────────────────────────────────────────
   const getReportRow = (student) => {
-    const mGradeRow     = (gradesMap["midterm"]  || {})[student.id] || EMPTY_GRADE();
-    const mMaxRow       = (maxScoresMap["midterm"] || {})[student.id] || EMPTY_MAX_SCORE();
-    const fGradeRow     = (gradesMap["final"]    || {})[student.id] || EMPTY_GRADE();
-    const fMaxRow       = (maxScoresMap["final"]  || {})[student.id] || EMPTY_MAX_SCORE();
-    const midtermGrade  = calculateFinalGrade(mGradeRow, mMaxRow);
+    const mGradeRow      = (gradesMap["midterm"]  || {})[student.id] || EMPTY_GRADE();
+    const mMaxRow        = (maxScoresMap["midterm"] || {})[student.id] || EMPTY_MAX_SCORE();
+    const fGradeRow      = (gradesMap["final"]    || {})[student.id] || EMPTY_GRADE();
+    const fMaxRow        = (maxScoresMap["final"]  || {})[student.id] || EMPTY_MAX_SCORE();
+    const midtermGrade   = calculateFinalGrade(mGradeRow, mMaxRow);
     const tentativeFinal = calculateFinalGrade(fGradeRow, fMaxRow);
+
+    // Only compute combined when BOTH grades are available.
+    // Never fall back to a single period alone — show null (→ "-") until both exist.
     const combinedFinal = midtermGrade !== null && tentativeFinal !== null
       ? Number(((midtermGrade + tentativeFinal) / 2).toFixed(2))
-      : midtermGrade ?? tentativeFinal;
+      : null;
+
     const numEquiv = getNumericalEquivalent(combinedFinal);
     return { midtermGrade, tentativeFinal, combinedFinal, numEquiv };
   };
@@ -710,7 +613,6 @@ const GradeEncoding = () => {
 
       {/* ── Period + View toggles ── */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* Period toggle */}
         <div className="flex items-center rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
           <span className="px-3 py-2 text-xs font-medium text-slate-500 border-r border-slate-200 flex items-center gap-1">
             <BookOpen size={14} /> Period
@@ -721,9 +623,7 @@ const GradeEncoding = () => {
               type="button"
               onClick={() => setPeriod(p)}
               className={`px-4 py-2 text-sm font-medium transition-colors ${
-                period === p
-                  ? "bg-indigo-600 text-white"
-                  : "text-slate-600 hover:bg-slate-50"
+                period === p ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-50"
               }`}
             >
               {PERIOD_LABELS[p]}
@@ -731,7 +631,6 @@ const GradeEncoding = () => {
           ))}
         </div>
 
-        {/* View toggle */}
         <div className="flex items-center rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
           <button
             type="button"
@@ -822,16 +721,17 @@ const GradeEncoding = () => {
       {/* ════════════════════════════════════════════════════════════════════ */}
       {view === "encoding" && (
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-[1500px] w-full border-collapse text-xs">
+          <table className="min-w-[2400px] w-full border-collapse text-xs">
             <thead>
               {/* Row 1 — section group headers */}
+              {/* 12 input cols + 3 summary cols = 15 per section */}
               <tr className="bg-slate-100 text-xs uppercase tracking-wide text-slate-600">
                 <th rowSpan="3" className="border border-slate-200 px-3 py-3 text-left whitespace-nowrap">Student</th>
                 <th rowSpan="3" className="border border-slate-200 px-3 py-3 text-left whitespace-nowrap">ID Number</th>
-                <th colSpan="8" className="border border-slate-200 px-3 py-2 text-center bg-blue-50">
+                <th colSpan="15" className="border border-slate-200 px-3 py-2 text-center bg-blue-50">
                   Written Output {CAMPUS_SECTION_WEIGHTS.writtenOutput}%
                 </th>
-                <th colSpan="8" className="border border-slate-200 px-3 py-2 text-center bg-emerald-50">
+                <th colSpan="15" className="border border-slate-200 px-3 py-2 text-center bg-emerald-50">
                   Performance Task {CAMPUS_SECTION_WEIGHTS.performanceTasks}%
                 </th>
                 <th colSpan="3" className="border border-slate-200 px-3 py-2 text-center bg-amber-50">
@@ -843,41 +743,53 @@ const GradeEncoding = () => {
                 <th rowSpan="3" className="border border-slate-200 px-3 py-3 text-center whitespace-nowrap">Status</th>
               </tr>
 
-              {/* Row 2 — sub-column labels */}
+              {/* Row 2 — sub-column labels (1–12 for WO and PT) */}
               <tr className="bg-slate-50 text-xs text-slate-500 text-center">
-                {[1, 2, 3, 4, 5].map((n) => (
+                {COL_NUMBERS.map((n) => (
                   <th key={`wh-${n}`} className="border border-slate-200 px-2 py-2">{n}</th>
                 ))}
                 <th className="border border-slate-200 px-2 py-2 bg-blue-50 whitespace-nowrap">Total</th>
                 <th className="border border-slate-200 px-2 py-2 bg-blue-50 whitespace-nowrap">Rating</th>
                 <th className="border border-slate-200 px-2 py-2 bg-blue-50 whitespace-nowrap">%</th>
-                {[1, 2, 3, 4, 5].map((n) => (
+
+                {COL_NUMBERS.map((n) => (
                   <th key={`ph-${n}`} className="border border-slate-200 px-2 py-2">{n}</th>
                 ))}
                 <th className="border border-slate-200 px-2 py-2 bg-emerald-50 whitespace-nowrap">Total</th>
                 <th className="border border-slate-200 px-2 py-2 bg-emerald-50 whitespace-nowrap">Rating</th>
                 <th className="border border-slate-200 px-2 py-2 bg-emerald-50 whitespace-nowrap">%</th>
+
                 <th className="border border-slate-200 px-2 py-2 bg-amber-50 whitespace-nowrap">Score</th>
                 <th className="border border-slate-200 px-2 py-2 bg-amber-50 whitespace-nowrap">Rating</th>
                 <th className="border border-slate-200 px-2 py-2 bg-amber-50 whitespace-nowrap">%</th>
               </tr>
 
-              {/* Row 3 — max score meta row */}
+              {/* Row 3 — max score meta row (defaults to 100 when no LMS data) */}
               <tr className="bg-white text-[11px] text-slate-500 text-center">
                 {safeActivityMeta.writtenOutput.map((item, i) => (
-                  <th key={`wm-${i}`} className="border border-slate-200 px-2 py-1">{item ? item.maxScore : "-"}</th>
+                  <th key={`wm-${i}`} className="border border-slate-200 px-2 py-1">
+                    {item ? item.maxScore : 100}
+                  </th>
                 ))}
-                <th className="border border-slate-200 px-2 py-1 bg-blue-50 font-semibold">{writtenMetaTotal || "-"}</th>
+                <th className="border border-slate-200 px-2 py-1 bg-blue-50 font-semibold">
+                  {writtenMetaTotal > 0 ? writtenMetaTotal : 1200}
+                </th>
                 <th className="border border-slate-200 px-2 py-1 bg-blue-50 font-semibold">100</th>
                 <th className="border border-slate-200 px-2 py-1 bg-blue-50 font-semibold">{CAMPUS_SECTION_WEIGHTS.writtenOutput}%</th>
+
                 {safeActivityMeta.performanceTasks.map((item, i) => (
-                  <th key={`pm-${i}`} className="border border-slate-200 px-2 py-1">{item ? item.maxScore : "-"}</th>
+                  <th key={`pm-${i}`} className="border border-slate-200 px-2 py-1">
+                    {item ? item.maxScore : 100}
+                  </th>
                 ))}
-                <th className="border border-slate-200 px-2 py-1 bg-emerald-50 font-semibold">{performanceMetaTotal || "-"}</th>
+                <th className="border border-slate-200 px-2 py-1 bg-emerald-50 font-semibold">
+                  {performanceMetaTotal > 0 ? performanceMetaTotal : 1200}
+                </th>
                 <th className="border border-slate-200 px-2 py-1 bg-emerald-50 font-semibold">100</th>
                 <th className="border border-slate-200 px-2 py-1 bg-emerald-50 font-semibold">{CAMPUS_SECTION_WEIGHTS.performanceTasks}%</th>
+
                 <th className="border border-slate-200 px-2 py-1 bg-amber-50 font-semibold">
-                  {safeActivityMeta.midtermExam ? safeActivityMeta.midtermExam.maxScore : "-"}
+                  {safeActivityMeta.midtermExam ? safeActivityMeta.midtermExam.maxScore : 100}
                 </th>
                 <th className="border border-slate-200 px-2 py-1 bg-amber-50 font-semibold">100</th>
                 <th className="border border-slate-200 px-2 py-1 bg-amber-50 font-semibold">{CAMPUS_SECTION_WEIGHTS.midtermExam}%</th>
@@ -887,20 +799,20 @@ const GradeEncoding = () => {
             <tbody>
               {currentStudents.length === 0 ? (
                 <tr>
-                  <td colSpan="26" className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td colSpan="38" className="px-4 py-8 text-center text-sm text-slate-500">
                     {loading ? "Loading grade data..." : "No students found"}
                   </td>
                 </tr>
               ) : (
                 currentStudents.map((student) => {
-                  const gradeRow = grades[student.id] || EMPTY_GRADE();
-                  const maxRow   = maxScores[student.id] || EMPTY_MAX_SCORE();
-                  const written     = calculateSectionStats(gradeRow.writtenOutput,   maxRow.writtenOutput,   CAMPUS_SECTION_WEIGHTS.writtenOutput);
-                  const performance = calculateSectionStats(gradeRow.performanceTasks, maxRow.performanceTasks, CAMPUS_SECTION_WEIGHTS.performanceTasks);
+                  const gradeRow        = grades[student.id] || EMPTY_GRADE();
+                  const maxRow          = maxScores[student.id] || EMPTY_MAX_SCORE();
+                  const written         = calculateSectionStats(gradeRow.writtenOutput,   maxRow.writtenOutput,   CAMPUS_SECTION_WEIGHTS.writtenOutput);
+                  const performance     = calculateSectionStats(gradeRow.performanceTasks, maxRow.performanceTasks, CAMPUS_SECTION_WEIGHTS.performanceTasks);
                   const midtermWeighted = calculateMidtermWeighted(gradeRow.midtermExam, maxRow.midtermExam);
-                  const finalGrade  = calculateFinalGrade(gradeRow, maxRow);
-                  const letterInfo  = getLetterInfo(finalGrade);
-                  const midtermRaw  = normalizeNumber(gradeRow.midtermExam);
+                  const finalGrade      = calculateFinalGrade(gradeRow, maxRow);
+                  const letterInfo      = getLetterInfo(finalGrade);
+                  const midtermRaw      = normalizeNumber(gradeRow.midtermExam);
 
                   return (
                     <tr key={student.id} className="border-t border-slate-200 text-xs hover:bg-slate-50">
@@ -909,17 +821,23 @@ const GradeEncoding = () => {
                       </td>
                       <td className="border border-slate-200 px-3 py-2 text-slate-600 whitespace-nowrap">{student.studentId}</td>
 
-                      {/* Written Output inputs */}
-                      {[0, 1, 2, 3, 4].map((idx) => (
-                        <td key={`w-${idx}`} className="border border-slate-200 px-1 py-1 bg-blue-50 text-center">
-                          <input
-                            type="number" min="0" max="100"
-                            value={gradeRow.writtenOutput[idx] ?? ""}
-                            onChange={(e) => handleGradeChange(student.id, "writtenOutput", idx, e.target.value)}
-                            className="w-14 rounded border border-slate-300 px-1 py-1 text-center text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
-                          />
-                        </td>
-                      ))}
+                      {/* Written Output — 12 input cells */}
+                      {WO_INDICES.map((idx) => {
+                        const lockKey = `${student.id}:writtenOutput:${idx}`;
+                        const isLocked = lockedEntries[lockKey];
+                        return (
+                          <td key={`w-${idx}`} className={`border border-slate-200 px-1 py-1 ${isLocked ? 'bg-gray-100' : 'bg-blue-50'} text-center`}>
+                            <input
+                              type="number" min="0" max="100"
+                              value={gradeRow.writtenOutput[idx] ?? ""}
+                              onChange={(e) => handleGradeChange(student.id, "writtenOutput", idx, e.target.value)}
+                              disabled={isLocked}
+                              className={`w-14 rounded border ${isLocked ? 'border-gray-300 bg-gray-200 cursor-not-allowed' : 'border-slate-300'} px-1 py-1 text-center text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20`}
+                              title={isLocked ? "This grade is locked and cannot be edited" : ""}
+                            />
+                          </td>
+                        );
+                      })}
                       <td className="border border-slate-200 bg-blue-100 px-2 py-2 text-center font-semibold text-slate-700">
                         {written.totalScore === null ? "-" : written.totalScore.toFixed(2)}
                       </td>
@@ -930,17 +848,23 @@ const GradeEncoding = () => {
                         {written.weightedScore === null ? "-" : written.weightedScore.toFixed(2)}
                       </td>
 
-                      {/* Performance Task inputs */}
-                      {[0, 1, 2, 3, 4].map((idx) => (
-                        <td key={`p-${idx}`} className="border border-slate-200 px-1 py-1 bg-emerald-50 text-center">
-                          <input
-                            type="number" min="0" max="100"
-                            value={gradeRow.performanceTasks[idx] ?? ""}
-                            onChange={(e) => handleGradeChange(student.id, "performanceTasks", idx, e.target.value)}
-                            className="w-14 rounded border border-slate-300 px-1 py-1 text-center text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
-                          />
-                        </td>
-                      ))}
+                      {/* Performance Tasks — 12 input cells */}
+                      {PT_INDICES.map((idx) => {
+                        const lockKey = `${student.id}:performanceTasks:${idx}`;
+                        const isLocked = lockedEntries[lockKey];
+                        return (
+                          <td key={`p-${idx}`} className={`border border-slate-200 px-1 py-1 ${isLocked ? 'bg-gray-100' : 'bg-emerald-50'} text-center`}>
+                            <input
+                              type="number" min="0" max="100"
+                              value={gradeRow.performanceTasks[idx] ?? ""}
+                              onChange={(e) => handleGradeChange(student.id, "performanceTasks", idx, e.target.value)}
+                              disabled={isLocked}
+                              className={`w-14 rounded border ${isLocked ? 'border-gray-300 bg-gray-200 cursor-not-allowed' : 'border-slate-300'} px-1 py-1 text-center text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20`}
+                              title={isLocked ? "This grade is locked and cannot be edited" : ""}
+                            />
+                          </td>
+                        );
+                      })}
                       <td className="border border-slate-200 bg-emerald-100 px-2 py-2 text-center font-semibold text-slate-700">
                         {performance.totalScore === null ? "-" : performance.totalScore.toFixed(2)}
                       </td>
@@ -952,14 +876,22 @@ const GradeEncoding = () => {
                       </td>
 
                       {/* Midterm/Final Exam input */}
-                      <td className="border border-slate-200 bg-amber-50 px-1 py-1 text-center">
-                        <input
-                          type="number" min="0" max="100"
-                          value={gradeRow.midtermExam ?? ""}
-                          onChange={(e) => handleGradeChange(student.id, "midtermExam", null, e.target.value)}
-                          className="w-16 rounded border border-slate-300 px-1 py-1 text-center text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20"
-                        />
-                      </td>
+                      {(() => {
+                        const lockKey = `${student.id}:midtermExam`;
+                        const isLocked = lockedEntries[lockKey];
+                        return (
+                          <td className={`border border-slate-200 px-1 py-1 ${isLocked ? 'bg-gray-100' : 'bg-amber-50'} text-center`}>
+                            <input
+                              type="number" min="0" max="100"
+                              value={gradeRow.midtermExam ?? ""}
+                              onChange={(e) => handleGradeChange(student.id, "midtermExam", null, e.target.value)}
+                              disabled={isLocked}
+                              className={`w-16 rounded border ${isLocked ? 'border-gray-300 bg-gray-200 cursor-not-allowed' : 'border-slate-300'} px-1 py-1 text-center text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20`}
+                              title={isLocked ? "This grade is locked and cannot be edited" : ""}
+                            />
+                          </td>
+                        );
+                      })()}
                       <td className="border border-slate-200 bg-amber-100 px-2 py-2 text-center font-semibold text-slate-700">
                         {midtermRaw === null ? "-" : ((midtermRaw / (maxRow.midtermExam || 100)) * 100).toFixed(2)}
                       </td>
@@ -1033,7 +965,7 @@ const GradeEncoding = () => {
                   const { midtermGrade, tentativeFinal, combinedFinal, numEquiv } = getReportRow(student);
                   const isPassed = numEquiv !== null && numEquiv <= 4;
                   const isFailed = numEquiv !== null && numEquiv > 4;
-                  const rowNum = (currentPage - 1) * itemsPerPage + i + 1;
+                  const rowNum   = (currentPage - 1) * itemsPerPage + i + 1;
 
                   return (
                     <tr key={student.id} className={`border-t border-slate-200 text-xs ${i % 2 === 0 ? "bg-white" : "bg-slate-50"} hover:bg-blue-50`}>
@@ -1046,11 +978,9 @@ const GradeEncoding = () => {
                         {midtermGrade !== null ? midtermGrade.toFixed(0) : "-"}
                       </td>
                       <td className="border border-slate-200 px-3 py-2 text-center font-semibold text-slate-800">
-                        {tentativeFinal !== null ? tentativeFinal.toFixed(0) : "50"}
+                        {tentativeFinal !== null ? tentativeFinal.toFixed(0) : "-"}
                       </td>
-                      <td className={`border border-slate-200 px-3 py-2 text-center font-bold ${
-                        isFailed ? "text-red-600" : "text-slate-800"
-                      }`}>
+                      <td className={`border border-slate-200 px-3 py-2 text-center font-bold ${isFailed ? "text-red-600" : "text-slate-800"}`}>
                         {combinedFinal !== null ? combinedFinal.toFixed(0) : "-"}
                       </td>
                       <td className="border border-slate-200 px-3 py-2 text-center font-semibold text-slate-700">

@@ -102,8 +102,8 @@ const GradeEntriesModel = {
       INSERT INTO grade_entries (
         student_id, course_id, section_id, period_id, exam_id,
         component_name, component_type, raw_score, max_score,
-        percentage, weight, weighted_score, remarks, submitted_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        percentage, weight, weighted_score, remarks, submitted_by, label, is_locked
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -121,6 +121,8 @@ const GradeEntriesModel = {
       entryData.weighted_score || null,
       entryData.remarks || null,
       entryData.submitted_by,
+      entryData.label || "midterm",
+      entryData.is_locked || false,
     ];
 
     const [result] = await pool.query(query, params);
@@ -143,7 +145,9 @@ const GradeEntriesModel = {
         percentage = ?,
         weight = ?,
         weighted_score = ?,
-        remarks = ?
+        remarks = ?,
+        label = ?,
+        is_locked = ?
       WHERE entry_id = ?
     `;
 
@@ -161,6 +165,8 @@ const GradeEntriesModel = {
       entryData.weight || null,
       entryData.weighted_score || null,
       entryData.remarks || null,
+      entryData.label || "midterm",
+      entryData.is_locked || false,
       entryId,
     ];
 

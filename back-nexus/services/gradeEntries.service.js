@@ -26,6 +26,24 @@ const GradeEntriesService = {
 
   createEntry: async (entryData) => {
     try {
+      // Check if entry with same label already exists
+      const allEntries = await GradeEntriesModel.getAll({
+        student_id: entryData.student_id,
+        course_id: entryData.course_id,
+        period_id: entryData.period_id,
+        component_type: entryData.component_type,
+      });
+
+      const label = entryData.label || "midterm";
+      const existingEntry = allEntries.find(
+        (e) => e.component_name === entryData.component_name && e.label === label
+      );
+
+      if (existingEntry) {
+        // If entry exists with same label, update it instead
+        return await this.updateEntry(existingEntry.entry_id, entryData);
+      }
+
       // Calculate percentage if raw_score and max_score are provided
       if (entryData.raw_score && entryData.max_score) {
         entryData.percentage =
@@ -52,6 +70,12 @@ const GradeEntriesService = {
 
   updateEntry: async (entryId, entryData) => {
     try {
+      // Check if entry is locked before allowing update
+      const existingEntry = await GradeEntriesModel.getById(entryId);
+      if (existingEntry && existingEntry.is_locked) {
+        throw new Error("This grade entry is locked and cannot be modified. Contact an administrator to unlock it.");
+      }
+
       // Recalculate percentage and weighted score
       if (entryData.raw_score && entryData.max_score) {
         entryData.percentage =

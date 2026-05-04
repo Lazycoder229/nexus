@@ -1,13 +1,9 @@
 /**
  * gradeExcelExport.js
  * ─────────────────────────────────────────────────────────────────────────────
- * Produces a beautifully formatted .xlsx file that mirrors the Grade Encoding
- * UI exactly — coloured section bands, merged headers, max-score meta row,
- * live Excel formulas for all computed columns, and a Grading Report sheet.
  *
  * Dependencies (already in package.json):
  *   xlsx          → workbook/sheet plumbing
- *   xlsx-style    → full cell styling (fill, font, border, alignment)
  *   file-saver    → triggers browser download
  *
  * Usage:
@@ -16,7 +12,6 @@
  */
 
 import * as XLSX from "xlsx";
-import XLSXStyle from "xlsx-style";
 import { saveAs } from "file-saver";
 
 // ─── Palette (mirrors Tailwind classes used in the UI) ────────────────────────
@@ -115,44 +110,63 @@ function numCell(value, { fill, font: fnt, alignment = AC, border: brd = border(
   return c;
 }
 
-function formulaCell(formula, { fill, font: fnt, alignment = AC, border: brd = border(), fmt = "0.00" } = {}) {
-  const c = { f: formula, t: "n", z: fmt };
-  c.s = {};
-  if (fill)      c.s.fill      = { patternType: "solid", ...fill };
-  if (fnt)       c.s.font      = fnt;
-  if (alignment) c.s.alignment = alignment;
-  if (brd)       c.s.border    = brd;
-  return c;
-}
-
-// ─── Column layout constants ──────────────────────────────────────────────────
-// Col indices (1-based):
-//  1=A Student  2=B ID
-//  3-7  = WO1-5        8=WO-Total  9=WO-Rating  10=WO-%
-//  11-15= PT1-5        16=PT-Total 17=PT-Rating 18=PT-%
-//  19=Exam-Score       20=Exam-Rating  21=Exam-%
-//  22=Final  23=Grade  24=Equiv  25=Status
+// ─── Column layout constants (1-based) ───────────────────────────────────────
+// A=Student, B=ID
+// C–N  = WO1–WO12   (12 cols)   O=WO-Total  P=WO-Rating  Q=WO-%
+// R–AC = PT1–PT12   (12 cols)   AD=PT-Total AE=PT-Rating AF=PT-%
+// AG=Exam-Score  AH=Exam-Rating  AI=Exam-%
+// AJ=Final  AK=Grade  AL=Equiv  AM=Status
 
 const COL = {
-  STUDENT:  1,
-  ID:       2,
-  WO1: 3, WO2: 4, WO3: 5, WO4: 6, WO5: 7,
-  WO_TOT:   8,
-  WO_RAT:   9,
-  WO_PCT:   10,
-  PT1: 11, PT2: 12, PT3: 13, PT4: 14, PT5: 15,
-  PT_TOT:   16,
-  PT_RAT:   17,
-  PT_PCT:   18,
-  EX_SCORE: 19,
-  EX_RAT:   20,
-  EX_PCT:   21,
-  FINAL:    22,
-  GRADE:    23,
-  EQUIV:    24,
-  STATUS:   25,
-  TOTAL_COLS: 25,
+  STUDENT:  1,   // A
+  ID:       2,   // B
+  // Written Output 1-12
+  WO1:      3,   // C
+  WO2:      4,
+  WO3:      5,
+  WO4:      6,
+  WO5:      7,
+  WO6:      8,
+  WO7:      9,
+  WO8:      10,
+  WO9:      11,
+  WO10:     12,
+  WO11:     13,
+  WO12:     14,  // N
+  WO_TOT:   15,  // O
+  WO_RAT:   16,  // P
+  WO_PCT:   17,  // Q
+  // Performance Tasks 1-12
+  PT1:      18,  // R
+  PT2:      19,
+  PT3:      20,
+  PT4:      21,
+  PT5:      22,
+  PT6:      23,
+  PT7:      24,
+  PT8:      25,
+  PT9:      26,
+  PT10:     27,
+  PT11:     28,
+  PT12:     29,  // AC
+  PT_TOT:   30,  // AD
+  PT_RAT:   31,  // AE
+  PT_PCT:   32,  // AF
+  // Exam
+  EX_SCORE: 33,  // AG
+  EX_RAT:   34,  // AH
+  EX_PCT:   35,  // AI
+  // Summary
+  FINAL:    36,  // AJ
+  GRADE:    37,  // AK
+  EQUIV:    38,  // AL
+  STATUS:   39,  // AM
+  TOTAL_COLS: 39,
 };
+
+// Derived arrays for iteration
+const WO_INPUT_COLS = Array.from({ length: 12 }, (_, i) => COL.WO1 + i);  // cols 3-14
+const PT_INPUT_COLS = Array.from({ length: 12 }, (_, i) => COL.PT1 + i);  // cols 18-29
 
 const colLetter = (n) => {
   let result = "";
@@ -168,11 +182,16 @@ const W = { WO: 30, PT: 40, EX: 30 };
 
 // ─── Grade scale ──────────────────────────────────────────────────────────────
 const LETTER_SCALE = [
-  { min: 90, letter: "A", equivalent: "1.00", status: "PASSED" },
-  { min: 80, letter: "B", equivalent: "2.00", status: "PASSED" },
-  { min: 70, letter: "C", equivalent: "3.00", status: "PASSED" },
-  { min: 60, letter: "D", equivalent: "4.00", status: "PASSED" },
-  { min: 0,  letter: "F", equivalent: "5.00", status: "FAILED" },
+  { min: 97, letter: "", equivalent: "1.00", status: "PASSED" },
+  { min: 94, letter: "", equivalent: "1.25", status: "PASSED" },
+  { min: 91, letter: "", equivalent: "1.50", status: "PASSED" },
+  { min: 88, letter: "", equivalent: "1.75", status: "PASSED" },
+  { min: 85,  letter: "", equivalent: "2.00", status: "PASSED" },
+  { min: 82,  letter: "", equivalent: "2.25", status: "PASSED" },
+  { min: 79,  letter: "", equivalent: "2.50", status: "PASSED" },
+  { min: 76,  letter: "", equivalent: "2.75", status: "PASSED" },
+  { min: 70,  letter: "", equivalent: "3.00", status: "FAILED" },
+  { min: 65,  letter: "", equivalent: "4.00", status: "FAILED" },
 ];
 
 function getLetterInfo(score) {
@@ -199,7 +218,7 @@ function calcSection(scores = [], maxScores = [], weight = 0) {
 }
 
 function calcFinal(gradeRow, maxRow) {
-  const wo = calcSection(gradeRow.writtenOutput,   maxRow.writtenOutput,   W.WO);
+  const wo = calcSection(gradeRow.writtenOutput,    maxRow.writtenOutput,    W.WO);
   const pt = calcSection(gradeRow.performanceTasks, maxRow.performanceTasks, W.PT);
   const midRaw = normalizeNumber(gradeRow.midtermExam);
   const midMax = Number(maxRow.midtermExam || 100);
@@ -208,6 +227,18 @@ function calcFinal(gradeRow, maxRow) {
   if (wo.weighted === null || pt.weighted === null || exW === null) return null;
   return Number((wo.weighted + pt.weighted + exW).toFixed(2));
 }
+
+// ─── Empty row helpers ────────────────────────────────────────────────────────
+const EMPTY_GRADE = () => ({
+  writtenOutput:    ["", "", "", "", "", "", "", "", "", "", "", ""],
+  performanceTasks: ["", "", "", "", "", "", "", "", "", "", "", ""],
+  midtermExam: "",
+});
+const EMPTY_MAX = () => ({
+  writtenOutput:    [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+  performanceTasks: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+  midtermExam: 100,
+});
 
 // ─── Sheet helpers ────────────────────────────────────────────────────────────
 function setCell(ws, row, col, cellObj) {
@@ -229,19 +260,16 @@ function buildEncodingSheet(ws, { period, students, grades, maxScores, activityM
   const titleStyle = { fill: P.GRP_BG, font: F.white(12), alignment: AL, border: border() };
   const subStyle   = { fill: P.META_BG, font: F.subtitle(), alignment: AL, border: border() };
 
-  // Row 1: Main title
   setCell(ws, row, 1, cell(`${periodLabel.toUpperCase()} GRADE ENCODING SHEET`, titleStyle));
   for (let c = 2; c <= COL.TOTAL_COLS; c++) setCell(ws, row, c, cell("", { fill: P.GRP_BG, border: border() }));
   merge(ws, row, 1, row, COL.TOTAL_COLS);
   row++;
 
-  // Row 2: Course name
   setCell(ws, row, 1, cell(`Course: ${courseName}`, subStyle));
   for (let c = 2; c <= COL.TOTAL_COLS; c++) setCell(ws, row, c, cell("", { fill: P.META_BG, border: border() }));
   merge(ws, row, 1, row, COL.TOTAL_COLS);
   row++;
 
-  // Row 3: Generated date
   setCell(ws, row, 1, cell(`Generated: ${new Date().toLocaleString()}`, subStyle));
   for (let c = 2; c <= COL.TOTAL_COLS; c++) setCell(ws, row, c, cell("", { fill: P.META_BG, border: border() }));
   merge(ws, row, 1, row, COL.TOTAL_COLS);
@@ -251,44 +279,58 @@ function buildEncodingSheet(ws, { period, students, grades, maxScores, activityM
   for (let c = 1; c <= COL.TOTAL_COLS; c++) setCell(ws, row, c, cell("", { border: border() }));
   row++;
 
-  // ── Header rows (rows 5-7) ────────────────────────────────────────────────
-  const HDR_ROW  = row;       // row 5 — group labels
-  const SUB_ROW  = row + 1;   // row 6 — sub-column labels
-  const META_ROW = row + 2;   // row 7 — max score info
+  // ── Header rows ───────────────────────────────────────────────────────────
+  const HDR_ROW  = row;       // Group labels
+  const SUB_ROW  = row + 1;   // Sub-column numbers
+  const META_ROW = row + 2;   // Max score info
 
-  // ── Row 5: Group label row ────────────────────────────────────────────────
-  const grpStyle = (fill, txt) => ({
-    fill,
-    font: { name: "Arial", sz: 9, bold: true, color: { rgb: "0F172A" } },
-    alignment: AC,
-    border: border("medium"),
-  });
-
-  // Student + ID — span 3 header rows
+  // ── Row HDR: Group label row ──────────────────────────────────────────────
+  // Student + ID — span all 3 header rows
   setCell(ws, HDR_ROW, COL.STUDENT, cell("STUDENT", { fill: P.GRP_BG, font: F.white(), alignment: AC, border: border("medium") }));
   setCell(ws, HDR_ROW, COL.ID,      cell("ID NUMBER", { fill: P.GRP_BG, font: F.white(), alignment: AC, border: border("medium") }));
   merge(ws, HDR_ROW, COL.STUDENT, META_ROW, COL.STUDENT);
   merge(ws, HDR_ROW, COL.ID,      META_ROW, COL.ID);
 
-  // Written Output group label
-  setCell(ws, HDR_ROW, COL.WO1, cell(`WRITTEN OUTPUT ${W.WO}%`, grpStyle(P.WO_HEADER)));
-  for (let c = COL.WO1 + 1; c <= COL.WO_PCT; c++) setCell(ws, HDR_ROW, c, cell("", { fill: P.WO_HEADER, border: border("medium") }));
+  // Written Output group label — spans WO1 to WO_PCT (cols 3–17 = 15 cols)
+  setCell(ws, HDR_ROW, COL.WO1, cell(`WRITTEN OUTPUT ${W.WO}%`, {
+    fill: P.WO_HEADER,
+    font: { name: "Arial", sz: 9, bold: true, color: { rgb: "0F172A" } },
+    alignment: AC,
+    border: border("medium"),
+  }));
+  for (let c = COL.WO1 + 1; c <= COL.WO_PCT; c++) {
+    setCell(ws, HDR_ROW, c, cell("", { fill: P.WO_HEADER, border: border("medium") }));
+  }
   merge(ws, HDR_ROW, COL.WO1, HDR_ROW, COL.WO_PCT);
 
-  // Performance Task group label
-  setCell(ws, HDR_ROW, COL.PT1, cell(`PERFORMANCE TASK ${W.PT}%`, grpStyle(P.PT_HEADER)));
-  for (let c = COL.PT1 + 1; c <= COL.PT_PCT; c++) setCell(ws, HDR_ROW, c, cell("", { fill: P.PT_HEADER, border: border("medium") }));
+  // Performance Task group label — spans PT1 to PT_PCT (cols 18–32 = 15 cols)
+  setCell(ws, HDR_ROW, COL.PT1, cell(`PERFORMANCE TASK ${W.PT}%`, {
+    fill: P.PT_HEADER,
+    font: { name: "Arial", sz: 9, bold: true, color: { rgb: "0F172A" } },
+    alignment: AC,
+    border: border("medium"),
+  }));
+  for (let c = COL.PT1 + 1; c <= COL.PT_PCT; c++) {
+    setCell(ws, HDR_ROW, c, cell("", { fill: P.PT_HEADER, border: border("medium") }));
+  }
   merge(ws, HDR_ROW, COL.PT1, HDR_ROW, COL.PT_PCT);
 
-  // Exam group label
-  setCell(ws, HDR_ROW, COL.EX_SCORE, cell(`${periodLabel.toUpperCase()} EXAM ${W.EX}%`, grpStyle(P.EX_HEADER)));
-  for (let c = COL.EX_SCORE + 1; c <= COL.EX_PCT; c++) setCell(ws, HDR_ROW, c, cell("", { fill: P.EX_HEADER, border: border("medium") }));
+  // Exam group label — spans EX_SCORE to EX_PCT (cols 33–35 = 3 cols)
+  setCell(ws, HDR_ROW, COL.EX_SCORE, cell(`${periodLabel.toUpperCase()} EXAM ${W.EX}%`, {
+    fill: P.EX_HEADER,
+    font: { name: "Arial", sz: 9, bold: true, color: { rgb: "0F172A" } },
+    alignment: AC,
+    border: border("medium"),
+  }));
+  for (let c = COL.EX_SCORE + 1; c <= COL.EX_PCT; c++) {
+    setCell(ws, HDR_ROW, c, cell("", { fill: P.EX_HEADER, border: border("medium") }));
+  }
   merge(ws, HDR_ROW, COL.EX_SCORE, HDR_ROW, COL.EX_PCT);
 
-  // Final cols — span 3 header rows each
+  // Final summary cols — each spans all 3 header rows
   const finCols = [
-    { col: COL.FINAL,  label: "FINAL", fill: P.FIN_HEADER },
-    { col: COL.GRADE,  label: "GRADE", fill: P.SUB_BG },
+    { col: COL.FINAL,  label: "FINAL",  fill: P.FIN_HEADER },
+    { col: COL.GRADE,  label: "GRADE",  fill: P.SUB_BG },
     { col: COL.EQUIV,  label: "EQUIV.", fill: P.SUB_BG },
     { col: COL.STATUS, label: "STATUS", fill: P.SUB_BG },
   ];
@@ -297,15 +339,15 @@ function buildEncodingSheet(ws, { period, students, grades, maxScores, activityM
     merge(ws, HDR_ROW, col, META_ROW, col);
   });
 
-  // ── Row 6: Sub-column labels ──────────────────────────────────────────────
+  // ── Row SUB: Sub-column labels (1–12 for WO and PT) ──────────────────────
   const sub = (val, fillP) => cell(val, { fill: fillP, font: F.mutedBold(8), alignment: AC, border: border() });
 
-  for (let i = 0; i < 5; i++) setCell(ws, SUB_ROW, COL.WO1 + i, sub(String(i + 1), P.WO_SUBHDR));
+  for (let i = 0; i < 12; i++) setCell(ws, SUB_ROW, COL.WO1 + i, sub(String(i + 1), P.WO_SUBHDR));
   setCell(ws, SUB_ROW, COL.WO_TOT, sub("Total",  P.WO_SUBHDR));
   setCell(ws, SUB_ROW, COL.WO_RAT, sub("Rating", P.WO_SUBHDR));
   setCell(ws, SUB_ROW, COL.WO_PCT, sub("%",      P.WO_SUBHDR));
 
-  for (let i = 0; i < 5; i++) setCell(ws, SUB_ROW, COL.PT1 + i, sub(String(i + 1), P.PT_SUBHDR));
+  for (let i = 0; i < 12; i++) setCell(ws, SUB_ROW, COL.PT1 + i, sub(String(i + 1), P.PT_SUBHDR));
   setCell(ws, SUB_ROW, COL.PT_TOT, sub("Total",  P.PT_SUBHDR));
   setCell(ws, SUB_ROW, COL.PT_RAT, sub("Rating", P.PT_SUBHDR));
   setCell(ws, SUB_ROW, COL.PT_PCT, sub("%",      P.PT_SUBHDR));
@@ -314,53 +356,50 @@ function buildEncodingSheet(ws, { period, students, grades, maxScores, activityM
   setCell(ws, SUB_ROW, COL.EX_RAT,   sub("Rating", P.EX_SUBHDR));
   setCell(ws, SUB_ROW, COL.EX_PCT,   sub("%",      P.EX_SUBHDR));
 
-  // ── Row 7: Max-score meta row ─────────────────────────────────────────────
+  // ── Row META: Max-score meta row (defaults to 100 when no LMS data) ───────
   const meta = (val, fillP) => cell(val, { fill: fillP, font: F.mutedBold(8), alignment: AC, border: border() });
-  const safe = activityMeta || {};
-  const woMeta = safe.writtenOutput   || [null, null, null, null, null];
-  const ptMeta = safe.performanceTasks|| [null, null, null, null, null];
+  const safe   = activityMeta || {};
+  const woMeta = safe.writtenOutput    || Array(12).fill(null);
+  const ptMeta = safe.performanceTasks || Array(12).fill(null);
 
-  for (let i = 0; i < 5; i++) setCell(ws, META_ROW, COL.WO1 + i, meta(woMeta[i] ? woMeta[i].maxScore : "-", P.WO_INPUT));
-  const woMetaTotal = woMeta.reduce((s, x) => s + (x ? Number(x.maxScore) : 0), 0);
-  setCell(ws, META_ROW, COL.WO_TOT, meta(woMetaTotal || "-", P.WO_TOTAL));
-  setCell(ws, META_ROW, COL.WO_RAT, meta("100",             P.WO_TOTAL));
-  setCell(ws, META_ROW, COL.WO_PCT, meta(`${W.WO}%`,        P.WO_TOTAL));
+  for (let i = 0; i < 12; i++) {
+    setCell(ws, META_ROW, COL.WO1 + i, meta(woMeta[i] ? woMeta[i].maxScore : 100, P.WO_INPUT));
+  }
+  const woMetaTotal = woMeta.reduce((s, x) => s + (x ? Number(x.maxScore) : 100), 0);
+  setCell(ws, META_ROW, COL.WO_TOT, meta(woMetaTotal, P.WO_TOTAL));
+  setCell(ws, META_ROW, COL.WO_RAT, meta("100",       P.WO_TOTAL));
+  setCell(ws, META_ROW, COL.WO_PCT, meta(`${W.WO}%`,  P.WO_TOTAL));
 
-  for (let i = 0; i < 5; i++) setCell(ws, META_ROW, COL.PT1 + i, meta(ptMeta[i] ? ptMeta[i].maxScore : "-", P.PT_INPUT));
-  const ptMetaTotal = ptMeta.reduce((s, x) => s + (x ? Number(x.maxScore) : 0), 0);
-  setCell(ws, META_ROW, COL.PT_TOT, meta(ptMetaTotal || "-", P.PT_TOTAL));
-  setCell(ws, META_ROW, COL.PT_RAT, meta("100",              P.PT_TOTAL));
-  setCell(ws, META_ROW, COL.PT_PCT, meta(`${W.PT}%`,         P.PT_TOTAL));
+  for (let i = 0; i < 12; i++) {
+    setCell(ws, META_ROW, COL.PT1 + i, meta(ptMeta[i] ? ptMeta[i].maxScore : 100, P.PT_INPUT));
+  }
+  const ptMetaTotal = ptMeta.reduce((s, x) => s + (x ? Number(x.maxScore) : 100), 0);
+  setCell(ws, META_ROW, COL.PT_TOT, meta(ptMetaTotal, P.PT_TOTAL));
+  setCell(ws, META_ROW, COL.PT_RAT, meta("100",       P.PT_TOTAL));
+  setCell(ws, META_ROW, COL.PT_PCT, meta(`${W.PT}%`,  P.PT_TOTAL));
 
-  const exMax = safe.midtermExam ? safe.midtermExam.maxScore : "-";
-  setCell(ws, META_ROW, COL.EX_SCORE, meta(exMax,     P.EX_INPUT));
-  setCell(ws, META_ROW, COL.EX_RAT,   meta("100",     P.EX_TOTAL));
+  const exMax = safe.midtermExam ? safe.midtermExam.maxScore : 100;
+  setCell(ws, META_ROW, COL.EX_SCORE, meta(exMax,      P.EX_INPUT));
+  setCell(ws, META_ROW, COL.EX_RAT,   meta("100",      P.EX_TOTAL));
   setCell(ws, META_ROW, COL.EX_PCT,   meta(`${W.EX}%`, P.EX_TOTAL));
 
   row = META_ROW + 1;
 
   // ── Data rows ─────────────────────────────────────────────────────────────
   students.forEach((student, idx) => {
-    const isEven  = idx % 2 === 1;
-    const rowBg   = isEven ? P.EVEN_BG : P.ODD_BG;
-    const gradeRow = (grades && grades[student.id]) || {
-      writtenOutput: ["", "", "", "", ""],
-      performanceTasks: ["", "", "", "", ""],
-      midtermExam: "",
-    };
-    const maxRow = (maxScores && maxScores[student.id]) || {
-      writtenOutput: [100, 100, 100, 100, 100],
-      performanceTasks: [100, 100, 100, 100, 100],
-      midtermExam: 100,
-    };
+    const isEven   = idx % 2 === 1;
+    const rowBg    = isEven ? P.EVEN_BG : P.ODD_BG;
+    const gradeRow = (grades && grades[student.id]) || EMPTY_GRADE();
+    const maxRow   = (maxScores && maxScores[student.id]) || EMPTY_MAX();
 
-    // Pre-compute values for formulas and display
-    const wo  = calcSection(gradeRow.writtenOutput,   maxRow.writtenOutput,   W.WO);
-    const pt  = calcSection(gradeRow.performanceTasks, maxRow.performanceTasks, W.PT);
-    const exRaw = normalizeNumber(gradeRow.midtermExam);
-    const exMax = Number(maxRow.midtermExam || 100);
-    const exRating  = exRaw !== null ? (exRaw / exMax) * 100 : null;
+    const wo = calcSection(gradeRow.writtenOutput,    maxRow.writtenOutput,    W.WO);
+    const pt = calcSection(gradeRow.performanceTasks, maxRow.performanceTasks, W.PT);
+
+    const exRaw      = normalizeNumber(gradeRow.midtermExam);
+    const exMaxVal   = Number(maxRow.midtermExam || 100);
+    const exRating   = exRaw !== null ? (exRaw / exMaxVal) * 100 : null;
     const exWeighted = exRating !== null ? exRating * (W.EX / 100) : null;
+
     const finalGrade = calcFinal(gradeRow, maxRow);
     const letterInfo = getLetterInfo(finalGrade);
     const isPassed   = letterInfo.status === "PASSED";
@@ -368,55 +407,36 @@ function buildEncodingSheet(ws, { period, students, grades, maxScores, activityM
 
     const R = row;
 
-    // ── WO input cols (letters: C..G) ────────────────────────────────────
-    const woInputCols = [COL.WO1, COL.WO2, COL.WO3, COL.WO4, COL.WO5];
-    const woMaxCols   = maxRow.writtenOutput;
-    woInputCols.forEach((col, i) => {
+    // ── Written Output — 12 input cells ──────────────────────────────────
+    WO_INPUT_COLS.forEach((col, i) => {
       const val = normalizeNumber(gradeRow.writtenOutput[i]);
       setCell(ws, R, col, numCell(val, { fill: P.WO_INPUT, font: F.dark(), alignment: AC, fmt: "0.##" }));
     });
-
-    // WO Total — SUM of filled WO inputs scaled to 100
-    // We just output the computed value directly (dynamic formula optional)
     setCell(ws, R, COL.WO_TOT, numCell(wo.total,    { fill: P.WO_TOTAL, font: F.blue(), alignment: AC }));
     setCell(ws, R, COL.WO_RAT, numCell(wo.pct,      { fill: P.WO_TOTAL, font: F.blue(), alignment: AC }));
     setCell(ws, R, COL.WO_PCT, numCell(wo.weighted, { fill: P.WO_TOTAL, font: F.blue(), alignment: AC }));
 
-    // ── PT input cols ─────────────────────────────────────────────────────
-    [COL.PT1, COL.PT2, COL.PT3, COL.PT4, COL.PT5].forEach((col, i) => {
+    // ── Performance Tasks — 12 input cells ───────────────────────────────
+    PT_INPUT_COLS.forEach((col, i) => {
       const val = normalizeNumber(gradeRow.performanceTasks[i]);
       setCell(ws, R, col, numCell(val, { fill: P.PT_INPUT, font: F.dark(), alignment: AC, fmt: "0.##" }));
     });
-
-    setCell(ws, R, COL.PT_TOT, numCell(pt.total,    { fill: P.PT_TOTAL, font: { name: "Arial", sz: 9, bold: true, color: { rgb: "065F46" } }, alignment: AC }));
-    setCell(ws, R, COL.PT_RAT, numCell(pt.pct,      { fill: P.PT_TOTAL, font: { name: "Arial", sz: 9, bold: true, color: { rgb: "065F46" } }, alignment: AC }));
-    setCell(ws, R, COL.PT_PCT, numCell(pt.weighted, { fill: P.PT_TOTAL, font: { name: "Arial", sz: 9, bold: true, color: { rgb: "065F46" } }, alignment: AC }));
+    const ptFnt = { name: "Arial", sz: 9, bold: true, color: { rgb: "065F46" } };
+    setCell(ws, R, COL.PT_TOT, numCell(pt.total,    { fill: P.PT_TOTAL, font: ptFnt, alignment: AC }));
+    setCell(ws, R, COL.PT_RAT, numCell(pt.pct,      { fill: P.PT_TOTAL, font: ptFnt, alignment: AC }));
+    setCell(ws, R, COL.PT_PCT, numCell(pt.weighted, { fill: P.PT_TOTAL, font: ptFnt, alignment: AC }));
 
     // ── Exam ──────────────────────────────────────────────────────────────
-    setCell(ws, R, COL.EX_SCORE, numCell(exRaw,      { fill: P.EX_INPUT, font: F.dark(), alignment: AC, fmt: "0.##" }));
-    setCell(ws, R, COL.EX_RAT,   numCell(exRating,   { fill: P.EX_TOTAL, font: { name: "Arial", sz: 9, bold: true, color: { rgb: "92400E" } }, alignment: AC }));
-    setCell(ws, R, COL.EX_PCT,   numCell(exWeighted, { fill: P.EX_TOTAL, font: { name: "Arial", sz: 9, bold: true, color: { rgb: "92400E" } }, alignment: AC }));
+    const exFnt = { name: "Arial", sz: 9, bold: true, color: { rgb: "92400E" } };
+    setCell(ws, R, COL.EX_SCORE, numCell(exRaw,      { fill: P.EX_INPUT, font: F.dark(),  alignment: AC, fmt: "0.##" }));
+    setCell(ws, R, COL.EX_RAT,   numCell(exRating,   { fill: P.EX_TOTAL, font: exFnt,     alignment: AC }));
+    setCell(ws, R, COL.EX_PCT,   numCell(exWeighted, { fill: P.EX_TOTAL, font: exFnt,     alignment: AC }));
 
-    // ── Final Grade ───────────────────────────────────────────────────────
+    // ── Final / Grade / Equiv / Status ────────────────────────────────────
     setCell(ws, R, COL.FINAL, numCell(finalGrade, { fill: P.FIN_CELL, font: F.violet(), alignment: AC }));
+    setCell(ws, R, COL.GRADE, cell(letterInfo.letter, { fill: rowBg, font: F.darkBold(), alignment: AC, border: border() }));
+    setCell(ws, R, COL.EQUIV, cell(letterInfo.equivalent, { fill: rowBg, font: F.dark(), alignment: AC, border: border() }));
 
-    // ── Grade letter ──────────────────────────────────────────────────────
-    setCell(ws, R, COL.GRADE, cell(letterInfo.letter, {
-      fill: rowBg,
-      font: F.darkBold(),
-      alignment: AC,
-      border: border(),
-    }));
-
-    // ── Numerical equivalent ──────────────────────────────────────────────
-    setCell(ws, R, COL.EQUIV, cell(letterInfo.equivalent, {
-      fill: rowBg,
-      font: F.dark(),
-      alignment: AC,
-      border: border(),
-    }));
-
-    // ── Status badge ──────────────────────────────────────────────────────
     const statusFill = isFailed ? P.FAIL_BG : isPassed ? P.PASS_BG : rowBg;
     const statusFont = isFailed
       ? { name: "Arial", sz: 9, bold: true, color: { rgb: "991B1B" } }
@@ -444,31 +464,24 @@ function buildEncodingSheet(ws, { period, students, grades, maxScores, activityM
 
   // ── Column widths ─────────────────────────────────────────────────────────
   ws["!cols"] = [
-    { wch: 26 },  // A — Student
-    { wch: 14 },  // B — ID
-    { wch: 7 },   // C — WO1
-    { wch: 7 },   // D — WO2
-    { wch: 7 },   // E — WO3
-    { wch: 7 },   // F — WO4
-    { wch: 7 },   // G — WO5
-    { wch: 8 },   // H — WO Total
-    { wch: 8 },   // I — WO Rating
-    { wch: 6 },   // J — WO %
-    { wch: 7 },   // K — PT1
-    { wch: 7 },   // L — PT2
-    { wch: 7 },   // M — PT3
-    { wch: 7 },   // N — PT4
-    { wch: 7 },   // O — PT5
-    { wch: 8 },   // P — PT Total
-    { wch: 8 },   // Q — PT Rating
-    { wch: 6 },   // R — PT %
-    { wch: 8 },   // S — Exam Score
-    { wch: 8 },   // T — Exam Rating
-    { wch: 6 },   // U — Exam %
-    { wch: 8 },   // V — Final
-    { wch: 7 },   // W — Grade
-    { wch: 7 },   // X — Equiv.
-    { wch: 9 },   // Y — Status
+    { wch: 26 },  // A  — Student
+    { wch: 14 },  // B  — ID
+    // WO 1-12 (C–N)
+    { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 },
+    { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 },
+    { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 },
+    // WO summary (O–Q)
+    { wch: 8 }, { wch: 8 }, { wch: 6 },
+    // PT 1-12 (R–AC)
+    { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 },
+    { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 },
+    { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 },
+    // PT summary (AD–AF)
+    { wch: 8 }, { wch: 8 }, { wch: 6 },
+    // Exam (AG–AI)
+    { wch: 8 }, { wch: 8 }, { wch: 6 },
+    // Summary (AJ–AM)
+    { wch: 8 }, { wch: 7 }, { wch: 7 }, { wch: 9 },
   ];
 
   // Row heights
@@ -545,20 +558,18 @@ function buildReportSheet(ws, { students, midtermGradesMap, finalGradesMap, midt
     const isEven = idx % 2 === 1;
     const R = row;
 
-    const EMPTY_GRADE  = () => ({ writtenOutput: ["","","","",""], performanceTasks: ["","","","",""], midtermExam: "" });
-    const EMPTY_MAX    = () => ({ writtenOutput: [100,100,100,100,100], performanceTasks: [100,100,100,100,100], midtermExam: 100 });
-
     const mGrade = (midtermGradesMap && midtermGradesMap[student.id]) || EMPTY_GRADE();
     const mMax   = (midtermMaxMap    && midtermMaxMap[student.id])    || EMPTY_MAX();
     const fGrade = (finalGradesMap   && finalGradesMap[student.id])   || EMPTY_GRADE();
     const fMax   = (finalMaxMap      && finalMaxMap[student.id])      || EMPTY_MAX();
 
-    const midtermFinal  = calcFinal(mGrade, mMax);
+    const midtermFinal   = calcFinal(mGrade, mMax);
     const tentativeFinal = calcFinal(fGrade, fMax);
 
+    // Only average when BOTH are available — never fall back to a single period alone
     const combined = midtermFinal !== null && tentativeFinal !== null
       ? Number(((midtermFinal + tentativeFinal) / 2).toFixed(2))
-      : midtermFinal ?? tentativeFinal;
+      : null;
 
     const numEquiv = combined !== null
       ? LETTER_SCALE.find((r) => combined >= r.min)?.equivalent ?? "5.00"
@@ -578,8 +589,8 @@ function buildReportSheet(ws, { students, midtermGradesMap, finalGradesMap, midt
       fill: rowBg, font: F.darkBold(9), alignment: AL, border: border(),
     }));
     setCell(ws, R, COLS_RPT.ID,  cell(String(student.studentId), { fill: rowBg, font: baseFnt, alignment: AC, border: border() }));
-    setCell(ws, R, COLS_RPT.MG,  numCell(midtermFinal,   { fill: rowBg, font: baseFnt, alignment: AC, fmt: "0" }));
-    setCell(ws, R, COLS_RPT.TFG, numCell(tentativeFinal ?? 50, { fill: rowBg, font: baseFnt, alignment: AC, fmt: "0" }));
+    setCell(ws, R, COLS_RPT.MG,  numCell(midtermFinal,           { fill: rowBg, font: baseFnt, alignment: AC, fmt: "0" }));
+    setCell(ws, R, COLS_RPT.TFG, numCell(tentativeFinal,        { fill: rowBg, font: baseFnt, alignment: AC, fmt: "0" }));
     setCell(ws, R, COLS_RPT.FG,  numCell(combined, { fill: fgBg, font: isFailed ? failFnt : F.darkBold(9), alignment: AC, fmt: "0" }));
     setCell(ws, R, COLS_RPT.NE,  numCell(numEquiv !== null ? parseFloat(numEquiv) : null, {
       fill: fgBg, font: isFailed ? failFnt : baseFnt, alignment: AC, fmt: "0.00",
@@ -588,7 +599,8 @@ function buildReportSheet(ws, { students, midtermGradesMap, finalGradesMap, midt
     const statusFill = isFailed ? P.FAIL_BG : isPassed ? P.PASS_BG : rowBg;
     const statusFnt  = isFailed
       ? { name: "Arial", sz: 9, bold: true, color: { rgb: "991B1B" } }
-      : isPassed ? { name: "Arial", sz: 9, bold: true, color: { rgb: "166534" } }
+      : isPassed
+      ? { name: "Arial", sz: 9, bold: true, color: { rgb: "166534" } }
       : F.muted();
     setCell(ws, R, COLS_RPT.REMARKS, cell(
       numEquiv !== null ? (isPassed ? "PASSED" : "FAILED") : "-",
@@ -628,10 +640,10 @@ function buildReportSheet(ws, { students, midtermGradesMap, finalGradesMap, midt
  * @param {Array}    params.students          — array of student objects
  * @param {Object}   params.gradesMap         — { midterm: {[id]: gradeRow}, final: {[id]: gradeRow} }
  * @param {Object}   params.maxScoresMap      — { midterm: {[id]: maxRow},  final: {[id]: maxRow}  }
- * @param {Object}   params.activityMeta      — { writtenOutput, performanceTasks, midtermExam }
+ * @param {Object}   params.activityMeta      — { writtenOutput[12], performanceTasks[12], midtermExam }
  * @param {string}   [params.mode]            — "midterm" | "final" | "all" (default: "all")
  */
-export function exportGradeEncoding({
+export async function exportGradeEncoding({
   courseName = "Course",
   students = [],
   gradesMap = {},
@@ -639,17 +651,13 @@ export function exportGradeEncoding({
   activityMeta = null,
   mode = "all",
 }) {
-  const wb = {
-    SheetNames: [],
-    Sheets: {},
-  };
+  const wb = { SheetNames: [], Sheets: {} };
 
   const addSheet = (name, ws) => {
     wb.SheetNames.push(name);
     wb.Sheets[name] = ws;
   };
 
-  // ── Midterm sheet ─────────────────────────────────────────────────────────
   if (mode === "all" || mode === "midterm") {
     const ws = {};
     buildEncodingSheet(ws, {
@@ -663,7 +671,6 @@ export function exportGradeEncoding({
     addSheet("Midterm Encoding", ws);
   }
 
-  // ── Final sheet ───────────────────────────────────────────────────────────
   if (mode === "all" || mode === "final") {
     const ws = {};
     buildEncodingSheet(ws, {
@@ -677,7 +684,6 @@ export function exportGradeEncoding({
     addSheet("Final Encoding", ws);
   }
 
-  // ── Grading Report sheet ──────────────────────────────────────────────────
   if (mode === "all" || mode === "report") {
     const ws = {};
     buildReportSheet(ws, {
@@ -691,21 +697,35 @@ export function exportGradeEncoding({
     addSheet("Grading Report", ws);
   }
 
-  // ── Write & download ──────────────────────────────────────────────────────
   const safeName = courseName.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "");
   const fileName = `Grade_${safeName}_${Date.now()}.xlsx`;
 
   try {
-    // xlsx-style writes the workbook with full cell styling
-    const wbout = XLSXStyle.write(wb, { bookType: "xlsx", type: "binary" });
-    const buf   = new ArrayBuffer(wbout.length);
-    const view  = new Uint8Array(buf);
-    for (let i = 0; i < wbout.length; i++) view[i] = wbout.charCodeAt(i) & 0xff;
-    saveAs(new Blob([buf], { type: "application/octet-stream" }), fileName);
+    let XLSXStyle = null;
+    try {
+      const module = await import("xlsx-style");
+      XLSXStyle = module.default;
+    } catch (e) {
+      // xlsx-style not available, fall back to plain xlsx
+    }
+
+    if (XLSXStyle) {
+      const wbout = XLSXStyle.write(wb, { bookType: "xlsx", type: "binary" });
+      const buf   = new ArrayBuffer(wbout.length);
+      const view  = new Uint8Array(buf);
+      for (let i = 0; i < wbout.length; i++) view[i] = wbout.charCodeAt(i) & 0xff;
+      saveAs(new Blob([buf], { type: "application/octet-stream" }), fileName);
+    } else {
+      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      saveAs(new Blob([wbout], { type: "application/octet-stream" }), fileName);
+    }
   } catch (err) {
-    console.error("xlsx-style write failed, falling back to plain xlsx:", err);
-    // Fallback: plain xlsx without styling (still correct data)
-    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    saveAs(new Blob([wbout], { type: "application/octet-stream" }), fileName);
+    console.error("Export failed:", err);
+    try {
+      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      saveAs(new Blob([wbout], { type: "application/octet-stream" }), fileName);
+    } catch (fallbackErr) {
+      console.error("Fallback export also failed:", fallbackErr);
+    }
   }
 }
