@@ -51,12 +51,27 @@ const extractKeywords = (text) => {
 };
 
 // Calculate keyword match percentage
+// Calculate weighted keyword match percentage (importance by frequency)
 const calculateKeywordMatch = (studentKeywords, modelKeywords) => {
   if (modelKeywords.length === 0) return 0;
 
   const studentSet = new Set(studentKeywords);
-  const matches = modelKeywords.filter(keyword => studentSet.has(keyword)).length;
-  return (matches / modelKeywords.length) * 100;
+
+  // Build frequency map for model keywords to represent importance
+  const freq = {};
+  let totalWeight = 0;
+  for (const kw of modelKeywords) {
+    freq[kw] = (freq[kw] || 0) + 1;
+    totalWeight += 1;
+  }
+
+  // Sum weights for matched keywords
+  let matchedWeight = 0;
+  for (const kw of Object.keys(freq)) {
+    if (studentSet.has(kw)) matchedWeight += freq[kw];
+  }
+
+  return (matchedWeight / totalWeight) * 100;
 };
 
 // Calculate text length/completeness score
@@ -102,8 +117,10 @@ const calculateSemanticSimilarity = async (studentText, modelText) => {
     }
     
     const similarity = dotProduct / (studentNorm * modelNorm);
-    // Convert from [-1, 1] range to [0, 100] percentage
-    const similarityScore = ((similarity + 1) / 2) * 100;
+    // Universal Sentence Encoder cosine similarities are typically in [0, 1].
+    // Avoid shifting from [-1,1] which inflates scores; map 0..1 -> 0..100.
+    const normalized = Math.max(0, Math.min(1, similarity));
+    const similarityScore = normalized * 100;
     
     // Clean up tensors
     embeddings.dispose();
@@ -140,25 +157,38 @@ export const runTensorFlowAiCheck = async ({
   const studentKeywords = extractKeywords(studentText);
   const modelKeywords = extractKeywords(modelText);
 
+  // Also keep original model keywords as short set for heuristics
+  const modelKeywordSet = new Set(modelKeywords);
+
   // Calculate scores (each component is weighted)
   const semanticSimilarityScore = await calculateSemanticSimilarity(studentText, modelText);
   const keywordMatchScore = calculateKeywordMatch(studentKeywords, modelKeywords);
   const completenessScore = calculateCompletenessScore(studentText, modelText);
 
+  // Detect contradiction or clear topic mismatch
+  const contradiction = detectContradiction(studentKeywords, modelKeywords, studentText, modelText);
+
   // Weighted average:
-  // - Semantic similarity: 50% (most important for understanding)
-  // - Keyword matching: 25% (ensures key concepts are covered)
-  // - Completeness: 25% (ensures sufficient answer length)
-  const overallScore = (
-    semanticSimilarityScore * 0.5 +
-    keywordMatchScore * 0.25 +
+  // Weighted average (reduced semantic weight, increased keyword weight):
+  // - Semantic similarity: 40%
+  // - Keyword matching: 35%
+  // - Completeness: 25%
+  let overallScore = (
+    semanticSimilarityScore * 0.4 +
+    keywordMatchScore * 0.35 +
     completenessScore * 0.25
   );
+
+  // Apply contradiction penalty if detected (subtract 15 percentage points)
+  if (contradiction) {
+    overallScore = Math.max(0, overallScore - 15);
+  }
 
   // Convert to total points
   const finalScore = Math.round((overallScore / 100) * totalPoints * 100) / 100;
   const clampedScore = Math.min(Math.max(finalScore, 0), totalPoints);
 
+  // Generate feedback based on scores
   // Generate feedback based on scores
   const feedback = generateFeedback({
     semanticSimilarityScore,
@@ -167,6 +197,7 @@ export const runTensorFlowAiCheck = async ({
     overallScore,
     studentKeywordsCount: studentKeywords.length,
     modelKeywordsCount: modelKeywords.length,
+    contradiction,
   });
 
   return {
@@ -177,8 +208,34 @@ export const runTensorFlowAiCheck = async ({
       keywordMatchScore: Math.round(keywordMatchScore),
       completenessScore: Math.round(completenessScore),
       overallScore: Math.round(overallScore),
+      contradiction: !!contradiction,
     },
   };
+};
+
+// Simple contradiction / topic-mismatch detector
+const detectContradiction = (studentKeywords, modelKeywords, studentText, modelText) => {
+  const negations = new Set(["not", "never", "no", "without", "n't"]);
+  const studentHasNeg = studentText.toLowerCase().split(/\s+/).some(w => negations.has(w.replace(/[^\w']/g, "")));
+  const modelHasNeg = modelText.toLowerCase().split(/\s+/).some(w => negations.has(w.replace(/[^\w']/g, "")));
+
+  if (studentHasNeg !== modelHasNeg) return true; // possible contradiction in polarity
+
+  const studentSet = new Set(studentKeywords);
+  const modelSet = new Set(modelKeywords);
+
+  // Heuristic: detect frontend/backend mismatch (common LMS mistake)
+  const frontendWords = new Set(["frontend", "ui", "user", "interface", "client", "browser"]);
+  const backendWords = new Set(["backend", "server", "database", "db", "api", "connect", "connects", "connecting"]);
+
+  const studentHasFrontend = Array.from(studentSet).some(k => frontendWords.has(k));
+  const studentHasBackend = Array.from(studentSet).some(k => backendWords.has(k));
+  const modelHasFrontend = Array.from(modelSet).some(k => frontendWords.has(k));
+  const modelHasBackend = Array.from(modelSet).some(k => backendWords.has(k));
+
+  if ((modelHasFrontend && studentHasBackend) || (modelHasBackend && studentHasFrontend)) return true;
+
+  return false;
 };
 
 // Generate constructive feedback
@@ -189,6 +246,7 @@ const generateFeedback = ({
   overallScore,
   studentKeywordsCount,
   modelKeywordsCount,
+  contradiction,
 }) => {
   const feedbackParts = [];
 
@@ -219,6 +277,10 @@ const generateFeedback = ({
     feedbackParts.push("The answer is somewhat brief; consider expanding with more details.");
   } else {
     feedbackParts.push("The answer is too brief. Provide a more complete response.");
+  }
+
+  if (contradiction) {
+    feedbackParts.push("The answer appears to contradict the expected content or addresses a different topic; review key concepts.");
   }
 
   return feedbackParts.join(" ");

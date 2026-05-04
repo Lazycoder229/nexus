@@ -146,6 +146,8 @@ const StudentLMS = () => {
           assignment_id: a.id || a.assignment_id,
           title: a.title,
           description: a.description,
+          instructions: a.instructions || a.instruction || "",
+          model_answer_file_url: a.model_answer_file_url || a.model_answer_file || "",
           subject_name: a.course_name || a.course_code,
           section_name: a.section_name,
           faculty_name: a.faculty_name,
@@ -163,8 +165,8 @@ const StudentLMS = () => {
           max_score: a.total_points, // Ensure max_score is mapped
           graded_by_name: a.graded_by_name,
           graded_at: a.graded_at,
-          file_url: a.file_url,
-          file_name: a.file_name,
+          file_url: a.file_url || a.model_answer_file_url || "",
+          file_name: a.file_name || a.model_answer_file_name || "",
           graded_at: a.graded_at,
         }));
       setAssignments(assignmentsData);
@@ -1035,6 +1037,25 @@ const StudentLMS = () => {
                   <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
                     {selectedAssignment.description}
                   </p>
+                  {selectedAssignment.instructions && (
+                    <div className="mt-2 p-2 bg-white dark:bg-slate-800 rounded border border-slate-100 dark:border-slate-700">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-1">Instructions</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{selectedAssignment.instructions}</p>
+                    </div>
+                  )}
+                  {selectedAssignment.file_url && (
+                    <div className="mt-3 p-2 bg-white dark:bg-slate-800 rounded border border-slate-100 dark:border-slate-700">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mb-1">Attached File</p>
+                      <a
+                        href={selectedAssignment.file_url.startsWith("http") ? selectedAssignment.file_url : `${API_BASE}${selectedAssignment.file_url}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+                      >
+                        {selectedAssignment.file_name || "View Attachment"}
+                      </a>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 pt-2">
                     <span className="flex items-center gap-1">
                       <CalendarIcon size={12} />
@@ -1059,25 +1080,7 @@ const StudentLMS = () => {
                         <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">
                           Submitted on {new Date(selectedAssignment.submitted_at).toLocaleString()}
                         </p>
-                        {/* We don't have file_url readily available in assignment object unless we fetch it or it was mapped. 
-                             Assuming we don't have it fully mapped or simulate it. 
-                             Ideally we should have mapped it. Let's check if we can simulate or if we need to fetch. 
-                             For now, we display status. */}
-                        <div className="flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 mt-2">
-                          <FileText size={16} />
-                          {selectedAssignment.file_url ? (
-                            <a
-                              href={`${API_BASE}${selectedAssignment.file_url}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:underline"
-                            >
-                              {selectedAssignment.file_name || "View Assignment File"}
-                            </a>
-                          ) : (
-                            <span>Assignment File (Preview Unavailable)</span>
-                          )}
-                        </div>
+                        {/* Attachment shown in common details above */}
                       </div>
                     </div>
 

@@ -91,35 +91,42 @@ const LMSAssignments = {
   // Get assignments for a student based on their enrolled courses
   getByStudent: async (student_id, academic_period_id) => {
     const query = `
-        SELECT DISTINCT
-            la.*,
-            c.code as course_code,
-            c.title as course_name,
-            s.section_name,
-            CONCAT(u.first_name, ' ', u.last_name) as faculty_name,
-            las.id as submission_id,
-            las.status as submission_status,
-            las.score as submission_score,
-            las.submitted_at,
-            las.submission_text,
-            las.file_url,
-            las.file_name,
-            las.feedback,
-            las.graded_at,
-            CONCAT(grader.first_name, ' ', grader.last_name) as graded_by_name
-        FROM lms_assignments la
-        INNER JOIN enrollments e ON la.course_id = e.course_id 
-            AND la.academic_period_id = e.period_id
-        LEFT JOIN courses c ON la.course_id = c.course_id
-        LEFT JOIN sections s ON la.section_id = s.section_id
-        LEFT JOIN users u ON la.faculty_id = u.user_id
-        LEFT JOIN lms_assignment_submissions las ON la.id = las.assignment_id AND las.student_id = ?
-        LEFT JOIN users grader ON las.graded_by = grader.user_id
-        WHERE e.student_id = ? 
-            AND e.period_id = ? 
-            AND e.status = 'Enrolled'
-            AND la.status = 'active'
-        ORDER BY la.due_date ASC
+      SELECT DISTINCT
+        la.*,
+        c.code as course_code,
+        c.title as course_name,
+        s.section_name,
+        CONCAT(u.first_name, ' ', u.last_name) as faculty_name,
+        las.id as submission_id,
+        las.status as submission_status,
+        las.score as submission_score,
+        las.submitted_at,
+        las.submission_text,
+        las.feedback,
+        las.graded_at,
+        CONCAT(grader.first_name, ' ', grader.last_name) as graded_by_name,
+        -- Guarantee instructions exists (la.instructions is part of la.* but ensure not null on client)
+        COALESCE(la.instructions, '') as instructions,
+        -- Prefer assignment-level attachment, fall back to student's submitted file if present
+        COALESCE(la.model_answer_file_url, las.file_url, '') as file_url,
+        CASE
+          WHEN la.model_answer_file_url IS NOT NULL AND la.model_answer_file_url <> ''
+            THEN SUBSTRING_INDEX(la.model_answer_file_url, '/', -1)
+          ELSE COALESCE(las.file_name, '')
+        END as file_name
+      FROM lms_assignments la
+      INNER JOIN enrollments e ON la.course_id = e.course_id 
+        AND la.academic_period_id = e.period_id
+      LEFT JOIN courses c ON la.course_id = c.course_id
+      LEFT JOIN sections s ON la.section_id = s.section_id
+      LEFT JOIN users u ON la.faculty_id = u.user_id
+      LEFT JOIN lms_assignment_submissions las ON la.id = las.assignment_id AND las.student_id = ?
+      LEFT JOIN users grader ON las.graded_by = grader.user_id
+      WHERE e.student_id = ? 
+        AND e.period_id = ? 
+        AND e.status = 'Enrolled'
+        AND la.status = 'active'
+      ORDER BY la.due_date ASC
     `;
     const [rows] = await db.query(query, [student_id, student_id, academic_period_id]);
     return rows;
