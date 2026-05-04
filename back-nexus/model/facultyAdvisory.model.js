@@ -81,12 +81,13 @@ const FacultyAdvisory = {
   create: (advisoryData) => {
     return db.query(
       `INSERT INTO faculty_advisory_assignments
-       (faculty_user_id, student_id, program_id, year_level, academic_period_id, 
+       (faculty_user_id, student_id, advisory_type, program_id, year_level, academic_period_id, 
         assignment_date, status, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         advisoryData.faculty_user_id,
         advisoryData.student_id,
+        advisoryData.advisory_type || "Academic",
         advisoryData.program_id,
         advisoryData.year_level,
         advisoryData.academic_period_id,
@@ -100,12 +101,13 @@ const FacultyAdvisory = {
   update: (advisoryId, advisoryData) => {
     return db.query(
       `UPDATE faculty_advisory_assignments SET
-       faculty_user_id = ?, student_id = ?, program_id = ?, year_level = ?,
+       faculty_user_id = ?, student_id = ?, advisory_type = ?, program_id = ?, year_level = ?,
        academic_period_id = ?, status = ?, notes = ?
        WHERE advisory_id = ?`,
       [
         advisoryData.faculty_user_id,
         advisoryData.student_id,
+        advisoryData.advisory_type || "Academic",
         advisoryData.program_id,
         advisoryData.year_level,
         advisoryData.academic_period_id,

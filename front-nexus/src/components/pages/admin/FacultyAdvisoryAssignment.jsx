@@ -28,7 +28,7 @@ const AdvisoryModal = ({
 }) => {
   const initialFormState = {
     faculty_id: null,
-    student_id: null,
+    student_ids: [],
     period_id: null,
     advisory_type: "Academic",
     notes: "",
@@ -42,7 +42,7 @@ const AdvisoryModal = ({
     if (initialData) {
       setFormData({
         faculty_id: initialData.faculty_id,
-        student_id: initialData.student_id,
+        student_ids: initialData.student_id ? [{ value: initialData.student_id, label: initialData.student_name }] : [],
         period_id: initialData.period_id,
         program_id: initialData.program_id || null,
         year_level: initialData.year_level || "",
@@ -58,9 +58,9 @@ const AdvisoryModal = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     // UI validation for required fields
-    if (!formData.faculty_id || !formData.student_id || !formData.period_id) {
+    if (!formData.faculty_id || formData.student_ids.length === 0 || !formData.period_id) {
       setFormError(
-        "Please select a faculty advisor, student, and academic period.",
+        "Please select a faculty advisor, at least one student, and an academic period.",
       );
       return;
     }
@@ -150,21 +150,19 @@ const AdvisoryModal = ({
 
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  Student *
+                  Students *
                 </label>
                 <Select
-                  value={
-                    students.find((s) => s.value === formData.student_id) ||
-                    null
-                  }
+                  value={formData.student_ids}
                   onChange={(selected) =>
                     setFormData((prev) => ({
                       ...prev,
-                      student_id: selected?.value || null,
+                      student_ids: selected || [],
                     }))
                   }
                   options={students}
-                  placeholder="Select student..."
+                  placeholder="Select students..."
+                  isMulti
                   isDisabled={mode === "edit"}
                   className="text-sm"
                   styles={selectStyles}
@@ -403,25 +401,44 @@ const FacultyAdvisoryAssignment = () => {
   );
 
   const handleSubmit = async (data) => {
-    // Map faculty_id to faculty_user_id for backend compatibility
-    const submitData = {
-      ...data,
-      faculty_user_id: data.faculty_id,
-      academic_period_id: data.period_id,
-      program_id: data.program_id,
-      year_level: data.year_level,
-    };
-    delete submitData.faculty_id;
-    delete submitData.period_id;
     try {
-      if (modalMode === "add") {
-        await axios.post(`${API_BASE}/api/faculty-advisory`, submitData);
-      } else {
+      // For edit mode, keep the single student update
+      if (modalMode === "edit") {
+        const submitData = {
+          ...data,
+          faculty_user_id: data.faculty_id,
+          academic_period_id: data.period_id,
+          program_id: data.program_id,
+          year_level: data.year_level,
+          student_id: data.student_ids[0]?.value || data.student_ids,
+        };
+        delete submitData.faculty_id;
+        delete submitData.period_id;
+        delete submitData.student_ids;
+        
         await axios.put(
           `${API_BASE}/api/faculty-advisory/${data.advisory_id}`,
           submitData,
         );
+      } else {
+        // For add mode, create an assignment for each selected student
+        const studentIds = data.student_ids.map((s) => s.value);
+        
+        for (const studentId of studentIds) {
+          const submitData = {
+            faculty_user_id: data.faculty_id,
+            academic_period_id: data.period_id,
+            program_id: data.program_id,
+            year_level: data.year_level,
+            advisory_type: data.advisory_type,
+            notes: data.notes,
+            student_id: studentId,
+          };
+          
+          await axios.post(`${API_BASE}/api/faculty-advisory`, submitData);
+        }
       }
+      
       fetchAdvisories();
       setModalOpen(false);
       setCurrentRecord(null);
