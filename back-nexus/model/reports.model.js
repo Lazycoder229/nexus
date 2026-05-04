@@ -523,6 +523,14 @@ const ReportsModel = {
       FROM enrollments
     `);
 
+    // Count admissions marked as enrolled (admissions.status uses 'Enrolled')
+    const [admissionsStats] = await pool.query(`
+      SELECT
+        COUNT(*) as enrolled
+      FROM admissions
+      WHERE status = 'Enrolled'
+    `);
+
     const [attendanceStats] = await pool.query(`
       SELECT 
         COUNT(*) as total_attendance_records,
@@ -548,6 +556,7 @@ const ReportsModel = {
     return {
       students: studentStats[0],
       enrollments: enrollmentStats[0],
+      admissions: admissionsStats[0] || { enrolled: 0 },
       attendance: attendanceStats[0],
       payroll: payrollStats[0],
     };
@@ -634,6 +643,60 @@ const ReportsModel = {
       ],
     );
     return result.insertId;
+  },
+
+  // Get enrollment by program (aggregated view)
+  async getEnrollmentByProgram(filters = {}) {
+    let query = `
+      SELECT
+        p.program_id,
+        p.code AS program_code,
+        p.name AS program_name,
+        COUNT(DISTINCT e.enrollment_id) AS enrollment_count,
+        COUNT(DISTINCT e.student_id) AS unique_students
+      FROM enrollments e
+      INNER JOIN users u ON e.student_id = u.user_id
+      INNER JOIN student_details sd ON u.user_id = sd.user_id
+      LEFT JOIN programs p ON sd.course = p.name OR sd.course = p.code
+      WHERE 1=1
+    `;
+
+    const params = [];
+
+    if (filters.program_id) {
+      query += ` AND p.program_id = ?`;
+      params.push(filters.program_id);
+    }
+
+    if (filters.date_from) {
+      query += ` AND e.enrollment_date >= ?`;
+      params.push(filters.date_from);
+    }
+
+    if (filters.date_to) {
+      query += ` AND e.enrollment_date <= ?`;
+      params.push(filters.date_to);
+    }
+
+    if (filters.status) {
+      query += ` AND e.status = ?`;
+      params.push(filters.status);
+    }
+
+    query += `
+      GROUP BY p.program_id, p.code, p.name
+      ORDER BY enrollment_count DESC
+    `;
+
+    const [rows] = await pool.query(query, params);
+
+    return rows.map((row) => ({
+      program_id: row.program_id,
+      program_code: row.program_code,
+      name: row.program_name || "Unknown Program",
+      count: Number(row.enrollment_count || 0),
+      unique_students: Number(row.unique_students || 0),
+    }));
   },
 };
 

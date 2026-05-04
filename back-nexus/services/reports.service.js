@@ -28,6 +28,15 @@ const ReportsService = {
     }
   },
 
+  // Get enrollment by program
+  async getEnrollmentByProgram(filters) {
+    try {
+      return await ReportsModel.getEnrollmentByProgram(filters);
+    } catch (error) {
+      throw new Error(`Error fetching enrollment by program: ${error.message}`);
+    }
+  },
+
   // Get attendance reports
   async getAttendanceReports(filters) {
     try {

@@ -43,7 +43,11 @@ const MarkAttendance = () => {
   const itemsPerPage = 10;
 
   // Get faculty user ID from auth context or localStorage
-  const facultyUserId = localStorage.getItem("userId") || null;
+  const facultyUserId = localStorage.getItem("userId") || localStorage.getItem("user_id");
+  
+  if (!facultyUserId) {
+    console.warn("Warning: Faculty user ID not found in localStorage. Attendance records may not save correctly.");
+  }
 
   useEffect(() => {
     fetchInitialData();
@@ -162,9 +166,17 @@ const MarkAttendance = () => {
       const response = await axios.get(`${API_BASE_URL}/enrollments`, {
         params,
       });
-      const enrolledStudents = Array.isArray(response.data)
+      
+      let enrolledStudents = Array.isArray(response.data)
         ? response.data
         : response.data.data || [];
+      
+      // Ensure all students have required fields for attendance marking
+      enrolledStudents = enrolledStudents.map((student) => ({
+        ...student,
+        student_id: student.student_id || student.user_id,
+      }));
+      
       console.log("Enrolled students fetched:", enrolledStudents);
       setStudents(enrolledStudents);
 
@@ -172,7 +184,8 @@ const MarkAttendance = () => {
       await fetchExistingAttendance(enrolledStudents);
     } catch (error) {
       console.error("Error fetching students:", error);
-      alert("Failed to load students");
+      alert("Failed to load students. Check browser console for details.");
+      setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -197,25 +210,26 @@ const MarkAttendance = () => {
       const existingAttendance = response.data.data || [];
 
       console.log("Existing attendance for selected date:", existingAttendance);
+      
       // Initialize attendance and remarks
       const initialAttendance = {};
       const initialRemarks = {};
 
       studentsList.forEach((student) => {
+        const studentId = student.student_id || student.user_id;
+        
         const existing = existingAttendance.find(
           (att) =>
-            att.student_id === student.student_id ||
+            att.student_id === studentId ||
             att.student_id === student.user_id,
         );
 
         if (existing) {
-          initialAttendance[student.student_id || student.user_id] =
-            existing.status;
-          initialRemarks[student.student_id || student.user_id] =
-            existing.remarks || "";
+          initialAttendance[studentId] = existing.status;
+          initialRemarks[studentId] = existing.remarks || "";
         } else {
-          initialAttendance[student.student_id || student.user_id] = "present";
-          initialRemarks[student.student_id || student.user_id] = "";
+          initialAttendance[studentId] = "present";
+          initialRemarks[studentId] = "";
         }
       });
 
@@ -228,8 +242,9 @@ const MarkAttendance = () => {
       const initialAttendance = {};
       const initialRemarks = {};
       studentsList.forEach((student) => {
-        initialAttendance[student.student_id || student.user_id] = "present";
-        initialRemarks[student.student_id || student.user_id] = "";
+        const studentId = student.student_id || student.user_id;
+        initialAttendance[studentId] = "present";
+        initialRemarks[studentId] = "";
       });
       setAttendance(initialAttendance);
       setRemarks(initialRemarks);
@@ -277,12 +292,23 @@ const MarkAttendance = () => {
       return;
     }
 
+    if (!facultyUserId) {
+      alert("Error: User ID not found. Please log in again.");
+      return;
+    }
+
     try {
       setLoading(true);
 
       // Prepare attendance records for bulk insert
       const attendanceRecords = filteredStudents.map((student) => {
+        // Use the correct student identifier
         const studentId = student.student_id || student.user_id;
+        
+        if (!studentId) {
+          throw new Error("Student ID is missing for one or more students");
+        }
+
         return {
           student_id: studentId,
           course_id: parseInt(selectedCourse),
@@ -292,10 +318,12 @@ const MarkAttendance = () => {
           time_in: dayjs().format("HH:mm:ss"),
           status: attendance[studentId] || "present",
           attendance_method: "manual",
-          marked_by: facultyUserId,
+          marked_by: parseInt(facultyUserId),
           remarks: remarks[studentId] || null,
         };
       });
+
+      console.log("Sending attendance records:", attendanceRecords);
 
       // Use bulk endpoint
       const response = await axios.post(
@@ -305,14 +333,21 @@ const MarkAttendance = () => {
         },
       );
 
+      console.log("Response from server:", response.data);
+
       if (response.data.success) {
         alert(
-          `Attendance saved successfully! ${response.data.recordsCreated} records created.`,
+          `✓ Attendance saved successfully! ${response.data.recordsCreated || attendanceRecords.length} records created.`,
         );
+        // Refresh the attendance data
+        await fetchExistingAttendance(filteredStudents);
+      } else {
+        alert(`Error: ${response.data.message || "Failed to save attendance"}`);
       }
     } catch (error) {
       console.error("Error saving attendance:", error);
-      alert(error.response?.data?.message || "Failed to save attendance");
+      const errorMessage = error.response?.data?.message || error.message || "Failed to save attendance";
+      alert(`Error saving attendance: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

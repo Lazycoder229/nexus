@@ -159,6 +159,36 @@ const GradeEntriesController = {
         .json({ success: false, message: "Internal server error" });
     }
   },
+
+  // Sync graded submissions from LMS to grade_entries
+  syncFromSubmissions: async (req, res) => {
+    try {
+      const { course_id, period_id } = req.query;
+      const submitted_by = req.body.submitted_by; // Faculty ID
+
+      if (!course_id || !period_id || !submitted_by) {
+        return res.status(400).json({
+          success: false,
+          message: "course_id, period_id, and submitted_by are required",
+        });
+      }
+
+      const result = await GradeEntriesService.syncFromSubmissions(
+        course_id,
+        period_id,
+        submitted_by
+      );
+
+      res.status(200).json(result);
+    } catch (error) {
+      console.error("Error in syncFromSubmissions controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to sync submissions",
+        error: error.message,
+      });
+    }
+  },
 };
 
 export default GradeEntriesController;

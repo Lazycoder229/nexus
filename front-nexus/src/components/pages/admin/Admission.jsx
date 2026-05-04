@@ -637,23 +637,147 @@ const AdmissionModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
 };
 
 const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
-  const [filterYear, setFilterYear] = useState("");
+  const [filterAcademicYear, setFilterAcademicYear] = useState("");
   const [filterProgram, setFilterProgram] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("");
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
+  const [departments, setDepartments] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [academicPeriods, setAcademicPeriods] = useState([]);
+  const [defaultAcademicYear, setDefaultAcademicYear] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const fetchLookupData = async () => {
+      try {
+        const API_BASE =
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+        const [departmentRes, programRes, academicPeriodRes, activePeriodRes] =
+          await Promise.all([
+            axios.get(`${API_BASE}/api/dept/departments`),
+            axios.get(`${API_BASE}/api/programs`),
+            axios.get(`${API_BASE}/api/academic-periods`),
+            axios.get(`${API_BASE}/api/academic-periods/active`),
+          ]);
+
+        const departmentRows = Array.isArray(departmentRes.data)
+          ? departmentRes.data
+          : departmentRes.data?.data || [];
+        const programRows = Array.isArray(programRes.data)
+          ? programRes.data
+          : programRes.data?.data || [];
+        const academicPeriodRows = Array.isArray(academicPeriodRes.data)
+          ? academicPeriodRes.data
+          : academicPeriodRes.data?.data || [];
+        const activePeriod =
+          activePeriodRes.data?.period || activePeriodRes.data || null;
+
+        const sortedAcademicPeriods = [...academicPeriodRows].sort(
+          (left, right) => {
+            if (left.school_year === right.school_year) {
+              return String(right.semester || "").localeCompare(
+                String(left.semester || ""),
+              );
+            }
+
+            return String(right.school_year || "").localeCompare(
+              String(left.school_year || ""),
+            );
+          },
+        );
+
+        const initialAcademicYear =
+          activePeriod?.school_year ||
+          sortedAcademicPeriods[0]?.school_year ||
+          "";
+
+        setDepartments(departmentRows);
+        setPrograms(programRows);
+        setAcademicPeriods(academicPeriodRows);
+        setDefaultAcademicYear(initialAcademicYear);
+        setFilterAcademicYear(initialAcademicYear);
+        setFilterProgram("");
+        setFilterDepartment("");
+        setSelectedIds(new Set());
+      } catch (error) {
+        console.error("Error loading bulk enroll lookup data:", error);
+      }
+    };
+
+    fetchLookupData();
+  }, [isOpen]);
 
   // Get unique values for filters
-  const years = [...new Set(admissions.map(a => new Date(a.application_date).getFullYear()))].sort().reverse();
-  const programs = [...new Set(admissions.map(a => a.program_applied).filter(Boolean))].sort();
-  const departments = ["Engineering", "Science", "Business", "Arts", "Medicine", "Law"];
+  const programDepartmentMap = new Map(
+    programs.map((program) => [
+      program.name || program.program_name,
+      program.department_name || program.department || "",
+    ]),
+  );
+
+  const getProgramLabel = (program) =>
+    program.code
+      ? `${program.code} - ${program.name || program.program_name}`
+      : program.name || program.program_name || "";
+
+  const academicYearOptions = [...new Set(
+    academicPeriods.map((period) => period.school_year).filter(Boolean),
+  )].sort((left, right) => String(right).localeCompare(String(left)));
+
+  const getAdmissionDepartment = (admission) =>
+    admission.department_name ||
+    admission.department ||
+    programDepartmentMap.get(admission.program_applied) ||
+    "";
+
+  const getAcademicYearForAdmission = (admission) => {
+    if (!admission.application_date) return "";
+
+    const applicationDate = new Date(admission.application_date);
+    if (Number.isNaN(applicationDate.getTime())) return "";
+
+    const matchingPeriods = academicPeriods.filter(
+      (period) => period.school_year === filterAcademicYear,
+    );
+
+    if (filterAcademicYear && matchingPeriods.length > 0) {
+      const isInSelectedYear = matchingPeriods.some((period) => {
+        const startDate = new Date(period.start_date);
+        const endDate = new Date(period.end_date);
+        return (
+          !Number.isNaN(startDate.getTime()) &&
+          !Number.isNaN(endDate.getTime()) &&
+          applicationDate >= startDate &&
+          applicationDate <= endDate
+        );
+      });
+
+      return isInSelectedYear ? filterAcademicYear : "";
+    }
+
+    const matchedPeriod = academicPeriods.find((period) => {
+      const startDate = new Date(period.start_date);
+      const endDate = new Date(period.end_date);
+      return (
+        !Number.isNaN(startDate.getTime()) &&
+        !Number.isNaN(endDate.getTime()) &&
+        applicationDate >= startDate &&
+        applicationDate <= endDate
+      );
+    });
+
+    return matchedPeriod?.school_year || "";
+  };
 
   // Filter admissions based on criteria
   const filteredAdmissions = admissions.filter(a => {
     let match = a.status !== "Enrolled";
     
-    if (filterYear) {
-      match = match && new Date(a.application_date).getFullYear() === parseInt(filterYear);
+    if (filterAcademicYear) {
+      match = match && getAcademicYearForAdmission(a) === filterAcademicYear;
     }
     
     if (filterProgram) {
@@ -661,7 +785,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
     }
     
     if (filterDepartment) {
-      match = match && a.program_applied?.includes(filterDepartment);
+      match = match && getAdmissionDepartment(a) === filterDepartment;
     }
     
     return match;
@@ -695,7 +819,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
     try {
       await onSubmit(Array.from(selectedIds));
       setSelectedIds(new Set());
-      setFilterYear("");
+      setFilterAcademicYear(defaultAcademicYear);
       setFilterProgram("");
       setFilterDepartment("");
     } catch (error) {
@@ -724,15 +848,15 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  Year
+                  Academic Year
                 </label>
                 <select
-                  value={filterYear}
-                  onChange={(e) => setFilterYear(e.target.value)}
+                  value={filterAcademicYear}
+                  onChange={(e) => setFilterAcademicYear(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="">All Years</option>
-                  {years.map(year => (
+                  <option value="">All Academic Years</option>
+                  {academicYearOptions.map(year => (
                     <option key={year} value={year}>{year}</option>
                   ))}
                 </select>
@@ -749,7 +873,12 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
                 >
                   <option value="">All Programs</option>
                   {programs.map(prog => (
-                    <option key={prog} value={prog}>{prog}</option>
+                    <option
+                      key={prog.id || prog.program_id || prog.code || getProgramLabel(prog)}
+                      value={prog.name || prog.program_name || ""}
+                    >
+                      {getProgramLabel(prog)}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -765,7 +894,12 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
                 >
                   <option value="">All Departments</option>
                   {departments.map(dept => (
-                    <option key={dept} value={dept}>{dept}</option>
+                    <option
+                      key={dept.id || dept.department_id || dept.name || dept.department_name}
+                      value={dept.name || dept.department_name || ""}
+                    >
+                      {dept.name || dept.department_name || ""}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -807,6 +941,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Name</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Email</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Program</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Department</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Status</th>
                     </tr>
                   </thead>
@@ -826,6 +961,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
                         </td>
                         <td className="px-3 py-2 text-sm text-slate-600">{applicant.email}</td>
                         <td className="px-3 py-2 text-sm text-slate-600">{applicant.program_applied}</td>
+                        <td className="px-3 py-2 text-sm text-slate-600">{getAdmissionDepartment(applicant) || "N/A"}</td>
                         <td className="px-3 py-2 text-sm">
                           <StatusBadge status={applicant.status} />
                         </td>

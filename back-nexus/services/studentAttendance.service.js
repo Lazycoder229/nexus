@@ -1,4 +1,5 @@
 import StudentAttendanceModel from "../model/studentAttendance.model.js";
+import AbsenteeAlertsService from "./absenteeAlerts.service.js";
 
 const StudentAttendanceService = {
   // Get all student attendance records
@@ -80,6 +81,23 @@ const StudentAttendanceService = {
       const affectedRows = await StudentAttendanceModel.bulkCreate(
         attendanceRecords
       );
+
+      // Create absentee alerts for students marked as absent
+      for (const record of attendanceRecords) {
+        if (record.status === "absent") {
+          try {
+            await AbsenteeAlertsService.createAbsenteeAlertForAttendance(record);
+          } catch (error) {
+            // Log error but don't fail the attendance save
+            console.error(
+              "Error creating absentee alert for student",
+              record.student_id,
+              error
+            );
+          }
+        }
+      }
+
       return {
         message: "Attendance marked successfully",
         recordsCreated: affectedRows,

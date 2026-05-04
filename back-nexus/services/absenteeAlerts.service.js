@@ -95,6 +95,89 @@ const AbsenteeAlertsService = {
       throw new Error(`Error fetching alert statistics: ${error.message}`);
     }
   },
+
+  // Create alert for absent student
+  async createAbsenteeAlertForAttendance(attendanceData) {
+    try {
+      // Default thresholds - configure these as needed
+      const ABSENCE_THRESHOLD = 3; // Alert after 3 absences
+      const CONSECUTIVE_THRESHOLD = 2; // Alert after 2 consecutive absences
+
+      // Only create alert for absent status
+      if (attendanceData.status !== "absent") {
+        return null;
+      }
+
+      // Get absence count for this student in this course
+      const absenceCount = await AbsenteeAlertsModel.getAbsenceCount(
+        attendanceData.student_id,
+        attendanceData.course_id,
+        attendanceData.period_id
+      );
+
+      // Check for consecutive absences
+      const consecutiveAbsences = await AbsenteeAlertsModel.getConsecutiveAbsences(
+        attendanceData.student_id,
+        attendanceData.course_id,
+        attendanceData.period_id
+      );
+
+      // Determine priority and alert type
+      let priority = "low";
+      let alertType = "excessive_absence";
+      let message = `Student has been absent ${absenceCount} time(s)`;
+
+      if (consecutiveAbsences >= CONSECUTIVE_THRESHOLD) {
+        alertType = "consecutive_absence";
+        priority = consecutiveAbsences >= 3 ? "critical" : "high";
+        message = `Student has been absent ${consecutiveAbsences} consecutive day(s)`;
+      } else if (absenceCount >= ABSENCE_THRESHOLD) {
+        priority = absenceCount >= 5 ? "critical" : "high";
+        message = `Student has exceeded absence threshold (${absenceCount} absences)`;
+      } else if (absenceCount >= 2) {
+        priority = "medium";
+      }
+
+      // Check if alert already exists for today
+      const existingAlert = await AbsenteeAlertsModel.checkExistingAlert(
+        attendanceData.student_id,
+        attendanceData.course_id,
+        attendanceData.period_id,
+        attendanceData.attendance_date
+      );
+
+      if (existingAlert) {
+        // Update existing alert
+        return await this.updateAbsenteeAlert(existingAlert.alert_id, {
+          absence_count: absenceCount,
+          priority: priority,
+          status: "pending",
+          message: message,
+        });
+      }
+
+      // Create new alert
+      const alertData = {
+        user_id: attendanceData.student_id,
+        user_type: "student",
+        alert_type: alertType,
+        period_id: attendanceData.period_id,
+        course_id: attendanceData.course_id,
+        absence_count: absenceCount,
+        threshold_exceeded: absenceCount >= ABSENCE_THRESHOLD ? 1 : 0,
+        alert_date: attendanceData.attendance_date,
+        priority: priority,
+        status: "pending",
+        message: message,
+      };
+
+      return await this.createAbsenteeAlert(alertData);
+    } catch (error) {
+      console.error("Error creating absentee alert:", error);
+      // Don't throw - attendance should still be saved even if alert creation fails
+      return null;
+    }
+  },
 };
 
 export default AbsenteeAlertsService;

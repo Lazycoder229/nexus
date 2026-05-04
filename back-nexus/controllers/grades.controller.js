@@ -35,6 +35,15 @@ const GradesController = {
     }
   },
 
+  createBulkGrades: async (req, res) => {
+    try {
+      const result = await GradesService.createBulkGrades(req.body.grades);
+      res.status(201).json(result);
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  },
+
   updateGrade: async (req, res) => {
     try {
       const grade = await GradesService.updateGrade(req.params.id, req.body);

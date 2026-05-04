@@ -27,4 +27,7 @@ router.patch("/:id/reject", GradeEntriesController.rejectEntry);
 // Get pending approvals count
 router.get("/pending/count", GradeEntriesController.getPendingCount);
 
+// Sync graded submissions from LMS to grade_entries
+router.post("/sync/submissions", GradeEntriesController.syncFromSubmissions);
+
 export default router;

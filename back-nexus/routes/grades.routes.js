@@ -12,6 +12,9 @@ router.get("/:id", GradesController.getGradeById);
 // POST create new grade
 router.post("/", GradesController.createGrade);
 
+// POST create bulk grades
+router.post("/bulk/create", GradesController.createBulkGrades);
+
 // PUT update grade
 router.put("/:id", GradesController.updateGrade);
 

@@ -51,6 +51,69 @@ const GradesService = {
     }
   },
 
+  createBulkGrades: async (gradesData) => {
+    try {
+      if (!Array.isArray(gradesData) || gradesData.length === 0) {
+        throw new Error("No grades provided");
+      }
+
+      const createdGrades = [];
+      const errors = [];
+
+      for (const gradeData of gradesData) {
+        try {
+          const validWrittenOutput = Array.isArray(gradeData.writtenOutput)
+            ? gradeData.writtenOutput.filter((score) => score !== null && score !== "")
+            : [];
+          const validPerformanceTasks = Array.isArray(gradeData.performanceTasks)
+            ? gradeData.performanceTasks.filter((score) => score !== null && score !== "")
+            : [];
+
+          const writtenOutputAverage = validWrittenOutput.length
+            ? validWrittenOutput.reduce((sum, score) => sum + Number(score), 0) / validWrittenOutput.length
+            : 0;
+          const performanceTasksAverage = validPerformanceTasks.length
+            ? validPerformanceTasks.reduce((sum, score) => sum + Number(score), 0) / validPerformanceTasks.length
+            : 0;
+
+          const processedData = {
+            student_user_id: gradeData.studentId,
+            course_id: gradeData.courseId,
+            final_score: gradeData.finalGrade,
+            letter_grade: gradeData.letterGrade,
+            weighted_output_score: writtenOutputAverage * 0.3,
+            weighted_performance_score: performanceTasksAverage * 0.3,
+            midterm_exam_score: gradeData.midtermExam,
+            components_json: JSON.stringify({
+              writtenOutput: gradeData.writtenOutput,
+              performanceTasks: gradeData.performanceTasks,
+              midtermExam: gradeData.midtermExam,
+            }),
+            status: "submitted",
+          };
+
+          const gradeId = await GradesModel.createGrade(processedData);
+          createdGrades.push(gradeId);
+        } catch (error) {
+          errors.push({
+            studentId: gradeData.studentId,
+            error: error.message,
+          });
+        }
+      }
+
+      return {
+        success: true,
+        created: createdGrades.length,
+        failed: errors.length,
+        errors: errors.length > 0 ? errors : undefined,
+        message: `Successfully created ${createdGrades.length} grades${errors.length > 0 ? ` with ${errors.length} errors` : ""}`,
+      };
+    } catch (error) {
+      throw new Error(`Error creating bulk grades: ${error.message}`);
+    }
+  },
+
   updateGrade: async (id, gradeData) => {
     try {
       const updated = await GradesModel.updateGrade(id, gradeData);

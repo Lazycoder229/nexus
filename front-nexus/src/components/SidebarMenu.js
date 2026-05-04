@@ -109,11 +109,11 @@ const Menu = {
           icons: BookOpen,
           link: "/admin/admin_faculty_assign_course",
         },
-        {
+      /*   {
           label: "Advisory Assignments",
           icons: ClipboardList,
           link: "/admin/admin_faculty_advisory_assignment",
-        },
+        }, */
         {
           label: "Faculty Evaluation",
           icons: CheckSquare,
@@ -268,12 +268,13 @@ const Menu = {
           label: "Reports",
           icons: ReportIcon,
           link: "/admin/admin_student_reports",
-        } /* ,
-        {
-          label: "Enrollment Reports",
-          icons: ReportIcon,
-          link: "/admin/admin_enrollment_reports",
+        } ,
+          {
+            label: "Analytics",
+            icons: ReportIcon,
+          link: "/admin/admin_analytics",
         },
+        /*
         {
           label: "Attendance Reports",
           icons: ReportIcon,

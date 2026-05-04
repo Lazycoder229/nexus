@@ -229,6 +229,68 @@ const AbsenteeAlertsModel = {
     const [rows] = await pool.query(query, params);
     return rows[0];
   },
+
+  // Get absence count for a student in a course
+  async getAbsenceCount(studentId, courseId, periodId) {
+    const query = `
+      SELECT COUNT(*) AS absence_count
+      FROM student_attendance
+      WHERE student_id = ? AND course_id = ? AND period_id = ? AND status = 'absent'
+    `;
+
+    const [rows] = await pool.query(query, [studentId, courseId, periodId]);
+    return rows[0]?.absence_count || 0;
+  },
+
+  // Get consecutive absences for a student
+  async getConsecutiveAbsences(studentId, courseId, periodId) {
+    const query = `
+      SELECT COUNT(*) AS consecutive_count
+      FROM student_attendance
+      WHERE student_id = ? AND course_id = ? AND period_id = ? AND status = 'absent'
+      AND attendance_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+      ORDER BY attendance_date DESC
+      LIMIT 10
+    `;
+
+    const [rows] = await pool.query(query, [studentId, courseId, periodId]);
+    // Count consecutive absences from most recent
+    let consecutive = 0;
+    const today = new Date();
+
+    if (rows.length > 0) {
+      for (let i = 0; i < rows.length; i++) {
+        consecutive++;
+        // If gap found, break
+        if (i > 0) {
+          const prevDate = new Date(rows[i - 1].attendance_date);
+          const currDate = new Date(rows[i].attendance_date);
+          const dayDiff = (prevDate - currDate) / (1000 * 60 * 60 * 24);
+          if (dayDiff > 1) break;
+        }
+      }
+    }
+
+    return consecutive;
+  },
+
+  // Check if alert already exists for today
+  async checkExistingAlert(studentId, courseId, periodId, attendanceDate) {
+    const query = `
+      SELECT alert_id FROM absentee_alerts
+      WHERE user_id = ? AND course_id = ? AND period_id = ? 
+      AND DATE(alert_date) = ?
+      LIMIT 1
+    `;
+
+    const [rows] = await pool.query(query, [
+      studentId,
+      courseId,
+      periodId,
+      attendanceDate,
+    ]);
+    return rows[0] || null;
+  },
 };
 
 export default AbsenteeAlertsModel;

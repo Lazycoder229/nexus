@@ -2,66 +2,163 @@ import React, { useState, useEffect } from "react";
 import { Bell, AlertTriangle, Users, Calendar, Mail, Phone, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import dayjs from "dayjs";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
 const AbsenteeAlerts = () => {
+  const [absentees, setAbsentees] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Mock data - load immediately
-  const [absentees] = useState([
-    {
-      id: 1,
-      studentId: '2024-00001',
-      name: 'John Doe',
-      course: 'CS101',
-      absences: 5,
-      consecutiveDays: 3,
-      lastAttendance: dayjs().subtract(3, 'days').format('YYYY-MM-DD'),
-      email: 'john.doe@example.com',
-      phone: '09123456789',
-      status: 'critical'
-    },
-    {
-      id: 2,
-      studentId: '2024-00003',
-      name: 'Michael Johnson',
-      course: 'MATH201',
-      absences: 3,
-      consecutiveDays: 2,
-      lastAttendance: dayjs().subtract(2, 'days').format('YYYY-MM-DD'),
-      email: 'michael.j@example.com',
-      phone: '09123456788',
-      status: 'warning'
-    },
-    {
-      id: 3,
-      studentId: '2024-00005',
-      name: 'Sarah Williams',
-      course: 'CS101',
-      absences: 4,
-      consecutiveDays: 2,
-      lastAttendance: dayjs().subtract(2, 'days').format('YYYY-MM-DD'),
-      email: 'sarah.w@example.com',
-      phone: '09123456787',
-      status: 'warning'
-    },
-    {
-      id: 4,
-      studentId: '2024-00007',
-      name: 'David Brown',
-      course: 'ENG102',
-      absences: 6,
-      consecutiveDays: 4,
-      lastAttendance: dayjs().subtract(4, 'days').format('YYYY-MM-DD'),
-      email: 'david.b@example.com',
-      phone: '09123456786',
-      status: 'critical'
-    },
-  ]);
+  // Fetch absentee alerts from backend
+  useEffect(() => {
+    fetchAbsentees();
+  }, [statusFilter]);
 
-  const sendNotification = (student) => {
-    alert(`Sending notification to ${student.name}...`);
+  const fetchAbsentees = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      params.append("user_type", "student");
+      if (statusFilter !== "all") params.append("status", statusFilter);
+
+      const response = await fetch(
+        `${API_BASE}/api/absentee-alerts?${params}`
+      );
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        // Transform backend data to match component's expected format
+        let transformedData = data.data.map((alert) => ({
+          id: alert.alert_id,
+          alertId: alert.alert_id,
+          studentId: alert.user_identifier || alert.user_id,
+          userId: alert.user_id,
+          name: alert.user_name,
+          course: alert.course_title || alert.course_code || "N/A",
+          courseId: alert.course_id,
+          periodId: alert.period_id,
+          absences: alert.absence_count || 0, // Will be updated with current data
+          consecutiveDays: 0, // Will be calculated
+          lastAttendance: alert.alert_date || dayjs().format('YYYY-MM-DD'),
+          email: alert.email || "N/A",
+          phone: alert.phone || "N/A",
+          status: alert.priority === "critical" ? "critical" : "warning",
+          priority: alert.priority || "low",
+        }));
+
+        // Fetch current attendance statistics for accurate counts
+        transformedData = await enrichWithCurrentAttendanceStats(transformedData);
+        
+        setAbsentees(transformedData);
+      }
+    } catch (error) {
+      console.error("Error fetching absentees:", error);
+      setAbsentees([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch current attendance stats for each student to show accurate data
+  const enrichWithCurrentAttendanceStats = async (studentAlerts) => {
+    try {
+      // Get attendance records for all students with alerts
+      const attendanceParams = new URLSearchParams();
+      attendanceParams.append("user_type", "student");
+
+      const attendanceResponse = await fetch(
+        `${API_BASE}/api/student-attendance?${attendanceParams}`
+      );
+      const attendanceData = await attendanceResponse.json();
+      const allAttendance = attendanceData.data || [];
+
+      // Calculate absence counts per student
+      return studentAlerts.map((student) => {
+        // Get all absences for this student across all courses
+        const studentAbsences = allAttendance.filter(
+          (att) =>
+            att.student_id === student.userId && att.status === "absent"
+        );
+
+        // Get absences for the specific course if available
+        const courseAbsences = allAttendance.filter(
+          (att) =>
+            att.student_id === student.userId &&
+            att.course_id === student.courseId &&
+            att.status === "absent"
+        );
+
+        // Calculate consecutive absences (recent consecutive days)
+        const recentAbsences = courseAbsences
+          .sort((a, b) => new Date(b.attendance_date) - new Date(a.attendance_date))
+          .slice(0, 10);
+
+        let consecutiveCount = 0;
+        if (recentAbsences.length > 0) {
+          const today = dayjs();
+          consecutiveCount = 1;
+
+          for (let i = 0; i < recentAbsences.length - 1; i++) {
+            const currentDate = dayjs(recentAbsences[i].attendance_date);
+            const nextDate = dayjs(recentAbsences[i + 1].attendance_date);
+            const dayDiff = currentDate.diff(nextDate, "day");
+
+            if (dayDiff === 1) {
+              consecutiveCount++;
+            } else {
+              break;
+            }
+          }
+        }
+
+        // Get last absence date for this course
+        const lastAbsenceDate = courseAbsences.length > 0
+          ? courseAbsences.sort(
+              (a, b) => new Date(b.attendance_date) - new Date(a.attendance_date)
+            )[0].attendance_date
+          : student.lastAttendance;
+
+        return {
+          ...student,
+          absences: courseAbsences.length, // Current count for this course
+          consecutiveDays: consecutiveCount, // Current consecutive count
+          lastAttendance: lastAbsenceDate, // Last absence date for this course
+        };
+      });
+    } catch (error) {
+      console.error("Error fetching attendance stats:", error);
+      // Return original data if fetch fails
+      return studentAlerts;
+    }
+  };
+
+  const sendNotification = async (student) => {
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/absentee-alerts/${student.id}/acknowledge`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            acknowledged_by: 1, // Replace with actual faculty ID from auth
+            resolution_notes: `Notification sent to ${student.name}`,
+          }),
+        }
+      );
+      
+      if (response.ok) {
+        alert(`Notification sent to ${student.name}`);
+        fetchAbsentees();
+      }
+    } catch (error) {
+      console.error("Error sending notification:", error);
+      alert("Failed to send notification");
+    }
   };
 
   // Filter absentees
@@ -164,6 +261,20 @@ const AbsenteeAlerts = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
+        {loading ? (
+          <div className="px-4 py-8 text-center">
+            <div className="inline-block animate-spin">
+              <Bell className="w-6 h-6 text-indigo-600" />
+            </div>
+            <p className="mt-2 text-slate-600">Loading absentee alerts...</p>
+          </div>
+        ) : currentAbsentees.length === 0 ? (
+          <div className="px-4 py-8 text-center text-slate-500">
+            <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
+            <p>No absentees found</p>
+          </div>
+        ) : (
+          <>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -178,14 +289,7 @@ const AbsenteeAlerts = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {currentAbsentees.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="px-4 py-8 text-center text-slate-500">
-                    No absentees found
-                  </td>
-                </tr>
-              ) : (
-                currentAbsentees.map((student) => (
+              {currentAbsentees.map((student) => (
                 <tr key={student.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3">
                     <div>
@@ -213,7 +317,7 @@ const AbsenteeAlerts = () => {
                       <button
                         onClick={() => sendNotification(student)}
                         className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                        title="Send Email"
+                        title="Send Notification"
                       >
                         <Mail className="w-3 h-3" />
                       </button>
@@ -223,8 +327,7 @@ const AbsenteeAlerts = () => {
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
+              ))}
             </tbody>
           </table>
         </div>
@@ -257,6 +360,8 @@ const AbsenteeAlerts = () => {
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );
