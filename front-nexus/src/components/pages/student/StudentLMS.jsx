@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
   BookOpen,
@@ -61,28 +61,7 @@ const StudentLMS = () => {
   // Get the academic period ID (could be 'id' or 'period_id' depending on API)
   const academicPeriodId = academicPeriod?.period_id || academicPeriod?.id;
 
-  useEffect(() => {
-    if (studentId && academicPeriodId) {
-      fetchData();
-    }
-  }, [activeTab, studentId, academicPeriod]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      if (activeTab === "lessons") {
-        await fetchLessons();
-      } else if (activeTab === "quizzes" || activeTab === "assignments") {
-        await fetchAssignmentsAndQuizzes();
-      } else if (activeTab === "discussions") {
-        await fetchDiscussions();
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchLessons = async () => {
+  const fetchLessons = useCallback(async () => {
     try {
       // Fetch materials filtered by student's enrolled courses
       const response = await axios.get(
@@ -116,9 +95,9 @@ const StudentLMS = () => {
     } catch (error) {
       console.error("Error fetching lessons:", error);
     }
-  };
+  }, [studentId, academicPeriodId]);
 
-  const fetchAssignmentsAndQuizzes = async () => {
+  const fetchAssignmentsAndQuizzes = useCallback(async () => {
     try {
       const response = await axios.get(
         `${API_BASE}/api/lms/assignments/student`,
@@ -168,7 +147,6 @@ const StudentLMS = () => {
           graded_at: a.graded_at,
           file_url: a.file_url || a.model_answer_file_url || "",
           file_name: a.file_name || a.model_answer_file_name || "",
-          graded_at: a.graded_at,
         }));
       setAssignments(assignmentsData);
 
@@ -203,7 +181,7 @@ const StudentLMS = () => {
     } catch (error) {
       console.error("Error fetching assignments/quizzes:", error);
     }
-  };
+  }, [studentId, academicPeriodId]);
 
   const [discussionReplies, setDiscussionReplies] = useState([]);
 
@@ -220,6 +198,47 @@ const StudentLMS = () => {
       setDiscussionReplies(response.data?.replies || []);
     } catch (error) {
       console.error("Error fetching replies:", error);
+    }
+  };
+
+  const getLessonFileUrl = (fileUrl) => {
+    if (!fileUrl) return "";
+    if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
+      return fileUrl;
+    }
+    return `${API_BASE}${fileUrl.startsWith("/") ? "" : "/"}${fileUrl}`;
+  };
+
+  const getFileNameFromUrl = (fileUrl, fallbackName) => {
+    if (!fileUrl) return fallbackName;
+
+    try {
+      const urlPath = fileUrl.split("?")[0].split("#")[0];
+      const segments = urlPath.split("/").filter(Boolean);
+      const lastSegment = segments[segments.length - 1];
+      return lastSegment || fallbackName;
+    } catch {
+      return fallbackName;
+    }
+  };
+
+  const handleLessonDownload = async (lesson) => {
+    const resolvedUrl = getLessonFileUrl(lesson.file_url);
+    if (!resolvedUrl) return;
+
+    try {
+      const link = document.createElement("a");
+      link.href = resolvedUrl;
+      link.download = getFileNameFromUrl(
+        lesson.file_url,
+        `${lesson.title || "lesson-file"}`,
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("Error downloading lesson file:", error);
+      window.open(resolvedUrl, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -402,7 +421,7 @@ const StudentLMS = () => {
     }
   };
 
-  const fetchDiscussions = async () => {
+  const fetchDiscussions = useCallback(async () => {
     try {
       const response = await axios.get(
         `${API_BASE}/api/lms/discussions/student`,
@@ -418,7 +437,28 @@ const StudentLMS = () => {
     } catch (error) {
       console.error("Error fetching discussions:", error);
     }
-  };
+  }, [studentId, academicPeriodId]);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      if (activeTab === "lessons") {
+        await fetchLessons();
+      } else if (activeTab === "quizzes" || activeTab === "assignments") {
+        await fetchAssignmentsAndQuizzes();
+      } else if (activeTab === "discussions") {
+        await fetchDiscussions();
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab, fetchLessons, fetchAssignmentsAndQuizzes, fetchDiscussions]);
+
+  useEffect(() => {
+    if (studentId && academicPeriodId) {
+      fetchData();
+    }
+  }, [fetchData, studentId, academicPeriodId]);
 
   const groupedLessons = lessons.reduce((acc, lesson) => {
     const subject = lesson.subject_name || "General";
@@ -463,6 +503,12 @@ const StudentLMS = () => {
             Online Learning Platform
           </span>
         </div>
+
+        {loading && (
+          <div className="flex items-center justify-center py-8 text-slate-500 dark:text-slate-400">
+            Loading LMS content...
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700 pb-0 overflow-x-auto">
@@ -550,7 +596,11 @@ const StudentLMS = () => {
                               View
                             </button>
                             {lesson.file_url && (
-                              <button className="flex items-center justify-center gap-1 bg-slate-600 hover:bg-slate-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors">
+                              <button
+                                onClick={() => handleLessonDownload(lesson)}
+                                className="flex items-center justify-center gap-1 bg-slate-600 hover:bg-slate-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors"
+                                title="Download lesson file"
+                              >
                                 <Download size={14} />
                               </button>
                             )}

@@ -37,6 +37,7 @@ const LMSMaterials = () => {
   const [assignments, setAssignments] = useState([]);
   const [academicPeriods, setAcademicPeriods] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
@@ -124,12 +125,41 @@ const LMSMaterials = () => {
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setFormData({
-        ...formData,
-        file_name: file.name,
-        file_size: (file.size / 1024).toFixed(2) + " KB",
-        file_url: URL.createObjectURL(file),
-      });
+      if (formData.material_type === "link") {
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          setUploadingFile(true);
+          const response = await axios.post(
+            `${API_BASE}/api/lms/materials/upload`,
+            {
+              file_base64: event.target.result,
+              file_name: file.name,
+            },
+          );
+
+          if (response.data.success) {
+            setFormData({
+              ...formData,
+              file_name: file.name,
+              file_size: (file.size / 1024).toFixed(2) + " KB",
+              file_url: response.data.file_url,
+            });
+          } else {
+            alert(response.data.message || "Failed to upload file");
+          }
+        } catch (error) {
+          console.error("Error uploading material file:", error);
+          alert("Failed to upload file");
+        } finally {
+          setUploadingFile(false);
+        }
+      };
+
+      reader.readAsDataURL(file);
     }
   };
 
@@ -138,6 +168,11 @@ const LMSMaterials = () => {
 
     if (!formData.academic_period_id) {
       alert("Please select an academic period.");
+      return;
+    }
+
+    if (formData.material_type !== "link" && !formData.file_url) {
+      alert("Please upload a file first.");
       return;
     }
 
@@ -448,9 +483,9 @@ const LMSMaterials = () => {
                     />
                     <label
                       htmlFor="file-upload"
-                      className="cursor-pointer text-indigo-600 hover:text-indigo-700"
+                      className={`cursor-pointer text-indigo-600 hover:text-indigo-700 ${uploadingFile ? "pointer-events-none opacity-60" : ""}`}
                     >
-                      Click to upload or drag and drop
+                      {uploadingFile ? "Uploading file..." : "Click to upload or drag and drop"}
                     </label>
                     {formData.file_name && (
                       <p className="text-sm text-gray-600 mt-2">
@@ -557,10 +592,10 @@ const LMSMaterials = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || uploadingFile}
                   className="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition disabled:bg-gray-400"
                 >
-                  {loading ? "Uploading..." : "Upload Material"}
+                  {uploadingFile ? "Uploading file..." : loading ? "Uploading..." : "Upload Material"}
                 </button>
               </div>
             </form>

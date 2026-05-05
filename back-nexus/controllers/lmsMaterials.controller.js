@@ -1,6 +1,54 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import LMSMaterials from "../model/lmsMaterials.model.js";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const lmsMaterialsController = {
+  // Upload a learning material file and return a persistent URL
+  uploadFile: async (req, res) => {
+    try {
+      const { file_base64, file_name } = req.body;
+
+      if (!file_base64 || !file_name) {
+        return res.status(400).json({
+          success: false,
+          message: "File content and name are required",
+        });
+      }
+
+      const base64Data = file_base64.replace(/^data:.+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+
+      const uploadDir = path.join(__dirname, "../public/uploads/materials");
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      const uniqueFilename = `${Date.now()}-${file_name.replace(/\s+/g, "-")}`;
+      const filePath = path.join(uploadDir, uniqueFilename);
+
+      fs.writeFileSync(filePath, buffer);
+
+      const fileUrl = `/uploads/materials/${uniqueFilename}`;
+
+      res.status(200).json({
+        success: true,
+        message: "File uploaded successfully",
+        file_url: fileUrl,
+      });
+    } catch (error) {
+      console.error("Error uploading material file:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to upload file",
+        error: error.message,
+      });
+    }
+  },
+
   // Create new learning material
   create: async (req, res) => {
     try {

@@ -3,6 +3,9 @@ import lmsMaterialsController from "../controllers/lmsMaterials.controller.js";
 
 const router = express.Router();
 
+// Upload learning material file
+router.post("/upload", lmsMaterialsController.uploadFile);
+
 // Create new material
 router.post("/", lmsMaterialsController.create);
 
