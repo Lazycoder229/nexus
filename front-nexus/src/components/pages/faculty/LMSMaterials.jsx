@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   BookOpen,
   Upload,
@@ -21,9 +21,21 @@ import axios from "axios";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+const getCurrentAcademicPeriodId = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/api/academic-periods/active`);
+    const periodData = response.data?.period || response.data;
+    return periodData?.period_id || periodData?.id || "";
+  } catch (error) {
+    console.error("Error fetching active academic period:", error);
+    return "";
+  }
+};
+
 const LMSMaterials = () => {
   const [materials, setMaterials] = useState([]);
   const [assignments, setAssignments] = useState([]);
+  const [academicPeriods, setAcademicPeriods] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -40,33 +52,29 @@ const LMSMaterials = () => {
     file_size: "",
     section_id: "",
     course_id: "",
+    academic_period_id: "",
   });
 
-  useEffect(() => {
-    fetchMaterials();
-    fetchAssignments();
+  const fetchAcademicPeriods = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/api/academic-periods`);
+      const periods = Array.isArray(response.data)
+        ? response.data
+        : Array.isArray(response.data?.data)
+        ? response.data.data
+        : [];
+
+      setAcademicPeriods(periods);
+    } catch (error) {
+      console.error("Error fetching academic periods:", error);
+    }
   }, []);
 
-  const fetchAssignments = async () => {
-    try {
-      const userId = localStorage.getItem("userId");
-      const response = await axios.get(
-        `${API_BASE}/api/faculty-assignments/faculty/${userId}`,
-      );
-      if (response.data.success) {
-        setAssignments(response.data.data);
-      }
-    } catch (error) {
-      console.error("Error fetching assignments:", error);
-    }
-  };
-
-  const fetchMaterials = async () => {
+  const fetchMaterials = useCallback(async () => {
     setLoading(true);
     try {
       const userId = localStorage.getItem("userId");
-      const academicPeriodId =
-        localStorage.getItem("currentAcademicPeriod") || 1;
+      const academicPeriodId = await getCurrentAcademicPeriodId();
 
       const response = await axios.get(
         `${API_BASE}/api/lms/materials/faculty`,
@@ -86,7 +94,27 @@ const LMSMaterials = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  const fetchAssignments = useCallback(async () => {
+    try {
+      const userId = localStorage.getItem("userId");
+      const response = await axios.get(
+        `${API_BASE}/api/faculty-assignments/faculty/${userId}`,
+      );
+      if (response.data.success) {
+        setAssignments(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching assignments:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAcademicPeriods();
+    fetchMaterials();
+    fetchAssignments();
+  }, [fetchAcademicPeriods, fetchMaterials, fetchAssignments]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -96,29 +124,32 @@ const LMSMaterials = () => {
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // In production, upload to cloud storage
       setFormData({
         ...formData,
         file_name: file.name,
         file_size: (file.size / 1024).toFixed(2) + " KB",
-        file_url: URL.createObjectURL(file), // Temporary URL
+        file_url: URL.createObjectURL(file),
       });
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.academic_period_id) {
+      alert("Please select an academic period.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const userId = localStorage.getItem("userId");
-      const academicPeriodId =
-        localStorage.getItem("currentAcademicPeriod") || 1;
 
       const materialData = {
         ...formData,
         faculty_id: userId,
-        academic_period_id: academicPeriodId,
+        academic_period_id: formData.academic_period_id,
       };
 
       const response = await axios.post(
@@ -170,6 +201,7 @@ const LMSMaterials = () => {
       file_size: "",
       section_id: "",
       course_id: "",
+      academic_period_id: "",
     });
   };
 
@@ -201,7 +233,6 @@ const LMSMaterials = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header */}
       <div className="mb-6">
         <div className="flex justify-between items-center">
           <div>
@@ -223,7 +254,6 @@ const LMSMaterials = () => {
         </div>
       </div>
 
-      {/* Search and Filter */}
       <div className="bg-white rounded-xl shadow-md p-4 mb-6">
         <div className="flex gap-4">
           <div className="flex-1 relative">
@@ -254,7 +284,6 @@ const LMSMaterials = () => {
         </div>
       </div>
 
-      {/* Materials Grid */}
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
@@ -326,7 +355,6 @@ const LMSMaterials = () => {
         </div>
       )}
 
-      {/* Upload Modal */}
       {showUploadModal && (
         <div className="fixed inset-0  flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -493,6 +521,29 @@ const LMSMaterials = () => {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Academic Period *
+                </label>
+                <select
+                  name="academic_period_id"
+                  value={formData.academic_period_id}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">Select Academic Period</option>
+                  {academicPeriods.map((period) => {
+                    const periodId = period.period_id || period.id;
+                    return (
+                      <option key={periodId} value={periodId}>
+                        {period.school_year} - {period.semester}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
               <div className="flex gap-4 pt-4">
                 <button
                   type="button"
@@ -517,7 +568,6 @@ const LMSMaterials = () => {
         </div>
       )}
 
-      {/* View Modal */}
       {showViewModal && selectedMaterial && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
@@ -538,20 +588,16 @@ const LMSMaterials = () => {
                 {getFileIcon(selectedMaterial.material_type)}
                 <div>
                   <p className="text-gray-600">
-                    {selectedMaterial.course_name} -{" "}
-                    {selectedMaterial.section_name}
+                    {selectedMaterial.course_name} - {selectedMaterial.section_name}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Uploaded on{" "}
-                    {new Date(selectedMaterial.created_at).toLocaleDateString()}
+                    Uploaded on {new Date(selectedMaterial.created_at).toLocaleDateString()}
                   </p>
                 </div>
               </div>
 
               <div className="mb-6">
-                <h3 className="font-semibold text-gray-900 mb-2">
-                  Description
-                </h3>
+                <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
                 <p className="text-gray-600">{selectedMaterial.description}</p>
               </div>
 

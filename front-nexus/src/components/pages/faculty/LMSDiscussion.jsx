@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   MessageCircle,
   Plus,
@@ -19,9 +19,21 @@ import axios from "axios";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+const getCurrentAcademicPeriodId = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/api/academic-periods/active`);
+    const periodData = response.data?.period || response.data;
+    return periodData?.period_id || periodData?.id || "";
+  } catch (error) {
+    console.error("Error fetching active academic period:", error);
+    return "";
+  }
+};
+
 const LMSDiscussion = () => {
   const [discussions, setDiscussions] = useState([]);
   const [facultyAssignments, setFacultyAssignments] = useState([]);
+  const [academicPeriods, setAcademicPeriods] = useState([]);
   const [selectedDiscussion, setSelectedDiscussion] = useState(null);
   const [replies, setReplies] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -35,15 +47,26 @@ const LMSDiscussion = () => {
     content: "",
     section_id: "",
     course_id: "",
+    academic_period_id: "",
     is_pinned: false,
   });
 
-  useEffect(() => {
-    fetchDiscussions();
-    fetchFacultyAssignments();
+  const fetchAcademicPeriods = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/api/academic-periods`);
+      const periods = Array.isArray(response.data)
+        ? response.data
+        : Array.isArray(response.data?.data)
+        ? response.data.data
+        : [];
+
+      setAcademicPeriods(periods);
+    } catch (error) {
+      console.error("Error fetching academic periods:", error);
+    }
   }, []);
 
-  const fetchFacultyAssignments = async () => {
+  const fetchFacultyAssignments = useCallback(async () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
@@ -55,14 +78,13 @@ const LMSDiscussion = () => {
     } catch (error) {
       console.error("Error fetching faculty assignments:", error);
     }
-  };
+  }, []);
 
-  const fetchDiscussions = async () => {
+  const fetchDiscussions = useCallback(async () => {
     setLoading(true);
     try {
       const userId = localStorage.getItem("userId");
-      const academicPeriodId =
-        localStorage.getItem("currentAcademicPeriod") || 1;
+      const academicPeriodId = await getCurrentAcademicPeriodId();
 
       const response = await axios.get(
         `${API_BASE}/api/lms/discussions/faculty`,
@@ -82,7 +104,13 @@ const LMSDiscussion = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchAcademicPeriods();
+    fetchDiscussions();
+    fetchFacultyAssignments();
+  }, [fetchAcademicPeriods, fetchDiscussions, fetchFacultyAssignments]);
 
   const fetchReplies = async (discussionId) => {
     try {
@@ -108,12 +136,16 @@ const LMSDiscussion = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.academic_period_id) {
+      alert("Please select an academic period.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const userId = localStorage.getItem("userId");
-      const academicPeriodId =
-        localStorage.getItem("currentAcademicPeriod") || 1;
+      const academicPeriodId = formData.academic_period_id;
 
       const discussionData = {
         ...formData,
@@ -225,6 +257,7 @@ const LMSDiscussion = () => {
       content: "",
       section_id: "",
       course_id: "",
+      academic_period_id: "",
       is_pinned: false,
     });
   };
@@ -493,6 +526,29 @@ const LMSDiscussion = () => {
                       ))}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Academic Period *
+                </label>
+                <select
+                  name="academic_period_id"
+                  value={formData.academic_period_id}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">Select Academic Period</option>
+                  {academicPeriods.map((period) => {
+                    const periodId = period.period_id || period.id;
+                    return (
+                      <option key={periodId} value={periodId}>
+                        {period.school_year} - {period.semester}
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
 
               <div className="flex items-center gap-2">

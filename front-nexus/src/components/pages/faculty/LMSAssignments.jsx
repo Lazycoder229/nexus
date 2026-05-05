@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   FileText,
   Plus,
@@ -24,9 +24,21 @@ import DocumentViewer from "../../shared/DocumentViewer.jsx";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+const getCurrentAcademicPeriodId = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/api/academic-periods/active`);
+    const periodData = response.data?.period || response.data;
+    return periodData?.period_id || periodData?.id || "";
+  } catch (error) {
+    console.error("Error fetching active academic period:", error);
+    return "";
+  }
+};
+
 const LMSAssignments = () => {
   const [assignments, setAssignments] = useState([]);
   const [facultyAssignments, setFacultyAssignments] = useState([]);
+  const [academicPeriods, setAcademicPeriods] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
@@ -60,6 +72,7 @@ const LMSAssignments = () => {
     allow_late_submission: false,
     section_id: "",
     course_id: "",
+    academic_period_id: "",
   });
 
   const [questions, setQuestions] = useState([]);
@@ -186,12 +199,22 @@ const LMSAssignments = () => {
   const [aiModelAnswerFile, setAiModelAnswerFile] = useState(null);
   const [aiModelAnswerFileName, setAiModelAnswerFileName] = useState("");
 
-  useEffect(() => {
-    fetchAssignments();
-    fetchFacultyAssignments();
+  const fetchAcademicPeriods = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/api/academic-periods`);
+      const periods = Array.isArray(response.data)
+        ? response.data
+        : Array.isArray(response.data?.data)
+        ? response.data.data
+        : [];
+
+      setAcademicPeriods(periods);
+    } catch (error) {
+      console.error("Error fetching academic periods:", error);
+    }
   }, []);
 
-  const fetchFacultyAssignments = async () => {
+  const fetchFacultyAssignments = useCallback(async () => {
     try {
       const userId = localStorage.getItem("userId");
       const response = await axios.get(
@@ -203,14 +226,13 @@ const LMSAssignments = () => {
     } catch (error) {
       console.error("Error fetching faculty assignments:", error);
     }
-  };
+  }, []);
 
-  const fetchAssignments = async () => {
+  const fetchAssignments = useCallback(async () => {
     setLoading(true);
     try {
       const userId = localStorage.getItem("userId");
-      const academicPeriodId =
-        localStorage.getItem("currentAcademicPeriod") || 1;
+      const academicPeriodId = await getCurrentAcademicPeriodId();
 
       const response = await axios.get(
         `${API_BASE}/api/lms/assignments/faculty`,
@@ -230,7 +252,13 @@ const LMSAssignments = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchAcademicPeriods();
+    fetchAssignments();
+    fetchFacultyAssignments();
+  }, [fetchAcademicPeriods, fetchAssignments, fetchFacultyAssignments]);
 
   const fetchSubmissions = async (assignmentId) => {
     try {
@@ -267,12 +295,16 @@ const LMSAssignments = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.academic_period_id) {
+      alert("Please select an academic period.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const userId = localStorage.getItem("userId");
-      const academicPeriodId =
-        localStorage.getItem("currentAcademicPeriod") || 1;
+      const academicPeriodId = formData.academic_period_id;
 
       let modelAnswerFileUrl = null;
 
@@ -480,6 +512,7 @@ const LMSAssignments = () => {
       allow_late_submission: false,
       section_id: "",
       course_id: "",
+      academic_period_id: "",
     });
     setQuestions([]);
     setImportResult(null);
@@ -926,6 +959,29 @@ const LMSAssignments = () => {
                       ))}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Academic Period *
+                </label>
+                <select
+                  name="academic_period_id"
+                  value={formData.academic_period_id}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">Select Academic Period</option>
+                  {academicPeriods.map((period) => {
+                    const periodId = period.period_id || period.id;
+                    return (
+                      <option key={periodId} value={periodId}>
+                        {period.school_year} - {period.semester}
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
 
               <div className="flex items-center gap-2">
