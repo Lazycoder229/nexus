@@ -426,7 +426,7 @@ const GradeEncoding = () => {
     if (!selectedCourse || !activePeriodId) return;
     try {
       const facultyId = Number(localStorage.getItem("userId") || localStorage.getItem("user_id") || 0);
-      const response  = await axios.get(`${API_BASE}/api/lms-assignments/faculty`, {
+      const response  = await axios.get(`${API_BASE}/api/lms/assignments/faculty`, {
         params: { faculty_id: facultyId, academic_period_id: activePeriodId },
       });
       const assignments = response.data?.assignments || [];
