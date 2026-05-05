@@ -392,8 +392,31 @@ const GradeEncoding = () => {
         const maxRow   = EMPTY_MAX_SCORE();
 
         assignmentEntries.forEach((entry) => {
-          const compMatch = String(entry.component_name || "").match(/(\d+)/);
-          const colIdx = compMatch ? Number(compMatch[1]) - 1 : null;
+          // Try to resolve a sensible column index for the written output.
+          // 1) If the component_name contains a number 1-12, use that.
+          // 2) Otherwise try to match against activityMeta labels for the course.
+          // 3) Fallback to the first empty slot in the grade row.
+          const nameStr = String(entry.component_name || "").trim();
+          let colIdx = null;
+          const compMatch = nameStr.match(/(\d+)/);
+          if (compMatch) {
+            const n = Number(compMatch[1]);
+            if (n >= 1 && n <= 12) colIdx = n - 1;
+          }
+          if (colIdx === null) {
+            const lower = nameStr.toLowerCase();
+            const meta = activityMeta || EMPTY_ACTIVITY_META();
+            for (let i = 0; i < (meta.writtenOutput || []).length; i++) {
+              const label = String(meta.writtenOutput[i]?.label || "").toLowerCase();
+              if (label && lower.includes(label)) { colIdx = i; break; }
+            }
+          }
+          if (colIdx === null) {
+            for (let i = 0; i < 12; i++) {
+              if (gradeRow.writtenOutput[i] === "" || gradeRow.writtenOutput[i] === null) { colIdx = i; break; }
+            }
+          }
+
           if (colIdx !== null && colIdx >= 0 && colIdx < 12) {
             gradeRow.writtenOutput[colIdx] = entry.raw_score ?? "";
             maxRow.writtenOutput[colIdx]   = Number(entry.max_score || 100);
@@ -401,12 +424,32 @@ const GradeEncoding = () => {
             nextEntryMap[key] = entry.entry_id;
             if (entry.is_locked) nextLockedEntries[key] = true;
           } else {
-            console.warn(`[GradeEncoding] Could not load assignment "${entry.component_name}" - invalid column index ${colIdx}`);
+            console.warn(`[GradeEncoding] Could not load assignment "${entry.component_name}" - could not resolve a valid column index`, entry);
           }
         });
         quizEntries.forEach((entry) => {
-          const compMatch = String(entry.component_name || "").match(/(\d+)/);
-          const colIdx = compMatch ? Number(compMatch[1]) - 1 : null;
+          // Similar robust resolution for quizzes/performance tasks.
+          const nameStr = String(entry.component_name || "").trim();
+          let colIdx = null;
+          const compMatch = nameStr.match(/(\d+)/);
+          if (compMatch) {
+            const n = Number(compMatch[1]);
+            if (n >= 1 && n <= 12) colIdx = n - 1;
+          }
+          if (colIdx === null) {
+            const lower = nameStr.toLowerCase();
+            const meta = activityMeta || EMPTY_ACTIVITY_META();
+            for (let i = 0; i < (meta.performanceTasks || []).length; i++) {
+              const label = String(meta.performanceTasks[i]?.label || "").toLowerCase();
+              if (label && lower.includes(label)) { colIdx = i; break; }
+            }
+          }
+          if (colIdx === null) {
+            for (let i = 0; i < 12; i++) {
+              if (gradeRow.performanceTasks[i] === "" || gradeRow.performanceTasks[i] === null) { colIdx = i; break; }
+            }
+          }
+
           if (colIdx !== null && colIdx >= 0 && colIdx < 12) {
             gradeRow.performanceTasks[colIdx] = entry.raw_score ?? "";
             maxRow.performanceTasks[colIdx]   = Number(entry.max_score || 100);
@@ -414,7 +457,7 @@ const GradeEncoding = () => {
             nextEntryMap[key] = entry.entry_id;
             if (entry.is_locked) nextLockedEntries[key] = true;
           } else {
-            console.warn(`[GradeEncoding] Could not load quiz "${entry.component_name}" - invalid column index ${colIdx}`);
+            console.warn(`[GradeEncoding] Could not load quiz "${entry.component_name}" - could not resolve a valid column index`, entry);
           }
         });
         if (examEntries.length > 0) {

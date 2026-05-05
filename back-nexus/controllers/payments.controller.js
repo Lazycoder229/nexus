@@ -20,6 +20,10 @@ const paymentController = {
         collected_by: req.user.user_id,
       };
 
+      data.payment_status =
+        data.payment_status ||
+        (data.payment_method === "Cash" ? "Verified" : "Pending");
+
       const result = await Payment.create(data);
 
       // Update invoice payment amount
