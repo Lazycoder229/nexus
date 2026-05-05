@@ -343,14 +343,27 @@ const GradeEncoding = () => {
       const entries = response.data?.data || [];
       const gradeLabel     = LABEL_MAP[period] || "midterm";
       const filteredEntries = entries.filter((e) => String(e.label || "").toLowerCase() === String(gradeLabel).toLowerCase());
+      
+      console.log(`[GradeEncoding] Loaded ${entries.length} total entries, filtered to ${filteredEntries.length} for label "${gradeLabel}"`);
+      if (filteredEntries.length > 0) {
+        console.log(`[GradeEncoding] Sample entries:`, filteredEntries.slice(0, 3).map(e => ({ student_id: e.student_id, component_type: e.component_type, component_name: e.component_name, raw_score: e.raw_score })));
+      }
+      
       const studentByUserId = new Map(students.filter((s) => s.userId).map((s) => [String(s.userId), s]));
 
       const grouped = {};
       filteredEntries.forEach((entry) => {
         const key = String(entry.student_id);
         if (!grouped[key]) grouped[key] = { assignment: [], quiz: [], exam: [] };
-        if (grouped[key][entry.component_type]) grouped[key][entry.component_type].push(entry);
+        const componentType = entry.component_type || "assignment";
+        if (grouped[key][componentType] !== undefined) {
+          grouped[key][componentType].push(entry);
+        } else {
+          console.warn(`[GradeEncoding] Unknown component_type: "${componentType}" for entry:`, entry);
+        }
       });
+
+      console.log(`[GradeEncoding] Grouped entries - assignments: ${Object.values(grouped).reduce((s, c) => s + c.assignment.length, 0)}, quizzes: ${Object.values(grouped).reduce((s, c) => s + c.quiz.length, 0)}`);
 
       const nextGrades        = {};
       const nextMaxScores     = {};
@@ -387,6 +400,8 @@ const GradeEncoding = () => {
             const key = `${localStudent.id}:writtenOutput:${colIdx}:${gradeLabel}`;
             nextEntryMap[key] = entry.entry_id;
             if (entry.is_locked) nextLockedEntries[key] = true;
+          } else {
+            console.warn(`[GradeEncoding] Could not load assignment "${entry.component_name}" - invalid column index ${colIdx}`);
           }
         });
         quizEntries.forEach((entry) => {
@@ -398,6 +413,8 @@ const GradeEncoding = () => {
             const key = `${localStudent.id}:performanceTasks:${colIdx}:${gradeLabel}`;
             nextEntryMap[key] = entry.entry_id;
             if (entry.is_locked) nextLockedEntries[key] = true;
+          } else {
+            console.warn(`[GradeEncoding] Could not load quiz "${entry.component_name}" - invalid column index ${colIdx}`);
           }
         });
         if (examEntries.length > 0) {
@@ -416,6 +433,8 @@ const GradeEncoding = () => {
       if (Object.keys(nextMaxScores).length > 0) setMaxScores((prev) => ({ ...prev, ...nextMaxScores }));
       setEntryMap(nextEntryMap);
       setLockedEntries(nextLockedEntries);
+      
+      console.log(`[GradeEncoding] Successfully loaded grades for ${Object.keys(nextGrades).length} students`);
     } catch (error) {
       console.error("Error loading grade entries:", error);
     }

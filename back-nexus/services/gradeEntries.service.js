@@ -175,25 +175,32 @@ const GradeEntriesService = {
         INNER JOIN enrollments e ON las.student_id = e.student_id AND la.course_id = e.course_id
         WHERE la.course_id = ? 
           AND e.period_id = ?
-          AND las.score IS NOT NULL
-          AND las.status IN ('graded', 'submitted')
-          AND las.graded_at IS NOT NULL
+          AND (las.score IS NOT NULL OR las.status = 'submitted')
         ORDER BY las.student_id, la.title
       `;
 
       const [submissions] = await db.query(submissionsQuery, [courseId, periodId]);
+      console.log(`[Grade Sync] Found ${submissions?.length || 0} submissions for course ${courseId}, period ${periodId}`);
 
       if (!submissions || submissions.length === 0) {
         return {
           success: true,
-          message: "No graded submissions found",
+          message: "No submissions found to sync",
           synced: 0,
         };
       }
 
       let syncedCount = 0;
+      let skippedCount = 0;
 
       for (const submission of submissions) {
+        // Skip if no score
+        if (submission.score === null || submission.score === undefined) {
+          console.log(`[Grade Sync] Skipping ${submission.assignment_name} for student ${submission.student_id} - no score`);
+          skippedCount++;
+          continue;
+        }
+
         // Extract order number from assignment name (e.g., "Assignment 1" -> 1)
         const nameMatch = submission.assignment_name.match(/(\d+)/);
         const orderNumber = nameMatch ? Number(nameMatch[1]) : 0;
@@ -241,13 +248,14 @@ const GradeEntriesService = {
             percentage,
             existing[0].entry_id,
           ]);
+          console.log(`[Grade Sync] Updated grade for ${submission.assignment_name} - student ${submission.student_id}`);
         } else {
           // Create new entry
           const insertQuery = `
             INSERT INTO grade_entries (
               student_id, course_id, period_id, component_name, 
-              component_type, raw_score, max_score, percentage, submitted_by, submitted_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+              component_type, raw_score, max_score, percentage, submitted_by, label, submitted_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
           `;
 
           await db.query(insertQuery, [
@@ -260,7 +268,9 @@ const GradeEntriesService = {
             maxScore,
             percentage,
             submittedBy,
+            "midterm",
           ]);
+          console.log(`[Grade Sync] Created grade for ${submission.assignment_name} (${componentType}) - student ${submission.student_id}, score: ${submission.score}/${maxScore}`);
         }
 
         syncedCount++;
@@ -268,8 +278,9 @@ const GradeEntriesService = {
 
       return {
         success: true,
-        message: `Synced ${syncedCount} graded submissions to grade entries`,
+        message: `Synced ${syncedCount} grades${skippedCount > 0 ? ` (skipped ${skippedCount} without scores)` : ''}`,
         synced: syncedCount,
+        skipped: skippedCount,
       };
     } catch (error) {
       console.error("Error in syncFromSubmissions service:", error);
