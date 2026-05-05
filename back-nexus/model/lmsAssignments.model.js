@@ -1,5 +1,54 @@
 import db from "../config/db.js";
 
+const parseQuizOptions = (optionsValue, questionType) => {
+  if (Array.isArray(optionsValue)) return optionsValue;
+
+  if (optionsValue === null || optionsValue === undefined) {
+    return questionType === "true_false" ? ["True", "False"] : [];
+  }
+
+  if (typeof optionsValue === "object") {
+    return [];
+  }
+
+  const raw = String(optionsValue).trim();
+  if (!raw) {
+    return questionType === "true_false" ? ["True", "False"] : [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+    if (typeof parsed === "string") return parsed ? [parsed] : [];
+    return [];
+  } catch {
+    if (questionType === "true_false") return ["True", "False"];
+    return [];
+  }
+};
+
+const serializeQuizOptions = (optionsValue, questionType) => {
+  if (Array.isArray(optionsValue)) return JSON.stringify(optionsValue);
+
+  if (typeof optionsValue === "string") {
+    const trimmed = optionsValue.trim();
+    if (!trimmed) {
+      return JSON.stringify(questionType === "true_false" ? ["True", "False"] : []);
+    }
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return JSON.stringify(parsed);
+      if (typeof parsed === "string") return JSON.stringify([parsed]);
+      return JSON.stringify([]);
+    } catch {
+      return JSON.stringify([]);
+    }
+  }
+
+  return JSON.stringify(questionType === "true_false" ? ["True", "False"] : []);
+};
+
 const LMSAssignments = {
   // Create a new assignment
   create: async (assignmentData) => {
@@ -290,7 +339,7 @@ const LMSAssignments = {
       assignment_id,
       question_text,
       question_type,
-      JSON.stringify(options),
+      serializeQuizOptions(options, question_type),
       correct_answer,
       points,
       order_num,
@@ -311,7 +360,7 @@ const LMSAssignments = {
     const [rows] = await db.query(query, [assignment_id]);
     return rows.map((row) => ({
       ...row,
-      options: JSON.parse(row.options),
+      options: parseQuizOptions(row.options, row.question_type),
     }));
   },
 
@@ -326,7 +375,7 @@ const LMSAssignments = {
     const [rows] = await db.query(query, [assignment_id]);
     return rows.map((row) => ({
       ...row,
-      options: JSON.parse(row.options),
+      options: parseQuizOptions(row.options, row.question_type),
     }));
   },
 };

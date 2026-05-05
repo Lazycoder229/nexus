@@ -611,7 +611,7 @@ const Menu = {
       path: "/accounting/my_payslips",
     },
     {
-      title: "HR & Personal",
+      title: "Leave Request",
       icons: Lock,
       submenu: [
         {
@@ -646,7 +646,7 @@ const Menu = {
           link: "/accounting/accounting_scholarship_fund",
         },
         {
-          label: "Income & Expenses Reports",
+          label: "Income & Expenses",
           icons: ReportIcon,
           link: "/accounting/accounting_income_expenses",
         },
@@ -697,7 +697,7 @@ const Menu = {
       path: "/staff/my_payslips",
     },
     {
-      title: "HR & Personal",
+      title: "Leave Request",
       icons: Lock,
       submenu: [
         {

@@ -15,6 +15,7 @@ import {
 
 const IncomeExpensesReports = () => {
   const [transactions, setTransactions] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [summary, setSummary] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,16 +63,6 @@ const IncomeExpensesReports = () => {
     "Other Expenses",
   ];
 
-  const departments = [
-    "Administration",
-    "Academic Affairs",
-    "Student Affairs",
-    "Finance",
-    "HR",
-    "IT",
-    "Facilities",
-  ];
-
   const paymentMethods = [
     "Cash",
     "Check",
@@ -81,10 +72,23 @@ const IncomeExpensesReports = () => {
   ];
 
   useEffect(() => {
+    fetchDepartments();
+  }, []);
+
+  useEffect(() => {
     fetchTransactions();
     fetchSummary();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
+
+  const fetchDepartments = async () => {
+    try {
+      const response = await api.get("/api/dept/departments");
+      setDepartments(response.data || []);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+    }
+  };
 
   const fetchTransactions = async () => {
     try {
@@ -326,11 +330,17 @@ const IncomeExpensesReports = () => {
               className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             >
               <option value="">All Departments</option>
-              {departments.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
+              {departments.map((dept) => {
+                const departmentName = dept.name || dept.department_name || "";
+                return (
+                  <option
+                    key={dept.id || dept.department_id || departmentName}
+                    value={departmentName}
+                  >
+                    {departmentName}
+                  </option>
+                );
+              })}
             </select>
             <input
               type="date"
@@ -374,9 +384,9 @@ const IncomeExpensesReports = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                   Department
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+               {/*  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                   Description
-                </th>
+                </th> */}
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
                   Amount
                 </th>
@@ -681,11 +691,14 @@ const IncomeExpensesReports = () => {
                       className="w-full text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     >
                       <option value="">Select Department</option>
-                      {departments.map((dept) => (
-                        <option key={dept} value={dept}>
-                          {dept}
-                        </option>
-                      ))}
+                      {departments.map((dept) => {
+                        const departmentName = dept.name || dept.department_name || "";
+                        return (
+                          <option key={dept.id || dept.department_id || departmentName} value={departmentName}>
+                            {departmentName}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                   <div>
