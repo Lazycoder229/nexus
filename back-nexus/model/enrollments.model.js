@@ -17,6 +17,7 @@ export const getAllEnrollments = async (filters = {}) => {
         
         e.course_id,
         e.section_id,
+      s.section_name,
         c.code AS course_code,
         c.title AS course_title,
         c.units,
@@ -36,6 +37,7 @@ export const getAllEnrollments = async (filters = {}) => {
      JOIN users u ON e.student_id = u.user_id
      LEFT JOIN student_details sd ON e.student_id = sd.user_id
      JOIN courses c ON e.course_id = c.course_id
+        LEFT JOIN sections s ON e.section_id = s.section_id
      JOIN academic_periods ap ON e.period_id = ap.period_id`;
 
   const params = [];

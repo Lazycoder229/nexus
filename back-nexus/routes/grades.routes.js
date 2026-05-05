@@ -15,6 +15,9 @@ router.post("/", GradesController.createGrade);
 // POST create bulk grades
 router.post("/bulk/create", GradesController.createBulkGrades);
 
+// POST bulk upsert grades for report saving
+router.post("/bulk/upsert", GradesController.upsertBulkGrades);
+
 // PUT update grade
 router.put("/:id", GradesController.updateGrade);
 

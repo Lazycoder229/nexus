@@ -1,5 +1,11 @@
 import GradesModel from "../model/grades.model.js";
 
+const toNumberOrNull = (value) => {
+  if (value === "" || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 const GradesService = {
   getAllGrades: async (filters) => {
     try {
@@ -111,6 +117,36 @@ const GradesService = {
       };
     } catch (error) {
       throw new Error(`Error creating bulk grades: ${error.message}`);
+    }
+  },
+
+  upsertBulkGrades: async (gradesData) => {
+    try {
+      if (!Array.isArray(gradesData) || gradesData.length === 0) {
+        throw new Error("No grades provided");
+      }
+
+      const normalizedGrades = gradesData
+        .filter((grade) => grade && grade.student_user_id && grade.course_id && grade.period_id)
+        .map((grade) => ({
+          student_user_id: grade.student_user_id,
+          course_id: grade.course_id,
+          period_id: grade.period_id,
+          prelim_grade: toNumberOrNull(grade.prelim_grade),
+          midterm_grade: toNumberOrNull(grade.midterm_grade),
+          finals_grade: toNumberOrNull(grade.finals_grade),
+          final_grade: toNumberOrNull(grade.final_grade),
+          remarks: grade.remarks || null,
+          status: grade.status || "draft",
+        }));
+
+      if (normalizedGrades.length === 0) {
+        throw new Error("No valid grades provided");
+      }
+
+      return await GradesModel.upsertBulkGrades(normalizedGrades);
+    } catch (error) {
+      throw new Error(`Error saving grades: ${error.message}`);
     }
   },
 

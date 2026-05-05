@@ -77,43 +77,68 @@ const normalizeNumber = (value) => {
 };
 
 const calculateSectionStats = (scores = [], maxScores = [], sectionWeight = 0) => {
-  const collected = scores
-    .map((score, index) => ({ score: normalizeNumber(score), maxScore: Number(maxScores[index] || 100) }))
-    .filter((item) => item.score !== null && item.maxScore > 0);
-  if (collected.length === 0) return { totalScore: null, percent: null, weightedScore: null };
-  const totalScore = collected.reduce((sum, item) => sum + item.score, 0);
-  const totalMax   = collected.reduce((sum, item) => sum + item.maxScore, 0);
-  const percent    = totalMax > 0 ? (totalScore / totalMax) * 100 : null;
-  const weightedScore = percent === null ? null : percent * (sectionWeight / 100);
+  const totalScore = scores.reduce((sum, score) => sum + (normalizeNumber(score) ?? 0), 0);
+  const totalMax = maxScores.reduce((sum, maxScore) => sum + Number(maxScore || 100), 0);
+  if (totalMax <= 0) return { totalScore: 0, percent: 0, weightedScore: 0 };
+  const percent = (totalScore / totalMax) * 100;
+  const weightedScore = percent * (sectionWeight / 100);
   return {
     totalScore:    Number(totalScore.toFixed(2)),
-    percent:       percent === null ? null : Number(percent.toFixed(2)),
-    weightedScore: weightedScore === null ? null : Number(weightedScore.toFixed(2)),
+    percent:       Number(percent.toFixed(2)),
+    weightedScore: Number(weightedScore.toFixed(2)),
   };
 };
 
 const calculateMidtermWeighted = (midtermScore, midtermMax = 100) => {
-  const midterm = normalizeNumber(midtermScore);
-  if (midterm === null || !midtermMax) return null;
-  const percent = (midterm / Number(midtermMax || 100)) * 100;
+  const midterm = normalizeNumber(midtermScore) ?? 0;
+  const safeMax = Number(midtermMax || 100);
+  if (safeMax <= 0) return 0;
+  const percent = (midterm / safeMax) * 100;
   return Number((percent * (CAMPUS_SECTION_WEIGHTS.midtermExam / 100)).toFixed(2));
 };
 
+// ─── FIX #1: Return null when no scores have been entered ────────────────────
 const calculateFinalGrade = (gradeRow, maxRow) => {
-  const written     = calculateSectionStats(gradeRow.writtenOutput,   maxRow?.writtenOutput   || EMPTY_MAX_SCORE().writtenOutput,   CAMPUS_SECTION_WEIGHTS.writtenOutput);
-  const performance = calculateSectionStats(gradeRow.performanceTasks, maxRow?.performanceTasks || EMPTY_MAX_SCORE().performanceTasks, CAMPUS_SECTION_WEIGHTS.performanceTasks);
-  const midtermWeighted = calculateMidtermWeighted(gradeRow.midtermExam, maxRow?.midtermExam || EMPTY_MAX_SCORE().midtermExam);
-  if (written.weightedScore === null || performance.weightedScore === null || midtermWeighted === null) return null;
+  const hasWritten     = gradeRow.writtenOutput.some((s) => normalizeNumber(s) !== null);
+  const hasPerformance = gradeRow.performanceTasks.some((s) => normalizeNumber(s) !== null);
+  const hasExam        = normalizeNumber(gradeRow.midtermExam) !== null;
+
+  // If nothing has been entered at all, return null — not 0
+  if (!hasWritten && !hasPerformance && !hasExam) return null;
+
+  const written     = calculateSectionStats(
+    gradeRow.writtenOutput,
+    maxRow?.writtenOutput   || EMPTY_MAX_SCORE().writtenOutput,
+    CAMPUS_SECTION_WEIGHTS.writtenOutput,
+  );
+  const performance = calculateSectionStats(
+    gradeRow.performanceTasks,
+    maxRow?.performanceTasks || EMPTY_MAX_SCORE().performanceTasks,
+    CAMPUS_SECTION_WEIGHTS.performanceTasks,
+  );
+  const midtermWeighted = calculateMidtermWeighted(
+    gradeRow.midtermExam,
+    maxRow?.midtermExam || EMPTY_MAX_SCORE().midtermExam,
+  );
   return Number((written.weightedScore + performance.weightedScore + midtermWeighted).toFixed(2));
 };
 
+// ─── FIX #2: Handle null AND 0 correctly ─────────────────────────────────────
 const getLetterInfo = (score) => {
-  if (score === null) return { letter: "-", equivalent: "-", status: "-" };
-  return LETTER_SCALE.find((range) => score >= range.min) || LETTER_SCALE[LETTER_SCALE.length - 1];
+  if (score === null || score === undefined) {
+    return { letter: "-", equivalent: "-", status: "-" };
+  }
+  return (
+    LETTER_SCALE.find((range) => score >= range.min) || {
+      letter: "",
+      equivalent: "5.00",
+      status: "FAILED",
+    }
+  );
 };
 
 const getNumericalEquivalent = (grade) => {
-  if (grade === null) return null;
+  if (grade === null || grade === undefined) return null;
   if (grade >= 97) return 1.00;
   if (grade >= 94) return 1.25;
   if (grade >= 91) return 1.50;
@@ -123,7 +148,6 @@ const getNumericalEquivalent = (grade) => {
   if (grade >= 79) return 2.50;
   if (grade >= 76) return 2.75;
   if (grade >= 75) return 3.00;
-
   return 5.00;
 };
 
@@ -133,8 +157,8 @@ const extractComponentOrder = (name = "") => {
 };
 
 // ─── Column index arrays ──────────────────────────────────────────────────────
-const WO_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-const PT_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+const WO_INDICES  = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+const PT_INDICES  = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 const COL_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -143,6 +167,8 @@ const GradeEncoding = () => {
   const [courses, setCourses]           = useState([]);
   const [students, setStudents]         = useState([]);
   const [selectedCourse, setSelectedCourse] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
+  const [selectedYearLevel, setSelectedYearLevel] = useState("");
   const [searchTerm, setSearchTerm]     = useState("");
   const [currentPage, setCurrentPage]   = useState(1);
   const [activePeriodId, setActivePeriodId] = useState("");
@@ -161,6 +187,9 @@ const GradeEncoding = () => {
 
   const grades    = gradesMap[period] || {};
   const maxScores = maxScoresMap[period] || {};
+
+  const LABEL_MAP = { midterm: "midterm", final: "tentative_final" };
+  const currentLabel = LABEL_MAP[period] || "midterm";
 
   const setGrades = (updater) =>
     setGradesMap((prev) => {
@@ -203,6 +232,9 @@ const GradeEncoding = () => {
         lastName:   e.last_name  || e.student_name?.split(" ")?.[1] || e.name?.split(" ")?.[1] || "",
         courseId:   e.course_id || null,
         course:     e.course_code || mappedCourses.find((c) => c.id === e.course_id)?.code || "N/A",
+        sectionId:  e.section_id || null,
+        section:    e.section_name || e.section_id || "N/A",
+        yearLevel:  e.year_level || e.year_level === 0 ? e.year_level : e.year_level || e.year_level,
       }));
 
       const activePeriod = activePeriodRes.data?.period || activePeriodRes.data || null;
@@ -257,22 +289,49 @@ const GradeEncoding = () => {
   };
 
   // ─── Filtering / pagination ────────────────────────────────────────────────
+  useEffect(() => {
+    setSelectedSection("");
+    setSelectedYearLevel("");
+  }, [selectedCourse]);
+
+  const courseStudents = useMemo(() => {
+    if (!selectedCourse) return students;
+    return students.filter((s) => String(s.courseId) === String(selectedCourse));
+  }, [students, selectedCourse]);
+
   const filteredStudents = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    return students.filter((s) => {
-      const matchesCourse = !selectedCourse || String(s.courseId) === String(selectedCourse);
-      const matchesSearch =
+    return courseStudents.filter((s) => {
+      const matchesSection   = !selectedSection   || String(s.section)   === String(selectedSection)   || String(s.sectionId) === String(selectedSection);
+      const matchesYearLevel = !selectedYearLevel || String(s.yearLevel) === String(selectedYearLevel);
+      const matchesSearch    =
         !term ||
         `${s.firstName} ${s.lastName}`.toLowerCase().includes(term) ||
         String(s.studentId).toLowerCase().includes(term);
-      return matchesCourse && matchesSearch;
+      return matchesSection && matchesYearLevel && matchesSearch;
     });
-  }, [students, selectedCourse, searchTerm]);
+  }, [courseStudents, selectedSection, selectedYearLevel, searchTerm]);
 
   useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedCourse, period, view]);
 
-  const currentStudents = filteredStudents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / itemsPerPage));
+  const currentStudents  = filteredStudents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages       = Math.max(1, Math.ceil(filteredStudents.length / itemsPerPage));
+
+  const availableSections = useMemo(() => {
+    const values = new Set();
+    courseStudents.forEach((student) => {
+      if (student.section !== null && student.section !== undefined && String(student.section).trim() !== "") values.add(String(student.section));
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [courseStudents]);
+
+  const availableYearLevels = useMemo(() => {
+    const values = new Set();
+    courseStudents.forEach((student) => {
+      if (student.yearLevel !== null && student.yearLevel !== undefined && String(student.yearLevel).trim() !== "") values.add(String(student.yearLevel));
+    });
+    return Array.from(values).sort((a, b) => Number(a) - Number(b));
+  }, [courseStudents]);
 
   // ─── Load grade entries ────────────────────────────────────────────────────
   const loadExistingGradeEntries = useCallback(async () => {
@@ -282,18 +341,20 @@ const GradeEncoding = () => {
         params: { course_id: selectedCourse, period_id: activePeriodId },
       });
       const entries = response.data?.data || [];
+      const gradeLabel     = LABEL_MAP[period] || "midterm";
+      const filteredEntries = entries.filter((e) => String(e.label || "").toLowerCase() === String(gradeLabel).toLowerCase());
       const studentByUserId = new Map(students.filter((s) => s.userId).map((s) => [String(s.userId), s]));
 
       const grouped = {};
-      entries.forEach((entry) => {
+      filteredEntries.forEach((entry) => {
         const key = String(entry.student_id);
         if (!grouped[key]) grouped[key] = { assignment: [], quiz: [], exam: [] };
         if (grouped[key][entry.component_type]) grouped[key][entry.component_type].push(entry);
       });
 
-      const nextGrades    = {};
-      const nextMaxScores = {};
-      const nextEntryMap  = {};
+      const nextGrades        = {};
+      const nextMaxScores     = {};
+      const nextEntryMap      = {};
       const nextLockedEntries = {};
 
       Object.entries(grouped).forEach(([studentUserId, components]) => {
@@ -317,26 +378,24 @@ const GradeEncoding = () => {
         const gradeRow = EMPTY_GRADE();
         const maxRow   = EMPTY_MAX_SCORE();
 
-        // Load up to 12 written output entries - match by component index in name
         assignmentEntries.forEach((entry) => {
           const compMatch = String(entry.component_name || "").match(/(\d+)/);
           const colIdx = compMatch ? Number(compMatch[1]) - 1 : null;
           if (colIdx !== null && colIdx >= 0 && colIdx < 12) {
             gradeRow.writtenOutput[colIdx] = entry.raw_score ?? "";
             maxRow.writtenOutput[colIdx]   = Number(entry.max_score || 100);
-            const key = `${localStudent.id}:writtenOutput:${colIdx}`;
+            const key = `${localStudent.id}:writtenOutput:${colIdx}:${gradeLabel}`;
             nextEntryMap[key] = entry.entry_id;
             if (entry.is_locked) nextLockedEntries[key] = true;
           }
         });
-        // Load up to 12 performance task entries - match by component index in name
         quizEntries.forEach((entry) => {
           const compMatch = String(entry.component_name || "").match(/(\d+)/);
           const colIdx = compMatch ? Number(compMatch[1]) - 1 : null;
           if (colIdx !== null && colIdx >= 0 && colIdx < 12) {
             gradeRow.performanceTasks[colIdx] = entry.raw_score ?? "";
             maxRow.performanceTasks[colIdx]   = Number(entry.max_score || 100);
-            const key = `${localStudent.id}:performanceTasks:${colIdx}`;
+            const key = `${localStudent.id}:performanceTasks:${colIdx}:${gradeLabel}`;
             nextEntryMap[key] = entry.entry_id;
             if (entry.is_locked) nextLockedEntries[key] = true;
           }
@@ -344,7 +403,7 @@ const GradeEncoding = () => {
         if (examEntries.length > 0) {
           gradeRow.midtermExam = examEntries[0].raw_score ?? "";
           maxRow.midtermExam   = Number(examEntries[0].max_score || 100);
-          const key = `${localStudent.id}:midtermExam`;
+          const key = `${localStudent.id}:midtermExam:${gradeLabel}`;
           nextEntryMap[key] = examEntries[0].entry_id;
           if (examEntries[0].is_locked) nextLockedEntries[key] = true;
         }
@@ -434,8 +493,7 @@ const GradeEncoding = () => {
     const facultyId = Number(localStorage.getItem("userId") || localStorage.getItem("user_id") || 0);
     if (!facultyId) { alert("Faculty account not detected. Please log in again."); return; }
 
-    // Map period to label
-    const labelMap = { midterm: "midterm", final: "tentative_final" };
+    const labelMap   = { midterm: "midterm", final: "tentative_final" };
     const gradeLabel = labelMap[period] || "midterm";
 
     try {
@@ -456,7 +514,7 @@ const GradeEncoding = () => {
             submitted_by: facultyId,
             label: gradeLabel,
           };
-          const existingId = entryMap[`${student.id}:writtenOutput:${idx}`];
+          const existingId = entryMap[`${student.id}:writtenOutput:${idx}:${gradeLabel}`];
           requests.push(existingId
             ? axios.put(`${API_BASE}/api/grade-entries/${existingId}`, payload)
             : axios.post(`${API_BASE}/api/grade-entries`, payload));
@@ -473,7 +531,7 @@ const GradeEncoding = () => {
             submitted_by: facultyId,
             label: gradeLabel,
           };
-          const existingId = entryMap[`${student.id}:performanceTasks:${idx}`];
+          const existingId = entryMap[`${student.id}:performanceTasks:${idx}:${gradeLabel}`];
           requests.push(existingId
             ? axios.put(`${API_BASE}/api/grade-entries/${existingId}`, payload)
             : axios.post(`${API_BASE}/api/grade-entries`, payload));
@@ -488,7 +546,7 @@ const GradeEncoding = () => {
             weight: CAMPUS_SECTION_WEIGHTS.midtermExam, submitted_by: facultyId,
             label: gradeLabel,
           };
-          const existingId = entryMap[`${student.id}:midtermExam`];
+          const existingId = entryMap[`${student.id}:midtermExam:${gradeLabel}`];
           requests.push(existingId
             ? axios.put(`${API_BASE}/api/grade-entries/${existingId}`, payload)
             : axios.post(`${API_BASE}/api/grade-entries`, payload));
@@ -521,11 +579,19 @@ const GradeEncoding = () => {
     return course ? `${course.code ? `${course.code} - ` : ""}${course.name}` : "Selected Course";
   };
 
+  const getScopeLabel = () => {
+    const parts = [];
+    if (selectedSection)   parts.push(`Section ${selectedSection}`);
+    if (selectedYearLevel) parts.push(`Year ${selectedYearLevel}`);
+    return parts.join(" | ");
+  };
+
   // ─── Export to Excel ───────────────────────────────────────────────────────
   const handleExportToExcel = async () => {
     try {
+      const scopeLabel = getScopeLabel();
       await exportGradeEncoding({
-        courseName: getCourseName(),
+        courseName: scopeLabel ? `${getCourseName()} - ${scopeLabel}` : getCourseName(),
         students: filteredStudents,
         gradesMap,
         maxScoresMap,
@@ -559,7 +625,6 @@ const GradeEncoding = () => {
           (s) => `${s.lastName}, ${s.firstName}`.trim().toLowerCase() === String(studentName).toLowerCase()
         );
         if (!matchingStudent) return;
-        // Columns 2-13 = written output 1-12, 14 is total/rating/%, 17-28 = performance 1-12
         importedGrades[matchingStudent.id] = {
           writtenOutput:    [row[2],  row[3],  row[4],  row[5],  row[6],  row[7],
                              row[8],  row[9],  row[10], row[11], row[12], row[13]].map((v) => (v === "" ? "" : v)),
@@ -578,22 +643,69 @@ const GradeEncoding = () => {
   };
 
   // ─── Grading report data ───────────────────────────────────────────────────
+  // ─── FIX #3: Only compute combinedFinal when BOTH periods have real data ──
   const getReportRow = (student) => {
-    const mGradeRow      = (gradesMap["midterm"]  || {})[student.id] || EMPTY_GRADE();
+    const mGradeRow      = (gradesMap["midterm"]   || {})[student.id] || EMPTY_GRADE();
     const mMaxRow        = (maxScoresMap["midterm"] || {})[student.id] || EMPTY_MAX_SCORE();
-    const fGradeRow      = (gradesMap["final"]    || {})[student.id] || EMPTY_GRADE();
-    const fMaxRow        = (maxScoresMap["final"]  || {})[student.id] || EMPTY_MAX_SCORE();
+    const fGradeRow      = (gradesMap["final"]      || {})[student.id] || EMPTY_GRADE();
+    const fMaxRow        = (maxScoresMap["final"]   || {})[student.id] || EMPTY_MAX_SCORE();
+
+    // calculateFinalGrade now returns null when no scores entered
     const midtermGrade   = calculateFinalGrade(mGradeRow, mMaxRow);
     const tentativeFinal = calculateFinalGrade(fGradeRow, fMaxRow);
 
-    // Only compute combined when BOTH grades are available.
-    // Never fall back to a single period alone — show null (→ "-") until both exist.
-    const combinedFinal = midtermGrade !== null && tentativeFinal !== null
-      ? Number(((midtermGrade + tentativeFinal) / 2).toFixed(2))
-      : null;
+    // Only average when BOTH periods have actual data (non-null)
+    const combinedFinal =
+      midtermGrade !== null && tentativeFinal !== null
+        ? Number(((midtermGrade + tentativeFinal) / 2).toFixed(2))
+        : null;
 
     const numEquiv = getNumericalEquivalent(combinedFinal);
     return { midtermGrade, tentativeFinal, combinedFinal, numEquiv };
+  };
+
+  const handleSaveReportGrades = async () => {
+    if (!selectedCourse) { alert("Please select a course before saving report grades."); return; }
+    if (!activePeriodId) { alert("No active academic period found."); return; }
+
+    try {
+      setLoading(true);
+      const reportGrades = filteredStudents
+        .map((student) => {
+          if (!student.userId) return null;
+
+          const { midtermGrade, tentativeFinal, combinedFinal, numEquiv } = getReportRow(student);
+          if (midtermGrade === null && tentativeFinal === null && combinedFinal === null) return null;
+
+          return {
+            student_user_id: student.userId,
+            course_id: Number(selectedCourse),
+            period_id: Number(activePeriodId),
+            midterm_grade: midtermGrade,
+            finals_grade: tentativeFinal,
+            final_grade: combinedFinal,
+            remarks: numEquiv === null ? null : numEquiv <= 4 ? "PASSED" : "FAILED",
+            status: combinedFinal === null ? "draft" : "submitted",
+          };
+        })
+        .filter(Boolean);
+
+      if (reportGrades.length === 0) {
+        alert("No report grades to save.");
+        return;
+      }
+
+      const response = await axios.post(`${API_BASE}/api/grades/bulk/upsert`, {
+        grades: reportGrades,
+      });
+
+      alert(response.data?.message || "Report grades saved successfully.");
+    } catch (error) {
+      console.error("Error saving report grades:", error);
+      alert(error.response?.data?.error || error.message || "Failed to save report grades");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ─── Render ────────────────────────────────────────────────────────────────
@@ -678,6 +790,28 @@ const GradeEncoding = () => {
               </option>
             ))}
           </select>
+          <select
+            value={selectedSection}
+            onChange={(e) => setSelectedSection(e.target.value)}
+            disabled={!selectedCourse}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:bg-slate-100"
+          >
+            <option value="">All Sections</option>
+            {availableSections.map((section) => (
+              <option key={section} value={section}>{section}</option>
+            ))}
+          </select>
+          <select
+            value={selectedYearLevel}
+            onChange={(e) => setSelectedYearLevel(e.target.value)}
+            disabled={!selectedCourse}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:bg-slate-100"
+          >
+            <option value="">All Year Levels</option>
+            {availableYearLevels.map((yearLevel) => (
+              <option key={yearLevel} value={yearLevel}>{yearLevel}</option>
+            ))}
+          </select>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -699,6 +833,16 @@ const GradeEncoding = () => {
                 <input type="file" accept=".xlsx,.xls" onChange={handleImportExcel} className="hidden" />
               </label>
             </>
+          )}
+          {view === "report" && (
+            <button
+              type="button"
+              onClick={handleSaveReportGrades}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              <Save size={16} /> {loading ? "Saving..." : "Save Grade"}
+            </button>
           )}
           <button type="button" onClick={handleExportToExcel} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
             <Download size={16} /> Export Excel
@@ -723,8 +867,6 @@ const GradeEncoding = () => {
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="min-w-[2400px] w-full border-collapse text-xs">
             <thead>
-              {/* Row 1 — section group headers */}
-              {/* 12 input cols + 3 summary cols = 15 per section */}
               <tr className="bg-slate-100 text-xs uppercase tracking-wide text-slate-600">
                 <th rowSpan="3" className="border border-slate-200 px-3 py-3 text-left whitespace-nowrap">Student</th>
                 <th rowSpan="3" className="border border-slate-200 px-3 py-3 text-left whitespace-nowrap">ID Number</th>
@@ -738,12 +880,10 @@ const GradeEncoding = () => {
                   {PERIOD_LABELS[period]} Exam {CAMPUS_SECTION_WEIGHTS.midtermExam}%
                 </th>
                 <th rowSpan="3" className="border border-slate-200 px-3 py-3 text-center bg-violet-50 whitespace-nowrap">Final</th>
-                <th rowSpan="3" className="border border-slate-200 px-3 py-3 text-center whitespace-nowrap">Grade</th>
                 <th rowSpan="3" className="border border-slate-200 px-3 py-3 text-center whitespace-nowrap">Equiv.</th>
                 <th rowSpan="3" className="border border-slate-200 px-3 py-3 text-center whitespace-nowrap">Status</th>
               </tr>
 
-              {/* Row 2 — sub-column labels (1–12 for WO and PT) */}
               <tr className="bg-slate-50 text-xs text-slate-500 text-center">
                 {COL_NUMBERS.map((n) => (
                   <th key={`wh-${n}`} className="border border-slate-200 px-2 py-2">{n}</th>
@@ -751,20 +891,17 @@ const GradeEncoding = () => {
                 <th className="border border-slate-200 px-2 py-2 bg-blue-50 whitespace-nowrap">Total</th>
                 <th className="border border-slate-200 px-2 py-2 bg-blue-50 whitespace-nowrap">Rating</th>
                 <th className="border border-slate-200 px-2 py-2 bg-blue-50 whitespace-nowrap">%</th>
-
                 {COL_NUMBERS.map((n) => (
                   <th key={`ph-${n}`} className="border border-slate-200 px-2 py-2">{n}</th>
                 ))}
                 <th className="border border-slate-200 px-2 py-2 bg-emerald-50 whitespace-nowrap">Total</th>
                 <th className="border border-slate-200 px-2 py-2 bg-emerald-50 whitespace-nowrap">Rating</th>
                 <th className="border border-slate-200 px-2 py-2 bg-emerald-50 whitespace-nowrap">%</th>
-
                 <th className="border border-slate-200 px-2 py-2 bg-amber-50 whitespace-nowrap">Score</th>
                 <th className="border border-slate-200 px-2 py-2 bg-amber-50 whitespace-nowrap">Rating</th>
                 <th className="border border-slate-200 px-2 py-2 bg-amber-50 whitespace-nowrap">%</th>
               </tr>
 
-              {/* Row 3 — max score meta row (defaults to 100 when no LMS data) */}
               <tr className="bg-white text-[11px] text-slate-500 text-center">
                 {safeActivityMeta.writtenOutput.map((item, i) => (
                   <th key={`wm-${i}`} className="border border-slate-200 px-2 py-1">
@@ -776,7 +913,6 @@ const GradeEncoding = () => {
                 </th>
                 <th className="border border-slate-200 px-2 py-1 bg-blue-50 font-semibold">100</th>
                 <th className="border border-slate-200 px-2 py-1 bg-blue-50 font-semibold">{CAMPUS_SECTION_WEIGHTS.writtenOutput}%</th>
-
                 {safeActivityMeta.performanceTasks.map((item, i) => (
                   <th key={`pm-${i}`} className="border border-slate-200 px-2 py-1">
                     {item ? item.maxScore : 100}
@@ -787,7 +923,6 @@ const GradeEncoding = () => {
                 </th>
                 <th className="border border-slate-200 px-2 py-1 bg-emerald-50 font-semibold">100</th>
                 <th className="border border-slate-200 px-2 py-1 bg-emerald-50 font-semibold">{CAMPUS_SECTION_WEIGHTS.performanceTasks}%</th>
-
                 <th className="border border-slate-200 px-2 py-1 bg-amber-50 font-semibold">
                   {safeActivityMeta.midtermExam ? safeActivityMeta.midtermExam.maxScore : 100}
                 </th>
@@ -807,9 +942,10 @@ const GradeEncoding = () => {
                 currentStudents.map((student) => {
                   const gradeRow        = grades[student.id] || EMPTY_GRADE();
                   const maxRow          = maxScores[student.id] || EMPTY_MAX_SCORE();
-                  const written         = calculateSectionStats(gradeRow.writtenOutput,   maxRow.writtenOutput,   CAMPUS_SECTION_WEIGHTS.writtenOutput);
+                  const written         = calculateSectionStats(gradeRow.writtenOutput,    maxRow.writtenOutput,    CAMPUS_SECTION_WEIGHTS.writtenOutput);
                   const performance     = calculateSectionStats(gradeRow.performanceTasks, maxRow.performanceTasks, CAMPUS_SECTION_WEIGHTS.performanceTasks);
                   const midtermWeighted = calculateMidtermWeighted(gradeRow.midtermExam, maxRow.midtermExam);
+                  // Now returns null when nothing is entered
                   const finalGrade      = calculateFinalGrade(gradeRow, maxRow);
                   const letterInfo      = getLetterInfo(finalGrade);
                   const midtermRaw      = normalizeNumber(gradeRow.midtermExam);
@@ -823,70 +959,70 @@ const GradeEncoding = () => {
 
                       {/* Written Output — 12 input cells */}
                       {WO_INDICES.map((idx) => {
-                        const lockKey = `${student.id}:writtenOutput:${idx}`;
+                        const lockKey  = `${student.id}:writtenOutput:${idx}:${currentLabel}`;
                         const isLocked = lockedEntries[lockKey];
                         return (
-                          <td key={`w-${idx}`} className={`border border-slate-200 px-1 py-1 ${isLocked ? 'bg-gray-100' : 'bg-blue-50'} text-center`}>
+                          <td key={`w-${idx}`} className={`border border-slate-200 px-1 py-1 ${isLocked ? "bg-gray-100" : "bg-blue-50"} text-center`}>
                             <input
                               type="number" min="0" max="100"
                               value={gradeRow.writtenOutput[idx] ?? ""}
                               onChange={(e) => handleGradeChange(student.id, "writtenOutput", idx, e.target.value)}
                               disabled={isLocked}
-                              className={`w-14 rounded border ${isLocked ? 'border-gray-300 bg-gray-200 cursor-not-allowed' : 'border-slate-300'} px-1 py-1 text-center text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20`}
+                              className={`w-14 rounded border ${isLocked ? "border-gray-300 bg-gray-200 cursor-not-allowed" : "border-slate-300"} px-1 py-1 text-center text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20`}
                               title={isLocked ? "This grade is locked and cannot be edited" : ""}
                             />
                           </td>
                         );
                       })}
                       <td className="border border-slate-200 bg-blue-100 px-2 py-2 text-center font-semibold text-slate-700">
-                        {written.totalScore === null ? "-" : written.totalScore.toFixed(2)}
+                        {written.totalScore.toFixed(2)}
                       </td>
                       <td className="border border-slate-200 bg-blue-100 px-2 py-2 text-center font-semibold text-slate-700">
-                        {written.percent === null ? "-" : written.percent.toFixed(2)}
+                        {written.percent.toFixed(2)}
                       </td>
                       <td className="border border-slate-200 bg-blue-100 px-2 py-2 text-center font-semibold text-slate-700">
-                        {written.weightedScore === null ? "-" : written.weightedScore.toFixed(2)}
+                        {written.weightedScore.toFixed(2)}
                       </td>
 
                       {/* Performance Tasks — 12 input cells */}
                       {PT_INDICES.map((idx) => {
-                        const lockKey = `${student.id}:performanceTasks:${idx}`;
+                        const lockKey  = `${student.id}:performanceTasks:${idx}:${currentLabel}`;
                         const isLocked = lockedEntries[lockKey];
                         return (
-                          <td key={`p-${idx}`} className={`border border-slate-200 px-1 py-1 ${isLocked ? 'bg-gray-100' : 'bg-emerald-50'} text-center`}>
+                          <td key={`p-${idx}`} className={`border border-slate-200 px-1 py-1 ${isLocked ? "bg-gray-100" : "bg-emerald-50"} text-center`}>
                             <input
                               type="number" min="0" max="100"
                               value={gradeRow.performanceTasks[idx] ?? ""}
                               onChange={(e) => handleGradeChange(student.id, "performanceTasks", idx, e.target.value)}
                               disabled={isLocked}
-                              className={`w-14 rounded border ${isLocked ? 'border-gray-300 bg-gray-200 cursor-not-allowed' : 'border-slate-300'} px-1 py-1 text-center text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20`}
+                              className={`w-14 rounded border ${isLocked ? "border-gray-300 bg-gray-200 cursor-not-allowed" : "border-slate-300"} px-1 py-1 text-center text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20`}
                               title={isLocked ? "This grade is locked and cannot be edited" : ""}
                             />
                           </td>
                         );
                       })}
                       <td className="border border-slate-200 bg-emerald-100 px-2 py-2 text-center font-semibold text-slate-700">
-                        {performance.totalScore === null ? "-" : performance.totalScore.toFixed(2)}
+                        {performance.totalScore.toFixed(2)}
                       </td>
                       <td className="border border-slate-200 bg-emerald-100 px-2 py-2 text-center font-semibold text-slate-700">
-                        {performance.percent === null ? "-" : performance.percent.toFixed(2)}
+                        {performance.percent.toFixed(2)}
                       </td>
                       <td className="border border-slate-200 bg-emerald-100 px-2 py-2 text-center font-semibold text-slate-700">
-                        {performance.weightedScore === null ? "-" : performance.weightedScore.toFixed(2)}
+                        {performance.weightedScore.toFixed(2)}
                       </td>
 
-                      {/* Midterm/Final Exam input */}
+                      {/* Exam input */}
                       {(() => {
-                        const lockKey = `${student.id}:midtermExam`;
+                        const lockKey  = `${student.id}:midtermExam:${currentLabel}`;
                         const isLocked = lockedEntries[lockKey];
                         return (
-                          <td className={`border border-slate-200 px-1 py-1 ${isLocked ? 'bg-gray-100' : 'bg-amber-50'} text-center`}>
+                          <td className={`border border-slate-200 px-1 py-1 ${isLocked ? "bg-gray-100" : "bg-amber-50"} text-center`}>
                             <input
                               type="number" min="0" max="100"
                               value={gradeRow.midtermExam ?? ""}
                               onChange={(e) => handleGradeChange(student.id, "midtermExam", null, e.target.value)}
                               disabled={isLocked}
-                              className={`w-16 rounded border ${isLocked ? 'border-gray-300 bg-gray-200 cursor-not-allowed' : 'border-slate-300'} px-1 py-1 text-center text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20`}
+                              className={`w-16 rounded border ${isLocked ? "border-gray-300 bg-gray-200 cursor-not-allowed" : "border-slate-300"} px-1 py-1 text-center text-xs focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/20`}
                               title={isLocked ? "This grade is locked and cannot be edited" : ""}
                             />
                           </td>
@@ -896,15 +1032,12 @@ const GradeEncoding = () => {
                         {midtermRaw === null ? "-" : ((midtermRaw / (maxRow.midtermExam || 100)) * 100).toFixed(2)}
                       </td>
                       <td className="border border-slate-200 bg-amber-100 px-2 py-2 text-center font-semibold text-slate-700">
-                        {midtermWeighted === null ? "-" : midtermWeighted.toFixed(2)}
+                        {midtermWeighted.toFixed(2)}
                       </td>
 
-                      {/* Final / Grade / Equiv / Status */}
+                      {/* Final / Equiv / Status — all show "-" until scores exist */}
                       <td className="border border-slate-200 bg-violet-50 px-3 py-2 text-center font-bold text-violet-700">
                         {finalGrade === null ? "-" : finalGrade.toFixed(2)}
-                      </td>
-                      <td className="border border-slate-200 px-3 py-2 text-center font-bold text-slate-900">
-                        {letterInfo.letter}
                       </td>
                       <td className="border border-slate-200 px-3 py-2 text-center text-slate-700">
                         {letterInfo.equivalent}
@@ -946,8 +1079,7 @@ const GradeEncoding = () => {
                   Tentative Final<br />Grade
                 </th>
                 <th className="border border-slate-600 px-3 py-3 text-center whitespace-nowrap">
-                  Final Grade<br />
-                  <span className="text-[10px] font-normal text-slate-400">(MG + TFG) / 2</span>
+                  Final Grade<br />(MG + TFG)/2
                 </th>
                 <th className="border border-slate-600 px-3 py-3 text-center whitespace-nowrap">Numerical<br />Equivalent</th>
                 <th className="border border-slate-600 px-3 py-3 text-center whitespace-nowrap">Remarks</th>
@@ -980,7 +1112,7 @@ const GradeEncoding = () => {
                       <td className="border border-slate-200 px-3 py-2 text-center font-semibold text-slate-800">
                         {tentativeFinal !== null ? tentativeFinal.toFixed(0) : "-"}
                       </td>
-                      <td className={`border border-slate-200 px-3 py-2 text-center font-bold ${isFailed ? "text-red-600" : "text-slate-800"}`}>
+                      <td className={`border border-slate-200 px-3 py-2 text-center font-semibold ${isFailed ? "bg-red-50 text-red-700" : "text-slate-800"}`}>
                         {combinedFinal !== null ? combinedFinal.toFixed(0) : "-"}
                       </td>
                       <td className="border border-slate-200 px-3 py-2 text-center font-semibold text-slate-700">

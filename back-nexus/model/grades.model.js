@@ -140,6 +140,103 @@ const GradesModel = {
     }
   },
 
+  upsertBulkGrades: async (gradesData) => {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const created = [];
+      const updated = [];
+      const grouped = new Map();
+
+      for (const grade of gradesData) {
+        const groupKey = `${grade.course_id}:${grade.period_id}`;
+        if (!grouped.has(groupKey)) {
+          grouped.set(groupKey, []);
+        }
+        grouped.get(groupKey).push(grade);
+      }
+
+      for (const [groupKey, groupRows] of grouped.entries()) {
+        const [courseId, periodId] = groupKey.split(":");
+        const studentIds = groupRows.map((row) => row.student_user_id);
+        const placeholders = studentIds.map(() => "?").join(", ");
+
+        const [existingRows] = await connection.query(
+          `SELECT grade_id, student_user_id
+           FROM grades
+           WHERE course_id = ? AND period_id = ? AND student_user_id IN (${placeholders})
+           ORDER BY grade_id DESC`,
+          [courseId, periodId, ...studentIds],
+        );
+
+        const existingMap = new Map();
+        existingRows.forEach((row) => {
+          if (!existingMap.has(String(row.student_user_id))) {
+            existingMap.set(String(row.student_user_id), row.grade_id);
+          }
+        });
+
+        for (const gradeData of groupRows) {
+          const existingId = existingMap.get(String(gradeData.student_user_id));
+          const values = [
+            gradeData.prelim_grade,
+            gradeData.midterm_grade,
+            gradeData.finals_grade,
+            gradeData.final_grade,
+            gradeData.remarks,
+            gradeData.status,
+          ];
+
+          if (existingId) {
+            await connection.query(
+              `UPDATE grades
+               SET prelim_grade = ?, midterm_grade = ?, finals_grade = ?,
+                   final_grade = ?, remarks = ?, status = ?
+               WHERE grade_id = ?`,
+              [...values, existingId],
+            );
+            updated.push(existingId);
+          } else {
+            const [result] = await connection.query(
+              `INSERT INTO grades
+               (student_user_id, course_id, period_id, prelim_grade, midterm_grade,
+                finals_grade, final_grade, remarks, status)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                gradeData.student_user_id,
+                gradeData.course_id,
+                gradeData.period_id,
+                gradeData.prelim_grade,
+                gradeData.midterm_grade,
+                gradeData.finals_grade,
+                gradeData.final_grade,
+                gradeData.remarks,
+                gradeData.status,
+              ],
+            );
+            created.push(result.insertId);
+          }
+        }
+      }
+
+      await connection.commit();
+
+      return {
+        success: true,
+        created: created.length,
+        updated: updated.length,
+        total: created.length + updated.length,
+        message: `Saved ${created.length + updated.length} grade record${created.length + updated.length === 1 ? "" : "s"}`,
+      };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  },
+
   // Update grade
   updateGrade: async (id, gradeData) => {
     try {
