@@ -636,7 +636,7 @@ const LMSAssignments = () => {
               <option value="all">All Types</option>
               <option value="assignment">Assignments</option>
               <option value="quiz">Quizzes</option>
-              <option value="exam">Exams</option>
+             
             </select>
           </div>
         </div>
