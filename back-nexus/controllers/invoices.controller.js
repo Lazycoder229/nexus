@@ -4,6 +4,7 @@ const invoiceController = {
   // Create new invoice
   createInvoice: async (req, res) => {
     try {
+      console.log("createInvoice incoming academic_period_id:", req.body?.academic_period_id, "(type:", typeof req.body?.academic_period_id, ")");
       // Generate invoice number
       const results = await Invoice.generateInvoiceNumber();
 
@@ -18,6 +19,7 @@ const invoiceController = {
         ...req.body,
         created_by: req.user.user_id,
       };
+      console.log("createInvoice prepared payload (academic_period_id):", data.academic_period_id);
 
       const result = await Invoice.create(data);
 

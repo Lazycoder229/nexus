@@ -1,8 +1,87 @@
 import db from "../config/db.js";
 
+const normalizeAcademicPeriodId = async (academicPeriodId) => {
+  // Defensive logging to help trace malformed inputs
+  try {
+    console.log("normalizeAcademicPeriodId input:", academicPeriodId, "(type:", typeof academicPeriodId, ")");
+    if (academicPeriodId === null || academicPeriodId === undefined || academicPeriodId === "") {
+      return null;
+    }
+
+    const numericId = Number(academicPeriodId);
+    if (Number.isInteger(numericId) && String(numericId) === String(academicPeriodId).trim()) {
+      console.log("normalizeAcademicPeriodId resolved numeric:", numericId);
+      return numericId;
+    }
+
+    if (typeof academicPeriodId === "string") {
+      const label = academicPeriodId.trim();
+
+      // Try exact split by ' - ' into school_year and semester
+      const match = label.match(/^(.*?)\s*-\s*(.*?)$/);
+      if (match) {
+        const [, schoolYear, semester] = match;
+        const [rows] = await db.query(
+          `SELECT period_id
+           FROM academic_periods
+           WHERE TRIM(school_year) = ?
+             AND TRIM(semester) = ?
+           LIMIT 1`,
+          [schoolYear.trim(), semester.trim()],
+        );
+
+        if (rows.length > 0) {
+          console.log("normalizeAcademicPeriodId matched by school_year+semester ->", rows[0].period_id);
+          return rows[0].period_id;
+        }
+      }
+
+      // Try matching by concatenated display format
+      const [rows2] = await db.query(
+        `SELECT period_id FROM academic_periods WHERE TRIM(CONCAT(school_year, ' - ', semester)) = ? LIMIT 1`,
+        [label],
+      );
+      if (rows2.length > 0) {
+        console.log("normalizeAcademicPeriodId matched by concat label ->", rows2[0].period_id);
+        return rows2[0].period_id;
+      }
+
+      // Try fuzzy search using LIKE
+      const [rows3] = await db.query(
+        `SELECT period_id FROM academic_periods WHERE CONCAT(school_year, ' - ', semester) LIKE ? LIMIT 1`,
+        [`%${label}%`],
+      );
+      if (rows3.length > 0) {
+        console.log("normalizeAcademicPeriodId fuzzy matched ->", rows3[0].period_id);
+        return rows3[0].period_id;
+      }
+
+      // If input contains digits that could be an id, try extract
+      const digits = academicPeriodId.match(/(\d{1,10})/);
+      if (digits) {
+        const possibleId = Number(digits[0]);
+        if (Number.isInteger(possibleId)) {
+          const [rows4] = await db.query(`SELECT period_id FROM academic_periods WHERE period_id = ? LIMIT 1`, [possibleId]);
+          if (rows4.length > 0) {
+            console.log("normalizeAcademicPeriodId extracted numeric id ->", possibleId);
+            return possibleId;
+          }
+        }
+      }
+    }
+
+    console.warn("normalizeAcademicPeriodId: no match for", academicPeriodId, "— returning null to avoid SQL truncation");
+    return null;
+  } catch (e) {
+    console.error("normalizeAcademicPeriodId error:", e);
+    return null;
+  }
+};
+
 const Invoice = {
   // Create new invoice
   create: async (data) => {
+    const academicPeriodId = await normalizeAcademicPeriodId(data.academic_period_id);
     const query = `
       INSERT INTO student_invoices 
       (invoice_number, student_id, enrollment_id, academic_period_id, 
@@ -16,7 +95,7 @@ const Invoice = {
       data.invoice_number,
       data.student_id,
       data.enrollment_id,
-      data.academic_period_id,
+      academicPeriodId,
       data.tuition_fee || 0,
       data.laboratory_fee || 0,
       data.library_fee || 0,
@@ -145,6 +224,7 @@ const Invoice = {
 
   // Update invoice
   update: async (id, data) => {
+    const academicPeriodId = await normalizeAcademicPeriodId(data.academic_period_id);
     const query = `
       UPDATE student_invoices 
       SET student_id = ?, enrollment_id = ?, academic_period_id = ?,
@@ -157,7 +237,7 @@ const Invoice = {
     const [result] = await db.query(query, [
       data.student_id,
       data.enrollment_id,
-      data.academic_period_id,
+      academicPeriodId,
       data.tuition_fee || 0,
       data.laboratory_fee || 0,
       data.library_fee || 0,
