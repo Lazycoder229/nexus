@@ -670,12 +670,12 @@ const Menu = {
           label: "Scholarship Type Setup",
           icons: Award,
           link: "/accounting/accounting_scholar_type_setup",
-        }, */
+        }, 
         {
           label: "Benefeciary list",
           icons: Users,
           link: "/accounting/accounting_benefeciary_list",
-        },
+        },*/
         /*  {
           label: "Eligibility Screening",
           icons: CheckSquare,
