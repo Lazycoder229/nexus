@@ -5,8 +5,10 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv"; //  ESM import
+dotenv.config(); // load env variables
 import path from "path";
 import { fileURLToPath } from "url";
+
 
 
 import departmentRoutes from "./routes/departmentRoutes.js"; 
@@ -72,30 +74,33 @@ import aiRoutes from "./routes/ai.routes.js"; // Nexus AI chat route
 import calendarRoutes from "./routes/calendar.routes.js"; // unified calendar routes
 import roomsRoutes from "./routes/rooms.routes.js"; // rooms management routes
 
-dotenv.config(); // load env variables
-
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Rate limiter
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000,
-  message: "Too many requests from this IP, try again later",
-});
 
 // CORS 
 app.use(
   cors({
-    origin: "https://nexus-tau-kohl.vercel.app",
+    origin: "http://localhost:5173",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
     exposedHeaders: ["Authorization"],
   }),
 );
-
-// Security headers
 app.use(helmet());
+// Rate limiter
+// server.js — fix the global limiter (place it BEFORE all routes)
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,           // Reasonable for all API calls combined
+  message: { message: "Too many requests from this IP, try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+
+app.use(globalLimiter); // ✅ Move this UP, before all app.use("/api", ...) calls
+
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -109,9 +114,6 @@ app.use(bodyParser.urlencoded({ limit: "10mb", extended: true }));
 // Serve static files
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
-// Rate limiter
-app.use(limiter);
-
 // Root route
 app.get("/", (req, res) => res.send("ERP Backendsdsds running"));
 
@@ -122,11 +124,12 @@ app.use("/api/dept", departmentRoutes);
 app.use("/api/course", courseRoutes);
 app.use("/api", programRoutes);
 app.use("/api", academicPeriodRoutes);
+
 app.use("/api", prerequisiteRoutes);
 app.use("/api", enrollmentRoutes);
 app.use("/api", admissionRoutes);
 app.use("/api", courseTransferRoutes);
-app.use("/api", academicHistoryRoutes);
+app.use("/api/academic-history", academicHistoryRoutes); // ✅
 app.use("/api", clearanceRoutes);
 app.use("/api/faculty", facultyRoutes);
 app.use("/api/faculty-assignments", facultyCourseAssignmentRoutes);

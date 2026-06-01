@@ -63,7 +63,6 @@ const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
 
 const SubjectSections = () => {
   const [sections, setSections] = useState([]);
-  const [courses, setCourses] = useState([]);
   const [periods, setPeriods] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -74,7 +73,6 @@ const SubjectSections = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [formData, setFormData] = useState({
-    course_id: "",
     period_id: "",
     section_name: "",
     room: "",
@@ -95,7 +93,6 @@ const SubjectSections = () => {
   ];
   useEffect(() => {
     fetchSections();
-    fetchCourses();
     fetchPeriods();
   }, []);
   const fetchSections = async () => {
@@ -106,22 +103,21 @@ const SubjectSections = () => {
       console.error("Error fetching sections:", error);
     }
   };
-  const fetchCourses = async () => {
-    try {
-      const response = await axios.get(
-        `${API_BASE}/api/course/courses`,
-      );
-      setCourses(response.data);
-    } catch (error) {
-      console.error("Error fetching courses:", error);
-    }
-  };
   const fetchPeriods = async () => {
     try {
       const response = await axios.get(
         `${API_BASE}/api/academic-periods`,
       );
       setPeriods(response.data);
+          const activePeriod = Array.isArray(response.data)
+            ? response.data.find((period) => period.is_active)
+            : null;
+          if (activePeriod) {
+            setFormData((prev) => ({
+              ...prev,
+              period_id: activePeriod.id,
+            }));
+          }
     } catch (error) {
       console.error("Error fetching periods:", error);
     }
@@ -142,6 +138,7 @@ const SubjectSections = () => {
           formData,
         );
       } else {
+   
         await axios.post(`${API_BASE}/api/sections`, formData);
       }
       fetchSections();
@@ -154,7 +151,6 @@ const SubjectSections = () => {
   const handleEdit = (section) => {
     setCurrentSection(section);
     setFormData({
-      course_id: section.course_id,
       period_id: section.period_id,
       section_name: section.section_name,
       room: section.room,
@@ -183,7 +179,6 @@ const SubjectSections = () => {
     setEditMode(false);
     setCurrentSection(null);
     setFormData({
-      course_id: "",
       period_id: "",
       section_name: "",
       room: "",
@@ -198,14 +193,11 @@ const SubjectSections = () => {
   const filteredSections = sections.filter((section) => {
     const matchesSearch =
       section.section_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      section.course_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      section.course_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       section.room?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCourse =
-      !filterCourse || section.course_id === filterCourse.value;
+  
     const matchesPeriod =
-      !filterPeriod || section.period_id === filterPeriod.value;
-    return matchesSearch && matchesCourse && matchesPeriod;
+      !filterPeriod || String(section.period_id) === String(filterPeriod.value);
+    return matchesSearch && matchesPeriod;
   });
   // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -215,14 +207,11 @@ const SubjectSections = () => {
     indexOfLastItem,
   );
   const totalPages = Math.ceil(filteredSections.length / itemsPerPage);
-  const courseOptions = courses.map((course) => ({
-    value: course.id,
-    label: `${course.code} - ${course.title}`,
-  }));
-  const periodOptions = periods.map((period) => ({
-    value: period.id,
-    label: `${period.semester} ${period.school_year}`,
-  }));
+
+const periodOptions = periods.map((period) => ({
+  value: period.id,
+  label: `${period.semester} ${period.school_year}`,
+}));
   const statusOptions = [
     { value: "active", label: "Active" },
     { value: "inactive", label: "Inactive" },
@@ -247,7 +236,7 @@ const SubjectSections = () => {
             Subject & Sections Management
           </h1>
           <p className="text-gray-600">
-            Manage course sections, schedules, and enrollment capacity
+            Manage sections, schedules, and enrollment capacity
           </p>
         </div>
         {/* Statistics Cards */}
@@ -328,20 +317,7 @@ const SubjectSections = () => {
             </div>
             {/* Filter & Action Buttons - RIGHT */}
             <div className="flex items-center gap-2">
-              <div className="w-48">
-                <Select
-                  options={courseOptions}
-                  value={filterCourse}
-                  onChange={(option) => {
-                    setFilterCourse(option);
-                    setCurrentPage(1);
-                  }}
-                  placeholder="Filter by Course"
-                  isClearable
-                  className="text-sm"
-                  classNamePrefix="react-select"
-                />
-              </div>
+              
               <div className="w-48">
                 <Select
                   options={periodOptions}
@@ -371,7 +347,7 @@ const SubjectSections = () => {
               <thead className="bg-slate-100">
                 <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700">
                   <th className="px-4 py-2.5">Section</th>
-                  <th className="px-4 py-2.5">Course</th>
+                  
                   <th className="px-4 py-2.5">Period</th>
                   <th className="px-4 py-2.5">Room</th>
                   <th className="px-4 py-2.5">Capacity</th>
@@ -394,14 +370,7 @@ const SubjectSections = () => {
                             {section.section_name}
                           </div>
                         </td>
-                        <td className="px-4 py-2">
-                          <div className="font-medium">
-                            {section.course_code}
-                          </div>
-                          <div className="text-slate-500 text-xs">
-                            {section.course_title}
-                          </div>
-                        </td>
+                       
                         <td className="px-4 py-2">
                           {section.semester} {section.school_year}
                         </td>
@@ -508,23 +477,8 @@ const SubjectSections = () => {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Course <span className="text-red-500">*</span>
-                      </label>
-                      <Select
-                        options={courseOptions}
-                        value={courseOptions.find(
-                          (o) => o.value === formData.course_id,
-                        )}
-                        onChange={(option) =>
-                          handleSelectChange(option, "course_id")
-                        }
-                        placeholder="Select Course"
-                        required
-                        className="react-select-container"
-                        classNamePrefix="react-select"
-                      />
-                    </div>
+                      
+                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Academic Period <span className="text-red-500">*</span>
@@ -611,6 +565,7 @@ const SubjectSections = () => {
                       />
                     </div>
                   </div>
+                </div>
                 </div>
               </div>
               {/* Modal Footer */}

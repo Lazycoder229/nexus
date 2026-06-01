@@ -11,6 +11,9 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+/* ==========================================
+   STATUS BADGE
+   ========================================== */
 const StatusBadge = ({ status }) => {
   const colors = {
     Regular: "bg-green-100 text-green-800",
@@ -30,6 +33,9 @@ const StatusBadge = ({ status }) => {
   );
 };
 
+/* ==========================================
+   PAGINATION
+   ========================================== */
 const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
   <div className="flex justify-between items-center mt-4 text-sm text-slate-700">
     <span>
@@ -55,6 +61,37 @@ const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
   </div>
 );
 
+/* ==========================================
+   SHARED SELECT STYLES
+   ========================================== */
+const selectStyles = {
+  control: (base) => ({
+    ...base,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#FFFFFF",
+    fontSize: "0.875rem",
+    boxShadow: "none",
+    minHeight: "42px",
+    "&:hover": { borderColor: "#CBD5E1" },
+    "&:focus-within": {
+      borderColor: "#4F46E5",
+      boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+    },
+  }),
+  input: (base) => ({ ...base, color: "#1E293B" }),
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
+    color: state.isSelected ? "#FFFFFF" : "#1E293B",
+    "&:hover": { backgroundColor: "#EEF2FF", color: "#1E293B" },
+  }),
+  menu: (base) => ({ ...base, zIndex: 9999 }),
+  menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+};
+
+/* ==========================================
+   HISTORY MODAL
+   ========================================== */
 const HistoryModal = ({
   isOpen,
   onClose,
@@ -78,8 +115,10 @@ const HistoryModal = ({
     remarks: "",
   });
 
+  // ✅ Only depends on initialData — no extra deps causing spurious resets
   useEffect(() => {
-    if (initialData) {
+    if (initialData && initialData.history_id) {
+      // Edit mode — populate from existing DB record
       setFormData({
         student_id: initialData.student_id,
         period_id: initialData.period_id,
@@ -93,14 +132,11 @@ const HistoryModal = ({
         remarks: initialData.remarks || "",
         history_id: initialData.history_id,
       });
-      console.log(
-        "[HistoryModal] initialData set, period_id:",
-        initialData.period_id,
-      );
     } else {
+      // Add mode — initialData is null OR { period_id: X } injected by openModal
       setFormData({
         student_id: null,
-        period_id: null,
+        period_id: initialData?.period_id || null, // ✅ picks up lastSelectedPeriod
         year_level: "",
         semester_gpa: "",
         cumulative_gpa: "",
@@ -110,9 +146,8 @@ const HistoryModal = ({
         honors: "",
         remarks: "",
       });
-      console.log("[HistoryModal] reset to blank, period_id: null");
     }
-  }, [initialData]);
+  }, [initialData]); // ✅ ONLY initialData — nothing else
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -145,14 +180,14 @@ const HistoryModal = ({
           </div>
         </div>
 
-        {/* Form Wrapper */}
+        {/* Form */}
         <form
           onSubmit={handleSubmit}
           className="flex flex-col flex-1 overflow-hidden"
         >
-          {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-            {/* Student and Academic Period */}
+
+            {/* Student & Period */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
@@ -160,8 +195,7 @@ const HistoryModal = ({
                 </label>
                 <Select
                   value={
-                    students.find((s) => s.value === formData.student_id) ||
-                    null
+                    students.find((s) => s.value === formData.student_id) || null
                   }
                   onChange={(selected) =>
                     setFormData((prev) => ({
@@ -172,44 +206,9 @@ const HistoryModal = ({
                   options={students}
                   placeholder="Select student..."
                   isDisabled={mode === "edit"}
-                  required
                   menuPortalTarget={document.body}
                   menuPosition="fixed"
-                  styles={{
-                    control: (base) => ({
-                      ...base,
-                      borderColor: "#CBD5E1",
-                      backgroundColor: "#FFFFFF",
-                      fontSize: "0.875rem",
-                      boxShadow: "none",
-                      minHeight: "42px",
-                      "&:hover": {
-                        borderColor: "#CBD5E1",
-                      },
-                      "&:focus-within": {
-                        borderColor: "#4F46E5",
-                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
-                      },
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: "#1E293B",
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
-                      color: state.isSelected ? "#FFFFFF" : "#1E293B",
-                      "&:hover": {
-                        backgroundColor: "#EEF2FF",
-                        color: "#1E293B",
-                      },
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      zIndex: 9999,
-                    }),
-                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-                  }}
+                  styles={selectStyles}
                 />
               </div>
 
@@ -218,14 +217,16 @@ const HistoryModal = ({
                   Academic Period *
                 </label>
                 <Select
+                  // ✅ loose equality (==) handles number vs string mismatch
                   value={
-                    periods.find((p) => p.value === formData.period_id) || null
+                    periods.find((p) => p.value == formData.period_id) || null
                   }
                   onChange={(selected) => {
                     setFormData((prev) => ({
                       ...prev,
                       period_id: selected?.value || null,
                     }));
+                    // ✅ Remember last picked period for next "add"
                     if (mode === "add" && setLastSelectedPeriod) {
                       setLastSelectedPeriod(selected?.value || null);
                     }
@@ -233,49 +234,14 @@ const HistoryModal = ({
                   options={periods}
                   placeholder="Select period..."
                   isDisabled={mode === "edit"}
-                  required
                   menuPortalTarget={document.body}
                   menuPosition="fixed"
-                  styles={{
-                    control: (base) => ({
-                      ...base,
-                      borderColor: "#CBD5E1",
-                      backgroundColor: "#FFFFFF",
-                      fontSize: "0.875rem",
-                      boxShadow: "none",
-                      minHeight: "42px",
-                      "&:hover": {
-                        borderColor: "#CBD5E1",
-                      },
-                      "&:focus-within": {
-                        borderColor: "#4F46E5",
-                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
-                      },
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: "#1E293B",
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
-                      color: state.isSelected ? "#FFFFFF" : "#1E293B",
-                      "&:hover": {
-                        backgroundColor: "#EEF2FF",
-                        color: "#1E293B",
-                      },
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      zIndex: 9999,
-                    }),
-                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
-                  }}
+                  styles={selectStyles}
                 />
               </div>
             </div>
 
-            {/* Year Level and Academic Status */}
+            {/* Year Level & Academic Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
@@ -322,7 +288,7 @@ const HistoryModal = ({
               </div>
             </div>
 
-            {/* Semester GPA and Cumulative GPA */}
+            {/* GPA */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
@@ -331,6 +297,8 @@ const HistoryModal = ({
                 <input
                   type="number"
                   step="0.01"
+                  min="0"
+                  max="5"
                   value={formData.semester_gpa}
                   onChange={(e) =>
                     setFormData((prev) => ({
@@ -350,6 +318,8 @@ const HistoryModal = ({
                 <input
                   type="number"
                   step="0.01"
+                  min="0"
+                  max="5"
                   value={formData.cumulative_gpa}
                   onChange={(e) =>
                     setFormData((prev) => ({
@@ -363,7 +333,7 @@ const HistoryModal = ({
               </div>
             </div>
 
-            {/* Units Taken and Units Passed */}
+            {/* Units */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
@@ -371,6 +341,7 @@ const HistoryModal = ({
                 </label>
                 <input
                   type="number"
+                  min="0"
                   value={formData.units_taken}
                   onChange={(e) =>
                     setFormData((prev) => ({
@@ -389,6 +360,7 @@ const HistoryModal = ({
                 </label>
                 <input
                   type="number"
+                  min="0"
                   value={formData.units_passed}
                   onChange={(e) =>
                     setFormData((prev) => ({
@@ -459,6 +431,9 @@ const HistoryModal = ({
   );
 };
 
+/* ==========================================
+   MAIN COMPONENT
+   ========================================== */
 const AcademicHistory = () => {
   const [history, setHistory] = useState([]);
   const [students, setStudents] = useState([]);
@@ -474,12 +449,15 @@ const AcademicHistory = () => {
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
+  /* ---- Data Fetchers ---- */
+
   const fetchHistory = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/academic-history`);
-      setHistory(res.data);
+      setHistory(res.data.data || []); // ✅ unwrap { success, data }
     } catch (err) {
       console.error("Error fetching academic history:", err);
+      setHistory([]); // ✅ always fallback to array
     }
   };
 
@@ -500,17 +478,14 @@ const AcademicHistory = () => {
     }
   };
 
-  // In AcademicHistory component, update fetchPeriods:
   const fetchPeriods = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/academic-periods`);
       const periodOptions = res.data.map((p) => ({
-        value: p.period_id || p.id, // use p.id if period_id is not present
+        value: p.period_id ?? p.id, // ✅ normalize field name
         label: `${p.school_year} - ${p.semester}`,
       }));
       setPeriods(periodOptions);
-      console.log("[AcademicHistory] fetched periods:", res.data);
-      // Do NOT set lastSelectedPeriod by default; keep blank until user selects
     } catch (err) {
       console.error("Error fetching periods:", err);
     }
@@ -523,6 +498,8 @@ const AcademicHistory = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /* ---- Filtering & Pagination ---- */
+
   const filtered = history.filter((h) => {
     const matchSearch =
       (h.student_name || "").toLowerCase().includes(search.toLowerCase()) ||
@@ -532,23 +509,37 @@ const AcademicHistory = () => {
     return matchSearch && matchStatus;
   });
 
-  const totalPages = Math.ceil(filtered.length / rowsPerPage);
+  const totalPages = Math.max(Math.ceil(filtered.length / rowsPerPage), 1);
   const displayed = filtered.slice(
     (page - 1) * rowsPerPage,
     page * rowsPerPage,
   );
 
+  /* ---- Handlers ---- */
+
   const handleSubmit = async (data) => {
     try {
+      // ✅ Convert string inputs to numbers — Zod expects number types
+      const payload = {
+        ...data,
+        student_id: Number(data.student_id),
+        period_id: Number(data.period_id),
+        semester_gpa: data.semester_gpa !== "" ? Number(data.semester_gpa) : null,
+        cumulative_gpa: data.cumulative_gpa !== "" ? Number(data.cumulative_gpa) : null,
+        units_taken: data.units_taken !== "" ? Number(data.units_taken) : null,
+        units_passed: data.units_passed !== "" ? Number(data.units_passed) : null,
+      };
+
       if (modalMode === "add") {
-        await axios.post(`${API_BASE}/api/academic-history`, data);
+        await axios.post(`${API_BASE}/api/academic-history`, payload);
       } else {
         await axios.put(
           `${API_BASE}/api/academic-history/${data.history_id}`,
-          data,
+          payload,
         );
       }
-      fetchHistory();
+
+      await fetchHistory();
       setModalOpen(false);
       setCurrentRecord(null);
     } catch (err) {
@@ -561,17 +552,30 @@ const AcademicHistory = () => {
     if (!window.confirm("Delete this academic record?")) return;
     try {
       await axios.delete(`${API_BASE}/api/academic-history/${id}`);
-      fetchHistory();
+      await fetchHistory();
     } catch (err) {
       console.error("Error deleting academic history:", err);
+      alert(err.response?.data?.message || "Failed to delete academic history");
     }
   };
 
   const openModal = (mode, record = null) => {
     setModalMode(mode);
-    setCurrentRecord(mode === "add" ? { period_id: null } : record);
+    if (mode === "add") {
+      // ✅ Inject lastSelectedPeriod directly — no extra useEffect deps needed
+      setCurrentRecord({ period_id: lastSelectedPeriod || null });
+    } else {
+      setCurrentRecord(record);
+    }
     setModalOpen(true);
   };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setCurrentRecord(null);
+  };
+
+  /* ---- Options ---- */
 
   const statusOptions = [
     { value: "Regular", label: "Regular" },
@@ -581,6 +585,8 @@ const AcademicHistory = () => {
     { value: "Dismissed", label: "Dismissed" },
   ];
 
+  /* ---- Render ---- */
+
   return (
     <div className="p-4">
       <div className="mb-6">
@@ -588,11 +594,11 @@ const AcademicHistory = () => {
           <CalendarCheck size={24} /> Academic History
         </h1>
         <p className="text-sm text-slate-600 mt-1">
-          View comprehensive academic records, GPA tracking, and student
-          milestones.
+          View comprehensive academic records, GPA tracking, and student milestones.
         </p>
       </div>
 
+      {/* Filters */}
       <div className="flex flex-col lg:flex-row gap-4 mb-4">
         <div className="flex-1">
           <div className="relative">
@@ -602,13 +608,13 @@ const AcademicHistory = () => {
             />
             <input
               type="text"
-              placeholder="Search by student name..."
+              placeholder="Search by student name or year level..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-10 pr-3 py-2 border rounded-md"
+              className="w-full pl-10 pr-3 py-2 border rounded-md text-sm"
             />
           </div>
         </div>
@@ -627,42 +633,27 @@ const AcademicHistory = () => {
           />
           <button
             onClick={() => openModal("add")}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md flex items-center gap-2 hover:bg-indigo-700"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md flex items-center gap-2 hover:bg-indigo-700 text-sm font-medium"
           >
             <Plus size={16} /> New Record
           </button>
         </div>
       </div>
 
+      {/* Table */}
       <div className="overflow-x-auto rounded border">
         <table className="min-w-full divide-y">
           <thead className="bg-slate-100">
             <tr>
               <th className="px-3 py-2 text-left text-sm font-semibold">ID</th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Student
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Period
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Year Level
-              </th>
-              <th className="px-3 py-2 text-center text-sm font-semibold">
-                Sem GPA
-              </th>
-              <th className="px-3 py-2 text-center text-sm font-semibold">
-                Cum GPA
-              </th>
-              <th className="px-3 py-2 text-center text-sm font-semibold">
-                Units
-              </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-                Status
-              </th>
-              <th className="px-3 py-2 text-right text-sm font-semibold">
-                Actions
-              </th>
+              <th className="px-3 py-2 text-left text-sm font-semibold">Student</th>
+              <th className="px-3 py-2 text-left text-sm font-semibold">Period</th>
+              <th className="px-3 py-2 text-left text-sm font-semibold">Year Level</th>
+              <th className="px-3 py-2 text-center text-sm font-semibold">Sem GPA</th>
+              <th className="px-3 py-2 text-center text-sm font-semibold">Cum GPA</th>
+              <th className="px-3 py-2 text-center text-sm font-semibold">Units</th>
+              <th className="px-3 py-2 text-left text-sm font-semibold">Status</th>
+              <th className="px-3 py-2 text-right text-sm font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y">
@@ -671,44 +662,49 @@ const AcademicHistory = () => {
                 <tr key={record.history_id} className="hover:bg-slate-50">
                   <td className="px-3 py-2 text-sm">{record.history_id}</td>
                   <td className="px-3 py-2 text-sm">{record.student_name}</td>
-                  <td className="px-3 py-2 text-sm">{record.period_name}</td>
                   <td className="px-3 py-2 text-sm">
-                    {record.year_level || "N/A"}
+                    {/* ✅ Fallback: show school_year + semester if period_name missing */}
+                    {record.period_name ||
+                      (record.school_year && record.semester
+                        ? `${record.school_year} - ${record.semester}`
+                        : "—")}
+                  </td>
+                  <td className="px-3 py-2 text-sm">{record.year_level || "N/A"}</td>
+                  <td className="px-3 py-2 text-sm text-center">
+                    {record.semester_gpa ?? "—"}
                   </td>
                   <td className="px-3 py-2 text-sm text-center">
-                    {record.semester_gpa || "-"}
+                    {record.cumulative_gpa ?? "—"}
                   </td>
                   <td className="px-3 py-2 text-sm text-center">
-                    {record.cumulative_gpa || "-"}
-                  </td>
-                  <td className="px-3 py-2 text-sm text-center">
-                    {record.units_passed || 0}/{record.units_taken || 0}
+                    {record.units_passed ?? 0}/{record.units_taken ?? 0}
                   </td>
                   <td className="px-3 py-2 text-sm">
                     <StatusBadge status={record.academic_status} />
                   </td>
-                  <td className="px-3 py-2 text-right flex justify-end gap-2">
-                    <button
-                      onClick={() => openModal("edit", record)}
-                      className="text-indigo-600 hover:text-indigo-800"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(record.history_id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                  <td className="px-3 py-2 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => openModal("edit", record)}
+                        className="text-indigo-600 hover:text-indigo-800"
+                        title="Edit"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(record.history_id)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td
-                  colSpan={9}
-                  className="text-center py-4 text-slate-500 italic"
-                >
+                <td colSpan={9} className="text-center py-6 text-slate-500 italic text-sm">
                   No academic records found.
                 </td>
               </tr>
@@ -726,10 +722,7 @@ const AcademicHistory = () => {
 
       <HistoryModal
         isOpen={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          setCurrentRecord(null);
-        }}
+        onClose={closeModal}
         onSubmit={handleSubmit}
         mode={modalMode}
         initialData={currentRecord}

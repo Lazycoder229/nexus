@@ -119,14 +119,13 @@ const Payroll = {
     const query = `
       SELECT p.*,
              er.employee_number, er.department, er.position,
-             COALESCE(u.first_name, u2.first_name) as first_name,
-             COALESCE(u.middle_name, u2.middle_name) as middle_name,
-             COALESCE(u.last_name, u2.last_name) as last_name,
+             u.first_name,
+             u.middle_name,
+             u.last_name,
              ps.payroll_period_start as start_date, ps.payroll_period_end as end_date, ps.pay_date
       FROM payslips p
       LEFT JOIN employee_records er ON p.employee_id = er.employee_id
       LEFT JOIN users u ON er.user_id = u.user_id
-      LEFT JOIN users u2 ON p.user_id = u2.user_id
       LEFT JOIN payroll_setup ps ON p.payroll_setup_id = ps.payroll_setup_id
       WHERE p.payslip_id = ?
     `;
@@ -248,17 +247,16 @@ const Payroll = {
   getPayslipsBySetup: async (setupId) => {
     const query = `
       SELECT p.*, 
-             COALESCE(u.first_name, u2.first_name) as first_name,
-             COALESCE(u.last_name, u2.last_name) as last_name,
+             u.first_name,
+             u.last_name,
              er.employee_number, er.department, er.position,
              er.bank_name, er.bank_account_number,
              er.tin_number, er.sss_number, er.philhealth_number, er.pagibig_number
       FROM payslips p
       LEFT JOIN employee_records er ON p.employee_id = er.employee_id
       LEFT JOIN users u ON er.user_id = u.user_id
-      LEFT JOIN users u2 ON p.user_id = u2.user_id
       WHERE p.payroll_setup_id = ?
-      ORDER BY COALESCE(u.last_name, u2.last_name), COALESCE(u.first_name, u2.first_name)
+      ORDER BY u.last_name, u.first_name
     `;
     const [rows] = await db.query(query, [setupId]);
     return rows;
@@ -318,14 +316,14 @@ const Payroll = {
              ps.pay_date
       FROM payslips p
       LEFT JOIN employee_records er ON p.employee_id = er.employee_id
-      LEFT JOIN users u ON COALESCE(er.user_id, p.user_id) = u.user_id
+      LEFT JOIN users u ON er.user_id = u.user_id
       LEFT JOIN payroll_setup ps ON p.payroll_setup_id = ps.payroll_setup_id
-      WHERE (er.user_id = ? OR p.user_id = ?)
+      WHERE er.user_id = ?
       ORDER BY ps.payroll_period_start DESC, p.created_at DESC
     `;
     console.log("🔍 Executing query for user_id:", userId);
     console.log("📝 Query:", query);
-    const [rows] = await db.query(query, [userId, userId]);
+    const [rows] = await db.query(query, [userId]);
     console.log("✅ Query returned", rows.length, "rows");
     console.log("📋 Rows:", rows);
     return rows;

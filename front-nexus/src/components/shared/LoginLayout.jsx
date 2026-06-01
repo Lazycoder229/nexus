@@ -21,6 +21,7 @@ import {
   School,
   Building2, // Added for mailing address/campus
 } from "lucide-react";
+import StudentRegistrationForm from "./StudentRegistrationForm";
 
 /* ==========================================
     SHARED COMPONENTS (Compact & Polished)
@@ -1030,7 +1031,7 @@ const LoginLayout = ({ onNavigateToAdmin, onNavigateByRole }) => {
             onLoginSuccess={handleLoginSuccess}
           />
         ) : (
-          <RegistrationForm onBackToLogin={() => setView("login")} />
+          <StudentRegistrationForm onBackToLogin={() => setView("login")} />
         )}
       </div>
     </div>

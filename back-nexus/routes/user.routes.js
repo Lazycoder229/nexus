@@ -1,46 +1,63 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
+import { validate } from "../middleware/validate.js";
 import {
-  getAllUsers,
-  getUserById,
-  registerStudent,
-  registerEmployee,
-  loginUser,
-  updateStudent,
-  updateEmployee,
-  changePassword,
-  deleteUser,
+  loginSchema,
+  changePasswordSchema,
+  registerStudentSchema,
+  registerEmployeeSchema,
+  updateStudentSchema,
+  updateEmployeeSchema,
+} from "../validators/user.validator.js";
+import {
+  getAllUsers, getUserById, registerStudent, registerEmployee,
+  previewStudentNumber, loginUser, updateStudent, updateEmployee,
+  changePassword, deleteUser,
 } from "../controllers/user.controller.js";
 
 const router = express.Router();
 
-// Get all users
-router.get("/users", getAllUsers);
+/* ==========================================
+   RATE LIMITERS
+   ========================================== */
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 10,
+  message: { message: "Too many login attempts. Please wait 15 minutes." },
+  standardHeaders: true, legacyHeaders: false,
+});
 
-// Get user by ID
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, max: 5,
+  message: { message: "Too many registration attempts. Try again later." },
+  standardHeaders: true, legacyHeaders: false,
+});
+
+const passwordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 5,
+  message: { message: "Too many password change attempts. Please wait 15 minutes." },
+  standardHeaders: true, legacyHeaders: false,
+});
+
+/* ==========================================
+   USER ROUTES
+   ========================================== */
+router.get("/users", getAllUsers);
+router.get("/users/student/next-number", previewStudentNumber); // ⚠️ Must be before /:userId
 router.get("/users/:userId", getUserById);
 
-// Register student
-router.post("/users/student", registerStudent);
+router.post("/users/student", registerLimiter, validate(registerStudentSchema), registerStudent);
+router.post("/users/employee", registerLimiter, validate(registerEmployeeSchema), registerEmployee);
 
-// Register employee (Admin, Faculty, Staff)
-router.post("/users/employee", registerEmployee);
+router.put("/users/student/:userId", registerLimiter, validate(updateStudentSchema), updateStudent);
+router.put("/users/employee/:userId", registerLimiter, validate(updateEmployeeSchema), updateEmployee);
 
-// Login
-router.post("/auth/login", loginUser);
-
-// Register (unified endpoint for student registration from frontend)
-router.post("/auth/register", registerStudent);
-
-// Change password
-router.post("/auth/change-password/:userId", changePassword);
-
-// Update student
-router.put("/users/student/:userId", updateStudent);
-
-// Update employee
-router.put("/users/employee/:userId", updateEmployee);
-
-// Delete user
 router.delete("/users/:userId", deleteUser);
+
+/* ==========================================
+   AUTH ROUTES
+   ========================================== */
+router.post("/auth/login", loginLimiter, validate(loginSchema), loginUser);
+router.post("/auth/register", registerLimiter, validate(registerStudentSchema), registerStudent);
+router.post("/auth/change-password/:userId", passwordLimiter, validate(changePasswordSchema), changePassword);
 
 export default router;

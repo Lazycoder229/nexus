@@ -32,27 +32,21 @@ const TABS = [
   { id: "students",    label: "Students",    icon: Users },
   { id: "enrollments", label: "Enrollments", icon: GraduationCap },
   { id: "grades",      label: "Grades",      icon: Star },
-  { id: "attendance",  label: "Attendance",  icon: UserCheck },
-  { id: "library",     label: "Library",     icon: BookOpen },
-  { id: "clearances",  label: "Clearances",  icon: ClipboardCheck },
+ 
 ];
 
 const COLUMNS = {
   students:    ["Student No.", "Name", "Program", "Year Level", "GPA", "Status"],
   enrollments: ["Enrollment ID", "Student", "Program", "Academic Year", "Units", "Status"],
   grades:      ["Student", "Course", "Period", "Raw Grade", "Final Grade", "Status"],
-  attendance:  ["Date", "Name", "Course / Dept", "Time In", "Status"],
-  library:     ["Transaction ID", "Borrower", "Book Title", "Borrow Date", "Due Date", "Return Date", "Status"],
-  clearances:  ["Student", "Academic Year", "Semester", "Status", "Updated"],
+
 };
 
 const STATUS_OPTIONS = {
   students:    [["Active","Active"],["Inactive","Inactive"],["Graduated","Graduated"]],
   enrollments: [["enrolled","Enrolled"],["pending","Pending"],["dropped","Dropped"]],
   grades:      [["approved","Approved"],["pending","Pending"],["failed","Failed"]],
-  attendance:  [["present","Present"],["absent","Absent"],["late","Late"]],
-  library:     [["active","Active"],["returned","Returned"],["overdue","Overdue"]],
-  clearances:  [["cleared","Cleared"],["pending","Pending"],["rejected","Rejected"]],
+
 };
 
 // Map tab → human-readable report title
@@ -60,9 +54,7 @@ const REPORT_TITLES = {
   students:    "Students Report",
   enrollments: "Enrollments Report",
   grades:      "Grades Report",
-  attendance:  "Attendance Report",
-  library:     "Library Transactions Report",
-  clearances:  "Clearances Report",
+
 };
 
 // Enrollment trend removed per request

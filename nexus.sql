@@ -38,16 +38,80 @@ CREATE TABLE users (
 CREATE TABLE student_details (
     user_id INT PRIMARY KEY,                  -- FK to users.user_id
     student_number VARCHAR(50) UNIQUE NOT NULL,  -- Unique student ID
+    student_type VARCHAR(50),                 -- New Student, Old Student, or Transferree
     course VARCHAR(100),                      -- Student's course
     major VARCHAR(100),                       -- Major/track
     year_level VARCHAR(50),                   -- e.g., '1st Year', '4th Year'
     previous_school VARCHAR(255),             -- Previous school attended
     year_graduated YEAR,                      -- Year graduated from previous school
     mailing_address TEXT,                     -- Mailing address for student
+    elementary_school_completed_at VARCHAR(255),
+    elementary_school_year_graduated VARCHAR(20),
+    junior_high_school_completed_at VARCHAR(255),
+    junior_high_school_year_graduated VARCHAR(20),
+    senior_high_school_completed_at VARCHAR(255),
+    senior_high_school_year_graduated VARCHAR(20),
+    college_program_course_attended VARCHAR(255),
+    school_year_attended VARCHAR(20),
 
     father_name VARCHAR(200),                 -- Parent/guardian names
     mother_name VARCHAR(200),
     parent_phone VARCHAR(50),                 -- Parent contact number
+
+    academic_year VARCHAR(20),                -- Active academic year at registration
+    semester VARCHAR(50),                     -- Active semester at registration
+    civil_status ENUM('Single','Married','Widowed','Separated','Others'),
+    religion VARCHAR(100),
+    is_pwd ENUM('Yes','No'),
+    indigenous_people ENUM('Yes','No'),
+    zip_code VARCHAR(20),
+    date_registered DATE,
+
+    permanent_sitio VARCHAR(150),
+    permanent_barangay VARCHAR(150),
+    permanent_city_municipality VARCHAR(150),
+    permanent_province VARCHAR(150),
+
+    present_sitio VARCHAR(150),
+    present_barangay VARCHAR(150),
+    present_city_municipality VARCHAR(150),
+    present_province VARCHAR(150),
+
+    birth_place VARCHAR(255),
+    citizenship VARCHAR(100),
+
+    father_status ENUM('Living','Deceased'),
+    father_residence_street VARCHAR(150),
+    father_residence_barangay VARCHAR(150),
+    father_residence_city VARCHAR(150),
+    father_residence_province VARCHAR(150),
+    father_residence_zip_code VARCHAR(20),
+    father_occupation VARCHAR(150),
+    father_phone VARCHAR(50),
+
+    mother_status ENUM('Living','Deceased'),
+    mother_residence_street VARCHAR(150),
+    mother_residence_barangay VARCHAR(150),
+    mother_residence_city VARCHAR(150),
+    mother_residence_province VARCHAR(150),
+    mother_residence_zip_code VARCHAR(20),
+    mother_occupation VARCHAR(150),
+    mother_phone VARCHAR(50),
+
+    guardian_name VARCHAR(200),
+    guardian_relationship VARCHAR(100),
+    guardian_residence_street VARCHAR(150),
+    guardian_residence_barangay VARCHAR(150),
+    guardian_residence_city VARCHAR(150),
+    guardian_residence_province VARCHAR(150),
+    guardian_residence_zip_code VARCHAR(20),
+    guardian_occupation VARCHAR(150),
+    guardian_phone VARCHAR(50),
+
+    other_financial_assistance ENUM('Yes','No'),
+    scholarship_assistance_1 VARCHAR(255),
+    scholarship_assistance_2 VARCHAR(255),
+    scholarship_assistance_3 VARCHAR(255),
 
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE  -- Cascade delete if user removed
 );
@@ -2989,3 +3053,62 @@ SELECT 'HR', permission_id, FALSE FROM rbac_permissions;
 
 INSERT IGNORE INTO role_permissions (role, permission_id, is_allowed)
 SELECT 'Accounting', permission_id, FALSE FROM rbac_permissions;
+
+
+ALTER TABLE student_details
+  ADD COLUMN student_type VARCHAR(50) NULL AFTER student_number;
+
+ALTER TABLE student_details
+  ADD COLUMN academic_year VARCHAR(20) NULL AFTER parent_phone,
+  ADD COLUMN semester VARCHAR(50) NULL AFTER academic_year,
+  ADD COLUMN civil_status ENUM('Single','Married','Widowed','Separated','Others') NULL AFTER semester,
+  ADD COLUMN religion VARCHAR(100) NULL AFTER civil_status,
+  ADD COLUMN is_pwd ENUM('Yes','No') NULL AFTER religion,
+  ADD COLUMN indigenous_people ENUM('Yes','No') NULL AFTER is_pwd,
+  ADD COLUMN zip_code VARCHAR(20) NULL AFTER indigenous_people,
+  ADD COLUMN date_registered DATE NULL AFTER zip_code,
+  ADD COLUMN permanent_sitio VARCHAR(150) NULL AFTER date_registered,
+  ADD COLUMN permanent_barangay VARCHAR(150) NULL AFTER permanent_sitio,
+  ADD COLUMN permanent_city_municipality VARCHAR(150) NULL AFTER permanent_barangay,
+  ADD COLUMN permanent_province VARCHAR(150) NULL AFTER permanent_city_municipality,
+  ADD COLUMN present_sitio VARCHAR(150) NULL AFTER permanent_province,
+  ADD COLUMN present_barangay VARCHAR(150) NULL AFTER present_sitio,
+  ADD COLUMN present_city_municipality VARCHAR(150) NULL AFTER present_barangay,
+  ADD COLUMN present_province VARCHAR(150) NULL AFTER present_city_municipality,
+  ADD COLUMN birth_place VARCHAR(255) NULL AFTER present_province,
+  ADD COLUMN citizenship VARCHAR(100) NULL AFTER birth_place,
+  ADD COLUMN father_status ENUM('Living','Deceased') NULL AFTER citizenship,
+  ADD COLUMN father_residence_street VARCHAR(150) NULL AFTER father_status,
+  ADD COLUMN father_residence_barangay VARCHAR(150) NULL AFTER father_residence_street,
+  ADD COLUMN father_residence_city VARCHAR(150) NULL AFTER father_residence_barangay,
+  ADD COLUMN father_residence_province VARCHAR(150) NULL AFTER father_residence_city,
+  ADD COLUMN father_residence_zip_code VARCHAR(20) NULL AFTER father_residence_province,
+  ADD COLUMN father_occupation VARCHAR(150) NULL AFTER father_residence_zip_code,
+  ADD COLUMN father_phone VARCHAR(50) NULL AFTER father_occupation,
+  ADD COLUMN mother_status ENUM('Living','Deceased') NULL AFTER father_phone,
+  ADD COLUMN mother_residence_street VARCHAR(150) NULL AFTER mother_status,
+  ADD COLUMN mother_residence_barangay VARCHAR(150) NULL AFTER mother_residence_street,
+  ADD COLUMN mother_residence_city VARCHAR(150) NULL AFTER mother_residence_barangay,
+  ADD COLUMN mother_residence_province VARCHAR(150) NULL AFTER mother_residence_city,
+  ADD COLUMN mother_residence_zip_code VARCHAR(20) NULL AFTER mother_residence_province,
+  ADD COLUMN mother_occupation VARCHAR(150) NULL AFTER mother_residence_zip_code,
+  ADD COLUMN mother_phone VARCHAR(50) NULL AFTER mother_occupation,
+  ADD COLUMN guardian_name VARCHAR(200) NULL AFTER mother_phone,
+  ADD COLUMN guardian_relationship VARCHAR(100) NULL AFTER guardian_name,
+  ADD COLUMN guardian_residence_street VARCHAR(150) NULL AFTER guardian_relationship,
+  ADD COLUMN guardian_residence_barangay VARCHAR(150) NULL AFTER guardian_residence_street,
+  ADD COLUMN guardian_residence_city VARCHAR(150) NULL AFTER guardian_residence_barangay,
+  ADD COLUMN guardian_residence_province VARCHAR(150) NULL AFTER guardian_residence_city,
+  ADD COLUMN guardian_residence_zip_code VARCHAR(20) NULL AFTER guardian_residence_province,
+  ADD COLUMN guardian_occupation VARCHAR(150) NULL AFTER guardian_residence_zip_code,
+  ADD COLUMN guardian_phone VARCHAR(50) NULL AFTER guardian_occupation,
+  ADD COLUMN other_financial_assistance ENUM('Yes','No') NULL AFTER guardian_phone,
+  ADD COLUMN scholarship_assistance_1 VARCHAR(255) NULL AFTER other_financial_assistance,
+  ADD COLUMN scholarship_assistance_2 VARCHAR(255) NULL AFTER scholarship_assistance_1,
+  ADD COLUMN scholarship_assistance_3 VARCHAR(255) NULL AFTER scholarship_assistance_2;
+
+
+  ALTER TABLE lms_assignments
+ADD COLUMN model_answer LONGTEXT NULL,
+ADD COLUMN model_answer_file_url VARCHAR(500) NULL,
+ADD COLUMN model_answer_uploaded_at TIMESTAMP NULL DEFAULT NULL;

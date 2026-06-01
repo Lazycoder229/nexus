@@ -29,18 +29,21 @@ const FacultyCourseAssignment = {
               ap.school_year, ap.semester,
               fas.schedule_day, fas.schedule_time_start, fas.schedule_time_end,
               s.section_id,
-              (SELECT COUNT(*) FROM enrollments e 
-               JOIN sections s ON e.section_id = s.section_id 
-               WHERE e.course_id = fca.course_id 
-               AND e.period_id = fca.academic_period_id 
-               AND s.section_name = fca.section
-               AND e.status = 'Enrolled') AS current_enrolled
+              (SELECT COUNT(*)
+ FROM enrollments e
+ JOIN sections s ON e.section_id = s.section_id
+ WHERE e.period_id = fca.academic_period_id
+ AND s.section_name = fca.section
+ AND e.status = 'Enrolled'
+) AS current_enrolled
             FROM faculty_course_assignments fca
             INNER JOIN users u ON fca.faculty_user_id = u.user_id
             INNER JOIN employee_details ed ON u.user_id = ed.user_id
             INNER JOIN courses c ON fca.course_id = c.course_id
             INNER JOIN academic_periods ap ON fca.academic_period_id = ap.period_id
-            LEFT JOIN sections s ON fca.course_id = s.course_id AND fca.academic_period_id = s.period_id AND fca.section = s.section_name
+         LEFT JOIN sections s
+ON fca.academic_period_id = s.period_id
+AND fca.section = s.section_name
             LEFT JOIN faculty_assignment_schedules fas ON fca.assignment_id = fas.assignment_id
             WHERE fca.faculty_user_id = ?
             ORDER BY ap.school_year DESC, ap.semester DESC

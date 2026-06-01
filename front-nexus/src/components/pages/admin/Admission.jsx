@@ -1012,7 +1012,15 @@ const Admission = () => {
   const [currentRecord, setCurrentRecord] = useState(null);
   const [bulkEnrollModalOpen, setBulkEnrollModalOpen] = useState(false);
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const formatDisplayDate = (dateString) => {
+  if (!dateString) return "";
 
+  return new Date(dateString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
   const fetchAdmissions = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/admissions`);
@@ -1175,9 +1183,9 @@ const Admission = () => {
                   <td className="px-3 py-2 text-sm">
                     {admission.program_applied || "N/A"}
                   </td>
-                  <td className="px-3 py-2 text-sm">
-                    {admission.application_date}
-                  </td>
+                <td className="px-3 py-2 text-sm">
+  {formatDisplayDate(admission.application_date)}
+</td>
                   <td className="px-3 py-2 text-sm">
                     <StatusBadge status={admission.status} />
                   </td>

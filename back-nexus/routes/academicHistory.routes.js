@@ -1,5 +1,10 @@
 // routes/academicHistory.routes.js
 import express from "express";
+import { validate, validateId } from "../middleware/validate.js"; // 👈 add validateId
+import {
+  createHistorySchema,
+  updateHistorySchema,
+} from "../validators/academicHistory.validator.js";
 import {
   getAllAcademicHistory,
   getHistoryByStudent,
@@ -11,11 +16,14 @@ import {
 
 const router = express.Router();
 
-router.get("/academic-history", getAllAcademicHistory);
-router.get("/academic-history/student/:studentId", getHistoryByStudent);
-router.get("/academic-history/:id", getHistoryById);
-router.post("/academic-history", createHistory);
-router.put("/academic-history/:id", updateHistory);
-router.delete("/academic-history/:id", deleteHistory);
+// ✅ GET routes — /student/:studentId MUST be before /:id
+router.get("/", getAllAcademicHistory);
+router.get("/student/:studentId", validateId("studentId"), getHistoryByStudent);
+router.get("/:id", validateId("id"), getHistoryById);
+
+// ✅ Write routes
+router.post("/", validate(createHistorySchema), createHistory);
+router.put("/:id", validateId("id"), validate(updateHistorySchema), updateHistory);
+router.delete("/:id", validateId("id"), deleteHistory);
 
 export default router;

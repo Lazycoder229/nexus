@@ -234,3 +234,62 @@ For issues or questions about the grading system:
 2. Review browser console for error messages
 3. Verify database migration was applied: `SHOW COLUMNS FROM grades;`
 4. Check that XLSX library is properly installed: `npm list xlsx`
+
+
+STUDENT DETAILS IN REGISTRATIONS
+# Student details
+
+STUDENT ID:(WITH PREFIX : B26(26 IS THE LAST NUMBER OF YEAR(2026)) FOR EXAMPLE  B26-0001,BCC-0002) AUTO FILL
+STUDENT NAME:Lastname,Firstname, Middlename
+PERMANENT ADDRESS:(SITIO,BRGY,CITY,PROVINCE)
+PRESENT ADDRESS:(SITIO,BRGY,CITY,PROVINCE)
+BIRTHDAY: MM/DD/YY
+AGE:
+GENDER:
+PWD:YES OR NO
+DATE:(CURRENT DATE STUDENT HAS FILL THIS FORM)
+ACADEMIC YEAR:FETCH FROM DATABASE THEN SELECT ONLY FETCH THE ACTIVE ACADEMIC YEAR
+SEMESTER:ETCH FROM DATABASE THEN SELECT ONLY FETCH THE ACTIVE SEMESTER
+CIVIL STATUS:SINGLE,MARRIAGE WIDDOW,ETC
+RELIGION:ROMAN CATHOLIC ETC.
+INDIGENOUS PEOPLE:YES OR NO
+ZIPCODE:5201
+COURSE:FETCH FROM DATABASE ALL AVAILABLE PROGRAMS OFFERS
+YEAR LEVEL: 1st Year,2nd Year,3rd Year,4th Year
+CP NUMBER:
+EMAIL ADDRESS:
+
+## Academic Background
+Elementary School completed at: __________ S.Y.:______
+Junior High School completed at: __________ S.Y.:______
+Senior High School completed at: __________ S.Y.:______
+College/Program Course at: __________ S.Y.:________
+
+### PERSONAL IMFORMATION
+Birth Place:
+Civil Status:
+Citizenship:
+# father information
+Father's name:
+Living  or Deceased (this is radio button)
+Father's Place of Residence:Street,brgy,town/city,province,zipcode
+Occupation:
+Phone number:
+# Mother information
+Mother's name:
+Living  or Deceased (this is radio button)
+Mother's Place of Residence:Street,brgy,town/city,province,zipcode
+Occupation:
+Phone number:
+# Guardion information
+Gyurdian's name:
+Relationship
+Guardian's Place of Residence:Street,brgy,town/city,province,zipcode
+Occupation:
+Phone number:
+
+# Scholarship Question
+Are you enjoyinmg other educstional financial assistance?(radio button yes or no)
+if yes, please specify:1
+2
+3

@@ -4,7 +4,6 @@ const SectionsController = {
   getAllSections: async (req, res) => {
     try {
       const filters = {
-        course_id: req.query.course_id,
         period_id: req.query.period_id,
         search: req.query.search,
       };

@@ -5,6 +5,7 @@ import {
   findUserByEmail,
   findUserById,
   getAllUsers,
+  previewNextStudentNumber,
   updateStudentUser,
   updateEmployeeUser,
   deleteUser,
@@ -25,16 +26,8 @@ export const registerStudentService = async (studentData) => {
   const { email, password } = studentData;
 
   // Validate required fields
-  if (
-    !email ||
-    !password ||
-    !studentData.firstName ||
-    !studentData.lastName ||
-    !studentData.studentNumber
-  ) {
-    throw new Error(
-      "Email, password, first name, last name, and student number are required",
-    );
+  if (!email || !password || !studentData.firstName || !studentData.lastName) {
+    throw new Error("Email, password, first name, and last name are required");
   }
 
   // Check if email exists
@@ -47,12 +40,17 @@ export const registerStudentService = async (studentData) => {
   const passwordHash = await bcrypt.hash(password, 10);
 
   // Create student user
-  const userId = await createStudentUser({
+  const { userId, studentNumber } = await createStudentUser({
     ...studentData,
     passwordHash,
   });
 
-  return userId;
+  return { userId, studentNumber };
+};
+
+// Preview the next student number
+export const getNextStudentNumberService = async () => {
+  return await previewNextStudentNumber();
 };
 
 // Register employee

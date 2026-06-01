@@ -598,7 +598,7 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-2 mt-2">
+           {/*    <div className="grid grid-cols-1 gap-2 mt-2">
                 <div>
                   <label className="block text-xs font-medium mb-0.5 text-slate-600">
                     Entrance Exam Score
@@ -618,7 +618,7 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
                     disabled={mode === "view"}
                   />
                 </div>
-              </div>
+              </div> */}
             </div>
 
             {/* Interview Information */}

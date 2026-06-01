@@ -67,7 +67,7 @@ const AssignedSubjects = () => {
       // Use response.data.data (API returns { success, data })
       const apiData = response.data;
       const coursesArray = Array.isArray(apiData.data) ? apiData.data : [];
-      console.log("Fetched courses from API:", coursesArray);
+   
       const transformedCourses = transformAPIData(coursesArray);
       setCourses(transformedCourses);
 

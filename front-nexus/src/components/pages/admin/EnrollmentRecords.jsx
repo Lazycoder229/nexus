@@ -770,7 +770,7 @@ const EnrollmentRecords = () => {
     <div className="p-4">
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <ClipboardList size={24} /> Enrollment Records
+          <ClipboardList size={24} /> Student Subject Enlistment Records
         </h1>
         <p className="text-sm text-slate-600 mt-1">
           View and manage all student enrollment records across academic

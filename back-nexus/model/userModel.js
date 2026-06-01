@@ -1,6 +1,192 @@
 // userModel.js
 import db from "../config/db.js";
 
+const getCurrentDateValue = () => new Date().toISOString().split("T")[0];
+
+const getStudentNumberPrefix = () => `B${String(new Date().getFullYear()).slice(-2)}`;
+
+const pickValue = (source, ...keys) => {
+  for (const key of keys) {
+    const value = source?.[key];
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return null;
+};
+
+const joinAddressParts = (...parts) => parts.filter(Boolean).join(", ");
+
+const studentDetailSelect = `
+      s.student_number,
+  s.student_type,
+      s.course,
+      s.major,
+      s.year_level,
+      s.previous_school,
+      s.year_graduated,
+      s.mailing_address,
+  s.elementary_school_completed_at,
+  s.elementary_school_year_graduated,
+  s.junior_high_school_completed_at,
+  s.junior_high_school_year_graduated,
+  s.senior_high_school_completed_at,
+  s.senior_high_school_year_graduated,
+  s.college_program_course_attended,
+  s.school_year_attended,
+      s.father_name,
+      s.mother_name,
+      s.parent_phone,
+      s.civil_status,
+      s.religion,
+      s.is_pwd,
+      s.indigenous_people,
+      s.zip_code,
+      s.date_registered,
+      s.permanent_sitio,
+      s.permanent_barangay,
+      s.permanent_city_municipality,
+      s.permanent_province,
+      s.present_sitio,
+      s.present_barangay,
+      s.present_city_municipality,
+      s.present_province,
+      s.birth_place,
+      s.citizenship,
+      s.father_status,
+      s.father_residence_street,
+      s.father_residence_barangay,
+      s.father_residence_city,
+      s.father_residence_province,
+      s.father_residence_zip_code,
+      s.father_occupation,
+      s.father_phone,
+      s.mother_status,
+      s.mother_residence_street,
+      s.mother_residence_barangay,
+      s.mother_residence_city,
+      s.mother_residence_province,
+      s.mother_residence_zip_code,
+      s.mother_occupation,
+      s.mother_phone,
+      s.guardian_name,
+      s.guardian_relationship,
+      s.guardian_residence_street,
+      s.guardian_residence_barangay,
+      s.guardian_residence_city,
+      s.guardian_residence_province,
+      s.guardian_residence_zip_code,
+      s.guardian_occupation,
+      s.guardian_phone,
+      s.other_financial_assistance,
+      s.scholarship_assistance_1,
+      s.scholarship_assistance_2,
+      s.scholarship_assistance_3
+`;
+
+const getNextStudentNumber = async (connection = db) => {
+  const prefix = getStudentNumberPrefix();
+  const [rows] = await connection.query(
+    `SELECT student_number
+     FROM student_details
+     WHERE student_number LIKE ?
+     ORDER BY CAST(SUBSTRING_INDEX(student_number, '-', -1) AS UNSIGNED) DESC
+     LIMIT 1`,
+    [`${prefix}-%`],
+  );
+
+  const latestStudentNumber = rows[0]?.student_number;
+  const nextSequence = latestStudentNumber
+    ? Number.parseInt(latestStudentNumber.split("-").pop(), 10) + 1
+    : 1;
+
+  return `${prefix}-${String(nextSequence).padStart(4, "0")}`;
+};
+
+const buildStudentDetailPayload = (studentData, studentNumber) => ({
+  student_number: studentNumber || pickValue(studentData, "studentNumber"),
+  student_type: pickValue(studentData, "studentType"),
+  course: pickValue(studentData, "courseProgram", "course"),
+  major: pickValue(studentData, "major"),
+  year_level: pickValue(studentData, "yearLevel"),
+  previous_school: pickValue(
+    studentData,
+    "previousSchool",
+    "seniorHighSchool",
+    "senior_high_school_completed_at",
+  ),
+  year_graduated: pickValue(
+    studentData,
+    "yearGraduated",
+    "seniorHighYearGraduated",
+    "senior_high_school_year_graduated",
+  ),
+  mailing_address: pickValue(studentData, "mailingAddress"),
+  elementary_school_completed_at: pickValue(studentData, "elementarySchool"),
+  elementary_school_year_graduated: pickValue(studentData, "elementaryYearGraduated"),
+  junior_high_school_completed_at: pickValue(studentData, "juniorHighSchool"),
+  junior_high_school_year_graduated: pickValue(studentData, "juniorHighYearGraduated"),
+  senior_high_school_completed_at: pickValue(studentData, "seniorHighSchool"),
+  senior_high_school_year_graduated: pickValue(studentData, "seniorHighYearGraduated"),
+  college_program_course_attended: pickValue(studentData, "collegeProgramAttended"),
+  school_year_attended: pickValue(studentData, "schoolYearAttended"),
+  father_name: pickValue(studentData, "fatherName"),
+  mother_name: pickValue(studentData, "motherName"),
+  parent_phone: pickValue(studentData, "parentPhone"),
+  academic_year: pickValue(studentData, "academicYear"),
+  semester: pickValue(studentData, "semester"),
+  civil_status: pickValue(studentData, "civilStatus"),
+  religion: pickValue(studentData, "religion"),
+  is_pwd: pickValue(studentData, "isPwd", "pwdStatus"),
+  indigenous_people: pickValue(studentData, "indigenousPeople"),
+  zip_code: pickValue(studentData, "zipCode"),
+  date_registered: pickValue(studentData, "dateRegistered") || getCurrentDateValue(),
+  permanent_sitio: pickValue(studentData, "permanentSitio"),
+  permanent_barangay: pickValue(studentData, "permanentBarangay"),
+  permanent_city_municipality: pickValue(
+    studentData,
+    "permanentCityMunicipality",
+  ),
+  permanent_province: pickValue(studentData, "permanentProvince"),
+  present_sitio: pickValue(studentData, "presentSitio"),
+  present_barangay: pickValue(studentData, "presentBarangay"),
+  present_city_municipality: pickValue(studentData, "presentCityMunicipality"),
+  present_province: pickValue(studentData, "presentProvince"),
+  birth_place: pickValue(studentData, "birthPlace"),
+  citizenship: pickValue(studentData, "citizenship"),
+  father_status: pickValue(studentData, "fatherStatus"),
+  father_residence_street: pickValue(studentData, "fatherResidenceStreet"),
+  father_residence_barangay: pickValue(studentData, "fatherResidenceBarangay"),
+  father_residence_city: pickValue(studentData, "fatherResidenceCity"),
+  father_residence_province: pickValue(studentData, "fatherResidenceProvince"),
+  father_residence_zip_code: pickValue(studentData, "fatherResidenceZipCode"),
+  father_occupation: pickValue(studentData, "fatherOccupation"),
+  father_phone: pickValue(studentData, "fatherPhone"),
+  mother_status: pickValue(studentData, "motherStatus"),
+  mother_residence_street: pickValue(studentData, "motherResidenceStreet"),
+  mother_residence_barangay: pickValue(studentData, "motherResidenceBarangay"),
+  mother_residence_city: pickValue(studentData, "motherResidenceCity"),
+  mother_residence_province: pickValue(studentData, "motherResidenceProvince"),
+  mother_residence_zip_code: pickValue(studentData, "motherResidenceZipCode"),
+  mother_occupation: pickValue(studentData, "motherOccupation"),
+  mother_phone: pickValue(studentData, "motherPhone"),
+  guardian_name: pickValue(studentData, "guardianName"),
+  guardian_relationship: pickValue(studentData, "guardianRelationship"),
+  guardian_residence_street: pickValue(studentData, "guardianResidenceStreet"),
+  guardian_residence_barangay: pickValue(studentData, "guardianResidenceBarangay"),
+  guardian_residence_city: pickValue(studentData, "guardianResidenceCity"),
+  guardian_residence_province: pickValue(studentData, "guardianResidenceProvince"),
+  guardian_residence_zip_code: pickValue(studentData, "guardianResidenceZipCode"),
+  guardian_occupation: pickValue(studentData, "guardianOccupation"),
+  guardian_phone: pickValue(studentData, "guardianPhone"),
+  other_financial_assistance: pickValue(
+    studentData,
+    "otherFinancialAssistance",
+    "hasOtherFinancialAssistance",
+  ),
+  scholarship_assistance_1: pickValue(studentData, "scholarshipAssistance1"),
+  scholarship_assistance_2: pickValue(studentData, "scholarshipAssistance2"),
+  scholarship_assistance_3: pickValue(studentData, "scholarshipAssistance3"),
+});
+
 export const findUserByEmail = async (email) => {
   const [rows] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
   // console.log("findUserByEmail result:", rows);
@@ -12,16 +198,7 @@ export const findUserById = async (userId) => {
     `
     SELECT 
       u.*,
-      s.student_number,
-      s.course,
-      s.major,
-      s.year_level,
-      s.previous_school,
-      s.year_graduated,
-      s.mailing_address,
-      s.father_name,
-      s.mother_name,
-      s.parent_phone,
+${studentDetailSelect},
       e.employee_id,
       e.position_title,
       e.department,
@@ -44,16 +221,7 @@ export const getAllUsers = async (role = null) => {
   let query = `
     SELECT 
       u.*,
-      s.student_number,
-      s.course,
-      s.major,
-      s.year_level,
-      s.previous_school,
-      s.year_graduated,
-      s.mailing_address,
-      s.father_name,
-      s.mother_name,
-      s.parent_phone,
+${studentDetailSelect},
       e.employee_id,
       e.department,
       e.position_title,
@@ -88,22 +256,27 @@ export const createStudentUser = async (userData) => {
     phone,
     permanentAddress,
     profilePictureUrl,
-    studentNumber,
-    course,
-    major,
-    yearLevel,
-    previousSchool,
-    yearGraduated,
-    mailingAddress,
-    fatherName,
-    motherName,
-    parentPhone,
   } = userData;
 
   // Start a transaction
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
+
+    const studentNumber = await getNextStudentNumber(connection);
+    const studentDetails = buildStudentDetailPayload(userData, studentNumber);
+    const studentDetailColumns = Object.keys(studentDetails);
+    const studentDetailValues = Object.values(studentDetails);
+
+    const combinedPermanentAddress =
+      permanentAddress ||
+      joinAddressParts(
+        pickValue(userData, "permanentSitio"),
+        pickValue(userData, "permanentBarangay"),
+        pickValue(userData, "permanentCityMunicipality"),
+        pickValue(userData, "permanentProvince"),
+        pickValue(userData, "zipCode"),
+      );
 
     // 1️ Insert into users table
     const [userResult] = await connection.query(
@@ -120,7 +293,7 @@ export const createStudentUser = async (userData) => {
         dateOfBirth || null,
         gender || null,
         phone || null,
-        permanentAddress || null,
+        combinedPermanentAddress || null,
         profilePictureUrl || null,
       ],
     );
@@ -129,34 +302,26 @@ export const createStudentUser = async (userData) => {
 
     // 2️ Insert into student_details table
     await connection.query(
-      `INSERT INTO student_details 
-       (user_id, student_number, course, major, year_level, previous_school, year_graduated, mailing_address, father_name, mother_name, parent_phone)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        userId,
-        studentNumber,
-        course,
-        major,
-        yearLevel,
-        previousSchool,
-        yearGraduated,
-        mailingAddress,
-        fatherName,
-        motherName,
-        parentPhone,
-      ],
+      `INSERT INTO student_details
+       (user_id, ${studentDetailColumns.join(", ")})
+       VALUES (?, ${studentDetailColumns.map(() => "?").join(", ")})`,
+      [userId, ...studentDetailValues],
     );
 
     // Commit transaction
     await connection.commit();
     connection.release();
 
-    return userId;
+    return { userId, studentNumber };
   } catch (err) {
     await connection.rollback();
     connection.release();
     throw err;
   }
+};
+
+export const previewNextStudentNumber = async () => {
+  return await getNextStudentNumber();
 };
 // Create a new employee user (Admin, Faculty, Staff)
 export const createEmployeeUser = async (userData) => {
@@ -261,7 +426,9 @@ export const updateStudentUser = async (userId, userData) => {
     major,
     yearLevel,
     previousSchool,
+    seniorHighSchool,
     yearGraduated,
+    seniorHighYearGraduated,
     mailingAddress,
     fatherName,
     motherName,
@@ -322,8 +489,8 @@ export const updateStudentUser = async (userId, userData) => {
         course,
         major,
         yearLevel,
-        previousSchool,
-        yearGraduated,
+        previousSchool || seniorHighSchool,
+        yearGraduated || seniorHighYearGraduated,
         mailingAddress,
         fatherName,
         motherName,
@@ -395,8 +562,8 @@ export const updateEmployeeUser = async (userId, userData) => {
     Object.keys(employeeMappings).forEach((key) => {
       if (userData[key] !== undefined) {
         employeeFields.push(`${employeeMappings[key]} = ?`);
-        // Convert empty strings to null for date fields
-        if (key === "dateHired" && userData[key] === "") {
+        // Normalize blank form values so nullable DB columns do not receive empty strings.
+        if (userData[key] === "") {
           employeeValues.push(null);
         } else {
           employeeValues.push(userData[key]);
