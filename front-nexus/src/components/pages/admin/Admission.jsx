@@ -14,6 +14,77 @@ import {
   Check,
 } from "lucide-react";
 
+// ---------------------------------------------------------------------------
+// Academic period helpers (shared by the Admissions table and the
+// Bulk Enroll modal so both stay in sync).
+// ---------------------------------------------------------------------------
+
+const sortAcademicPeriods = (periods) =>
+  [...periods].sort((left, right) => {
+    if (left.school_year === right.school_year) {
+      return String(right.semester || "").localeCompare(
+        String(left.semester || ""),
+      );
+    }
+    return String(right.school_year || "").localeCompare(
+      String(left.school_year || ""),
+    );
+  });
+
+// Resolve which academic period an admission "belongs to" based on its
+// application date. Applicants usually apply BEFORE a term starts, so we:
+//   1) first check if the application date falls inside a period's range,
+//   2) otherwise fall back to the next period that starts on/after that date,
+//   3) and finally fall back to the most recent period overall.
+const getAcademicPeriodForAdmission = (admission, academicPeriods) => {
+  if (!admission?.application_date || !Array.isArray(academicPeriods)) {
+    return null;
+  }
+
+  const applicationDate = new Date(admission.application_date);
+  if (Number.isNaN(applicationDate.getTime())) return null;
+
+  const containingPeriod = academicPeriods.find((period) => {
+    const startDate = new Date(period.start_date);
+    const endDate = new Date(period.end_date);
+    return (
+      !Number.isNaN(startDate.getTime()) &&
+      !Number.isNaN(endDate.getTime()) &&
+      applicationDate >= startDate &&
+      applicationDate <= endDate
+    );
+  });
+  if (containingPeriod) return containingPeriod;
+
+  const upcomingPeriods = academicPeriods
+    .filter((period) => {
+      const startDate = new Date(period.start_date);
+      return !Number.isNaN(startDate.getTime()) && startDate >= applicationDate;
+    })
+    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+  if (upcomingPeriods[0]) return upcomingPeriods[0];
+
+  const sortedByStart = [...academicPeriods].sort(
+    (a, b) => new Date(b.start_date) - new Date(a.start_date),
+  );
+  return sortedByStart[0] || null;
+};
+
+const formatAcademicPeriod = (period) =>
+  period
+    ? `${period.school_year || "N/A"} - ${period.semester || "N/A"}`
+    : "N/A";
+
+// Unique key for an academic period, used for <select> values and matching.
+// Prefers a real id if the API provides one, otherwise falls back to a
+// school_year + semester composite key.
+const getAcademicPeriodKey = (period) => {
+  if (!period) return "";
+  const id = period.id ?? period.period_id ?? period.academic_period_id;
+  if (id !== undefined && id !== null && id !== "") return String(id);
+  return `${period.school_year || ""}|${period.semester || ""}`;
+};
+
 const StatusBadge = ({ status }) => {
   const colors = {
     Pending: "bg-yellow-100 text-yellow-800",
@@ -637,7 +708,7 @@ const AdmissionModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
 };
 
 const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
-  const [filterAcademicYear, setFilterAcademicYear] = useState("");
+  const [filterAcademicPeriod, setFilterAcademicPeriod] = useState("");
   const [filterProgram, setFilterProgram] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("");
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -645,7 +716,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
   const [departments, setDepartments] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [academicPeriods, setAcademicPeriods] = useState([]);
-  const [defaultAcademicYear, setDefaultAcademicYear] = useState("");
+  const [defaultAcademicPeriod, setDefaultAcademicPeriod] = useState("");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -675,30 +746,19 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
         const activePeriod =
           activePeriodRes.data?.period || activePeriodRes.data || null;
 
-        const sortedAcademicPeriods = [...academicPeriodRows].sort(
-          (left, right) => {
-            if (left.school_year === right.school_year) {
-              return String(right.semester || "").localeCompare(
-                String(left.semester || ""),
-              );
-            }
+        const sortedAcademicPeriods = sortAcademicPeriods(academicPeriodRows);
 
-            return String(right.school_year || "").localeCompare(
-              String(left.school_year || ""),
-            );
-          },
-        );
-
-        const initialAcademicYear =
-          activePeriod?.school_year ||
-          sortedAcademicPeriods[0]?.school_year ||
-          "";
+        const initialPeriod =
+          activePeriod && Object.keys(activePeriod).length > 0
+            ? activePeriod
+            : sortedAcademicPeriods[0] || null;
+        const initialAcademicPeriodKey = getAcademicPeriodKey(initialPeriod);
 
         setDepartments(departmentRows);
         setPrograms(programRows);
         setAcademicPeriods(academicPeriodRows);
-        setDefaultAcademicYear(initialAcademicYear);
-        setFilterAcademicYear(initialAcademicYear);
+        setDefaultAcademicPeriod(initialAcademicPeriodKey);
+        setFilterAcademicPeriod(initialAcademicPeriodKey);
         setFilterProgram("");
         setFilterDepartment("");
         setSelectedIds(new Set());
@@ -723,9 +783,20 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
       ? `${program.code} - ${program.name || program.program_name}`
       : program.name || program.program_name || "";
 
-  const academicYearOptions = [...new Set(
-    academicPeriods.map((period) => period.school_year).filter(Boolean),
-  )].sort((left, right) => String(right).localeCompare(String(left)));
+  // Unique list of academic periods (school year + semester) for the filter
+  const academicPeriodOptions = sortAcademicPeriods(
+    Array.from(
+      academicPeriods
+        .reduce((map, period) => {
+          const key = getAcademicPeriodKey(period);
+          if (!map.has(key)) {
+            map.set(key, period);
+          }
+          return map;
+        }, new Map())
+        .values(),
+    ),
+  );
 
   const getAdmissionDepartment = (admission) =>
     admission.department_name ||
@@ -733,61 +804,24 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
     programDepartmentMap.get(admission.program_applied) ||
     "";
 
-  const getAcademicYearForAdmission = (admission) => {
-    if (!admission.application_date) return "";
-
-    const applicationDate = new Date(admission.application_date);
-    if (Number.isNaN(applicationDate.getTime())) return "";
-
-    const matchingPeriods = academicPeriods.filter(
-      (period) => period.school_year === filterAcademicYear,
-    );
-
-    if (filterAcademicYear && matchingPeriods.length > 0) {
-      const isInSelectedYear = matchingPeriods.some((period) => {
-        const startDate = new Date(period.start_date);
-        const endDate = new Date(period.end_date);
-        return (
-          !Number.isNaN(startDate.getTime()) &&
-          !Number.isNaN(endDate.getTime()) &&
-          applicationDate >= startDate &&
-          applicationDate <= endDate
-        );
-      });
-
-      return isInSelectedYear ? filterAcademicYear : "";
-    }
-
-    const matchedPeriod = academicPeriods.find((period) => {
-      const startDate = new Date(period.start_date);
-      const endDate = new Date(period.end_date);
-      return (
-        !Number.isNaN(startDate.getTime()) &&
-        !Number.isNaN(endDate.getTime()) &&
-        applicationDate >= startDate &&
-        applicationDate <= endDate
-      );
-    });
-
-    return matchedPeriod?.school_year || "";
-  };
-
   // Filter admissions based on criteria
   const filteredAdmissions = admissions.filter(a => {
     let match = a.status !== "Enrolled";
-    
-    if (filterAcademicYear) {
-      match = match && getAcademicYearForAdmission(a) === filterAcademicYear;
+
+    if (filterAcademicPeriod) {
+      const matchedPeriod = getAcademicPeriodForAdmission(a, academicPeriods);
+      match =
+        match && getAcademicPeriodKey(matchedPeriod) === filterAcademicPeriod;
     }
-    
+
     if (filterProgram) {
       match = match && a.program_applied === filterProgram;
     }
-    
+
     if (filterDepartment) {
       match = match && getAdmissionDepartment(a) === filterDepartment;
     }
-    
+
     return match;
   });
 
@@ -819,7 +853,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
     try {
       await onSubmit(Array.from(selectedIds));
       setSelectedIds(new Set());
-      setFilterAcademicYear(defaultAcademicYear);
+      setFilterAcademicPeriod(defaultAcademicPeriod);
       setFilterProgram("");
       setFilterDepartment("");
     } catch (error) {
@@ -848,17 +882,22 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  Academic Year
+                  Academic Year & Semester
                 </label>
                 <select
-                  value={filterAcademicYear}
-                  onChange={(e) => setFilterAcademicYear(e.target.value)}
+                  value={filterAcademicPeriod}
+                  onChange={(e) => setFilterAcademicPeriod(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="">All Academic Years</option>
-                  {academicYearOptions.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
+                  <option value="">All Academic Periods</option>
+                  {academicPeriodOptions.map((period) => {
+                    const key = getAcademicPeriodKey(period);
+                    return (
+                      <option key={key} value={key}>
+                        {formatAcademicPeriod(period)}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -940,6 +979,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Name</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Email</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Academic Period</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Program</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Department</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Status</th>
@@ -960,6 +1000,11 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
                           {applicant.first_name} {applicant.last_name}
                         </td>
                         <td className="px-3 py-2 text-sm text-slate-600">{applicant.email}</td>
+                        <td className="px-3 py-2 text-sm text-slate-600">
+                          {formatAcademicPeriod(
+                            getAcademicPeriodForAdmission(applicant, academicPeriods)
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-sm text-slate-600">{applicant.program_applied}</td>
                         <td className="px-3 py-2 text-sm text-slate-600">{getAdmissionDepartment(applicant) || "N/A"}</td>
                         <td className="px-3 py-2 text-sm">
@@ -1004,6 +1049,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
 
 const Admission = () => {
   const [admissions, setAdmissions] = useState([]);
+  const [academicPeriods, setAcademicPeriods] = useState([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(10);
@@ -1012,15 +1058,17 @@ const Admission = () => {
   const [currentRecord, setCurrentRecord] = useState(null);
   const [bulkEnrollModalOpen, setBulkEnrollModalOpen] = useState(false);
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-const formatDisplayDate = (dateString) => {
-  if (!dateString) return "";
 
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-};
+  const formatDisplayDate = (dateString) => {
+    if (!dateString) return "";
+
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
   const fetchAdmissions = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/admissions`);
@@ -1030,8 +1078,19 @@ const formatDisplayDate = (dateString) => {
     }
   };
 
+  const fetchAcademicPeriods = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/academic-periods`);
+      const rows = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setAcademicPeriods(rows);
+    } catch (err) {
+      console.error("Error fetching academic periods:", err);
+    }
+  };
+
   useEffect(() => {
     fetchAdmissions();
+    fetchAcademicPeriods();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1162,6 +1221,9 @@ const formatDisplayDate = (dateString) => {
                 Application Date
               </th>
               <th className="px-3 py-2 text-left text-sm font-semibold">
+                Academic Period
+              </th>
+              <th className="px-3 py-2 text-left text-sm font-semibold">
                 Status
               </th>
               <th className="px-3 py-2 text-right text-sm font-semibold">
@@ -1183,9 +1245,14 @@ const formatDisplayDate = (dateString) => {
                   <td className="px-3 py-2 text-sm">
                     {admission.program_applied || "N/A"}
                   </td>
-                <td className="px-3 py-2 text-sm">
-  {formatDisplayDate(admission.application_date)}
-</td>
+                  <td className="px-3 py-2 text-sm">
+                    {formatDisplayDate(admission.application_date)}
+                  </td>
+                  <td className="px-3 py-2 text-sm">
+                    {formatAcademicPeriod(
+                      getAcademicPeriodForAdmission(admission, academicPeriods)
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-sm">
                     <StatusBadge status={admission.status} />
                   </td>
@@ -1214,7 +1281,7 @@ const formatDisplayDate = (dateString) => {
             ) : (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="text-center py-4 text-slate-500 italic"
                 >
                   No admissions found.

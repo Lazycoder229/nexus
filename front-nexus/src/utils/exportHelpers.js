@@ -22,7 +22,9 @@ const FIELD_LABELS = {
   program_n: "Program",
   program_code: "Program Code",
   program_c: "Program Code",
+  enrollment_id: "Enrollment ID",
   enrollment: "Enrollment Status",
+  total_units: "Units",
   academic_year: "Academic Year",
   academic_y: "Academic Year",
   semester: "Semester",
@@ -54,7 +56,36 @@ const getFieldLabel = (field) =>
   FIELD_LABELS[field] || field.replace(/_/g, " ").toUpperCase();
 
 /**
+ * Escape a single value for CSV.
+ */
+const escapeCsvValue = (value) => {
+  if (value === null || value === undefined) return "";
+  const str = String(value);
+  const escaped = str.replace(/"/g, '""');
+  return /[",\n\r]/.test(escaped) ? `"${escaped}"` : escaped;
+};
+
+/**
  * Generate CSV content from array data.
+ *
+ * Letterhead mirrors drawLetterhead() line-for-line:
+ *
+ *   Col A (logo slot, left)  |  Col B…mid (institution text, centre)  |  Col last (spacer = Col A width)
+ *
+ *   Row 1 : [BCC Logo]       |  Republic of the Philippines
+ *   Row 2 : (empty)          |  Region IV-B MIMAROPA
+ *   Row 3 : (empty)          |  BACO COMMUNITY COLLEGE
+ *   Row 4 : (empty)          |  Poblacion, Baco, Oriental Mindoro 5201
+ *   Row 5 : (empty)          |  Email: bccbaco@gmail.com
+ *   Row 6 : ── divider (blank row) ──────────────────────────────────
+ *   Row 7 : LIST OF ENROLLED STUDENTS … / <TITLE>  (sub-header, col A)
+ *   Row 8 : Generated: …     |  Total Records: …
+ *   Row 9 : ── blank spacer before table ────────────────────────────
+ *   Row 10: [column headers]
+ *   Row 11+: [data rows]
+ *
+ * The trailing empty spacer column on each letterhead row balances Col A so
+ * the institution text appears visually centred when opened in Excel / Sheets.
  */
 export const generateCSV = (data, options = {}) => {
   if (!Array.isArray(data) || data.length === 0) return "";
@@ -62,6 +93,8 @@ export const generateCSV = (data, options = {}) => {
   const {
     headers = Object.keys(data[0]),
     includeTimestamps = false,
+    title = "Report",
+    programLabel = "",
   } = options;
 
   const cols = includeTimestamps
@@ -70,22 +103,61 @@ export const generateCSV = (data, options = {}) => {
         (h) => !["created_at", "updated_at", "deleted_at"].includes(h),
       );
 
-  const escapeCsvValue = (value) => {
-    if (value === null || value === undefined) return "";
-    const stringValue = String(value);
-    const escaped = stringValue.replace(/"/g, '""');
-    if (/[",\n\r]/.test(escaped)) {
-      return `"${escaped}"`;
-    }
-    return escaped;
-  };
+  const totalCols = Math.max(cols.length, 3); // need at least 3 cols for layout
 
+  // Pad / trim an array of cell values to exactly totalCols, then join as CSV row.
+  const makeRow = (cells = []) =>
+    Array.from({ length: totalCols }, (_, i) =>
+      escapeCsvValue(cells[i] ?? ""),
+    ).join(",");
+
+  // Logo in col A | institution text in col B | trailing cols empty (spacer).
+  // Col A width ≈ 1 col; trailing spacer also 1 col → text block is centred.
+  const lhRow = (logoCell, centreText) => makeRow([logoCell, centreText]);
+
+  // ── Mirrors drawLetterhead() exactly ─────────────────────────────────
+
+  // 1. "Republic of the Philippines"  — small font, centred (line 1 of text block)
+  // 2. "Region IV-B MIMAROPA"         — small font, centred
+  // 3. "BACO COMMUNITY COLLEGE"       — large bold, centred
+  // 4. "Poblacion, Baco…"             — small font, centred
+  // 5. "Email: bccbaco@gmail.com"     — small font, centred
+  // 6. divider row (blank)
+  // 7. sub-header (bold, left-aligned below divider)
+  // 8. Generated + Total Records (normal, left-aligned)
+  // 9. blank spacer before table
+
+  const subHeaderText = programLabel
+    ? `LIST OF ENROLLED STUDENTS IN THE PROGRAM OF ${programLabel.toUpperCase()}`
+    : title.toUpperCase();
+
+  const letterhead = [
+    lhRow("BCC Logo", "Republic of the Philippines"),   // line 1  — small
+    lhRow("",         "Region IV-B MIMAROPA"),           // line 2  — small
+    lhRow("",         "BACO COMMUNITY COLLEGE"),         // line 3  — large bold
+    lhRow("",         "Poblacion, Baco, Oriental Mindoro 5201"), // line 4 — small
+    lhRow("",         "Email: bccbaco@gmail.com"),       // line 5  — small
+    makeRow([]),                                          // divider (blank row)
+    makeRow([subHeaderText]),                             // sub-header bold
+    makeRow([                                             // Generated | Total Records
+      `Generated: ${new Date().toLocaleString("en-PH")}`,
+      `Total Records: ${data.length}`,
+    ]),
+    makeRow([]),                                          // blank spacer → table
+  ];
+
+  // ── Column headers + data rows ────────────────────────────────────────
   const headerLine = cols.map((h) => escapeCsvValue(getFieldLabel(h))).join(",");
-  const rowLines = data.map((row) =>
-    cols.map((h) => escapeCsvValue(row[h])).join(","),
+  const rowLines   = data.map((row) =>
+    cols.map((h) => {
+      const val = row[h];
+      if (val === null || val === undefined) return "";
+      if (typeof val === "boolean") return val ? "Yes" : "No";
+      return escapeCsvValue(val);
+    }).join(","),
   );
 
-  return [headerLine, ...rowLines].join("\n");
+  return [...letterhead, headerLine, ...rowLines].join("\n");
 };
 
 /**
@@ -107,22 +179,148 @@ export const downloadCSV = (csvContent, filename = "export.csv") => {
 };
 
 /**
+ * Fetch a remote image URL and convert it to a base64 data URL.
+ */
+const fetchLogoAsBase64 = async (url) => {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("FileReader failed"));
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.warn("BCC PDF: failed to load logo –", e.message);
+    return null;
+  }
+};
+
+/**
+ * Build the letterhead block and return the Y position where content
+ * should start, so the table always begins right after the header
+ * regardless of how many sub-header lines are rendered.
+ *
+ * Layout:
+ *   ┌──────────────────────────────────────────────┐
+ *   │ [LOGO]   Republic of the Philippines          │  ← centred text
+ *   │          Region IV-B MIMAROPA                 │
+ *   │          BACO COMMUNITY COLLEGE               │
+ *   │          Poblacion, Baco…                     │
+ *   │          Email: bccbaco@gmail.com             │
+ *   ├──────────────────────────────────────────────┤
+ *   │ LIST OF ENROLLED STUDENTS …                  │  ← left-aligned sub-header
+ *   │ Generated: …   Total Records: …              │
+ *   └──────────────────────────────────────────────┘
+ *
+ * @returns {number} Y coordinate for the first table row
+ */
+const drawLetterhead = (doc, { pageW, margin, logoBase64, title, programLabel, recordCount }) => {
+  // ── Constants ────────────────────────────────────────────────────────────
+  const LOGO_SIZE    = 22;          // logo square (mm)
+  const LINE_GAP_SM  = 4.5;        // gap between small lines (mm)
+  const LINE_GAP_LG  = 7;          // gap after institution name
+  const DIVIDER_PAD  = 5;          // space above & below the rule
+  const SUB_LINE_GAP = 5.5;        // gap between sub-header lines
+  const META_GAP     = 4.5;        // gap between Generated / Total Records line
+  const BOTTOM_PAD   = 6;          // space below last meta line → table start
+
+  // ── Letterhead text lines ─────────────────────────────────────────────
+  const centerX = pageW / 2;
+
+  let y = margin;
+
+  // "Republic of the Philippines"
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(0, 0, 0);
+  doc.text("Republic of the Philippines", centerX, y, { align: "center" });
+  y += LINE_GAP_SM;
+
+  // "Region IV-B MIMAROPA"
+  doc.text("Region IV-B MIMAROPA", centerX, y, { align: "center" });
+  y += LINE_GAP_LG;
+
+  // "BACO COMMUNITY COLLEGE"
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("BACO COMMUNITY COLLEGE", centerX, y, { align: "center" });
+  y += LINE_GAP_LG;
+
+  // "Poblacion, Baco, Oriental Mindoro 5201"
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.text("Poblacion, Baco, Oriental Mindoro 5201", centerX, y, { align: "center" });
+  y += LINE_GAP_SM;
+
+  // "Email: bccbaco@gmail.com"
+  doc.text("Email: bccbaco@gmail.com", centerX, y, { align: "center" });
+
+  // ── Logo — vertically centered on the text block ──────────────────────
+  const blockTop  = margin;
+  const blockBot  = y;
+  const logoY     = blockTop + (blockBot - blockTop) / 2 - LOGO_SIZE / 2;
+
+  if (logoBase64) {
+    try {
+      const fmt = logoBase64.startsWith("data:image/png") ? "PNG" : "JPEG";
+      doc.addImage(logoBase64, fmt, margin, logoY, LOGO_SIZE, LOGO_SIZE);
+    } catch (e) {
+      console.warn("BCC PDF: could not embed logo –", e.message);
+    }
+  }
+
+  // ── Divider ───────────────────────────────────────────────────────────
+  y += DIVIDER_PAD;
+  doc.setLineWidth(0.4);
+  doc.setDrawColor(0, 0, 0);
+  doc.line(margin, y, pageW - margin, y);
+  y += DIVIDER_PAD;
+
+  // ── Sub-header: report title / program line ───────────────────────────
+  const subText = programLabel
+    ? `LIST OF ENROLLED STUDENTS IN THE PROGRAM OF ${programLabel.toUpperCase()}`
+    : title.toUpperCase();
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+
+  // Wrap long program names; each line advances y
+  const maxTextWidth = pageW - margin * 2;
+  const titleLines   = doc.splitTextToSize(subText, maxTextWidth);
+  doc.text(titleLines, margin, y);
+  y += titleLines.length * SUB_LINE_GAP;
+
+  // ── Meta lines ────────────────────────────────────────────────────────
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text(`Generated: ${new Date().toLocaleString("en-PH")}`, margin, y);
+  y += META_GAP;
+  doc.text(`Total Records: ${recordCount}`, margin, y);
+  y += BOTTOM_PAD;
+
+  return y; // ← first table row starts here
+};
+
+/**
  * Download a professional PDF report with school letterhead.
  *
- * @param {Function} jsPDFLib   – jsPDF constructor
- * @param {Function} autoTableLib – jspdf-autotable function
- * @param {Array}    data        – array of row objects
+ * @param {Function} jsPDFLib      – jsPDF constructor
+ * @param {Function} autoTableLib  – jspdf-autotable function
+ * @param {Array}    data          – array of row objects
  * @param {Object}   options
- *   @param {string}   options.title         – report sub-title, e.g. "Students Report"
- *   @param {string}   options.programLabel  – shown in "List of Enrolled Students in the Program of …"
- *                                             leave blank to omit that line
- *   @param {string}   options.orientation   – "landscape" | "portrait" (default "landscape")
- *   @param {string[]} options.headers       – field keys to include (default: all keys)
- *   @param {boolean}  options.includeTimestamps – include created_at / updated_at (default false)
- *   @param {string}   options.logoBase64    – optional base64 PNG/JPEG for the school logo
- *   @param {string}   options.filename      – override auto-generated filename
+ *   @param {string}   options.title              – report sub-title, e.g. "Students Report"
+ *   @param {string}   options.programLabel       – shown in "List of Enrolled Students in the Program of …"
+ *                                                  leave blank to omit that line
+ *   @param {string}   options.orientation        – "landscape" | "portrait" (default "landscape")
+ *   @param {string[]} options.headers            – field keys to include (default: all keys)
+ *   @param {boolean}  options.includeTimestamps  – include created_at / updated_at (default false)
+ *   @param {string}   options.logoBase64         – optional pre-fetched base64 PNG/JPEG
+ *   @param {string}   options.filename           – override auto-generated filename
  */
-export const downloadPDF = (jsPDFLib, autoTableLib, data, options = {}) => {
+export const downloadPDF = async (jsPDFLib, autoTableLib, data, options = {}) => {
   if (!data || data.length === 0) return;
 
   const {
@@ -131,100 +329,39 @@ export const downloadPDF = (jsPDFLib, autoTableLib, data, options = {}) => {
     orientation = "landscape",
     headers = Object.keys(data[0]),
     includeTimestamps = false,
-    logoBase64 = null,
+    logoBase64: passedLogo = null,
     filename: customFilename = null,
   } = options;
 
-  // Filter timestamp columns unless requested
+  // ── Resolve logo ────────────────────────────────────────────────────────
+  const BCC_LOGO_URL =
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT3u0c9J31s_J2gtizcwzb-YcqU5Rr25m9Irw&s";
+
+  const logoBase64 = passedLogo ?? (await fetchLogoAsBase64(BCC_LOGO_URL));
+
+  // ── Column filter ───────────────────────────────────────────────────────
   const cols = includeTimestamps
     ? headers
     : headers.filter(
         (h) => !["created_at", "updated_at", "deleted_at"].includes(h),
       );
 
-  const doc = new jsPDFLib({ orientation, unit: "mm", format: "a4" });
+  const doc   = new jsPDFLib({ orientation, unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 14;
 
-  // ── Colours ──────────────────────────────────────────────────────────────
-  const NAVY   = [30, 58, 138];   // header bar background
-  const WHITE  = [255, 255, 255];
-  const GRAY   = [100, 116, 139];
-  const LIGHT  = [241, 245, 249];
+  // ── Draw letterhead and get dynamic table start Y ──────────────────────
+  const tableStartY = drawLetterhead(doc, {
+    pageW,
+    margin,
+    logoBase64,
+    title,
+    programLabel,
+    recordCount: data.length,
+  });
 
-  // ── Header band ──────────────────────────────────────────────────────────
-  const headerH = 28;
-  doc.setFillColor(...NAVY);
-  doc.rect(0, 0, pageW, headerH, "F");
-
-  // Logo (if supplied)
-  const logoSize = 20;
-  const logoX = pageW - margin - logoSize;
-  const logoY = (headerH - logoSize) / 2;
-  if (logoBase64) {
-    try {
-      doc.addImage(logoBase64, "PNG", logoX, logoY, logoSize, logoSize);
-    } catch {
-      // silently skip bad image
-    }
-  } else {
-    // Placeholder circle for logo area
-    doc.setDrawColor(...WHITE);
-    doc.setLineWidth(0.5);
-    doc.circle(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2, "S");
-    doc.setTextColor(...WHITE);
-    doc.setFontSize(6);
-    doc.text("LOGO", logoX + logoSize / 2, logoY + logoSize / 2 + 2, {
-      align: "center",
-    });
-  }
-
-  // School name (left of logo)
-  doc.setTextColor(...WHITE);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.text("Baco Community College", margin, 11);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text("Baco, Oriental Mindoro | bcc.edu.ph", margin, 17);
-
-  // ── Sub-header strip ─────────────────────────────────────────────────────
-  const subH = programLabel ? 16 : 10;
-  doc.setFillColor(...LIGHT);
-  doc.rect(0, headerH, pageW, subH, "F");
-
-  doc.setTextColor(...NAVY);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-
-  if (programLabel) {
-    doc.text(`List of Enrolled Students in the Program of ${programLabel}`, margin, headerH + 6);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(...GRAY);
-    doc.text(
-      `Generated: ${new Date().toLocaleString("en-PH")}   |   Total Records: ${data.length}`,
-      margin,
-      headerH + 12,
-    );
-  } else {
-    doc.text(title, margin, headerH + 6.5);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(...GRAY);
-    doc.text(
-      `Generated: ${new Date().toLocaleString("en-PH")}   |   Total Records: ${data.length}`,
-      pageW - margin,
-      headerH + 6.5,
-      { align: "right" },
-    );
-  }
-
-  // ── Table ─────────────────────────────────────────────────────────────────
-  const tableStartY = headerH + subH + 3;
-
+  // ── Table ────────────────────────────────────────────────────────────────
   autoTableLib(doc, {
     startY: tableStartY,
     margin: { left: margin, right: margin },
@@ -241,40 +378,52 @@ export const downloadPDF = (jsPDFLib, autoTableLib, data, options = {}) => {
       fontSize: 8,
       cellPadding: { top: 3, bottom: 3, left: 4, right: 4 },
       overflow: "linebreak",
-      textColor: [30, 41, 59],
+      textColor: [0, 0, 0],
+      lineColor: [0, 0, 0],
+      lineWidth: 0.1,
     },
     headStyles: {
-      fillColor: NAVY,
-      textColor: WHITE,
+      fillColor: false,
+      textColor: [0, 0, 0],
       fontStyle: "bold",
-      halign: "left",
+      halign: "center",
+      valign: "middle",
       fontSize: 8,
+      lineWidth: 0.1,
+      lineColor: [0, 0, 0],
     },
     alternateRowStyles: {
-      fillColor: [248, 250, 252],
+      fillColor: [245, 245, 245],
     },
-    tableLineColor: [203, 213, 225],
-    tableLineWidth: 0.2,
-    // Footer with page numbers
+    tableLineColor: [0, 0, 0],
+    tableLineWidth: 0.1,
+    // Re-draw the letterhead on every subsequent page
+    didAddPage: (hookData) => {
+      if (hookData.pageNumber > 1) {
+        drawLetterhead(doc, {
+          pageW,
+          margin,
+          logoBase64,
+          title,
+          programLabel,
+          recordCount: data.length,
+        });
+      }
+    },
     didDrawPage: (hookData) => {
-      const pg = hookData.pageNumber;
+      const pg    = hookData.pageNumber;
       const total = doc.internal.getNumberOfPages();
       doc.setFontSize(7);
-      doc.setTextColor(...GRAY);
-      doc.text(
-        `Page ${pg} of ${total}`,
-        pageW / 2,
-        pageH - 6,
-        { align: "center" },
-      );
-      doc.text("Baco Community College – Confidential", margin, pageH - 6);
+      doc.setTextColor(80, 80, 80);
+      doc.text(`Page ${pg} of ${total}`, pageW / 2, pageH - 6, { align: "center" });
+      doc.text("Baco Community College – Registrar Office", margin, pageH - 6);
     },
   });
 
-  // ── Save ──────────────────────────────────────────────────────────────────
+  // ── Save ─────────────────────────────────────────────────────────────────
   const safeTitle = title.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-  const dateStr = new Date().toISOString().split("T")[0];
-  const outFile = customFilename || `BCC_${safeTitle}_${dateStr}.pdf`;
+  const dateStr   = new Date().toISOString().split("T")[0];
+  const outFile   = customFilename || `BCC_${safeTitle}_${dateStr}.pdf`;
   doc.save(outFile);
 };
 

@@ -3,16 +3,18 @@ import axios from "axios";
 import Select from "react-select";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import api from "../../../api/axios";
 import {
   ClipboardList,
   Search,
   Plus,
   Pencil,
   Trash2,
+  FileDown,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-
+import { exportRegistrationFormPDF } from "../../../utils/exportRegistrationForm";
 const toDateInputValue = (value) => {
   if (!value) return "";
   const stringValue = String(value);
@@ -635,6 +637,65 @@ const EnrollmentRecords = () => {
       console.error("Error fetching students:", err);
     }
   };
+const handleExportPDF = async (enrollment) => {
+  const firstName = localStorage.getItem("firstName") || "";
+  const lastName  = localStorage.getItem("lastName")  || "";
+  const role      = localStorage.getItem("role")      || "";
+
+let currentUser = {
+  full_name: "",
+  position: "",
+};
+
+try {
+  const res = await api.get(`/api/users/${someUserId}`);
+  const u = res.data;
+
+  currentUser = {
+    full_name: `${u.first_name} ${u.last_name}`.trim(),
+    position: u.employee_details?.position_title || "Registrar",
+  };
+} catch {
+  currentUser = {
+    full_name: `${firstName} ${lastName}`.trim() || "Registrar",
+    position: "Registrar",
+  };
+}
+  // Student profile
+  let studentInfo = {};
+  try {
+    const res = await api.get(`/api/users/${enrollment.student_id}`);
+    const u = res.data;
+    studentInfo = {
+      student_number: u.student_number,
+      full_name:      `${u.first_name} ${u.last_name}`,
+      address:        u.address      || "",
+      birthday:       u.birthday     || "",
+      age:            u.age          || "",
+      gender:         u.gender       || "",
+      civil_status:   u.civil_status || "",
+      religion:       u.religion     || "",
+      nationality:    u.nationality  || "",
+      cell_phone:     u.phone        || "",
+      email:          u.email        || "",
+      program_year:   `${u.program || "N/A"} / ${enrollment.year_level || ""}`,
+    };
+  } catch {}
+
+  // Invoice for this student/period
+  let invoice = {};
+  try {
+    const res = await api.get(`/api/invoices`, {
+      params: { academic_period_id: enrollment.period_id },
+    });
+    const invoices = res.data?.data || res.data || [];
+    invoice = invoices.find(
+      (inv) => String(inv.student_id) === String(enrollment.student_id)
+    ) || {};
+  } catch {}
+
+  await exportRegistrationFormPDF(enrollment, studentInfo, currentUser, invoice);
+};
 
   const fetchCourses = async () => {
     try {
@@ -897,6 +958,13 @@ const EnrollmentRecords = () => {
                     >
                       <Trash2 size={16} />
                     </button>
+                     <button
+    onClick={() => handleExportPDF(enrollment)}
+    className="text-green-600 hover:text-green-800"
+    title="Download Registration Form"
+  >
+    <FileDown size={16} />
+  </button>
                   </td>
                 </tr>
               ))

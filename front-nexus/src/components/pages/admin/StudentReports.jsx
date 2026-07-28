@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Users,
   UserCheck,
@@ -7,24 +7,13 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
-  BookOpen,
   ClipboardCheck,
   Star,
   Download,
 } from "lucide-react";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-} from "recharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { downloadPDF } from "../../../utils/exportHelpers";
+import { downloadPDF, generateCSV, downloadCSV } from "../../../utils/exportHelpers";
 
 const BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -32,47 +21,40 @@ const TABS = [
   { id: "students",    label: "Students",    icon: Users },
   { id: "enrollments", label: "Enrollments", icon: GraduationCap },
   { id: "grades",      label: "Grades",      icon: Star },
- 
 ];
 
 const COLUMNS = {
   students:    ["Student No.", "Name", "Program", "Year Level", "GPA", "Status"],
   enrollments: ["Enrollment ID", "Student", "Program", "Academic Year", "Units", "Status"],
   grades:      ["Student", "Course", "Period", "Raw Grade", "Final Grade", "Status"],
-
 };
 
 const STATUS_OPTIONS = {
   students:    [["Active","Active"],["Inactive","Inactive"],["Graduated","Graduated"]],
   enrollments: [["enrolled","Enrolled"],["pending","Pending"],["dropped","Dropped"]],
   grades:      [["approved","Approved"],["pending","Pending"],["failed","Failed"]],
-
 };
 
-// Map tab → human-readable report title
 const REPORT_TITLES = {
   students:    "Students Report",
   enrollments: "Enrollments Report",
   grades:      "Grades Report",
-
 };
 
-// Enrollment trend removed per request
-
 const StudentReports = () => {
-  const [activeTab,        setActiveTab]        = useState("students");
-  const [data,             setData]             = useState([]);
-  const [loading,          setLoading]          = useState(false);
-  const [statistics,       setStatistics]       = useState({ students: {}, enrollments: {}, attendance: {} });
-  const [programs,         setPrograms]         = useState([]);
-  const [selectedProgramId,setSelectedProgramId] = useState("all");
-  // enrollment trend removed
-  const [searchTerm,       setSearchTerm]       = useState("");
-  const [statusFilter,     setStatusFilter]     = useState("all");
-  const [yearLevelFilter,  setYearLevelFilter]  = useState("all");
-  const [attendanceType,   setAttendanceType]   = useState("student");
-  const [currentPage,      setCurrentPage]      = useState(1);
-  const [pdfLoading,       setPdfLoading]       = useState(false);
+  const [activeTab,                setActiveTab]               = useState("students");
+  const [data,                     setData]                    = useState([]);
+  const [loading,                  setLoading]                 = useState(false);
+  const [statistics,               setStatistics]              = useState({ students: {}, enrollments: {}, attendance: {} });
+  const [programs,                 setPrograms]                = useState([]);
+  const [selectedProgramId,        setSelectedProgramId]       = useState("all");
+  const [selectedStudentProgramId, setSelectedStudentProgramId] = useState("all");
+  const [searchTerm,               setSearchTerm]              = useState("");
+  const [statusFilter,             setStatusFilter]            = useState("all");
+  const [yearLevelFilter,          setYearLevelFilter]         = useState("all");
+  const [attendanceType,           setAttendanceType]          = useState("student");
+  const [currentPage,              setCurrentPage]             = useState(1);
+  const [pdfLoading,               setPdfLoading]              = useState(false);
   const itemsPerPage = 10;
 
   // Fetch statistics once on mount
@@ -83,6 +65,7 @@ const StudentReports = () => {
       .catch(console.error);
   }, []);
 
+  // Fetch programs once on mount
   useEffect(() => {
     fetch(`${BASE}/api/programs`)
       .then((r) => r.json())
@@ -97,9 +80,18 @@ const StudentReports = () => {
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams();
+
     if (statusFilter !== "all") params.set("status", statusFilter);
-    if (activeTab === "students" && yearLevelFilter !== "all") params.set("year_level", yearLevelFilter);
-    if (activeTab === "enrollments" && selectedProgramId !== "all") params.set("program_id", selectedProgramId);
+
+    if (activeTab === "students") {
+      if (yearLevelFilter !== "all")          params.set("year_level", yearLevelFilter);
+      if (selectedStudentProgramId !== "all") params.set("program_id", selectedStudentProgramId);
+    }
+
+    if (activeTab === "enrollments" && selectedProgramId !== "all") {
+      params.set("program_id", selectedProgramId);
+    }
+
     if (activeTab === "attendance") params.set("type", attendanceType);
 
     const ENDPOINTS = {
@@ -124,32 +116,32 @@ const StudentReports = () => {
       .finally(() => setLoading(false));
 
     return () => controller.abort();
-  }, [activeTab, statusFilter, yearLevelFilter, attendanceType, selectedProgramId]);
+  }, [activeTab, statusFilter, yearLevelFilter, attendanceType, selectedProgramId, selectedStudentProgramId]);
 
-  // trend fetching removed
-
-  // Reset page & filters when tab changes
+  // Reset filters when tab changes
   useEffect(() => {
     setStatusFilter("all");
     setYearLevelFilter("all");
     setSearchTerm("");
     setCurrentPage(1);
+    setSelectedStudentProgramId("all");
+    setSelectedProgramId("all");
   }, [activeTab]);
 
   useEffect(() => { setCurrentPage(1); }, [searchTerm]);
 
-  // Client-side search filter
-  const filtered = data.filter((item) => {
-    if (!searchTerm.trim()) return true;
+  // Client-side filter — search only; program/year/status already filtered server-side
+  const filtered = useMemo(() => {
+    if (!searchTerm.trim()) return data;
     const q = searchTerm.toLowerCase();
-    return Object.values(item).some((v) => String(v ?? "").toLowerCase().includes(q));
-  });
+    return data.filter((item) =>
+      Object.values(item).some((v) => String(v ?? "").toLowerCase().includes(q))
+    );
+  }, [data, searchTerm]);
 
+  // Pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
   const pageData   = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const selectedProgram = programs.find((program) => String(program.id) === String(selectedProgramId));
-
-  // trend chart data removed
 
   // Windowed pagination (max 7 visible page buttons)
   const pageWindow = () => {
@@ -162,53 +154,84 @@ const StudentReports = () => {
     return [...pages].sort((a, b) => a - b);
   };
 
-  // Build the "program of" label from the filtered data (for students/enrollments)
+  // Build the "program of" label from filtered data
   const getProgramLabel = () => {
     if (activeTab === "students" || activeTab === "enrollments") {
-      const programs = [...new Set(filtered.map((r) => r.program_name || r.program_code).filter(Boolean))];
-      if (programs.length === 1) return programs[0];
-      if (programs.length > 1)   return programs.join(", ");
+      const programNames = [...new Set(filtered.map((r) => r.program_name || r.program_code).filter(Boolean))];
+      if (programNames.length === 1) return programNames[0];
+      if (programNames.length > 1)   return programNames.join(", ");
     }
     return "";
   };
+
+  // Shared shape helpers — same columns used by both PDF and CSV per tab
+// Replace the existing getExportShape() inside StudentReports.jsx with this:
+
+const getExportShape = () => {
+  if (activeTab === "students") {
+    return {
+      rows: filtered.map((row) => ({
+        student_number:  row.student_number || row.student_id || "",
+        full_name:       row.student_name   || `${row.first_name || ""} ${row.last_name || ""}`.trim(),
+        program_applied: row.program_name   || row.program_code || "",
+        year_level:      row.year_level     || "",
+      })),
+      headers: ["student_number", "full_name", "program_applied", "year_level"],
+    };
+  }
+
+  if (activeTab === "enrollments") {
+    return {
+      rows: filtered.map((row) => ({
+        enrollment_id: row.enrollment_id || "",
+        student_name:  row.student_name  || "",
+        program_code:  row.program_code  || "",
+        academic_year: row.academic_year && row.semester
+                         ? `${row.academic_year} – ${row.semester}`
+                         : row.academic_year || "",
+        total_units:   row.total_units ?? 0,
+        status:        row.enrollment_status || "",
+      })),
+      headers: ["enrollment_id", "student_name", "program_code", "academic_year", "total_units", "status"],
+    };
+  }
+
+  return {
+    rows:    filtered,
+    headers: filtered.length ? Object.keys(filtered[0]) : [],
+  };
+};
 
   // PDF Export
   const exportPDF = async () => {
     if (!filtered.length || pdfLoading) return;
     setPdfLoading(true);
     try {
-      const tabLabel    = TABS.find((t) => t.id === activeTab)?.label || activeTab;
-      const reportTitle = REPORT_TITLES[activeTab] || `${tabLabel} Report`;
+      const reportTitle = REPORT_TITLES[activeTab] || `${activeTab} Report`;
       const program     = getProgramLabel();
+      const { rows, headers } = getExportShape();
 
-      if (activeTab === "students") {
-        const studentPdfData = filtered.map((row) => ({
-          student_number: row.student_number || row.student_id || "",
-          full_name: row.student_name || `${row.first_name || ""} ${row.last_name || ""}`.trim(),
-          program_applied: row.program_name || row.program_code || "",
-        }));
-
-        downloadPDF(jsPDF, autoTable, studentPdfData, {
-          title: reportTitle,
-          programLabel: program,
-          orientation: "portrait",
-          headers: ["student_number", "full_name", "program_applied"],
-          includeTimestamps: false,
-        });
-        return;
-      }
-
-      downloadPDF(jsPDF, autoTable, filtered, {
-        title:        reportTitle,
-        programLabel: program,
-        orientation:  "portrait",
-        headers:      Object.keys(filtered[0]),
+      downloadPDF(jsPDF, autoTable, rows, {
+        title:             reportTitle,
+        programLabel:      program,
+        orientation:       "portrait",
+        headers,
         includeTimestamps: false,
       });
     } finally {
       setPdfLoading(false);
     }
   };
+
+/*   // CSV Export
+  const exportCSV = () => {
+    if (!filtered.length) return;
+    const tabLabel  = TABS.find((t) => t.id === activeTab)?.label || activeTab;
+    const dateStr   = new Date().toISOString().split("T")[0];
+    const { rows, headers } = getExportShape();
+    const csv       = generateCSV(rows, { headers, includeTimestamps: false });
+    downloadCSV(csv, `BCC_${tabLabel.replace(/\s+/g, "_")}_${dateStr}.csv`);
+  }; */
 
   // Status badge helper
   const badge = (status) => {
@@ -262,41 +285,6 @@ const StudentReports = () => {
             <td className="px-4 py-2">{item.raw_grade ?? "—"}</td>
             <td className="px-4 py-2">{item.final_grade ?? "—"}</td>
             <td className="px-4 py-2">{badge(item.status)}</td>
-          </>
-        );
-        break;
-      case "attendance":
-        cells = (
-          <>
-            <td className="px-4 py-2">{item.attendance_date ? new Date(item.attendance_date).toLocaleDateString() : "—"}</td>
-            <td className="px-4 py-2 font-semibold text-slate-900">{item.student_name || item.staff_name}</td>
-            <td className="px-4 py-2">{item.course_code || item.department}</td>
-            <td className="px-4 py-2">{item.time_in || "—"}</td>
-            <td className="px-4 py-2">{badge(item.status)}</td>
-          </>
-        );
-        break;
-      case "library":
-        cells = (
-          <>
-            <td className="px-4 py-2">{item.transaction_id}</td>
-            <td className="px-4 py-2 font-semibold text-slate-900">{item.borrower_name || item.student_name}</td>
-            <td className="px-4 py-2">{item.book_title}</td>
-            <td className="px-4 py-2">{item.borrow_date  ? new Date(item.borrow_date).toLocaleDateString()  : "—"}</td>
-            <td className="px-4 py-2">{item.due_date     ? new Date(item.due_date).toLocaleDateString()     : "—"}</td>
-            <td className="px-4 py-2">{item.return_date  ? new Date(item.return_date).toLocaleDateString()  : "—"}</td>
-            <td className="px-4 py-2">{badge(item.status)}</td>
-          </>
-        );
-        break;
-      case "clearances":
-        cells = (
-          <>
-            <td className="px-4 py-2 font-semibold text-slate-900">{item.student_name}</td>
-            <td className="px-4 py-2">{item.academic_year}</td>
-            <td className="px-4 py-2">{item.semester}</td>
-            <td className="px-4 py-2">{badge(item.status)}</td>
-            <td className="px-4 py-2">{item.updated_at ? new Date(item.updated_at).toLocaleDateString() : "—"}</td>
           </>
         );
         break;
@@ -384,6 +372,7 @@ const StudentReports = () => {
 
         {/* Filter Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Search */}
           <div className="relative flex-grow max-w-xs">
             <input
               type="text"
@@ -396,6 +385,39 @@ const StudentReports = () => {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+
+            {/* Students tab: Program filter */}
+            {activeTab === "students" && (
+              <select
+                value={selectedStudentProgramId}
+                onChange={(e) => setSelectedStudentProgramId(e.target.value)}
+                className="px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              >
+                <option value="all">All Programs</option>
+                {programs.map((program) => (
+                  <option key={program.id} value={program.id}>
+                    {program.code ? `${program.code} - ` : ""}{program.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Students tab: Year Level filter */}
+            {activeTab === "students" && (
+              <select
+                value={yearLevelFilter}
+                onChange={(e) => setYearLevelFilter(e.target.value)}
+                className="px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              >
+                <option value="all">All Year Levels</option>
+                <option value="1st Year">1st Year</option>
+                <option value="2nd Year">2nd Year</option>
+                <option value="3rd Year">3rd Year</option>
+                <option value="4th Year">4th Year</option>
+              </select>
+            )}
+
+            {/* Enrollments tab: Program filter */}
             {activeTab === "enrollments" && (
               <select
                 value={selectedProgramId}
@@ -411,20 +433,7 @@ const StudentReports = () => {
               </select>
             )}
 
-            {activeTab === "students" && (
-              <select
-                value={yearLevelFilter}
-                onChange={(e) => setYearLevelFilter(e.target.value)}
-                className="px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-              >
-                <option value="all">All Year Levels</option>
-                <option value="1">1st Year</option>
-                <option value="2">2nd Year</option>
-                <option value="3">3rd Year</option>
-                <option value="4">4th Year</option>
-              </select>
-            )}
-
+            {/* Attendance tab: Type filter */}
             {activeTab === "attendance" && (
               <select
                 value={attendanceType}
@@ -436,6 +445,7 @@ const StudentReports = () => {
               </select>
             )}
 
+            {/* Status filter (all tabs) */}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -447,23 +457,42 @@ const StudentReports = () => {
               ))}
             </select>
 
-            <div className="relative group">
-              <button
-                onClick={exportPDF}
-                disabled={pdfLoading || filtered.length === 0}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md text-sm font-medium transition-colors shadow-sm"
-              >
-                <Download size={14} />
-                {pdfLoading ? "Generating…" : "Export PDF"}
-              </button>
-              <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 hidden group-hover:block bg-slate-800 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap z-10">
-                Download professional PDF report
-              </span>
+            {/* Export Buttons */}
+            <div className="flex items-center gap-2">
+
+              {/* CSV */}
+             {/*  <div className="relative group">
+                <button
+                  onClick={exportCSV}
+                  disabled={filtered.length === 0}
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md text-sm font-medium transition-colors shadow-sm"
+                >
+                  <Download size={14} />
+                  Export CSV
+                </button>
+                <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 hidden group-hover:block bg-slate-800 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap z-10">
+                  Download as spreadsheet (.csv)
+                </span>
+              </div> */}
+
+              {/* PDF */}
+              <div className="relative group">
+                <button
+                  onClick={exportPDF}
+                  disabled={pdfLoading || filtered.length === 0}
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md text-sm font-medium transition-colors shadow-sm"
+                >
+                  <Download size={14} />
+                  {pdfLoading ? "Generating…" : "Export PDF"}
+                </button>
+                <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 hidden group-hover:block bg-slate-800 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap z-10">
+                  Download professional PDF report
+                </span>
+              </div>
+
             </div>
           </div>
         </div>
-
-        {/* Enrollment Trends removed */}
 
         {/* Table */}
         <div className="overflow-x-auto rounded border border-slate-200">
