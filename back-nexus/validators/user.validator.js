@@ -62,7 +62,7 @@ export const registerStudentSchema = z.object({
   middleName: optionalString,
   lastName: nameField("Last name"),
   suffix: z.enum(["", "Jr.", "Sr.", "III", "IV"]).optional().nullable(),
-  dob: z.string().optional().nullable(),
+  dateOfBirth: z.string().optional().nullable(),
   gender: z
     .enum(["Male", "Female", "Non-Binary", "Prefer not to say", ""])
     .optional()
@@ -104,11 +104,13 @@ export const registerStudentSchema = z.object({
 
 export const updateStudentSchema = z.object({
   email: z.string().email("Invalid email format").optional(),
+  password: passwordField.optional(),           // ← DAGDAG ITO
+  confirmPassword: z.string().optional(),
   firstName: nameField("First name").optional(),
   middleName: optionalString,
   lastName: nameField("Last name").optional(),
   suffix: z.enum(["", "Jr.", "Sr.", "III", "IV"]).optional().nullable(),
-  dob: optionalString,
+   dateOfBirth: optionalString, // dob → dateOfBirth
   gender: z
     .enum(["Male", "Female", "Non-Binary", "Prefer not to say", ""])
     .optional()
@@ -157,9 +159,10 @@ export const registerEmployeeSchema = z.object({
   licenseNumber: optionalString,
   accessLevel: optionalString,
 });
-
 export const updateEmployeeSchema = z.object({
   email: z.string().email("Invalid email format").optional(),
+  password: passwordField.optional(),           // ← DAGDAG ITO
+  confirmPassword: z.string().optional(),        // ← DAGDAG ITO (optional)
   firstName: optionalString,
   middleName: optionalString,
   lastName: optionalString,
@@ -169,7 +172,7 @@ export const updateEmployeeSchema = z.object({
   phone: phoneField,
   permanentAddress: optionalString,
   profilePictureBase64: optionalString,
-  status: z.enum(["Active", "Inactive"]).optional(),
+  status: z.enum(["Active", "Inactive", "Leave", "Terminated"]).optional(),
   employeeId: optionalString,
   department: optionalString,
   positionTitle: optionalString,

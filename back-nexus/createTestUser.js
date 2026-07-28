@@ -37,7 +37,11 @@ async function createTestUser() {
     );
 
     const userId = userResult.insertId;
-
+await db.query(
+  `INSERT INTO employee_details (user_id, employee_id, position_title)
+   VALUES (?, ?, ?)`,
+  [userId, "EMP-0000", "Registrar"]
+);
     // Create employee records for admin matching current setup
     await db.query(
       `INSERT INTO employee_records 

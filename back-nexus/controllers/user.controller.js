@@ -4,12 +4,14 @@ import {
   registerStudentService,
   registerEmployeeService,
   getNextStudentNumberService,
+  getNextEmployeeIdService,  // ← dagdag
   loginUserService,
   updateStudentService,
   updateEmployeeService,
   changePasswordService,
   deleteUserService,
 } from "../services/user.service.js";
+
 import { generateToken } from "../helpers/jwt.js";
 import fs from "fs";
 import path from "path";
@@ -205,5 +207,13 @@ export const deleteUser = async (req, res) => {
   } catch (error) {
     console.error("Error deleting user:", error);
     res.status(500).json({ message: "Failed to delete user" });
+  }
+};
+export const previewEmployeeId = async (req, res) => {
+  try {
+    const employeeId = await getNextEmployeeIdService();
+    res.json({ employeeId });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };

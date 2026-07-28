@@ -100,7 +100,27 @@ const getNextStudentNumber = async (connection = db) => {
 
   return `${prefix}-${String(nextSequence).padStart(4, "0")}`;
 };
+// Pagkatapos ng getNextStudentNumber function, dagdag ito:
+const getNextEmployeeId = async (connection = db) => {
+  const [rows] = await connection.query(
+    `SELECT employee_id
+     FROM employee_details
+     WHERE employee_id LIKE 'EMP-%'
+     ORDER BY CAST(SUBSTRING_INDEX(employee_id, '-', -1) AS UNSIGNED) DESC
+     LIMIT 1`
+  );
 
+  const latest = rows[0]?.employee_id;
+  const nextSeq = latest
+    ? Number.parseInt(latest.split("-").pop(), 10) + 1
+    : 1;
+
+  return `EMP-${String(nextSeq).padStart(4, "0")}`;
+};
+
+export const previewNextEmployeeId = async () => {
+  return await getNextEmployeeId();
+};
 const buildStudentDetailPayload = (studentData, studentNumber) => ({
   student_number: studentNumber || pickValue(studentData, "studentNumber"),
   student_type: pickValue(studentData, "studentType"),
@@ -323,90 +343,51 @@ export const createStudentUser = async (userData) => {
 export const previewNextStudentNumber = async () => {
   return await getNextStudentNumber();
 };
-// Create a new employee user (Admin, Faculty, Staff)
 export const createEmployeeUser = async (userData) => {
-  const {
-    email,
-    passwordHash,
-    role = "Employee",
-    firstName,
-    middleName,
-    lastName,
-    suffix,
-    dateOfBirth,
-    gender,
-    phone,
-    permanentAddress,
-    profilePictureUrl,
-    status = "Active",
-    employeeId,
-    department,
-    positionTitle,
-    dateHired,
-    specialization,
-    educationalAttainment,
-    licenseNumber,
-    accessLevel,
-  } = userData;
-
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
 
-    // 1️⃣ Insert into users table
+    // Auto-generate if not provided
+    const employeeId = userData.employeeId || await getNextEmployeeId(connection);
+
+    const { email, passwordHash, role = "Employee", firstName, middleName,
+      lastName, suffix, dateOfBirth, gender, phone, permanentAddress,
+      profilePictureUrl, status = "Active", department, positionTitle,
+      dateHired, specialization, educationalAttainment, licenseNumber,
+      accessLevel } = userData;
+
     const [userResult] = await connection.query(
       `INSERT INTO users
         (email, password_hash, role, first_name, middle_name, last_name, suffix,
          date_of_birth, gender, phone, permanent_address, profile_picture_url, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        email,
-        passwordHash,
-        role,
-        firstName,
-        middleName || null,
-        lastName,
-        suffix || null,
-        dateOfBirth || null,
-        gender || null,
-        phone || null,
-        permanentAddress || null,
-        profilePictureUrl || null,
-        status,
-      ],
+      [email, passwordHash, role, firstName, middleName || null, lastName,
+       suffix || null, dateOfBirth || null, gender || null, phone || null,
+       permanentAddress || null, profilePictureUrl || null, status],
     );
 
     const userId = userResult.insertId;
 
-    // 2️⃣ Insert into employee_details table
     await connection.query(
       `INSERT INTO employee_details
         (user_id, employee_id, department, position_title, date_hired,
          specialization, educational_attainment, license_number, access_level)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        userId,
-        employeeId || null,
-        department || null,
-        positionTitle || null,
-        dateHired || null,
-        specialization || null,
-        educationalAttainment || null,
-        licenseNumber || null,
-        accessLevel || null,
-      ],
+      [userId, employeeId, department || null, positionTitle || null,
+       dateHired || null, specialization || null, educationalAttainment || null,
+       licenseNumber || null, accessLevel || null],
     );
 
     await connection.commit();
     connection.release();
-    return userId;
+    return { userId, employeeId }; // ibalik ang employeeId
   } catch (err) {
     await connection.rollback();
     connection.release();
     throw err;
   }
 };
-
 // Update a student user
 export const updateStudentUser = async (userId, userData) => {
   const {

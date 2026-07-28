@@ -5,7 +5,7 @@ const invoiceController = {
   createInvoice: async (req, res) => {
     try {
       console.log("createInvoice incoming academic_period_id:", req.body?.academic_period_id, "(type:", typeof req.body?.academic_period_id, ")");
-      // Generate invoice number
+
       const results = await Invoice.generateInvoiceNumber();
 
       let invoiceNumber = "INV-000001";
@@ -45,12 +45,12 @@ const invoiceController = {
   getAllInvoices: async (req, res) => {
     try {
       const filters = {
-        student_id: req.query.student_id,
+        student_id:         req.query.student_id,
         academic_period_id: req.query.academic_period_id,
-        status: req.query.status,
-        search: req.query.search,
-        limit: req.query.limit || 50,
-        offset: req.query.offset || 0,
+        status:             req.query.status,
+        search:             req.query.search,
+        limit:              req.query.limit  || 50,
+        offset:             req.query.offset || 0,
       };
 
       const results = await Invoice.getAll(filters);
@@ -235,8 +235,8 @@ const invoiceController = {
     try {
       const filters = {
         academic_period_id: req.query.academic_period_id,
-        start_date: req.query.start_date,
-        end_date: req.query.end_date,
+        start_date:         req.query.start_date,
+        end_date:           req.query.end_date,
       };
 
       const results = await Invoice.getFinancialSummary(filters);
@@ -250,6 +250,35 @@ const invoiceController = {
       res.status(500).json({
         success: false,
         message: "Failed to fetch financial summary",
+        error: err.message,
+      });
+    }
+  },
+
+  // Bulk create invoices from fee setup
+  bulkCreateFromFeeSetup: async (req, res) => {
+    try {
+      const { fee_setup_id } = req.body;
+
+      if (!fee_setup_id) {
+        return res.status(400).json({
+          success: false,
+          message: "fee_setup_id is required",
+        });
+      }
+
+      const result = await Invoice.bulkCreateFromFeeSetup(fee_setup_id, req.user.user_id);
+
+      res.status(201).json({
+        success: true,
+        message: `Bulk invoice creation complete. Created: ${result.created}, Skipped: ${result.skipped}`,
+        data: result,
+      });
+    } catch (err) {
+      console.error("Error bulk creating invoices:", err);
+      res.status(500).json({
+        success: false,
+        message: "Failed to bulk create invoices",
         error: err.message,
       });
     }

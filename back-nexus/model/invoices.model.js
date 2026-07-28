@@ -1,7 +1,6 @@
 import db from "../config/db.js";
 
 const normalizeAcademicPeriodId = async (academicPeriodId) => {
-  // Defensive logging to help trace malformed inputs
   try {
     console.log("normalizeAcademicPeriodId input:", academicPeriodId, "(type:", typeof academicPeriodId, ")");
     if (academicPeriodId === null || academicPeriodId === undefined || academicPeriodId === "") {
@@ -17,7 +16,6 @@ const normalizeAcademicPeriodId = async (academicPeriodId) => {
     if (typeof academicPeriodId === "string") {
       const label = academicPeriodId.trim();
 
-      // Try exact split by ' - ' into school_year and semester
       const match = label.match(/^(.*?)\s*-\s*(.*?)$/);
       if (match) {
         const [, schoolYear, semester] = match;
@@ -29,14 +27,12 @@ const normalizeAcademicPeriodId = async (academicPeriodId) => {
            LIMIT 1`,
           [schoolYear.trim(), semester.trim()],
         );
-
         if (rows.length > 0) {
           console.log("normalizeAcademicPeriodId matched by school_year+semester ->", rows[0].period_id);
           return rows[0].period_id;
         }
       }
 
-      // Try matching by concatenated display format
       const [rows2] = await db.query(
         `SELECT period_id FROM academic_periods WHERE TRIM(CONCAT(school_year, ' - ', semester)) = ? LIMIT 1`,
         [label],
@@ -46,7 +42,6 @@ const normalizeAcademicPeriodId = async (academicPeriodId) => {
         return rows2[0].period_id;
       }
 
-      // Try fuzzy search using LIKE
       const [rows3] = await db.query(
         `SELECT period_id FROM academic_periods WHERE CONCAT(school_year, ' - ', semester) LIKE ? LIMIT 1`,
         [`%${label}%`],
@@ -56,7 +51,6 @@ const normalizeAcademicPeriodId = async (academicPeriodId) => {
         return rows3[0].period_id;
       }
 
-      // If input contains digits that could be an id, try extract
       const digits = academicPeriodId.match(/(\d{1,10})/);
       if (digits) {
         const possibleId = Number(digits[0]);
@@ -87,25 +81,36 @@ const Invoice = {
       (invoice_number, student_id, enrollment_id, academic_period_id, 
        tuition_fee, laboratory_fee, library_fee, athletic_fee, 
        registration_fee, id_fee, miscellaneous_fee, other_fees,
+       admission_fee, entrance_fee, guidance_fee, handbook_fee,
+       medical_dental_fee, computer_fee, cultural_fee, development_fee, nstp_fee,
        subtotal, discount_amount, scholarship_amount, total_amount, 
        invoice_date, due_date, status, notes, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const [result] = await db.query(query, [
       data.invoice_number,
       data.student_id,
       data.enrollment_id,
       academicPeriodId,
-      data.tuition_fee || 0,
-      data.laboratory_fee || 0,
-      data.library_fee || 0,
-      data.athletic_fee || 0,
-      data.registration_fee || 0,
-      data.id_fee || 0,
-      data.miscellaneous_fee || 0,
-      data.other_fees || 0,
+      data.tuition_fee        || 0,
+      data.laboratory_fee     || 0,
+      data.library_fee        || 0,
+      data.athletic_fee       || 0,
+      data.registration_fee   || 0,
+      data.id_fee             || 0,
+      data.miscellaneous_fee  || 0,
+      data.other_fees         || 0,
+      data.admission_fee      || 0,
+      data.entrance_fee       || 0,
+      data.guidance_fee       || 0,
+      data.handbook_fee       || 0,
+      data.medical_dental_fee || 0,
+      data.computer_fee       || 0,
+      data.cultural_fee       || 0,
+      data.development_fee    || 0,
+      data.nstp_fee           || 0,
       data.subtotal,
-      data.discount_amount || 0,
+      data.discount_amount    || 0,
       data.scholarship_amount || 0,
       data.total_amount,
       data.invoice_date,
@@ -230,6 +235,8 @@ const Invoice = {
       SET student_id = ?, enrollment_id = ?, academic_period_id = ?,
           tuition_fee = ?, laboratory_fee = ?, library_fee = ?, athletic_fee = ?,
           registration_fee = ?, id_fee = ?, miscellaneous_fee = ?, other_fees = ?,
+          admission_fee = ?, entrance_fee = ?, guidance_fee = ?, handbook_fee = ?,
+          medical_dental_fee = ?, computer_fee = ?, cultural_fee = ?, development_fee = ?, nstp_fee = ?,
           subtotal = ?, discount_amount = ?, scholarship_amount = ?, 
           total_amount = ?, due_date = ?, status = ?, notes = ?
       WHERE invoice_id = ?
@@ -238,16 +245,25 @@ const Invoice = {
       data.student_id,
       data.enrollment_id,
       academicPeriodId,
-      data.tuition_fee || 0,
-      data.laboratory_fee || 0,
-      data.library_fee || 0,
-      data.athletic_fee || 0,
-      data.registration_fee || 0,
-      data.id_fee || 0,
-      data.miscellaneous_fee || 0,
-      data.other_fees || 0,
+      data.tuition_fee        || 0,
+      data.laboratory_fee     || 0,
+      data.library_fee        || 0,
+      data.athletic_fee       || 0,
+      data.registration_fee   || 0,
+      data.id_fee             || 0,
+      data.miscellaneous_fee  || 0,
+      data.other_fees         || 0,
+      data.admission_fee      || 0,
+      data.entrance_fee       || 0,
+      data.guidance_fee       || 0,
+      data.handbook_fee       || 0,
+      data.medical_dental_fee || 0,
+      data.computer_fee       || 0,
+      data.cultural_fee       || 0,
+      data.development_fee    || 0,
+      data.nstp_fee           || 0,
       data.subtotal,
-      data.discount_amount || 0,
+      data.discount_amount    || 0,
       data.scholarship_amount || 0,
       data.total_amount,
       data.due_date,
@@ -295,7 +311,6 @@ const Invoice = {
 
   // Bulk-create invoices for all enrolled students matching a fee setup
   bulkCreateFromFeeSetup: async (fee_setup_id, created_by) => {
-    // 1. Get fee setup details
     const [feeRows] = await db.query(
       `SELECT tfs.*, p.name as program_name
        FROM tuition_fee_setup tfs
@@ -310,16 +325,24 @@ const Invoice = {
 
     const fee = feeRows[0];
     const subtotal =
-      parseFloat(fee.tuition_fee || 0) +
-      parseFloat(fee.laboratory_fee || 0) +
-      parseFloat(fee.library_fee || 0) +
-      parseFloat(fee.athletic_fee || 0) +
-      parseFloat(fee.registration_fee || 0) +
-      parseFloat(fee.id_fee || 0) +
-      parseFloat(fee.miscellaneous_fee || 0) +
-      parseFloat(fee.other_fees || 0);
+      parseFloat(fee.tuition_fee        || 0) +
+      parseFloat(fee.laboratory_fee     || 0) +
+      parseFloat(fee.library_fee        || 0) +
+      parseFloat(fee.athletic_fee       || 0) +
+      parseFloat(fee.registration_fee   || 0) +
+      parseFloat(fee.id_fee             || 0) +
+      parseFloat(fee.miscellaneous_fee  || 0) +
+      parseFloat(fee.other_fees         || 0) +
+      parseFloat(fee.admission_fee      || 0) +
+      parseFloat(fee.entrance_fee       || 0) +
+      parseFloat(fee.guidance_fee       || 0) +
+      parseFloat(fee.handbook_fee       || 0) +
+      parseFloat(fee.medical_dental_fee || 0) +
+      parseFloat(fee.computer_fee       || 0) +
+      parseFloat(fee.cultural_fee       || 0) +
+      parseFloat(fee.development_fee    || 0) +
+      parseFloat(fee.nstp_fee           || 0);
 
-    // 2. Find enrolled students matching program and year level
     const [students] = await db.query(
       `SELECT DISTINCT sd.user_id, e.enrollment_id
        FROM student_details sd
@@ -336,7 +359,6 @@ const Invoice = {
       return { created: 0, skipped: 0, message: "No matching students found" };
     }
 
-    // 3. Get last invoice number for numbering
     const [lastInv] = await db.query(
       `SELECT invoice_number FROM student_invoices ORDER BY invoice_id DESC LIMIT 1`,
     );
@@ -350,7 +372,6 @@ const Invoice = {
     const today = new Date().toISOString().split("T")[0];
 
     for (const student of students) {
-      // Check if invoice already exists for this student+period
       const [existing] = await db.query(
         `SELECT invoice_id FROM student_invoices 
          WHERE student_id = ? AND academic_period_id = ?`,
@@ -370,22 +391,33 @@ const Invoice = {
          (invoice_number, student_id, enrollment_id, academic_period_id,
           tuition_fee, laboratory_fee, library_fee, athletic_fee,
           registration_fee, id_fee, miscellaneous_fee, other_fees,
+          admission_fee, entrance_fee, guidance_fee, handbook_fee,
+          medical_dental_fee, computer_fee, cultural_fee, development_fee, nstp_fee,
           subtotal, discount_amount, scholarship_amount, total_amount,
           invoice_date, due_date, status, notes, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, 'Pending', ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, 'Pending', ?, ?)`,
         [
           invoiceNumber,
           student.user_id,
           student.enrollment_id || null,
           fee.academic_period_id,
-          fee.tuition_fee || 0,
-          fee.laboratory_fee || 0,
-          fee.library_fee || 0,
-          fee.athletic_fee || 0,
-          fee.registration_fee || 0,
-          fee.id_fee || 0,
-          fee.miscellaneous_fee || 0,
-          fee.other_fees || 0,
+          fee.tuition_fee        || 0,
+          fee.laboratory_fee     || 0,
+          fee.library_fee        || 0,
+          fee.athletic_fee       || 0,
+          fee.registration_fee   || 0,
+          fee.id_fee             || 0,
+          fee.miscellaneous_fee  || 0,
+          fee.other_fees         || 0,
+          fee.admission_fee      || 0,
+          fee.entrance_fee       || 0,
+          fee.guidance_fee       || 0,
+          fee.handbook_fee       || 0,
+          fee.medical_dental_fee || 0,
+          fee.computer_fee       || 0,
+          fee.cultural_fee       || 0,
+          fee.development_fee    || 0,
+          fee.nstp_fee           || 0,
           subtotal,
           subtotal,
           today,
