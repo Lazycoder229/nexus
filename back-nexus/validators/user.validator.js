@@ -51,55 +51,78 @@ export const changePasswordSchema = z
    ========================================== */
 
 export const registerStudentSchema = z.object({
-  // Account
-  systemId: optionalString,
   email: z.string().email("Invalid email format"),
   password: passwordField,
-  confirmPassword: z.string().min(1, "Please confirm your password"),
+  // confirmPassword removed — frontend validates match client-side and doesn't send it
 
-  // Personal
   firstName: nameField("First name"),
   middleName: optionalString,
   lastName: nameField("Last name"),
-  suffix: z.enum(["", "Jr.", "Sr.", "III", "IV"]).optional().nullable(),
   dateOfBirth: z.string().optional().nullable(),
-  gender: z
-    .enum(["Male", "Female", "Non-Binary", "Prefer not to say", ""])
-    .optional()
-    .nullable(),
+  gender: z.string().optional().nullable(),
   phone: phoneField,
-  parentPhone: phoneField,
-  permanentAddress: optionalString,
-  mailingAddress: optionalString,
-  fatherName: optionalString,
-  motherName: optionalString,
 
-  // Academic
+  permanentAddress: optionalString,
   studentNumber: optionalString,
-  course: z.string().min(1, "Course is required"),
-  major: optionalString,
-  yearLevel: z
-    .enum([
-      "",
-      "1st Year",
-      "2nd Year",
-      "3rd Year",
-      "4th Year",
-      "5th Year",
-      "Irregular",
-    ])
-    .optional()
-    .nullable(),
-  previousSchool: optionalString,
-  yearGraduated: z
-    .string()
-    .max(4, "Invalid year")
-    .regex(/^\d{0,4}$/, "Must be a valid year")
-    .optional()
-    .nullable(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
+
+  academicYear: z.string().min(1, "Academic year is required"),
+  semester: z.string().min(1, "Semester is required"),
+  courseProgram: z.string().min(1, "Course/Program is required"), // renamed from `course`
+  yearLevel: z.string().min(1, "Year level is required"),
+  dateRegistered: optionalString,
+
+  civilStatus: optionalString,
+  religion: optionalString,
+  isPwd: optionalString,
+  indigenousPeople: optionalString,
+  zipCode: optionalString,
+  birthPlace: optionalString,
+  citizenship: optionalString,
+  studentType: optionalString,
+
+  elementarySchool: optionalString,
+  elementaryYearGraduated: optionalString,
+  juniorHighSchool: optionalString,
+  juniorHighYearGraduated: optionalString,
+  seniorHighSchool: optionalString,
+  seniorHighYearGraduated: optionalString,
+  collegeProgramAttended: optionalString,
+  schoolYearAttended: optionalString,
+
+  fatherName: optionalString,
+  fatherStatus: optionalString,
+  fatherResidenceStreet: optionalString,
+  fatherResidenceBarangay: optionalString,
+  fatherResidenceCity: optionalString,
+  fatherResidenceProvince: optionalString,
+  fatherResidenceZipCode: optionalString,
+  fatherOccupation: optionalString,
+  fatherPhone: optionalString,
+
+  motherName: optionalString,
+  motherStatus: optionalString,
+  motherResidenceStreet: optionalString,
+  motherResidenceBarangay: optionalString,
+  motherResidenceCity: optionalString,
+  motherResidenceProvince: optionalString,
+  motherResidenceZipCode: optionalString,
+  motherOccupation: optionalString,
+  motherPhone: optionalString,
+
+  guardianName: optionalString,
+  guardianRelationship: optionalString,
+  guardianResidenceStreet: optionalString,
+  guardianResidenceBarangay: optionalString,
+  guardianResidenceCity: optionalString,
+  guardianResidenceProvince: optionalString,
+  guardianResidenceZipCode: optionalString,
+  guardianOccupation: optionalString,
+  guardianPhone: optionalString,
+
+  otherFinancialAssistance: optionalString,
+  scholarshipAssistance1: optionalString,
+  scholarshipAssistance2: optionalString,
+  scholarshipAssistance3: optionalString,
 });
 
 export const updateStudentSchema = z.object({

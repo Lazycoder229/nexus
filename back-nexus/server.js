@@ -81,7 +81,7 @@ const PORT = process.env.PORT || 5000;
 // CORS 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "https://nexus-tau-kohl.vercel.app",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
     exposedHeaders: ["Authorization"],
@@ -129,7 +129,7 @@ app.use("/api", prerequisiteRoutes);
 app.use("/api", enrollmentRoutes);
 app.use("/api", admissionRoutes);
 app.use("/api", courseTransferRoutes);
-app.use("/api/academic-history", academicHistoryRoutes); // ✅
+app.use("/api/academic-history", academicHistoryRoutes); //
 app.use("/api", clearanceRoutes);
 app.use("/api/faculty", facultyRoutes);
 app.use("/api/faculty-assignments", facultyCourseAssignmentRoutes);
