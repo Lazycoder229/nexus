@@ -81,7 +81,7 @@ const PORT = process.env.PORT || 5000;
 // CORS 
 app.use(
   cors({
-    origin: "https://nexus-tau-kohl.vercel.app",
+    origin: "http://localhost:5173",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
     exposedHeaders: ["Authorization"],
@@ -209,8 +209,4 @@ app.use("/api/lms/discussions", lmsDiscussionsRoutes);
 // Nexus AI routes
 app.use("/api", aiRoutes);
 
-/* import bcrypt from "bcrypt";
-
- bcrypt.hash("admin123", 10).then((hash) => console.log(hash));
- */
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

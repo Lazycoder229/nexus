@@ -259,6 +259,10 @@ const KNOWLEDGE_BASE = [
     questions: ["bye", "goodbye", "see you", "see ya", "farewell", "take care"],
     answer: "Goodbye! Come back anytime if you need help with Nexus ERP. 👋",
   },
+  {
+    questions:["code","give me a code","write a code"],
+    answer:"Sorry, I can't help you with that. Please use large language model. Thank you."
+  }
 ];
 
 // Flatten into individual sentence–answer pairs for embedding
@@ -346,7 +350,7 @@ const SYSTEM_PROMPT = `You are Nexus AI, a smart, friendly, and conversational A
 You have two modes:
 1. **ERP Assistant** — Help users navigate and understand the Nexus ERP system.
 2. **General Assistant** — Engage in normal, helpful conversation on any topic (science, math,greetings, writing, jokes, advice, current events, etc.) just like a knowledgeable friend would.
-
+3. **Coding help** - Dont give code to use if they are asking to give a code of anylanguage. Always tell them you dont know the they are talking. Tell them to used coding agents like claude, codex etc. 
 You should NEVER refuse a normal conversation. If someone says "hi", chat with them. If they ask a general question, answer it fully and naturally. Only bring up Nexus ERP when it's relevant.
 
 The Nexus ERP system includes the following modules:

@@ -947,7 +947,7 @@ const LoginLayout = ({ onNavigateToAdmin, onNavigateByRole }) => {
 
   // Handler for successful login
   const handleLoginSuccess = (userData) => {
-    console.log(`Login successful for: ${userData.role}`);
+  /*   console.log(`Login successful for: ${userData.role}`); */
 
     // Save user data (in a real app, this would go to context/local storage)
     setUserRole(userData.role);

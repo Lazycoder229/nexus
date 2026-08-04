@@ -61,28 +61,33 @@ const AcademicCalendar = () => {
     fetchEvents();
     fetchPeriods();
   }, []);
+const fetchEvents = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/api/academic-events`);
+    // ✅ Handle both array and { data: [...] } response
+    const data = Array.isArray(response.data) 
+      ? response.data 
+      : response.data.data || [];
+    setEvents(data);
+  } catch (error) {
+    console.error("Error fetching events:", error);
+    setEvents([]); // ✅ Fallback para hindi mag-crash
+  }
+};
 
-  const fetchEvents = async () => {
-    try {
-      const response = await axios.get(
-        `${API_BASE}/api/academic-events`,
-      );
-      setEvents(response.data);
-    } catch (error) {
-      console.error("Error fetching events:", error);
-    }
-  };
-
-  const fetchPeriods = async () => {
-    try {
-      const response = await axios.get(
-        `${API_BASE}/api/academic-periods`,
-      );
-      setPeriods(response.data);
-    } catch (error) {
-      console.error("Error fetching periods:", error);
-    }
-  };
+const fetchPeriods = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/api/academic-periods`);
+    // ✅ Handle both array and { data: [...] } response
+    const data = Array.isArray(response.data) 
+      ? response.data 
+      : response.data.data || [];
+    setPeriods(data);
+  } catch (error) {
+    console.error("Error fetching periods:", error);
+    setPeriods([]); // ✅ Fallback
+  }
+};
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -506,7 +511,7 @@ const AcademicCalendar = () => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0  bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">

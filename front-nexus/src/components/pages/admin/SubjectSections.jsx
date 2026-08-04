@@ -68,7 +68,7 @@ const SubjectSections = () => {
   const [editMode, setEditMode] = useState(false);
   const [currentSection, setCurrentSection] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterCourse, setFilterCourse] = useState(null);
+
   const [filterPeriod, setFilterPeriod] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -82,15 +82,7 @@ const SubjectSections = () => {
     schedule_time_end: "",
     status: "active",
   });
-  const daysOfWeek = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-  ];
+
   useEffect(() => {
     fetchSections();
     fetchPeriods();

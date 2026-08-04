@@ -491,6 +491,14 @@ const KB = [
       "I can help you with anything related to **Nexus ERP**! Here are some topics you can ask about:\n\n• 📚 Modules (Admissions, Enrollment, Grades, etc.)\n• 👥 User roles and permissions\n• 💰 Finance, Payroll, and Scholarships\n• 🗓️ Scheduling and Academic Calendar\n• 📖 Library Management\n• 🖥️ LMS and Online Learning\n• ⚙️ System Settings and Configuration\n\nJust type your question and I'll answer it! 😊",
     ],
   },
+  {
+    patterns:[
+      "code",
+      "give me code",
+      "help me to write code",
+      "I'm sorry about that. I can't provide your request. If you really want that, Please use large language Model like Chatgpt,Claude. Thank you"
+    ]
+  }
 ];
 
 // ─────────────────────────────────────────────

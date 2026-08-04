@@ -3112,3 +3112,14 @@ ALTER TABLE student_details
 ADD COLUMN model_answer LONGTEXT NULL,
 ADD COLUMN model_answer_file_url VARCHAR(500) NULL,
 ADD COLUMN model_answer_uploaded_at TIMESTAMP NULL DEFAULT NULL;
+
+ALTER TABLE student_invoices
+ADD admission_fee DECIMAL(10,2) DEFAULT 0,
+ADD entrance_fee DECIMAL(10,2) DEFAULT 0,
+ADD guidance_fee DECIMAL(10,2) DEFAULT 0,
+ADD handbook_fee DECIMAL(10,2) DEFAULT 0,
+ADD medical_dental_fee DECIMAL(10,2) DEFAULT 0,
+ADD computer_fee DECIMAL(10,2) DEFAULT 0,
+ADD cultural_fee DECIMAL(10,2) DEFAULT 0,
+ADD development_fee DECIMAL(10,2) DEFAULT 0,
+ADD nstp_fee DECIMAL(10,2) DEFAULT 0;
