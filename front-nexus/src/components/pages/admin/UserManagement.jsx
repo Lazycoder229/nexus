@@ -22,6 +22,19 @@ const formatDateForInput = (dateValue) => {
   return "";
 };
 
+/**
+ * Builds the API payload for a user.
+ *
+ * NOTE ON SCHEMA MISMATCH:
+ * `registerStudentSchema` (create) and `updateStudentSchema` (edit) on the
+ * backend use two different field vocabularies for the same entity
+ * (e.g. create wants `courseProgram`, update wants `course`; create wants
+ * `academicYear`/`semester`/full family+education history, update only
+ * wants the older simple set). Both zod schemas strip unknown keys by
+ * default (neither uses `.strict()`), so it's safe to send the union of
+ * both vocabularies — whichever endpoint receives it will just use the
+ * fields it recognizes and ignore the rest.
+ */
 const buildPayload = (formData, role) => {
   const common = {
     email:            formData.email,
@@ -39,16 +52,74 @@ const buildPayload = (formData, role) => {
   if (role === "Student") {
     return {
       ...common,
-      studentNumber:  formData.studentNumber  || undefined,
-      course:         formData.course         || undefined,
-      major:          formData.major          || undefined,
-      yearLevel:      formData.yearLevel      || undefined,
-      previousSchool: formData.previousSchool || undefined,
-      yearGraduated:  formData.yearGraduated  || undefined,
-      mailingAddress: formData.mailingAddress || undefined,
-      fatherName:     formData.fatherName     || undefined,
-      motherName:     formData.motherName     || undefined,
-      parentPhone:    formData.parentPhone    || undefined,
+      studentNumber: formData.studentNumber || undefined,
+
+      // registerStudentSchema (create) fields
+      academicYear:           formData.academicYear           || undefined,
+      semester:                formData.semester                || undefined,
+      courseProgram:           formData.courseProgram           || undefined,
+      yearLevel:               formData.yearLevel               || undefined,
+      dateRegistered:          formData.dateRegistered          || undefined,
+      civilStatus:             formData.civilStatus             || undefined,
+      religion:                formData.religion                || undefined,
+      isPwd:                   formData.isPwd                   || undefined,
+      indigenousPeople:        formData.indigenousPeople        || undefined,
+      zipCode:                 formData.zipCode                 || undefined,
+      birthPlace:              formData.birthPlace              || undefined,
+      citizenship:             formData.citizenship              || undefined,
+      studentType:             formData.studentType             || undefined,
+
+      elementarySchool:            formData.elementarySchool            || undefined,
+      elementaryYearGraduated:     formData.elementaryYearGraduated     || undefined,
+      juniorHighSchool:            formData.juniorHighSchool            || undefined,
+      juniorHighYearGraduated:     formData.juniorHighYearGraduated     || undefined,
+      seniorHighSchool:            formData.seniorHighSchool            || undefined,
+      seniorHighYearGraduated:     formData.seniorHighYearGraduated     || undefined,
+      collegeProgramAttended:      formData.collegeProgramAttended      || undefined,
+      schoolYearAttended:          formData.schoolYearAttended          || undefined,
+
+      fatherName:              formData.fatherName              || undefined,
+      fatherStatus:             formData.fatherStatus            || undefined,
+      fatherResidenceStreet:    formData.fatherResidenceStreet   || undefined,
+      fatherResidenceBarangay:  formData.fatherResidenceBarangay || undefined,
+      fatherResidenceCity:      formData.fatherResidenceCity     || undefined,
+      fatherResidenceProvince:  formData.fatherResidenceProvince || undefined,
+      fatherResidenceZipCode:   formData.fatherResidenceZipCode  || undefined,
+      fatherOccupation:         formData.fatherOccupation        || undefined,
+      fatherPhone:              formData.fatherPhone             || undefined,
+
+      motherName:               formData.motherName              || undefined,
+      motherStatus:             formData.motherStatus            || undefined,
+      motherResidenceStreet:    formData.motherResidenceStreet   || undefined,
+      motherResidenceBarangay:  formData.motherResidenceBarangay || undefined,
+      motherResidenceCity:      formData.motherResidenceCity     || undefined,
+      motherResidenceProvince:  formData.motherResidenceProvince || undefined,
+      motherResidenceZipCode:   formData.motherResidenceZipCode  || undefined,
+      motherOccupation:         formData.motherOccupation        || undefined,
+      motherPhone:              formData.motherPhone             || undefined,
+
+      guardianName:             formData.guardianName             || undefined,
+      guardianRelationship:     formData.guardianRelationship     || undefined,
+      guardianResidenceStreet:  formData.guardianResidenceStreet  || undefined,
+      guardianResidenceBarangay:formData.guardianResidenceBarangay|| undefined,
+      guardianResidenceCity:    formData.guardianResidenceCity    || undefined,
+      guardianResidenceProvince:formData.guardianResidenceProvince|| undefined,
+      guardianResidenceZipCode: formData.guardianResidenceZipCode || undefined,
+      guardianOccupation:       formData.guardianOccupation       || undefined,
+      guardianPhone:            formData.guardianPhone            || undefined,
+
+      otherFinancialAssistance: formData.otherFinancialAssistance || undefined,
+      scholarshipAssistance1:   formData.scholarshipAssistance1   || undefined,
+      scholarshipAssistance2:   formData.scholarshipAssistance2   || undefined,
+      scholarshipAssistance3:   formData.scholarshipAssistance3   || undefined,
+
+      // updateStudentSchema (edit) compatibility fields — same data, older names
+      course:         formData.courseProgram    || undefined,
+      major:          formData.major            || undefined,
+      previousSchool: formData.previousSchool   || undefined,
+      yearGraduated:  formData.yearGraduated    || undefined,
+      mailingAddress: formData.mailingAddress   || undefined,
+      parentPhone:    formData.parentPhone      || undefined,
     };
   }
 
@@ -77,8 +148,34 @@ const initialCommonState = {
 };
 
 const studentSpecifics = {
-  parentPhone: "", mailingAddress: "", fatherName: "", motherName: "",
-  studentNumber: "", course: "", major: "", yearLevel: "", previousSchool: "", yearGraduated: "",
+  // enrollment
+  studentNumber: "", academicYear: "", semester: "", courseProgram: "", yearLevel: "",
+  dateRegistered: "",
+  // personal / status
+  civilStatus: "", religion: "", isPwd: "", indigenousPeople: "", zipCode: "",
+  birthPlace: "", citizenship: "", studentType: "",
+  // education history
+  elementarySchool: "", elementaryYearGraduated: "",
+  juniorHighSchool: "", juniorHighYearGraduated: "",
+  seniorHighSchool: "", seniorHighYearGraduated: "",
+  collegeProgramAttended: "", schoolYearAttended: "",
+  // father
+  fatherName: "", fatherStatus: "", fatherResidenceStreet: "", fatherResidenceBarangay: "",
+  fatherResidenceCity: "", fatherResidenceProvince: "", fatherResidenceZipCode: "",
+  fatherOccupation: "", fatherPhone: "",
+  // mother
+  motherName: "", motherStatus: "", motherResidenceStreet: "", motherResidenceBarangay: "",
+  motherResidenceCity: "", motherResidenceProvince: "", motherResidenceZipCode: "",
+  motherOccupation: "", motherPhone: "",
+  // guardian
+  guardianName: "", guardianRelationship: "", guardianResidenceStreet: "",
+  guardianResidenceBarangay: "", guardianResidenceCity: "", guardianResidenceProvince: "",
+  guardianResidenceZipCode: "", guardianOccupation: "", guardianPhone: "",
+  // financial assistance
+  otherFinancialAssistance: "", scholarshipAssistance1: "", scholarshipAssistance2: "",
+  scholarshipAssistance3: "",
+  // legacy / edit-only fields (kept so existing records still populate & save correctly)
+  parentPhone: "", mailingAddress: "", major: "", previousSchool: "", yearGraduated: "",
 };
 
 const employeeCommon = {
@@ -222,12 +319,18 @@ const ViewUserModal = ({ isOpen, onClose, user }) => {
     if (user.role === "Student") {
       fields.push(
         { label: "Student Number",    value: user.student_number },
-        { label: "Course / Major",    value: `${user.course || "N/A"} / ${user.major || "N/A"}` },
+        { label: "Academic Year",     value: user.academic_year },
+        { label: "Semester",          value: user.semester },
+        { label: "Course / Program",  value: `${user.course_program || user.course || "N/A"}${user.major ? " / " + user.major : ""}` },
         { label: "Year Level",        value: user.year_level },
-        { label: "Previous School",   value: user.previous_school },
-        { label: "Parent / Guardian", value: user.father_name || user.mother_name },
-        { label: "Parent Phone",      value: user.parent_phone },
+        { label: "Civil Status",      value: user.civil_status },
+        { label: "Student Type",      value: user.student_type },
+        { label: "Previous School",   value: user.previous_school || user.senior_high_school },
+        { label: "Father / Mother",   value: user.father_name || user.mother_name },
+        { label: "Guardian",          value: user.guardian_name },
+        { label: "Parent / Guardian Phone", value: user.parent_phone || user.guardian_phone },
         { label: "Mailing Address",   value: user.mailing_address },
+        { label: "Scholarship / Assistance", value: user.scholarship_assistance1 || user.other_financial_assistance },
       );
     } else {
       fields.push(
@@ -324,13 +427,19 @@ const ViewUserModal = ({ isOpen, onClose, user }) => {
    ------------------------- */
 const UserFormModal = ({ isOpen, onClose, onSubmit, isEditing, selectedRole, onRoleChange, formData, onInputChange, departments, programs }) => {
   const [activeTab, setActiveTab] = useState("personal");
+  const [studentSubTab, setStudentSubTab] = useState("enrollment");
 
-  useEffect(() => { if (isOpen) setActiveTab("personal"); }, [isOpen]);
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab("personal");
+      setStudentSubTab("enrollment");
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const roleOptions = [
-    { value: "Student",    label: "Student" },
+   /*  { value: "Student",    label: "Student" }, */
     { value: "Admin",      label: "Admin" },
     { value: "Faculty",    label: "Faculty" },
     { value: "Staff",      label: "Staff" },
@@ -357,9 +466,41 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, isEditing, selectedRole, onR
     { value: "5th Year", label: "5th Year" },
     { value: "Irregular", label: "Irregular" },
   ];
+  const semesterOptions = [
+    { value: "1st Semester", label: "1st Semester" },
+    { value: "2nd Semester", label: "2nd Semester" },
+    { value: "Summer",       label: "Summer" },
+  ];
+  const civilStatusOptions = [
+    { value: "Single",    label: "Single" },
+    { value: "Married",   label: "Married" },
+    { value: "Widowed",   label: "Widowed" },
+    { value: "Separated", label: "Separated" },
+  ];
+  const studentTypeOptions = [
+    { value: "New Student", label: "New Student" },
+    { value: "Transferee",  label: "Transferee" },
+    { value: "Returnee",    label: "Returnee" },
+    { value: "Continuing",  label: "Continuing" },
+  ];
+  const yesNoOptions = [
+    { value: "Yes", label: "Yes" },
+    { value: "No",  label: "No" },
+  ];
+  const parentStatusOptions = [
+    { value: "Living",   label: "Living" },
+    { value: "Deceased", label: "Deceased" },
+  ];
 
   const isEmployee = ["Admin", "Faculty", "Staff", "HR", "Accounting"].includes(selectedRole);
   const isAutoGeneratedId = !isEditing && !!formData.employeeId;
+
+  const studentSubTabs = [
+    { id: "enrollment", label: "Enrollment" },
+    { id: "education",  label: "Education History" },
+    { id: "family",     label: "Family & Guardian" },
+    { id: "financial",  label: "Financial Assistance" },
+  ];
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -419,31 +560,135 @@ const UserFormModal = ({ isOpen, onClose, onSubmit, isEditing, selectedRole, onR
             {/* ── TAB: ROLE DETAILS — Student ── */}
             {activeTab === "role" && selectedRole === "Student" && (
               <div className="space-y-5">
-                <div>
-                  <SectionDivider title="Student academic details" />
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <TextInput name="studentNumber" label="Student number" value={formData.studentNumber} onChange={onInputChange}
-                      disabled={!isEditing && !!formData.studentNumber} />
-                    <ReactSelectInput name="course" label="Course / program *" value={formData.course} onChange={onInputChange}
-                      placeholder="Select program" options={programs.map((p) => ({ value: p.code, label: `${p.code} - ${p.name}` }))} />
-                    <ReactSelectInput name="yearLevel" label="Year level" value={formData.yearLevel} onChange={onInputChange}
-                      options={yearLevelOptions} placeholder="Select year" />
-                    <TextInput name="major"          label="Major"           value={formData.major}          onChange={onInputChange} />
-                    <TextInput name="previousSchool" label="Previous school" value={formData.previousSchool} onChange={onInputChange} />
-                    <TextInput name="yearGraduated"  label="Year graduated"  value={formData.yearGraduated}  onChange={onInputChange} />
-                    <div className="md:col-span-3">
-                      <TextAreaInput name="mailingAddress" label="Mailing address (if different from permanent)" value={formData.mailingAddress} onChange={onInputChange} />
+                {/* Student sub-tabs */}
+                <div className="flex flex-wrap gap-2 -mt-1 mb-4">
+                  {studentSubTabs.map((t) => (
+                    <button key={t.id} type="button" onClick={() => setStudentSubTab(t.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                        studentSubTab === t.id
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-white text-slate-600 border-slate-300 hover:bg-slate-100"
+                      }`}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Enrollment */}
+                {studentSubTab === "enrollment" && (
+                  <div>
+                    <SectionDivider title="Enrollment details" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <TextInput name="studentNumber" label="Student number" value={formData.studentNumber} onChange={onInputChange}
+                        disabled={!isEditing && !!formData.studentNumber} />
+                      <TextInput name="academicYear" label="Academic year *" placeholder="e.g., 2025-2026" value={formData.academicYear} onChange={onInputChange} required />
+                      <ReactSelectInput name="semester" label="Semester *" value={formData.semester} onChange={onInputChange}
+                        options={semesterOptions} placeholder="Select semester" isClearable={false} />
+                      <ReactSelectInput name="courseProgram" label="Course / program *" value={formData.courseProgram} onChange={onInputChange}
+                        placeholder="Select program" options={programs.map((p) => ({ value: p.code, label: `${p.code} - ${p.name}` }))} />
+                      <ReactSelectInput name="yearLevel" label="Year level *" value={formData.yearLevel} onChange={onInputChange}
+                        options={yearLevelOptions} placeholder="Select year" />
+                      <TextInput type="date" name="dateRegistered" label="Date registered" value={formData.dateRegistered} onChange={onInputChange} />
+                    </div>
+                    <SectionDivider title="Status information" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <ReactSelectInput name="civilStatus" label="Civil status" value={formData.civilStatus} onChange={onInputChange} options={civilStatusOptions} placeholder="Select status" />
+                      <TextInput name="religion" label="Religion" value={formData.religion} onChange={onInputChange} />
+                      <ReactSelectInput name="studentType" label="Student type" value={formData.studentType} onChange={onInputChange} options={studentTypeOptions} placeholder="Select type" />
+                      <ReactSelectInput name="isPwd" label="Person with disability (PWD)" value={formData.isPwd} onChange={onInputChange} options={yesNoOptions} placeholder="Select" isClearable={false} />
+                      <ReactSelectInput name="indigenousPeople" label="Indigenous people (IP)" value={formData.indigenousPeople} onChange={onInputChange} options={yesNoOptions} placeholder="Select" isClearable={false} />
+                      <TextInput name="citizenship" label="Citizenship" value={formData.citizenship} onChange={onInputChange} />
+                      <TextInput name="birthPlace" label="Place of birth" value={formData.birthPlace} onChange={onInputChange} />
+                      <TextInput name="zipCode" label="Zip code" value={formData.zipCode} onChange={onInputChange} />
                     </div>
                   </div>
-                </div>
-                <div>
-                  <SectionDivider title="Parent / guardian information" />
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <TextInput name="fatherName"  label="Father's name"  value={formData.fatherName}  onChange={onInputChange} />
-                    <TextInput name="motherName"  label="Mother's name"  value={formData.motherName}  onChange={onInputChange} />
-                    <TextInput type="tel" name="parentPhone" label="Parent's phone" value={formData.parentPhone} onChange={onInputChange} />
+                )}
+
+                {/* Education History */}
+                {studentSubTab === "education" && (
+                  <div>
+                    <SectionDivider title="Basic education background" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <TextInput name="elementarySchool" label="Elementary school" value={formData.elementarySchool} onChange={onInputChange} />
+                      <TextInput name="elementaryYearGraduated" label="Year graduated (elementary)" value={formData.elementaryYearGraduated} onChange={onInputChange} />
+                      <div className="hidden md:block" />
+                      <TextInput name="juniorHighSchool" label="Junior high school" value={formData.juniorHighSchool} onChange={onInputChange} />
+                      <TextInput name="juniorHighYearGraduated" label="Year graduated (junior high)" value={formData.juniorHighYearGraduated} onChange={onInputChange} />
+                      <div className="hidden md:block" />
+                      <TextInput name="seniorHighSchool" label="Senior high school" value={formData.seniorHighSchool} onChange={onInputChange} />
+                      <TextInput name="seniorHighYearGraduated" label="Year graduated (senior high)" value={formData.seniorHighYearGraduated} onChange={onInputChange} />
+                    </div>
+                    <SectionDivider title="Prior college attendance (if any)" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <TextInput name="collegeProgramAttended" label="College program attended" value={formData.collegeProgramAttended} onChange={onInputChange} />
+                      <TextInput name="schoolYearAttended" label="School year attended" value={formData.schoolYearAttended} onChange={onInputChange} />
+                      <TextInput name="previousSchool" label="Previous school" value={formData.previousSchool} onChange={onInputChange} />
+                      <TextInput name="major" label="Major" value={formData.major} onChange={onInputChange} />
+                      <TextInput name="yearGraduated" label="Year graduated" value={formData.yearGraduated} onChange={onInputChange} />
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Family & Guardian */}
+                {studentSubTab === "family" && (
+                  <div>
+                    <SectionDivider title="Father's information" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <TextInput name="fatherName" label="Father's name" value={formData.fatherName} onChange={onInputChange} />
+                      <ReactSelectInput name="fatherStatus" label="Status" value={formData.fatherStatus} onChange={onInputChange} options={parentStatusOptions} placeholder="Select status" />
+                      <TextInput name="fatherOccupation" label="Occupation" value={formData.fatherOccupation} onChange={onInputChange} />
+                      <TextInput type="tel" name="fatherPhone" label="Phone" value={formData.fatherPhone} onChange={onInputChange} />
+                      <TextInput name="fatherResidenceStreet" label="Street" value={formData.fatherResidenceStreet} onChange={onInputChange} />
+                      <TextInput name="fatherResidenceBarangay" label="Barangay" value={formData.fatherResidenceBarangay} onChange={onInputChange} />
+                      <TextInput name="fatherResidenceCity" label="City / Municipality" value={formData.fatherResidenceCity} onChange={onInputChange} />
+                      <TextInput name="fatherResidenceProvince" label="Province" value={formData.fatherResidenceProvince} onChange={onInputChange} />
+                      <TextInput name="fatherResidenceZipCode" label="Zip code" value={formData.fatherResidenceZipCode} onChange={onInputChange} />
+                    </div>
+                    <SectionDivider title="Mother's information" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <TextInput name="motherName" label="Mother's name" value={formData.motherName} onChange={onInputChange} />
+                      <ReactSelectInput name="motherStatus" label="Status" value={formData.motherStatus} onChange={onInputChange} options={parentStatusOptions} placeholder="Select status" />
+                      <TextInput name="motherOccupation" label="Occupation" value={formData.motherOccupation} onChange={onInputChange} />
+                      <TextInput type="tel" name="motherPhone" label="Phone" value={formData.motherPhone} onChange={onInputChange} />
+                      <TextInput name="motherResidenceStreet" label="Street" value={formData.motherResidenceStreet} onChange={onInputChange} />
+                      <TextInput name="motherResidenceBarangay" label="Barangay" value={formData.motherResidenceBarangay} onChange={onInputChange} />
+                      <TextInput name="motherResidenceCity" label="City / Municipality" value={formData.motherResidenceCity} onChange={onInputChange} />
+                      <TextInput name="motherResidenceProvince" label="Province" value={formData.motherResidenceProvince} onChange={onInputChange} />
+                      <TextInput name="motherResidenceZipCode" label="Zip code" value={formData.motherResidenceZipCode} onChange={onInputChange} />
+                    </div>
+                    <SectionDivider title="Guardian's information (if applicable)" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <TextInput name="guardianName" label="Guardian's name" value={formData.guardianName} onChange={onInputChange} />
+                      <TextInput name="guardianRelationship" label="Relationship to student" value={formData.guardianRelationship} onChange={onInputChange} />
+                      <TextInput name="guardianOccupation" label="Occupation" value={formData.guardianOccupation} onChange={onInputChange} />
+                      <TextInput type="tel" name="guardianPhone" label="Phone" value={formData.guardianPhone} onChange={onInputChange} />
+                      <TextInput type="tel" name="parentPhone" label="Parent/guardian contact phone" value={formData.parentPhone} onChange={onInputChange} />
+                      <TextInput name="guardianResidenceStreet" label="Street" value={formData.guardianResidenceStreet} onChange={onInputChange} />
+                      <TextInput name="guardianResidenceBarangay" label="Barangay" value={formData.guardianResidenceBarangay} onChange={onInputChange} />
+                      <TextInput name="guardianResidenceCity" label="City / Municipality" value={formData.guardianResidenceCity} onChange={onInputChange} />
+                      <TextInput name="guardianResidenceProvince" label="Province" value={formData.guardianResidenceProvince} onChange={onInputChange} />
+                      <TextInput name="guardianResidenceZipCode" label="Zip code" value={formData.guardianResidenceZipCode} onChange={onInputChange} />
+                      <div className="md:col-span-3">
+                        <TextAreaInput name="mailingAddress" label="Mailing address (if different from permanent)" value={formData.mailingAddress} onChange={onInputChange} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Financial Assistance */}
+                {studentSubTab === "financial" && (
+                  <div>
+                    <SectionDivider title="Financial assistance / scholarships" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <TextInput name="scholarshipAssistance1" label="Scholarship / assistance 1" value={formData.scholarshipAssistance1} onChange={onInputChange} />
+                      <TextInput name="scholarshipAssistance2" label="Scholarship / assistance 2" value={formData.scholarshipAssistance2} onChange={onInputChange} />
+                      <TextInput name="scholarshipAssistance3" label="Scholarship / assistance 3" value={formData.scholarshipAssistance3} onChange={onInputChange} />
+                      <div className="md:col-span-3">
+                        <TextAreaInput name="otherFinancialAssistance" label="Other financial assistance" value={formData.otherFinancialAssistance} onChange={onInputChange} />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -666,16 +911,80 @@ const handleRoleChange = (e) => {
       gender:                user.gender                 || "",
       phone:                 user.phone                  || "",
       permanentAddress:      user.permanent_address      || "",
+
+      // student — enrollment
       studentNumber:         user.student_number         || "",
-      course:                user.course                 || "",
-      major:                 user.major                  || "",
-      yearLevel:             user.year_level             || "",
-      previousSchool:        user.previous_school        || "",
-      yearGraduated:         user.year_graduated         || "",
-      mailingAddress:        user.mailing_address        || "",
-      fatherName:            user.father_name            || "",
-      motherName:            user.mother_name            || "",
-      parentPhone:           user.parent_phone           || "",
+      academicYear:          user.academic_year          || "",
+      semester:               user.semester                || "",
+      courseProgram:          user.course_program || user.course || "",
+      yearLevel:              user.year_level              || "",
+      dateRegistered:         formatDateForInput(user.date_registered),
+
+      // student — status
+      civilStatus:            user.civil_status            || "",
+      religion:                user.religion                || "",
+      isPwd:                   user.is_pwd                  || "",
+      indigenousPeople:        user.indigenous_people       || "",
+      zipCode:                 user.zip_code                || "",
+      birthPlace:              user.birth_place             || "",
+      citizenship:             user.citizenship             || "",
+      studentType:             user.student_type            || "",
+
+      // student — education history
+      elementarySchool:            user.elementary_school            || "",
+      elementaryYearGraduated:     user.elementary_year_graduated    || "",
+      juniorHighSchool:            user.junior_high_school           || "",
+      juniorHighYearGraduated:     user.junior_high_year_graduated   || "",
+      seniorHighSchool:            user.senior_high_school           || "",
+      seniorHighYearGraduated:     user.senior_high_year_graduated   || "",
+      collegeProgramAttended:      user.college_program_attended     || "",
+      schoolYearAttended:          user.school_year_attended         || "",
+      previousSchool:              user.previous_school              || "",
+      major:                       user.major                        || "",
+      yearGraduated:               user.year_graduated                || "",
+      mailingAddress:              user.mailing_address              || "",
+
+      // student — father
+      fatherName:               user.father_name               || "",
+      fatherStatus:              user.father_status              || "",
+      fatherResidenceStreet:     user.father_residence_street    || "",
+      fatherResidenceBarangay:   user.father_residence_barangay  || "",
+      fatherResidenceCity:       user.father_residence_city      || "",
+      fatherResidenceProvince:   user.father_residence_province  || "",
+      fatherResidenceZipCode:    user.father_residence_zip_code  || "",
+      fatherOccupation:          user.father_occupation          || "",
+      fatherPhone:               user.father_phone               || "",
+
+      // student — mother
+      motherName:                user.mother_name                || "",
+      motherStatus:               user.mother_status               || "",
+      motherResidenceStreet:      user.mother_residence_street     || "",
+      motherResidenceBarangay:    user.mother_residence_barangay   || "",
+      motherResidenceCity:        user.mother_residence_city       || "",
+      motherResidenceProvince:    user.mother_residence_province   || "",
+      motherResidenceZipCode:     user.mother_residence_zip_code   || "",
+      motherOccupation:           user.mother_occupation           || "",
+      motherPhone:                user.mother_phone                || "",
+
+      // student — guardian
+      guardianName:                user.guardian_name                || "",
+      guardianRelationship:        user.guardian_relationship        || "",
+      guardianResidenceStreet:     user.guardian_residence_street    || "",
+      guardianResidenceBarangay:   user.guardian_residence_barangay  || "",
+      guardianResidenceCity:       user.guardian_residence_city      || "",
+      guardianResidenceProvince:   user.guardian_residence_province  || "",
+      guardianResidenceZipCode:    user.guardian_residence_zip_code  || "",
+      guardianOccupation:          user.guardian_occupation          || "",
+      guardianPhone:               user.guardian_phone               || "",
+      parentPhone:                 user.parent_phone                 || "",
+
+      // student — financial assistance
+      otherFinancialAssistance:   user.other_financial_assistance   || "",
+      scholarshipAssistance1:      user.scholarship_assistance1      || "",
+      scholarshipAssistance2:      user.scholarship_assistance2      || "",
+      scholarshipAssistance3:      user.scholarship_assistance3      || "",
+
+      // employee
       employeeId:            user.employee_id            || "",
       department:            user.department             || "",
       positionTitle:         user.position_title         || "",
@@ -716,6 +1025,12 @@ const handleRoleChange = (e) => {
           const missing = ["email", "firstName", "lastName"].filter((f) => !payload[f]?.trim());
           if (missing.length) {
             alert(`Please fill required fields: ${missing.join(", ")}`);
+            return;
+          }
+        } else {
+          const missing = ["academicYear", "semester", "courseProgram", "yearLevel"].filter((f) => !payload[f]?.toString().trim());
+          if (missing.length) {
+            alert(`Please fill required student fields: ${missing.join(", ")}`);
             return;
           }
         }
@@ -831,7 +1146,7 @@ const handleRoleChange = (e) => {
       email:      u.email      || "",
       role:       u.role       || "",
       id_number:  u.role === "Student" ? u.student_number || "" : u.employee_id || "",
-      department: u.role === "Student" ? u.course || "" : u.department || "",
+      department: u.role === "Student" ? (u.course_program || u.course || "") : u.department || "",
       status:     u.status || "",
     }));
     downloadPDF(jsPDF, autoTable, exportData, {
@@ -971,7 +1286,7 @@ const handleRoleChange = (e) => {
                     </td>
                     <td className="px-4 py-2">
                       <span className="text-slate-800">{user.role === "Student" ? user.student_number : user.employee_id}</span>
-                      <p className="text-xs text-slate-500 mt-0.5">{user.position_title || user.course || "—"}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{user.position_title || user.course_program || user.course || "—"}</p>
                     </td>
                     <td className="px-4 py-2">
                       <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${user.status === "Active" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>

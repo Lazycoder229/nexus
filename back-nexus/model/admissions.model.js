@@ -15,6 +15,15 @@ const normalizeOptionalInt = (value) => {
   return Number.isNaN(parsed) ? null : parsed;
 };
 
+const normalizeOptionalDecimal = (value) => {
+  if (value === null || value === undefined) return null;
+  const stringValue = String(value).trim();
+  if (stringValue === "") return null;
+
+  const parsed = Number.parseFloat(stringValue);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
 // Get all admissions
 export const getAllAdmissions = async () => {
   const [rows] = await db.query(
@@ -61,7 +70,7 @@ export const createAdmission = async (data) => {
       data.year_graduated,
       data.program_applied,
       normalizeOptionalDate(data.application_date),
-      data.entrance_exam_score,
+      normalizeOptionalDecimal(data.entrance_exam_score),
       normalizeOptionalDate(data.interview_date),
       data.interview_notes,
       data.status || "Pending",
@@ -97,7 +106,7 @@ export const updateAdmission = async (id, data) => {
       data.year_graduated,
       data.program_applied,
       normalizeOptionalDate(data.application_date),
-      data.entrance_exam_score,
+      normalizeOptionalDecimal(data.entrance_exam_score),
       normalizeOptionalDate(data.interview_date),
       data.interview_notes,
       data.status,
