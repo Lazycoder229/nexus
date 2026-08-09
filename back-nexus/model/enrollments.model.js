@@ -238,8 +238,47 @@ export const updateEnrollment = async (
 
 // Delete enrollment
 export const deleteEnrollment = async (id) => {
-  await db.query(`DELETE FROM enrollments WHERE enrollment_id = ?`, [id]);
-  return true;
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // 1. Kunin muna yung section_id bago i-delete, kailangan natin para sa decrement
+    const [rows] = await conn.query(
+      `SELECT section_id FROM enrollments WHERE enrollment_id = ?`,
+      [id],
+    );
+    if (!rows.length) {
+      await conn.rollback();
+      return false; // walang ganung enrollment
+    }
+    const { section_id } = rows[0];
+
+    // 2. Idelete yung enrollment record
+    await conn.query(`DELETE FROM enrollments WHERE enrollment_id = ?`, [id]);
+
+    // 3. I-decrement yung current_enrolled ng section (section_id pwedeng null kung walang section)
+    if (section_id) {
+      await conn.query(
+        `UPDATE sections 
+         SET current_enrolled = GREATEST(current_enrolled - 1, 0),
+             status = CASE 
+                        WHEN status = 'full' AND current_enrolled - 1 < max_capacity 
+                        THEN 'active' 
+                        ELSE status 
+                      END
+         WHERE section_id = ?`,
+        [section_id],
+      );
+    }
+
+    await conn.commit();
+    return true;
+  } catch (error) {
+    await conn.rollback();
+    throw error;
+  } finally {
+    conn.release();
+  }
 };
 
 // Check if enrollment exists (prevent duplicates)
