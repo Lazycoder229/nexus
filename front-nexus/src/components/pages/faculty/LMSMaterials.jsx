@@ -18,6 +18,8 @@ import {
   Filter,
 } from "lucide-react";
 import axios from "axios";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -149,11 +151,11 @@ const LMSMaterials = () => {
               file_url: response.data.file_url,
             });
           } else {
-            alert(response.data.message || "Failed to upload file");
+            toast.error(response.data.message || "Failed to upload file");
           }
         } catch (error) {
           console.error("Error uploading material file:", error);
-          alert("Failed to upload file");
+          toast.error("Failed to upload file");
         } finally {
           setUploadingFile(false);
         }
@@ -167,12 +169,12 @@ const LMSMaterials = () => {
     e.preventDefault();
 
     if (!formData.academic_period_id) {
-      alert("Please select an academic period.");
+      toast.warn("Please select an academic period.");
       return;
     }
 
     if (formData.material_type !== "link" && !formData.file_url) {
-      alert("Please upload a file first.");
+      toast.warn("Please upload a file first.");
       return;
     }
 
@@ -193,38 +195,74 @@ const LMSMaterials = () => {
       );
 
       if (response.data.success) {
-        alert("Material uploaded successfully!");
+        toast.success("Material uploaded successfully!");
         setShowUploadModal(false);
         resetForm();
         fetchMaterials();
       }
     } catch (error) {
       console.error("Error uploading material:", error);
-      alert("Failed to upload material");
+      toast.error("Failed to upload material");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this material?")) {
-      return;
-    }
-
+  // Does the actual delete call — split out from the confirmation step below.
+  const performDelete = async (id) => {
     try {
       const response = await axios.delete(
         `${API_BASE}/api/lms/materials/${id}`,
       );
 
       if (response.data.success) {
-        alert("Material deleted successfully!");
+        toast.success("Material deleted successfully!");
         fetchMaterials();
       }
     } catch (error) {
       console.error("Error deleting material:", error);
-      alert("Failed to delete material");
+      toast.error("Failed to delete material");
     }
   };
+
+  // Replaces window.confirm(...) with an in-app toast that has its own
+const confirmDelete = (id) => {
+  toast(
+    ({ closeToast }) => (
+      <div>
+        <p className="font-medium text-gray-800 mb-3">
+          Are you sure you want to delete this material?
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={closeToast}
+            className="px-4 py-1.5 text-sm rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              closeToast();
+              performDelete(id);
+            }}
+            className="px-4 py-1.5 text-sm rounded-full bg-red-600 text-white hover:bg-red-700 transition"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    ),
+    {
+      containerId: "confirmDialog",
+      autoClose: false,
+      closeOnClick: false,
+      closeButton: false,
+      draggable: false,
+    },
+  );
+};
 
   const resetForm = () => {
     setFormData({
@@ -268,6 +306,17 @@ const LMSMaterials = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Renders the toast.success/toast.error/toast.warn notifications used
+          throughout this component. If a <ToastContainer /> is already
+          mounted higher up (e.g. App.jsx), remove this one to avoid a
+          duplicate. */}
+      <ToastContainer position="top-center" autoClose={3000} />
+      <ToastContainer
+        containerId="confirmDialog"
+        className="confirm-toast-container"
+        position="top-center"
+      />
+
       <div className="mb-6">
         <div className="flex justify-between items-center">
           <div>
@@ -370,12 +419,12 @@ const LMSMaterials = () => {
                     <Eye className="w-4 h-4" />
                     View
                   </button>
-                  <button
-                    onClick={() => handleDelete(material.id)}
-                    className="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                 <button
+  onClick={() => confirmDelete(material.id)}
+  className="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition"
+>
+  <Trash2 className="w-4 h-4" />
+</button>
                 </div>
               </div>
             </div>

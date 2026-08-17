@@ -11,14 +11,19 @@
  *
  * Usage:
  *   import { exportGradeEncoding } from "./gradeExcelExport";
- *   exportGradeEncoding({ period, students, grades, maxScores, activityMeta, courseName });
+ *   exportGradeEncoding({
+ *     period, students, grades, maxScores, activityMeta, courseName,
+ *     columnCounts: { writtenOutput: 12, performanceTasks: 12 }, // NEW — optional, defaults to 12/12
+ *   });
+ *
+ * ─── CHANGELOG ────────────────────────────────────────────────────────────────
+ * The Written Output / Performance Task section widths used to be hard-coded
+ * to 12 columns each (COL.WO1..WO12, COL.PT1..PT12). The grading UI now lets
+ * faculty add/remove extra activity columns, so the whole column layout is
+ * built dynamically per export based on `columnCounts`. Pass the same counts
+ * the UI is currently showing (woCount/ptCount) so the exported sheet lines
+ * up with what's on screen — and so a later re-import maps back correctly.
  */
-
-// ─── KEY FIX: Use xlsx-js-style instead of xlsx + xlsx-style ─────────────────
-// xlsx-js-style is a fork of SheetJS that has built-in style support.
-// The old pattern of dynamically importing "xlsx-style" as a fallback is
-// unreliable in Vite/Webpack because xlsx-style has CommonJS compatibility
-// issues. xlsx-js-style works out of the box with no extra config.
 import XLSXStyle from "xlsx-js-style";
 import { saveAs } from "file-saver";
 
@@ -120,29 +125,38 @@ function numCell(value, { fill, font: fnt, alignment = AC, border: brd = border(
   return c;
 }
 
-// ─── Column layout constants (1-based) ───────────────────────────────────────
-const COL = {
-  STUDENT:  1,
-  ID:       2,
-  WO1:      3,
-  WO_TOT:   15,
-  WO_RAT:   16,
-  WO_PCT:   17,
-  PT1:      18,
-  PT_TOT:   30,
-  PT_RAT:   31,
-  PT_PCT:   32,
-  EX_SCORE: 33,
-  EX_RAT:   34,
-  EX_PCT:   35,
-  FINAL:    36,
-  EQUIV:    37,
-  STATUS:   38,
-  TOTAL_COLS: 38,
-};
+// ─── Column layout (1-based) — now built dynamically from column counts ──────
+// Was previously a fixed 12/12 object; the Written Output and Performance
+// Task sections can each have a different number of activity columns now,
+// so we compute the layout fresh for every export call.
+const DEFAULT_COLUMN_COUNTS = { writtenOutput: 12, performanceTasks: 12 };
 
-const WO_INPUT_COLS = Array.from({ length: 12 }, (_, i) => COL.WO1 + i);
-const PT_INPUT_COLS = Array.from({ length: 12 }, (_, i) => COL.PT1 + i);
+function buildColumnLayout(woCount = 12, ptCount = 12) {
+  const STUDENT = 1;
+  const ID      = 2;
+  const WO1     = 3;
+  const WO_TOT  = WO1 + woCount;
+  const WO_RAT  = WO_TOT + 1;
+  const WO_PCT  = WO_RAT + 1;
+  const PT1     = WO_PCT + 1;
+  const PT_TOT  = PT1 + ptCount;
+  const PT_RAT  = PT_TOT + 1;
+  const PT_PCT  = PT_RAT + 1;
+  const EX_SCORE = PT_PCT + 1;
+  const EX_RAT   = EX_SCORE + 1;
+  const EX_PCT   = EX_RAT + 1;
+  const FINAL    = EX_PCT + 1;
+  const EQUIV    = FINAL + 1;
+  const STATUS   = EQUIV + 1;
+
+  return {
+    STUDENT, ID, WO1, WO_TOT, WO_RAT, WO_PCT,
+    PT1, PT_TOT, PT_RAT, PT_PCT,
+    EX_SCORE, EX_RAT, EX_PCT,
+    FINAL, EQUIV, STATUS,
+    TOTAL_COLS: STATUS,
+  };
+}
 
 const colLetter = (n) => {
   let result = "";
@@ -217,15 +231,15 @@ function calcFinal(gradeRow, maxRow) {
   return Number((wo.weighted + pt.weighted + exW).toFixed(2));
 }
 
-// ─── Empty row helpers ────────────────────────────────────────────────────────
-const EMPTY_GRADE = () => ({
-  writtenOutput:    ["", "", "", "", "", "", "", "", "", "", "", ""],
-  performanceTasks: ["", "", "", "", "", "", "", "", "", "", "", ""],
+// ─── Empty row helpers — now accept dynamic column counts ────────────────────
+const EMPTY_GRADE = (woCount = 12, ptCount = 12) => ({
+  writtenOutput: Array(woCount).fill(""),
+  performanceTasks: Array(ptCount).fill(""),
   midtermExam: "",
 });
-const EMPTY_MAX = () => ({
-  writtenOutput:    [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
-  performanceTasks: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+const EMPTY_MAX = (woCount = 12, ptCount = 12) => ({
+  writtenOutput: Array(woCount).fill(100),
+  performanceTasks: Array(ptCount).fill(100),
   midtermExam: 100,
 });
 
@@ -344,8 +358,13 @@ function buildSchoolHeader(ws, totalCols) {
 }
 
 // ─── Build one encoding sheet (Midterm or Final) ──────────────────────────────
-function buildEncodingSheet(ws, { period, students, grades, maxScores, activityMeta, courseName }) {
+function buildEncodingSheet(ws, { period, students, grades, maxScores, activityMeta, courseName, columnCounts }) {
   const periodLabel = period === "midterm" ? "Midterm" : "Final";
+  const woCount = columnCounts?.writtenOutput    ?? DEFAULT_COLUMN_COUNTS.writtenOutput;
+  const ptCount = columnCounts?.performanceTasks ?? DEFAULT_COLUMN_COUNTS.performanceTasks;
+  const COL = buildColumnLayout(woCount, ptCount);
+  const WO_INPUT_COLS = Array.from({ length: woCount }, (_, i) => COL.WO1 + i);
+  const PT_INPUT_COLS = Array.from({ length: ptCount }, (_, i) => COL.PT1 + i);
 
   // ── School letterhead first ────────────────────────────────────────────
   let row = buildSchoolHeader(ws, COL.TOTAL_COLS);
@@ -430,12 +449,12 @@ function buildEncodingSheet(ws, { period, students, grades, maxScores, activityM
   // ── Sub-header row ────────────────────────────────────────────────────────
   const sub = (val, fillP) => cell(val, { fill: fillP, font: F.mutedBold(8), alignment: AC, border: border() });
 
-  for (let i = 0; i < 12; i++) setCell(ws, SUB_ROW, COL.WO1 + i, sub(String(i + 1), P.WO_SUBHDR));
+  for (let i = 0; i < woCount; i++) setCell(ws, SUB_ROW, COL.WO1 + i, sub(String(i + 1), P.WO_SUBHDR));
   setCell(ws, SUB_ROW, COL.WO_TOT, sub("Total",  P.WO_SUBHDR));
   setCell(ws, SUB_ROW, COL.WO_RAT, sub("Rating", P.WO_SUBHDR));
   setCell(ws, SUB_ROW, COL.WO_PCT, sub("%",      P.WO_SUBHDR));
 
-  for (let i = 0; i < 12; i++) setCell(ws, SUB_ROW, COL.PT1 + i, sub(String(i + 1), P.PT_SUBHDR));
+  for (let i = 0; i < ptCount; i++) setCell(ws, SUB_ROW, COL.PT1 + i, sub(String(i + 1), P.PT_SUBHDR));
   setCell(ws, SUB_ROW, COL.PT_TOT, sub("Total",  P.PT_SUBHDR));
   setCell(ws, SUB_ROW, COL.PT_RAT, sub("Rating", P.PT_SUBHDR));
   setCell(ws, SUB_ROW, COL.PT_PCT, sub("%",      P.PT_SUBHDR));
@@ -447,10 +466,10 @@ function buildEncodingSheet(ws, { period, students, grades, maxScores, activityM
   // ── Max-score meta row ────────────────────────────────────────────────────
   const meta   = (val, fillP) => cell(val, { fill: fillP, font: F.mutedBold(8), alignment: AC, border: border() });
   const safe   = activityMeta || {};
-  const woMeta = safe.writtenOutput    || Array(12).fill(null);
-  const ptMeta = safe.performanceTasks || Array(12).fill(null);
+  const woMeta = safe.writtenOutput    || Array(woCount).fill(null);
+  const ptMeta = safe.performanceTasks || Array(ptCount).fill(null);
 
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < woCount; i++) {
     setCell(ws, META_ROW, COL.WO1 + i, meta(woMeta[i] ? woMeta[i].maxScore : 100, P.WO_INPUT));
   }
   const woMetaTotal = woMeta.reduce((s, x) => s + (x ? Number(x.maxScore) : 100), 0);
@@ -458,7 +477,7 @@ function buildEncodingSheet(ws, { period, students, grades, maxScores, activityM
   setCell(ws, META_ROW, COL.WO_RAT, meta("100",        P.WO_TOTAL));
   setCell(ws, META_ROW, COL.WO_PCT, meta(`${W.WO}%`,   P.WO_TOTAL));
 
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < ptCount; i++) {
     setCell(ws, META_ROW, COL.PT1 + i, meta(ptMeta[i] ? ptMeta[i].maxScore : 100, P.PT_INPUT));
   }
   const ptMetaTotal = ptMeta.reduce((s, x) => s + (x ? Number(x.maxScore) : 100), 0);
@@ -477,8 +496,8 @@ function buildEncodingSheet(ws, { period, students, grades, maxScores, activityM
   students.forEach((student, idx) => {
     const isEven   = idx % 2 === 1;
     const rowBg    = isEven ? P.EVEN_BG : P.ODD_BG;
-    const gradeRow = (grades && grades[student.id]) || EMPTY_GRADE();
-    const maxRow   = (maxScores && maxScores[student.id]) || EMPTY_MAX();
+    const gradeRow = (grades && grades[student.id]) || EMPTY_GRADE(woCount, ptCount);
+    const maxRow   = (maxScores && maxScores[student.id]) || EMPTY_MAX(woCount, ptCount);
 
     const wo = calcSection(gradeRow.writtenOutput,    maxRow.writtenOutput,    W.WO);
     const pt = calcSection(gradeRow.performanceTasks, maxRow.performanceTasks, W.PT);
@@ -546,16 +565,12 @@ function buildEncodingSheet(ws, { period, students, grades, maxScores, activityM
     row++;
   });
 
-  // ── Column widths ─────────────────────────────────────────────────────────
+  // ── Column widths — built to match the dynamic column count ────────────────
   ws["!cols"] = [
     { wch: 26 }, { wch: 14 },
-    { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 },
-    { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 },
-    { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 },
+    ...Array(woCount).fill({ wch: 6 }),
     { wch: 8 }, { wch: 8 }, { wch: 6 },
-    { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 },
-    { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 },
-    { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 6 },
+    ...Array(ptCount).fill({ wch: 6 }),
     { wch: 8 }, { wch: 8 }, { wch: 6 },
     { wch: 8 }, { wch: 8 }, { wch: 6 },
     { wch: 8 }, { wch: 7 }, { wch: 9 },
@@ -582,7 +597,12 @@ function buildEncodingSheet(ws, { period, students, grades, maxScores, activityM
 }
 
 // ─── Build Grading Report sheet ───────────────────────────────────────────────
-function buildReportSheet(ws, { students, midtermGradesMap, finalGradesMap, midtermMaxMap, finalMaxMap, courseName }) {
+// (Unaffected by dynamic WO/PT column counts — this sheet only shows summary
+// grades, not individual activity items.)
+function buildReportSheet(ws, { students, midtermGradesMap, finalGradesMap, midtermMaxMap, finalMaxMap, courseName, columnCounts }) {
+  const woCount = columnCounts?.writtenOutput    ?? DEFAULT_COLUMN_COUNTS.writtenOutput;
+  const ptCount = columnCounts?.performanceTasks ?? DEFAULT_COLUMN_COUNTS.performanceTasks;
+
   const COLS_RPT = {
     NUM: 1, NAME: 2, ID: 3,
     MG: 4, TFG: 5, FG: 6, NE: 7, REMARKS: 8,
@@ -638,10 +658,10 @@ function buildReportSheet(ws, { students, midtermGradesMap, finalGradesMap, midt
     const isEven = idx % 2 === 1;
     const R = row;
 
-    const mGrade = (midtermGradesMap && midtermGradesMap[student.id]) || EMPTY_GRADE();
-    const mMax   = (midtermMaxMap    && midtermMaxMap[student.id])    || EMPTY_MAX();
-    const fGrade = (finalGradesMap   && finalGradesMap[student.id])   || EMPTY_GRADE();
-    const fMax   = (finalMaxMap      && finalMaxMap[student.id])      || EMPTY_MAX();
+    const mGrade = (midtermGradesMap && midtermGradesMap[student.id]) || EMPTY_GRADE(woCount, ptCount);
+    const mMax   = (midtermMaxMap    && midtermMaxMap[student.id])    || EMPTY_MAX(woCount, ptCount);
+    const fGrade = (finalGradesMap   && finalGradesMap[student.id])   || EMPTY_GRADE(woCount, ptCount);
+    const fMax   = (finalMaxMap      && finalMaxMap[student.id])      || EMPTY_MAX(woCount, ptCount);
 
     const midtermFinal   = calcFinal(mGrade, mMax);
     const tentativeFinal = calcFinal(fGrade, fMax);
@@ -727,6 +747,9 @@ function buildReportSheet(ws, { students, midtermGradesMap, finalGradesMap, midt
  * @param {Object}   params.maxScoresMap      — { midterm: {[id]: maxRow},  final: {[id]: maxRow}  }
  * @param {Object}   params.activityMeta
  * @param {string}   [params.mode]            — "midterm" | "final" | "all" (default: "all")
+ * @param {Object}   [params.columnCounts]    — { writtenOutput, performanceTasks } — NEW.
+ *   Pass the same counts the grading UI is currently showing so the exported
+ *   sheet's columns line up with what's on screen. Defaults to 12/12 if omitted.
  */
 export async function exportGradeEncoding({
   courseName = "Course",
@@ -735,6 +758,7 @@ export async function exportGradeEncoding({
   maxScoresMap = {},
   activityMeta = null,
   mode = "all",
+  columnCounts = DEFAULT_COLUMN_COUNTS,
 }) {
   const wb = { SheetNames: [], Sheets: {} };
 
@@ -752,6 +776,7 @@ export async function exportGradeEncoding({
       maxScores: maxScoresMap["midterm"] || {},
       activityMeta,
       courseName,
+      columnCounts,
     });
     addSheet("Midterm Encoding", ws);
   }
@@ -765,6 +790,7 @@ export async function exportGradeEncoding({
       maxScores: maxScoresMap["final"] || {},
       activityMeta,
       courseName,
+      columnCounts,
     });
     addSheet("Final Encoding", ws);
   }
@@ -778,6 +804,7 @@ export async function exportGradeEncoding({
       midtermMaxMap:    maxScoresMap["midterm"] || {},
       finalMaxMap:      maxScoresMap["final"]   || {},
       courseName,
+      columnCounts,
     });
     addSheet("Grading Report", ws);
   }

@@ -20,6 +20,8 @@ import {
   FileUp,
 } from "lucide-react";
 import axios from "axios";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import DocumentViewer from "../../shared/DocumentViewer.jsx";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -151,13 +153,13 @@ const LMSAssignments = () => {
             setQuestions((prev) => [...prev, ...imported]);
             setImportResult({ count: imported.length, fileName: file.name });
           } else {
-            alert(
+            toast.warn(
               response.data.message ||
                 "No questions found in the document. Please check the format."
             );
           }
         } catch (err) {
-          alert(
+          toast.error(
             err.response?.data?.message ||
               "Failed to parse document. Please check the file format."
           );
@@ -296,7 +298,7 @@ const LMSAssignments = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.academic_period_id) {
-      alert("Please select an academic period.");
+      toast.warn("Please select an academic period.");
       return;
     }
 
@@ -361,14 +363,14 @@ const LMSAssignments = () => {
           }
         }
 
-        alert("Assignment created successfully!");
+        toast.success("Assignment created successfully!");
         setShowCreateModal(false);
         resetForm();
         fetchAssignments();
       }
     } catch (error) {
       console.error("Error creating assignment:", error);
-      alert("Failed to create assignment");
+      toast.error("Failed to create assignment");
     } finally {
       setLoading(false);
       setUploadingModelAnswer(false);
@@ -382,7 +384,7 @@ const LMSAssignments = () => {
       const submissionId =
         selectedSubmission?.id ?? selectedSubmission?.submission_id;
       if (!submissionId) {
-        alert("Submission not found.");
+        toast.warn("Submission not found.");
         return;
       }
 
@@ -397,39 +399,76 @@ const LMSAssignments = () => {
       );
 
       if (response.data.success) {
-        alert("Submission graded successfully!");
+        toast.success("Submission graded successfully!");
         setShowGradeModal(false);
         fetchSubmissions(selectedAssignment.id);
       }
     } catch (error) {
       console.error("Error grading submission:", error);
-      alert("Failed to grade submission");
+      toast.error("Failed to grade submission");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this assignment?")) {
-      return;
-    }
-
+  // Does the actual delete call — split out from the confirmation step below.
+  const performDelete = async (id) => {
     try {
       const response = await axios.delete(
         `${API_BASE}/api/lms/assignments/${id}`
       );
 
       if (response.data.success) {
-        alert("Assignment deleted successfully!");
+        toast.success("Assignment deleted successfully!");
         fetchAssignments();
       }
     } catch (error) {
       console.error("Error deleting assignment:", error);
-      alert("Failed to delete assignment");
+      toast.error("Failed to delete assignment");
     }
+  };
+
+  // Replaces window.confirm(...) with an in-app toast that has its own
+  // OK / Cancel buttons, rendered in a dedicated centered container.
+  const confirmDelete = (id) => {
+    toast(
+      ({ closeToast }) => (
+        <div>
+          <p className="font-medium text-gray-800 mb-3">
+            Are you sure you want to delete this assignment?
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={closeToast}
+              className="px-4 py-1.5 text-sm rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                closeToast();
+                performDelete(id);
+              }}
+              className="px-4 py-1.5 text-sm rounded-full bg-red-600 text-white hover:bg-red-700 transition"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        containerId: "confirmDialog",
+        autoClose: false,
+        closeOnClick: false,
+        closeButton: false,
+        draggable: false,
+      },
+    );
   };
 
   const handleAiCheck = async () => {
     if (!aiModelAnswer.trim() && !aiModelAnswerFile) {
-      alert(
+      toast.warn(
         "Please enter a model answer or upload a PDF/DOCX before running the AI check."
       );
       return;
@@ -442,7 +481,7 @@ const LMSAssignments = () => {
       const assignmentId =
         selectedAssignment?.id ?? selectedAssignment?.assignment_id;
       if (!submissionId) {
-        alert("Submission not found.");
+        toast.warn("Submission not found.");
         return;
       }
 
@@ -485,13 +524,13 @@ const LMSAssignments = () => {
           feedback: response.data.feedback,
         });
       } else {
-        alert(
+        toast.warn(
           response.data.message || "AI check failed. Please grade manually."
         );
       }
     } catch (error) {
       console.error("AI check error:", error);
-      alert(
+      toast.error(
         error.response?.data?.message ||
           "AI check failed. Please try again or grade manually."
       );
@@ -570,6 +609,18 @@ const LMSAssignments = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Renders the toast.success/toast.error/toast.warn notifications used
+          throughout this component. */}
+      <ToastContainer position="top-center" autoClose={3000} />
+      {/* Dedicated, centered container used only for the delete confirmation
+          dialog (see confirmDelete). Kept separate so its CSS overrides
+          don't affect the regular top-center notifications above. */}
+      <ToastContainer
+        containerId="confirmDialog"
+        className="confirm-toast-container"
+        position="top-center"
+      />
+
       {/* Header */}
       <div className="mb-6">
         <div className="flex justify-between items-center">
@@ -710,7 +761,7 @@ const LMSAssignments = () => {
                     View Submissions
                   </button>
                   <button
-                    onClick={() => handleDelete(assignment.id)}
+                    onClick={() => confirmDelete(assignment.id)}
                     className="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -1424,7 +1475,7 @@ Ans: C`}
                   className="w-full px-3 py-2 border border-indigo-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
                 />
 
-                {/* ── NEW: File upload for model answer inside AI checker ── */}
+                {/* ── File upload for model answer inside AI checker ── */}
                 <div className="flex items-center gap-3 flex-wrap">
                   <label
                     className={`cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition

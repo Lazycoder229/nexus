@@ -154,12 +154,52 @@ const GradeEntriesService = {
     }
   },
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // syncFromSubmissions
+  //
+  // Fixed two bugs that caused duplicate grade_entries rows:
+  //
+  // 1. The submissions query could return more than one row per actual
+  //    submission when a student had more than one matching row in
+  //    `enrollments` for the same course (re-enrollment, multiple sections,
+  //    etc.) — the JOIN multiplies rows in that case. Fixed with
+  //    `GROUP BY las.id` so each submission is processed exactly once per
+  //    sync run.
+  //
+  // 2. The old "SELECT to check existence, then INSERT/UPDATE" pattern is
+  //    NOT atomic. If two sync calls overlap (e.g. the frontend's old
+  //    auto-sync effect firing while a manual sync was still running), both
+  //    could pass the existence check before either finished writing,
+  //    producing two rows for the same component. Fixed by wrapping each
+  //    submission's check+write in a transaction with `SELECT ... FOR
+  //    UPDATE`, which serializes concurrent syncs against the same row.
+  //
+  //    NOTE: `SELECT ... FOR UPDATE` only protects rows that already exist.
+  //    Two *first-time* inserts for the same (student, course, period,
+  //    component_type, component_name, label) racing at the same instant
+  //    can still both succeed, because there's nothing to lock yet. The
+  //    fully correct fix is a UNIQUE constraint in the database, e.g.:
+  //
+  //      ALTER TABLE grade_entries
+  //        ADD UNIQUE KEY uniq_grade_entry
+  //        (student_id, course_id, period_id, component_type, component_name(191), label);
+  //
+  //    With that constraint in place, switch the INSERT below to
+  //    `INSERT ... ON DUPLICATE KEY UPDATE raw_score = VALUES(raw_score),
+  //    percentage = VALUES(percentage), submitted_at = NOW()` for a fully
+  //    race-proof upsert. Until the migration is applied, the transaction
+  //    below removes the duplication in the common case (sequential syncs,
+  //    including the "click sync twice quickly" case), which was the
+  //    scenario in your logs.
+  // ─────────────────────────────────────────────────────────────────────────
   syncFromSubmissions: async (courseId, periodId, submittedBy) => {
     try {
       const pool = await import("../config/db.js");
       const db = pool.default;
 
-      // Query to get all graded submissions for this course and period
+      // Query to get all graded submissions for this course and period.
+      // GROUP BY las.id collapses any duplicate rows introduced by the
+      // enrollments JOIN so each submission is only processed once.
       const submissionsQuery = `
         SELECT 
           las.id as submission_id,
@@ -169,13 +209,14 @@ const GradeEntriesService = {
           la.title as assignment_name,
           la.assignment_type as assignment_type,
           COALESCE(la.total_points, 100) as max_score,
-          e.enrollment_id
+          MIN(e.enrollment_id) as enrollment_id
         FROM lms_assignment_submissions las
         INNER JOIN lms_assignments la ON las.assignment_id = la.id
         INNER JOIN enrollments e ON las.student_id = e.student_id AND la.course_id = e.course_id
         WHERE la.course_id = ? 
           AND e.period_id = ?
           AND (las.score IS NOT NULL OR las.status = 'submitted')
+        GROUP BY las.id, las.student_id, la.id, las.score, la.title, la.assignment_type, la.total_points
         ORDER BY las.student_id, la.title
       `;
 
@@ -201,10 +242,6 @@ const GradeEntriesService = {
           continue;
         }
 
-        // Extract order number from assignment name (e.g., "Assignment 1" -> 1)
-        const nameMatch = submission.assignment_name.match(/(\d+)/);
-        const orderNumber = nameMatch ? Number(nameMatch[1]) : 0;
-
         // Determine component type based on assignment type
         let componentType = "assignment";
         if (submission.assignment_type && submission.assignment_type.toLowerCase() === "quiz") {
@@ -213,64 +250,82 @@ const GradeEntriesService = {
           componentType = "exam";
         }
 
-        // Check if grade_entry already exists
-        const checkQuery = `
-          SELECT entry_id FROM grade_entries 
-          WHERE student_id = ? 
-            AND course_id = ? 
-            AND period_id = ?
-            AND component_type = ?
-            AND component_name = ?
-        `;
-
-        const [existing] = await db.query(checkQuery, [
-          submission.student_id,
-          courseId,
-          periodId,
-          componentType,
-          submission.assignment_name,
-        ]);
-
         // Calculate percentage
         const maxScore = submission.max_score || 100;
         const percentage = (submission.score / maxScore) * 100;
+        const componentName = String(submission.assignment_name || "").trim();
 
-        if (existing.length > 0) {
-          // Update existing entry
-          const updateQuery = `
-            UPDATE grade_entries 
-            SET raw_score = ?, percentage = ?, submitted_at = NOW()
-            WHERE entry_id = ?
+        // Run the check + write as one transaction so a concurrent sync
+        // call can't slip in between the SELECT and the INSERT/UPDATE and
+        // create a duplicate row for the same component.
+        const connection = await db.getConnection();
+        try {
+          await connection.beginTransaction();
+
+          // TRIM both sides so stray whitespace in a stored vs. incoming
+          // title can't cause a false "doesn't exist yet" match.
+          const checkQuery = `
+            SELECT entry_id FROM grade_entries 
+            WHERE student_id = ? 
+              AND course_id = ? 
+              AND period_id = ?
+              AND component_type = ?
+              AND TRIM(component_name) = TRIM(?)
+            FOR UPDATE
           `;
 
-          await db.query(updateQuery, [
-            submission.score,
-            percentage,
-            existing[0].entry_id,
-          ]);
-          console.log(`[Grade Sync] Updated grade for ${submission.assignment_name} - student ${submission.student_id}`);
-        } else {
-          // Create new entry
-          const insertQuery = `
-            INSERT INTO grade_entries (
-              student_id, course_id, period_id, component_name, 
-              component_type, raw_score, max_score, percentage, submitted_by, label, submitted_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-          `;
-
-          await db.query(insertQuery, [
+          const [existing] = await connection.query(checkQuery, [
             submission.student_id,
             courseId,
             periodId,
-            submission.assignment_name,
             componentType,
-            submission.score,
-            maxScore,
-            percentage,
-            submittedBy,
-            "midterm",
+            componentName,
           ]);
-          console.log(`[Grade Sync] Created grade for ${submission.assignment_name} (${componentType}) - student ${submission.student_id}, score: ${submission.score}/${maxScore}`);
+
+          if (existing.length > 0) {
+            // Update existing entry
+            const updateQuery = `
+              UPDATE grade_entries 
+              SET raw_score = ?, percentage = ?, submitted_at = NOW()
+              WHERE entry_id = ?
+            `;
+
+            await connection.query(updateQuery, [
+              submission.score,
+              percentage,
+              existing[0].entry_id,
+            ]);
+            console.log(`[Grade Sync] Updated grade for ${componentName} - student ${submission.student_id}`);
+          } else {
+            // Create new entry
+            const insertQuery = `
+              INSERT INTO grade_entries (
+                student_id, course_id, period_id, component_name, 
+                component_type, raw_score, max_score, percentage, submitted_by, label, submitted_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            `;
+
+            await connection.query(insertQuery, [
+              submission.student_id,
+              courseId,
+              periodId,
+              componentName,
+              componentType,
+              submission.score,
+              maxScore,
+              percentage,
+              submittedBy,
+              "midterm",
+            ]);
+            console.log(`[Grade Sync] Created grade for ${componentName} (${componentType}) - student ${submission.student_id}, score: ${submission.score}/${maxScore}`);
+          }
+
+          await connection.commit();
+        } catch (txError) {
+          await connection.rollback();
+          throw txError;
+        } finally {
+          connection.release();
         }
 
         syncedCount++;

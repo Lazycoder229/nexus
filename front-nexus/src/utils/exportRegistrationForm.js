@@ -24,6 +24,10 @@ const BODY_W = MR - ML;   // 592 pt
 
 // ─── Build fee list from an invoice object ───────────────────────────────────
 // Call this with a real invoice row to get the assessment box rows.
+// NOTE: this list is fees only (things that ADD to the subtotal).
+// Discounts/scholarships are handled separately as deductions — see
+// discountAmount/scholarshipAmount below — so they don't get mixed into
+// this list and mis-signed.
 const buildFeeList = (invoice = {}) => [
   { label: "Admission Fee",            amount: invoice.admission_fee      ?? 0 },
   { label: "Entrance Fee",             amount: invoice.entrance_fee       ?? 0 },
@@ -138,6 +142,8 @@ function drawCopy(doc, data, startY, isCopy, headerImg) {
     date, academicYear, term,
     subjects,
     fees,
+    discountAmount,
+    scholarshipAmount,
     registrar, registrarTitle,
   } = data;
 
@@ -325,8 +331,42 @@ function drawCopy(doc, data, startY, isCopy, headerImg) {
     ay += FEE_H;
   });
 
-  // TOTAL row
-  const total = feeList.reduce((s, f) => s + (Number(f.amount) || 0), 0);
+  // Subtotal (sum of fees only, before deductions)
+  const subtotal = feeList.reduce((s, f) => s + (Number(f.amount) || 0), 0);
+
+  // ── DISCOUNTS / SCHOLARSHIP (deductions) ──────────────────────────────────
+  // These come from the invoice's discount_amount / scholarship_amount
+  // columns (same values shown in the Accounting "Edit Invoice" screen)
+  // and were previously NOT reflected anywhere in this PDF — the TOTAL was
+  // just the raw fee sum. Now we list each deduction (if > 0) and subtract
+  // it from the subtotal, mirroring the Accounting UI's
+  // Subtotal / Total Discounts / Total breakdown.
+  const discAmt  = Number(discountAmount)    || 0;
+  const scholAmt = Number(scholarshipAmount) || 0;
+  const totalDeductions = discAmt + scholAmt;
+
+  if (discAmt > 0) {
+    cell(doc, "Less: Discount", ASS_X, ay, ASS_W * LBL_FRAC, FEE_H, {
+      align: "left", fontSize: 7, padding: 2, valign: "top",
+    });
+    cell(doc, `-${discAmt.toFixed(2)}`, ASS_X + ASS_W * LBL_FRAC, ay, ASS_W * (1 - LBL_FRAC), FEE_H, {
+      align: "right", fontSize: 7, padding: 2, valign: "top",
+    });
+    ay += FEE_H;
+  }
+
+  if (scholAmt > 0) {
+    cell(doc, "Less: Scholarship", ASS_X, ay, ASS_W * LBL_FRAC, FEE_H, {
+      align: "left", fontSize: 7, padding: 2, valign: "top",
+    });
+    cell(doc, `-${scholAmt.toFixed(2)}`, ASS_X + ASS_W * LBL_FRAC, ay, ASS_W * (1 - LBL_FRAC), FEE_H, {
+      align: "right", fontSize: 7, padding: 2, valign: "top",
+    });
+    ay += FEE_H;
+  }
+
+  // TOTAL row — now subtotal minus discounts/scholarship
+  const total = subtotal - totalDeductions;
   cell(doc, "TOTAL", ASS_X, ay, ASS_W * LBL_FRAC, FEE_H + 2, {
     align: "right", bold: true, fontSize: 7.5, fill: [210, 210, 210], padding: 2, valign: "middle",
   });
@@ -379,7 +419,8 @@ function drawCopy(doc, data, startY, isCopy, headerImg) {
  * @param {Object} enrollment   - one enrollment row
  * @param {Object} studentInfo  - optional richer student profile
  * @param {Object} currentUser  - { full_name, position }
- * @param {Object} invoice      - invoice row from student_invoices (contains all fee columns)
+ * @param {Object} invoice      - invoice row from student_invoices (contains all fee columns
+ *                                 plus discount_amount / scholarship_amount)
  */
 export async function exportRegistrationFormPDF(
   enrollment  = {},
@@ -391,6 +432,11 @@ export async function exportRegistrationFormPDF(
   const fees = Object.keys(invoice).length > 0
     ? buildFeeList(invoice)
     : DEFAULT_FEES;
+
+  // Deductions from the invoice — same fields as the Accounting "Edit
+  // Invoice" screen's Discount Amount / Scholarship Amount inputs.
+  const discountAmount    = Number(invoice.discount_amount)    || 0;
+  const scholarshipAmount = Number(invoice.scholarship_amount) || 0;
 
   const subjects = await fetchStudentSubjects(
     enrollment.student_id,
@@ -425,6 +471,8 @@ export async function exportRegistrationFormPDF(
     term:         enrollment.semester    || "",
     subjects,
     fees,
+    discountAmount,
+    scholarshipAmount,
     registrar,
     registrarTitle,
   };

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import api from "../../../api/axios"; // authenticated instance (adds Bearer token) — needed for endpoints that require auth, e.g. /api/invoices
 import {
   BookOpen,
   Plus,
@@ -21,6 +22,8 @@ import {
   ArrowRight,
   X,
 } from "lucide-react";
+import { exportRegistrationFormPDF } from "../../../utils/exportRegistrationForm";
+import { exportTimetablePDF } from "../../../utils/exportTimetable";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -86,9 +89,15 @@ const StudentCourses = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState(null);
 
+  // Period/registration-form metadata (captured from the student's own
+  // active enrollments so the Download button can build the PDF)
+  const [periodMeta, setPeriodMeta] = useState(null);
+  const [downloadingForm, setDownloadingForm] = useState(false);
+
   // Timetable state
   const [timetable, setTimetable] = useState([]);
   const [selectedDay, setSelectedDay] = useState("Monday");
+  const [downloadingTimetable, setDownloadingTimetable] = useState(false);
 
   const fetchEnrollmentStatus = useCallback(async () => {
     try {
@@ -125,6 +134,29 @@ const StudentCourses = () => {
       );
 
       setDroppedEnrollments(dropped);
+
+      // Capture period/registration metadata for the registration-form PDF.
+      // exportRegistrationFormPDF only needs one enrollment row's
+      // student_id/period_id — it fetches all of that student's subjects
+      // for the period itself.
+      //
+      // NOTE: activeEnrollments[0].student_id is the *actual* student_id
+      // used by the invoices table. It is NOT guaranteed to be the same
+      // value as localStorage's "userId" (which is the logged-in user's
+      // account id). Always prefer activeEnrollments[0].student_id here.
+      setPeriodMeta(
+        activeEnrollments.length > 0
+          ? {
+              student_id:
+                activeEnrollments[0].student_id || studentId,
+              period_id: activeEnrollments[0].period_id,
+              school_year: activeEnrollments[0].school_year,
+              semester: activeEnrollments[0].semester,
+              enrollment_date: activeEnrollments[0].enrollment_date,
+              year_level: activeEnrollments[0].year_level,
+            }
+          : null,
+      );
 
       setEnrolledSubjects(
         activeEnrollments.map((enrollment) => {
@@ -302,12 +334,132 @@ const StudentCourses = () => {
     }
   };
 
-  const handlePrintEnrollment = () => {
-    window.print();
+  // Builds and downloads the same "Official Registration Form" PDF used
+  // in the admin Enrollment Records screen, but for the logged-in student's
+  // own currently enrolled subjects/period.
+  const handleDownloadEnrollment = async () => {
+    if (downloadingForm) return;
+
+    const studentId = localStorage.getItem("userId");
+    if (!studentId) return;
+
+    if (!periodMeta) {
+      alert("No enrolled subjects to export.");
+      return;
+    }
+
+    setDownloadingForm(true);
+    try {
+      // Student's own profile
+      // Uses the authenticated `api` instance (adds Bearer token) since
+      // this endpoint may require auth just like /api/invoices below.
+      let studentInfo = {};
+      try {
+        const res = await api.get(`/api/users/${studentId}`);
+        const u = res.data;
+        studentInfo = {
+          student_number: u.student_number,
+          full_name: `${u.first_name} ${u.last_name}`,
+          address: u.address || "",
+          birthday: u.birthday || "",
+          age: u.age || "",
+          gender: u.gender || "",
+          civil_status: u.civil_status || "",
+          religion: u.religion || "",
+          nationality: u.nationality || "",
+          cell_phone: u.phone || "",
+          email: u.email || "",
+          program_year: `${u.program || "N/A"} / ${periodMeta.year_level || ""}`,
+        };
+      } catch (error) {
+        console.error("Error fetching student profile:", error);
+      }
+
+      // Invoice for this student/period (drives the assessment box)
+      //
+      // FIX: match invoices using periodMeta.student_id (the real
+      // student_id used by the invoices table), NOT the raw
+      // localStorage "userId". These two ids are not guaranteed to be
+      // the same, and matching against the wrong one silently returns
+      // no invoice — which is why the assessment box came out blank
+      // on the student side while the admin side (which correctly
+      // matches on enrollment.student_id) worked fine.
+      let invoice = {};
+      try {
+        // FIX: use the authenticated `api` instance instead of raw axios.
+        // Raw axios has no Authorization header, so this endpoint was
+        // returning 401 Unauthorized — which is why the invoice never
+        // loaded even after correcting the student_id match.
+        const res = await api.get(`/api/invoices`, {
+          params: { academic_period_id: periodMeta.period_id },
+        });
+        const invoices = res.data?.data || res.data || [];
+        invoice =
+          invoices.find(
+            (inv) => String(inv.student_id) === String(periodMeta.student_id),
+          ) || {};
+
+        if (Object.keys(invoice).length === 0) {
+          console.warn(
+            "⚠️ No matching invoice found for student_id:",
+            periodMeta.student_id,
+            "period_id:",
+            periodMeta.period_id,
+            "— assessment box will be blank.",
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching invoice:", error);
+      }
+
+      // currentUser left as {} so exportRegistrationFormPDF falls back to
+      // its default registrar name/title — the signature block belongs to
+      // the registrar, not the student downloading their own form.
+      await exportRegistrationFormPDF(periodMeta, studentInfo, {}, invoice);
+    } catch (error) {
+      console.error("Error downloading enrollment form:", error);
+    } finally {
+      setDownloadingForm(false);
+    }
   };
 
-  const handleDownloadEnrollment = () => {
-    console.log("Downloading enrollment form...");
+  // Builds and downloads a PDF of the student's own class schedule
+  // (all days, not just the currently selected day tab).
+  const handleDownloadTimetable = async () => {
+    if (downloadingTimetable) return;
+
+    if (!timetable || timetable.length === 0) {
+      alert("No class schedule to export.");
+      return;
+    }
+
+    const studentId = localStorage.getItem("userId");
+
+    setDownloadingTimetable(true);
+    try {
+      // Student's own profile — same auth-required endpoint as the
+      // registration form download, so use the authenticated `api`
+      // instance (adds Bearer token) instead of raw axios.
+      let studentInfo = {};
+      if (studentId) {
+        try {
+          const res = await api.get(`/api/users/${studentId}`);
+          const u = res.data;
+          studentInfo = {
+            student_number: u.student_number,
+            full_name: `${u.first_name} ${u.last_name}`,
+          };
+        } catch (error) {
+          console.error("Error fetching student profile:", error);
+        }
+      }
+
+      await exportTimetablePDF(studentInfo, periodMeta || {}, timetable);
+    } catch (error) {
+      console.error("Error downloading timetable:", error);
+    } finally {
+      setDownloadingTimetable(false);
+    }
   };
 
   const days = [
@@ -343,18 +495,24 @@ const StudentCourses = () => {
           {activeTab === "enlistment" && (
             <div className="flex gap-2">
               <button
-                onClick={handlePrintEnrollment}
-                className="flex items-center gap-2 bg-slate-600 hover:bg-slate-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors"
-              >
-                <Printer size={14} />
-                Print
-              </button>
-              <button
                 onClick={handleDownloadEnrollment}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors"
+                disabled={downloadingForm || !periodMeta}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors"
               >
                 <Download size={14} />
-                Download
+                {downloadingForm ? "Generating..." : "Download"}
+              </button>
+            </div>
+          )}
+          {activeTab === "timetable" && (
+            <div className="flex gap-2">
+              <button
+                onClick={handleDownloadTimetable}
+                disabled={downloadingTimetable || timetable.length === 0}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-md font-medium text-sm transition-colors"
+              >
+                <Download size={14} />
+                {downloadingTimetable ? "Generating..." : "Download"}
               </button>
             </div>
           )}

@@ -21,7 +21,47 @@ import {
   School,
   Building2, // Added for mailing address/campus
 } from "lucide-react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import StudentRegistrationForm from "./StudentRegistrationForm";
+
+/* ==========================================
+    CENTERED TOAST CONTAINER STYLES
+    Injected once so this file stays self-contained.
+    Centers all toasts (success/error/warn) in the
+    middle of the screen instead of top-center.
+    ========================================== */
+if (
+  typeof document !== "undefined" &&
+  !document.getElementById("centered-toast-styles")
+) {
+  const style = document.createElement("style");
+  style.id = "centered-toast-styles";
+  style.innerHTML = `
+    .Toastify__toast-container.center-toast-container {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100vw !important;
+      transform: none !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 0 !important;
+      z-index: 9999;
+    }
+    .center-toast-container .Toastify__toast {
+      width: 320px !important;
+      max-width: 90vw !important;
+      height: auto !important;
+      min-height: auto !important;
+      flex: 0 0 auto !important;
+      align-self: center !important;
+      margin: 0 !important;
+      border-radius: 12px;
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 /* ==========================================
     SHARED COMPONENTS (Compact & Polished)
@@ -125,7 +165,7 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
     if (submitting) return;
 
     if (!email || !password) {
-      alert("Please enter both email and password.");
+      toast.warn("Please enter both email and password.");
       return;
     }
 
@@ -140,7 +180,7 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
         },
       );
 
-      console.log("Login Response:", data);
+      //console.log("Login Response:", data);
 
       // Save JWT token & user info
       localStorage.setItem("token", data.token);
@@ -154,8 +194,7 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
         JSON.stringify({ user_id: data.userId, role: data.role }),
       );
 
-      alert(`Login successful! Role: ${data.role}`);
-
+      // No success notification — proceed straight to the redirect.
       // Redirect based on role
       if (data.role === "Student") {
         navigate("/student/dashboard");
@@ -173,18 +212,18 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess }) => {
         navigate("/");
       }
     } catch (error) {
-      console.error("Login error:", error);
-      console.error("Error response:", error.response?.data);
-      console.error("Error status:", error.response?.status);
+      //console.error("Login error:", error);
+    //  console.error("Error response:", error.response?.data);
+    //  console.error("Error status:", error.response?.status);
 
       if (error.response?.data?.message) {
-        alert(`Login Failed: ${error.response.data.message}`);
+        toast.error(`Login Failed: ${error.response.data.message}`);
       } else if (error.response?.status === 400) {
-        alert(
+        toast.error(
           "Login Failed: Invalid email or password. Please check your credentials.",
         );
       } else {
-        alert("Network error. Please try again later.");
+        toast.error("Network error. Please try again later.");
       }
     } finally {
       setSubmitting(false);
@@ -410,7 +449,7 @@ const RegistrationForm = ({ onBackToLogin }) => {
     e.preventDefault();
 
     if (!termsAccepted) {
-      alert("Please accept the terms and conditions to proceed.");
+      toast.warn("Please accept the terms and conditions to proceed.");
       return;
     }
 
@@ -421,26 +460,23 @@ const RegistrationForm = ({ onBackToLogin }) => {
       );
 
       // Successful registration
-      console.log("Student Registration Response:", response.data);
-      alert(
-        `Registration successful! Your user ID is: ${response.data.userId}`,
-      );
+     // console.log("Student Registration Response:", response.data);
 
       // Optional: store JWT token
       localStorage.setItem("token", response.data.token);
 
-      // Redirect back to login
+      // No success notification — go straight back to login.
       onBackToLogin();
     } catch (error) {
       // Handle errors
       if (error.response) {
         // Backend returned an error
-        alert(error.response.data.message || "Registration failed");
-        console.error("Backend error:", error.response.data);
+        toast.error(error.response.data.message || "Registration failed");
+       // console.error("Backend error:", error.response.data);
       } else {
         // Network error
-        alert("Network error. Please try again later.");
-        console.error("Network error:", error);
+        toast.error("Network error. Please try again later.");
+       // console.error("Network error:", error);
       }
     }
   };
@@ -942,16 +978,10 @@ const RegistrationForm = ({ onBackToLogin }) => {
 const LoginLayout = ({ onNavigateToAdmin, onNavigateByRole }) => {
   // onNavigateToAdmin is the handler for admin, onNavigateByRole for other roles
   const [view, setView] = useState("login");
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // New state to track login status
-  const [userRole, setUserRole] = useState(null); // New state to track role
 
   // Handler for successful login
   const handleLoginSuccess = (userData) => {
   /*   console.log(`Login successful for: ${userData.role}`); */
-
-    // Save user data (in a real app, this would go to context/local storage)
-    setUserRole(userData.role);
-    setIsLoggedIn(true);
 
     // Call the external navigation function to switch layouts/routes
     if (userData.role === "Admin") {
@@ -964,52 +994,13 @@ const LoginLayout = ({ onNavigateToAdmin, onNavigateByRole }) => {
     // Add more role-based navigation as needed
   };
 
-  if (isLoggedIn && userRole === "Admin") {
-    // In a real router setup, this component would unmount/redirect.
-    // Since this is a self-contained component, we can display a success message
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <h1 className="text-3xl font-bold text-green-600">
-          🚀 Redirecting to Admin Dashboard...
-        </h1>
-        <p className="text-slate-600 mt-2">
-          (Simulated: The actual routing is handled by the parent
-          component/router)
-        </p>
-      </div>
-    );
-  }
-
-  if (isLoggedIn && userRole === "Faculty") {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <h1 className="text-3xl font-bold text-green-600">
-          🚀 Redirecting to Faculty Dashboard...
-        </h1>
-        <p className="text-slate-600 mt-2">
-          (Simulated: The actual routing is handled by the parent
-          component/router)
-        </p>
-      </div>
-    );
-  }
-
-  if (isLoggedIn && userRole === "Student") {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <h1 className="text-3xl font-bold text-green-600">
-          🚀 Redirecting to Student Dashboard...
-        </h1>
-        <p className="text-slate-600 mt-2">
-          (Simulated: The actual routing is handled by the parent
-          component/router)
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4 font-sans relative overflow-hidden">
+      {/* Renders the toast.warn/toast.error notifications used by the
+          login and registration forms. Success cases don't show a toast —
+          they navigate straight through. */}
+      <ToastContainer className="center-toast-container" autoClose={3000} />
+
       {/* Background Image Overlay */}
       <div
         className="absolute top-0 left-0 w-full h-full pointer-events-none"

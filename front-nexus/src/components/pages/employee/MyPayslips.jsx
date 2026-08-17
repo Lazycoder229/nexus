@@ -79,120 +79,188 @@ const MyPayslips = () => {
     }
   };
 
+  const formatMoney = (val) =>
+    parseFloat(val || 0).toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+  const formatDate = (val) =>
+    val
+      ? new Date(val).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "N/A";
+
   const performPDFGeneration = (payslip) => {
     // Defer PDF generation to next event loop cycle to keep UI responsive
     requestAnimationFrame(() => {
       setTimeout(() => {
         try {
-          // Create a clean container with simple CSS (no Tailwind)
+          // A5 portrait: 148mm x 210mm — the standard compact size for
+          // payslips (vs. A4/Letter used for longer documents).
           const pdfContainer = document.createElement("div");
           pdfContainer.style.cssText = `
-            width: 210mm;
-            height: 297mm;
-            padding: 20px;
-            background-color: white;
-            color: #333;
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            line-height: 1.5;
+            width: 148mm;
+            min-height: 210mm;
+            padding: 12mm 10mm;
+            background-color: #ffffff;
+            color: #1f2937;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-size: 9px;
+            line-height: 1.45;
+            box-sizing: border-box;
           `;
 
-          // Build clean HTML content
+          // Earnings & deductions always list every line item from the
+          // Generate Payslip form — even when the value is zero/blank —
+          // so the PDF matches that form 1:1 instead of hiding empty rows.
+          const earningsRows = [
+            { label: "Basic Pay", value: payslip.basic_salary },
+            { label: "Overtime Pay", value: payslip.overtime_pay },
+            { label: "Holiday Pay", value: payslip.holiday_pay },
+            { label: "Night Differential", value: payslip.night_differential },
+            { label: "Allowances", value: payslip.allowances },
+            { label: "Bonus", value: payslip.bonus },
+          ]
+            .map(
+              (r) => `
+                <tr>
+                  <td style="padding: 4px 0; border-bottom: 1px solid #e5e7eb; color: #374151;">${r.label}</td>
+                  <td style="padding: 4px 0; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600; color: #111827;">₱${formatMoney(r.value)}</td>
+                </tr>`,
+            )
+            .join("");
+
+          const deductionRows = [
+            { label: "SSS Deduction", value: payslip.sss_deduction },
+            { label: "PhilHealth Deduction", value: payslip.philhealth_deduction },
+            { label: "Pag-IBIG Deduction", value: payslip.pagibig_deduction },
+            { label: "Tax Deduction", value: payslip.tax_deduction },
+            { label: "Loan Deduction", value: payslip.loan_deduction },
+            { label: "Other Deductions", value: payslip.other_deductions },
+          ]
+            .map(
+              (r) => `
+                <tr>
+                  <td style="padding: 4px 0; border-bottom: 1px solid #e5e7eb; color: #374151;">${r.label}</td>
+                  <td style="padding: 4px 0; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600; color: #111827;">₱${formatMoney(r.value)}</td>
+                </tr>`,
+            )
+            .join("");
+
+          const generatedAt = `${new Date().toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })} · ${new Date().toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}`;
+
+          // Build clean, professional HTML content
           pdfContainer.innerHTML = `
-            <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px;">
-              <h1 style="margin: 0; font-size: 28px; font-weight: bold; color: #000;">PAYSLIP</h1>
-              <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">Professional Payroll System</p>
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111827; padding-bottom: 8px; margin-bottom: 12px;">
+              <div>
+                <h1 style="margin: 0; font-size: 18px; font-weight: 800; letter-spacing: 0.5px; color: #111827;">PAYSLIP</h1>
+                <p style="margin: 2px 0 0 0; font-size: 8px; color: #6b7280;">Official Statement of Earnings and Deductions</p>
+              </div>
+              <div style="text-align: right;">
+                <p style="margin: 0; font-size: 8px; color: #6b7280;">Payslip No.</p>
+                <p style="margin: 0; font-size: 10px; font-weight: 700; color: #111827;">${payslip.payslip_number || "N/A"}</p>
+              </div>
             </div>
 
-            <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse;">
+            <!-- Employee / Period Info -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px;">
               <tr>
-                <td style="padding: 10px; background-color: #f5f5f5; border: 1px solid #ddd; vertical-align: top;">
-                  <p style="margin: 0 0 5px 0; font-size: 11px; font-weight: bold; color: #666; text-transform: uppercase;">EMPLOYEE</p>
-                  <p style="margin: 0 0 3px 0; font-size: 14px; font-weight: bold; color: #000;">${payslip.first_name || ""} ${
-                    payslip.last_name || ""
-                  }</p>
-                  <p style="margin: 0; font-size: 12px; color: #666;">${payslip.employee_number || "N/A"}</p>
+                <td style="width: 50%; padding: 8px; background-color: #f9fafb; border: 1px solid #e5e7eb; vertical-align: top;">
+                  <p style="margin: 0 0 3px 0; font-size: 7px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.3px;">Employee</p>
+                  <p style="margin: 0 0 2px 0; font-size: 10px; font-weight: 700; color: #111827;">${payslip.first_name || ""} ${payslip.last_name || ""}</p>
+                  <p style="margin: 0; font-size: 8px; color: #6b7280;">ID: ${payslip.employee_number || "N/A"}</p>
                 </td>
-                <td style="padding: 10px; background-color: #f5f5f5; border: 1px solid #ddd; vertical-align: top;">
-                  <p style="margin: 0 0 5px 0; font-size: 11px; font-weight: bold; color: #666; text-transform: uppercase;">PERIOD</p>
-                  <p style="margin: 0; font-size: 14px; font-weight: bold; color: #000;">
-                    ${
-                      payslip.start_date
-                        ? new Date(payslip.start_date).toLocaleDateString(
-                            "en-US",
-                            {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            },
-                          )
-                        : "N/A"
-                    } to ${
-                      payslip.end_date
-                        ? new Date(payslip.end_date).toLocaleDateString(
-                            "en-US",
-                            {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            },
-                          )
-                        : "N/A"
-                    }
-                  </p>
+                <td style="width: 50%; padding: 8px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-left: none; vertical-align: top;">
+                  <p style="margin: 0 0 3px 0; font-size: 7px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.3px;">Pay Period</p>
+                  <p style="margin: 0; font-size: 9px; font-weight: 600; color: #111827;">${formatDate(payslip.start_date)}</p>
+                  <p style="margin: 0; font-size: 9px; font-weight: 600; color: #111827;">to ${formatDate(payslip.end_date)}</p>
+                </td>
+              </tr>
+              ${
+                payslip.department || payslip.position
+                  ? `<tr>
+                <td style="padding: 8px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-top: none; vertical-align: top;">
+                  <p style="margin: 0 0 3px 0; font-size: 7px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.3px;">Department</p>
+                  <p style="margin: 0; font-size: 9px; font-weight: 600; color: #111827;">${payslip.department || "N/A"}</p>
+                </td>
+                <td style="padding: 8px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-left: none; border-top: none; vertical-align: top;">
+                  <p style="margin: 0 0 3px 0; font-size: 7px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.3px;">Position</p>
+                  <p style="margin: 0; font-size: 9px; font-weight: 600; color: #111827;">${payslip.position || "N/A"}</p>
+                </td>
+              </tr>`
+                  : ""
+              }
+            </table>
+
+            <!-- Earnings -->
+            <div style="margin-bottom: 10px;">
+              <p style="margin: 0 0 6px 0; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1.5px solid #111827; padding-bottom: 4px; color: #111827;">Earnings</p>
+              <table style="width: 100%; border-collapse: collapse;">
+                ${earningsRows}
+              </table>
+              <div style="margin-top: 6px; padding: 7px 8px; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 700; color: #047857; font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px;">Gross Pay</span>
+                <span style="font-weight: 700; color: #047857; font-size: 11px;">₱${formatMoney(payslip.gross_pay)}</span>
+              </div>
+            </div>
+
+            <!-- Deductions -->
+            <div style="margin-bottom: 10px;">
+              <p style="margin: 0 0 6px 0; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1.5px solid #111827; padding-bottom: 4px; color: #111827;">Deductions</p>
+              <table style="width: 100%; border-collapse: collapse;">${deductionRows}</table>
+              <div style="margin-top: 6px; padding: 7px 8px; background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 700; color: #b91c1c; font-size: 9px; text-transform: uppercase; letter-spacing: 0.3px;">Total Deductions</span>
+                <span style="font-weight: 700; color: #b91c1c; font-size: 11px;">₱${formatMoney(payslip.total_deductions)}</span>
+              </div>
+            </div>
+
+            ${
+              payslip.notes
+                ? `<div style="margin-bottom: 10px;">
+              <p style="margin: 0 0 4px 0; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1.5px solid #111827; padding-bottom: 4px; color: #111827;">Notes</p>
+              <p style="margin: 4px 0 0 0; font-size: 8px; color: #374151;">${payslip.notes}</p>
+            </div>`
+                : ""
+            }
+
+            <!-- Net Pay -->
+            <div style="padding: 12px; background-color: #111827; border-radius: 6px; margin-top: 14px; text-align: center;">
+              <p style="margin: 0 0 4px 0; font-size: 7.5px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.6px;">Net Pay</p>
+              <p style="margin: 0; font-size: 22px; font-weight: 800; color: #ffffff;">₱${formatMoney(payslip.net_pay)}</p>
+              <p style="margin: 6px 0 0 0; padding-top: 6px; border-top: 1px solid #374151; font-size: 7px; color: #9ca3af;">
+                ₱${formatMoney(payslip.gross_pay)} (Gross Pay) − ₱${formatMoney(payslip.total_deductions)} (Deductions) = ₱${formatMoney(payslip.net_pay)}
+              </p>
+            </div>
+
+            <!-- Signature -->
+            <table style="width: 100%; margin-top: 26px; border-collapse: collapse;">
+              <tr>
+                <td style="width: 48%; text-align: center;">
+                  <div style="border-top: 1px solid #111827; padding-top: 4px; font-size: 7.5px; color: #6b7280;">Employee Signature</div>
+                </td>
+                <td style="width: 4%;"></td>
+                <td style="width: 48%; text-align: center;">
+                  <div style="border-top: 1px solid #111827; padding-top: 4px; font-size: 7.5px; color: #6b7280;">Authorized Signature</div>
                 </td>
               </tr>
             </table>
 
-            <div style="margin-bottom: 20px;">
-              <p style="margin: 0 0 10px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 8px; color: #000;">EARNINGS</p>
-              <table style="width: 100%; margin-bottom: 10px; border-collapse: collapse;">
-                <tr>
-                  <td style="padding: 5px 0; border-bottom: 1px solid #ddd; color: #333;">Basic Salary</td>
-                  <td style="padding: 5px 0; border-bottom: 1px solid #ddd; text-align: right; font-weight: bold; color: #000;">₱${parseFloat(
-                    payslip.basic_salary || 0,
-                  ).toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}</td>
-                </tr>
-              </table>
-              <div style="padding: 10px; background-color: #e8f5e9; border: 1px solid #4caf50; border-radius: 3px; display: flex; justify-content: space-between;">
-                <span style="font-weight: bold; color: #2e7d32; font-size: 13px;">GROSS PAY</span>
-                <span style="font-weight: bold; color: #2e7d32; font-size: 13px;">₱${parseFloat(
-                  payslip.gross_pay || 0,
-                ).toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}</span>
-              </div>
-            </div>
-
-            <div style="margin-bottom: 20px;">
-              <p style="margin: 0 0 10px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; border-bottom: 2px solid #000; padding-bottom: 8px; color: #000;">DEDUCTIONS</p>
-              <div style="padding: 10px; background-color: #ffebee; border: 1px solid #f44336; border-radius: 3px; display: flex; justify-content: space-between;">
-                <span style="font-weight: bold; color: #c62828; font-size: 13px;">TOTAL DEDUCTIONS</span>
-                <span style="font-weight: bold; color: #c62828; font-size: 13px;">₱${parseFloat(
-                  payslip.total_deductions || 0,
-                ).toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}</span>
-              </div>
-            </div>
-
-            <div style="padding: 20px; background-color: #e3f2fd; border: 2px solid #1976d2; border-radius: 8px; margin-top: 20px; text-align: center;">
-              <p style="margin: 0 0 8px 0; font-size: 11px; font-weight: bold; color: #1565c0; text-transform: uppercase;">NET PAY</p>
-              <p style="margin: 0; font-size: 32px; font-weight: bold; color: #1565c0;">₱${parseFloat(
-                payslip.net_pay || 0,
-              ).toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}</p>
-            </div>
-
-            <div style="text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #ccc; font-size: 11px; color: #999;">
-              <p style="margin: 0;">This is a confidential document. Keep it safe.</p>
+            <!-- Footer -->
+            <div style="text-align: center; margin-top: 20px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 6.5px; color: #9ca3af;">
+              <p style="margin: 0;">This is a system-generated confidential document. Please keep it safe.</p>
+              <p style="margin: 2px 0 0 0;">Generated on ${generatedAt}</p>
             </div>
           `;
 
@@ -200,13 +268,13 @@ const MyPayslips = () => {
           document.body.appendChild(pdfContainer);
 
           const opt = {
-            margin: 5,
+            margin: 0,
             filename: `Payslip_${payslip.payslip_number}_${
               new Date().toISOString().split("T")[0]
             }.pdf`,
             image: { type: "jpeg", quality: 0.98 },
             html2canvas: {
-              scale: 2,
+              scale: 3,
               useCORS: true,
               allowTaint: true,
               backgroundColor: "#ffffff",
@@ -216,11 +284,11 @@ const MyPayslips = () => {
             jsPDF: {
               orientation: "portrait",
               unit: "mm",
-              format: "a4",
+              format: "a5",
             },
           };
 
-          console.log("📄 Starting clean PDF generation...");
+          console.log("📄 Starting professional A5 PDF generation...");
 
           // Use async PDF generation
           window
@@ -551,7 +619,7 @@ const MyPayslips = () => {
                   <table className="w-full text-sm">
                     <tbody>
                       <tr className="border-b">
-                        <td className="py-1">Basic Salary</td>
+                        <td className="py-1">Basic Pay</td>
                         <td className="text-right">
                           ₱
                           {parseFloat(
@@ -561,44 +629,61 @@ const MyPayslips = () => {
                           })}
                         </td>
                       </tr>
-                      {(selectedPayslip.allowances || 0) > 0 && (
-                        <tr className="border-b">
-                          <td className="py-1">Allowances</td>
-                          <td className="text-right">
-                            ₱
-                            {parseFloat(
-                              selectedPayslip.allowances,
-                            ).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                            })}
-                          </td>
-                        </tr>
-                      )}
-                      {(selectedPayslip.overtime_pay || 0) > 0 && (
-                        <tr className="border-b">
-                          <td className="py-1">Overtime Pay</td>
-                          <td className="text-right">
-                            ₱
-                            {parseFloat(
-                              selectedPayslip.overtime_pay,
-                            ).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                            })}
-                          </td>
-                        </tr>
-                      )}
-                      {(selectedPayslip.bonus || 0) > 0 && (
-                        <tr className="border-b">
-                          <td className="py-1">Bonus</td>
-                          <td className="text-right">
-                            ₱
-                            {parseFloat(selectedPayslip.bonus).toLocaleString(
-                              undefined,
-                              { minimumFractionDigits: 2 },
-                            )}
-                          </td>
-                        </tr>
-                      )}
+                      <tr className="border-b">
+                        <td className="py-1">Overtime Pay</td>
+                        <td className="text-right">
+                          ₱
+                          {parseFloat(
+                            selectedPayslip.overtime_pay || 0,
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-1">Holiday Pay</td>
+                        <td className="text-right">
+                          ₱
+                          {parseFloat(
+                            selectedPayslip.holiday_pay || 0,
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-1">Night Differential</td>
+                        <td className="text-right">
+                          ₱
+                          {parseFloat(
+                            selectedPayslip.night_differential || 0,
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-1">Allowances</td>
+                        <td className="text-right">
+                          ₱
+                          {parseFloat(
+                            selectedPayslip.allowances || 0,
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-1">Bonus</td>
+                        <td className="text-right">
+                          ₱
+                          {parseFloat(
+                            selectedPayslip.bonus || 0,
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
                       <tr className="font-bold bg-green-50 dark:bg-green-900/20">
                         <td className="py-2">GROSS PAY</td>
                         <td className="text-right text-green-600 dark:text-green-400">
@@ -621,84 +706,72 @@ const MyPayslips = () => {
                   </h3>
                   <table className="w-full text-sm">
                     <tbody>
-                      {(selectedPayslip.sss_deduction || 0) > 0 && (
-                        <tr className="border-b">
-                          <td className="py-1">SSS</td>
-                          <td className="text-right">
-                            ₱
-                            {parseFloat(
-                              selectedPayslip.sss_deduction,
-                            ).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                            })}
-                          </td>
-                        </tr>
-                      )}
-                      {(selectedPayslip.philhealth_deduction || 0) > 0 && (
-                        <tr className="border-b">
-                          <td className="py-1">PhilHealth</td>
-                          <td className="text-right">
-                            ₱
-                            {parseFloat(
-                              selectedPayslip.philhealth_deduction,
-                            ).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                            })}
-                          </td>
-                        </tr>
-                      )}
-                      {(selectedPayslip.pagibig_deduction || 0) > 0 && (
-                        <tr className="border-b">
-                          <td className="py-1">Pag-IBIG</td>
-                          <td className="text-right">
-                            ₱
-                            {parseFloat(
-                              selectedPayslip.pagibig_deduction,
-                            ).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                            })}
-                          </td>
-                        </tr>
-                      )}
-                      {(selectedPayslip.tax_deduction || 0) > 0 && (
-                        <tr className="border-b">
-                          <td className="py-1">Withholding Tax</td>
-                          <td className="text-right">
-                            ₱
-                            {parseFloat(
-                              selectedPayslip.tax_deduction,
-                            ).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                            })}
-                          </td>
-                        </tr>
-                      )}
-                      {(selectedPayslip.loan_deduction || 0) > 0 && (
-                        <tr className="border-b">
-                          <td className="py-1">Loan Deduction</td>
-                          <td className="text-right">
-                            ₱
-                            {parseFloat(
-                              selectedPayslip.loan_deduction,
-                            ).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                            })}
-                          </td>
-                        </tr>
-                      )}
-                      {(selectedPayslip.other_deductions || 0) > 0 && (
-                        <tr className="border-b">
-                          <td className="py-1">Other Deductions</td>
-                          <td className="text-right">
-                            ₱
-                            {parseFloat(
-                              selectedPayslip.other_deductions,
-                            ).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                            })}
-                          </td>
-                        </tr>
-                      )}
+                      <tr className="border-b">
+                        <td className="py-1">SSS Deduction</td>
+                        <td className="text-right">
+                          ₱
+                          {parseFloat(
+                            selectedPayslip.sss_deduction || 0,
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-1">PhilHealth Deduction</td>
+                        <td className="text-right">
+                          ₱
+                          {parseFloat(
+                            selectedPayslip.philhealth_deduction || 0,
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-1">Pag-IBIG Deduction</td>
+                        <td className="text-right">
+                          ₱
+                          {parseFloat(
+                            selectedPayslip.pagibig_deduction || 0,
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-1">Tax Deduction</td>
+                        <td className="text-right">
+                          ₱
+                          {parseFloat(
+                            selectedPayslip.tax_deduction || 0,
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-1">Loan Deduction</td>
+                        <td className="text-right">
+                          ₱
+                          {parseFloat(
+                            selectedPayslip.loan_deduction || 0,
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-1">Other Deductions</td>
+                        <td className="text-right">
+                          ₱
+                          {parseFloat(
+                            selectedPayslip.other_deductions || 0,
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                          })}
+                        </td>
+                      </tr>
                       <tr className="font-bold bg-red-50 dark:bg-red-900/20">
                         <td className="py-2">TOTAL DEDUCTIONS</td>
                         <td className="text-right text-red-600 dark:text-red-400">
@@ -714,6 +787,18 @@ const MyPayslips = () => {
                   </table>
                 </div>
 
+                {/* Notes */}
+                {selectedPayslip.notes && (
+                  <div className="mb-6">
+                    <h3 className="font-bold text-lg mb-2 border-b-2 pb-1">
+                      NOTES
+                    </h3>
+                    <p className="text-sm text-slate-700 dark:text-slate-300">
+                      {selectedPayslip.notes}
+                    </p>
+                  </div>
+                )}
+
                 {/* Net Pay Section */}
                 <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border-2 border-indigo-600">
                   <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
@@ -721,6 +806,21 @@ const MyPayslips = () => {
                   </p>
                   <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
                     ₱
+                    {parseFloat(selectedPayslip.net_pay || 0).toLocaleString(
+                      undefined,
+                      { minimumFractionDigits: 2 },
+                    )}
+                  </p>
+                  <p className="text-xs text-indigo-500 dark:text-indigo-400 mt-2 pt-2 border-t border-indigo-200 dark:border-indigo-800">
+                    ₱
+                    {parseFloat(
+                      selectedPayslip.gross_pay || 0,
+                    ).toLocaleString(undefined, { minimumFractionDigits: 2 })}{" "}
+                    (Gross Pay) − ₱
+                    {parseFloat(
+                      selectedPayslip.total_deductions || 0,
+                    ).toLocaleString(undefined, { minimumFractionDigits: 2 })}{" "}
+                    (Deductions) = ₱
                     {parseFloat(selectedPayslip.net_pay || 0).toLocaleString(
                       undefined,
                       { minimumFractionDigits: 2 },
