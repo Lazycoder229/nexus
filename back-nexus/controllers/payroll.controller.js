@@ -183,17 +183,11 @@ export const deletePayslip = async (req, res) => {
 
 export const getPayrollSummary = async (req, res) => {
   try {
-    const { report_type } = req.query;
     const setupId = req.params.setupId;
 
     const summaryResults = await Payroll.getPayrollSummary(setupId);
-    let responseData = summaryResults[0];
-
-    // If report type requires detailed data, fetch payslips
-    if (report_type && report_type !== "Summary") {
-      const payslips = await Payroll.getPayslipsBySetup(setupId);
-      responseData = { ...responseData, payslips };
-    }
+    const payslips = await Payroll.getPayslipsBySetup(setupId);
+    const responseData = { ...summaryResults[0], payslips };
 
     res.json({ success: true, data: responseData });
   } catch (err) {

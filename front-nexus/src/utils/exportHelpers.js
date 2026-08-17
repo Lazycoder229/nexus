@@ -49,11 +49,58 @@ const FIELD_LABELS = {
   remarks: "Remarks",
   created_at: "Created Date",
   updated_at: "Updated Date",
+
+  // Payroll-specific short labels — avoids mid-word wrapping in narrow PDF columns
+  employee_number: "Emp. No.",
+  basic_pay: "Basic Pay",
+  gross_pay: "Gross Pay",
+  overtime_pay: "OT Pay",
+  holiday_pay: "Holiday Pay",
+  night_differential: "Night Diff.",
+  allowances: "Allowances",
+  bonus: "Bonus",
+  sss_deduction: "SSS",
+  philhealth_deduction: "PhilHealth",
+  pagibig_deduction: "Pag-IBIG",
+  tax_deduction: "W/Tax",
+  loan_deduction: "Loan",
+  other_deductions: "Other Ded.",
+  total_deductions: "Total Ded.",
+  net_pay: "Net Pay",
+  bank_name: "Bank",
+  bank_account_number: "Account No.",
 };
+
+// Fields treated as currency/numeric — right-aligned + comma-formatted in PDF/CSV
+const NUMERIC_FIELDS = new Set([
+  "basic_pay",
+  "gross_pay",
+  "overtime_pay",
+  "holiday_pay",
+  "night_differential",
+  "allowances",
+  "bonus",
+  "sss_deduction",
+  "philhealth_deduction",
+  "pagibig_deduction",
+  "tax_deduction",
+  "loan_deduction",
+  "other_deductions",
+  "total_deductions",
+  "net_pay",
+  "salary",
+]);
 
 /** Get readable header for a field */
 const getFieldLabel = (field) =>
   FIELD_LABELS[field] || field.replace(/_/g, " ").toUpperCase();
+
+/** Format a numeric value with thousands separators, 2 decimals */
+const formatNumber = (val) =>
+  Number(val).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 /**
  * Escape a single value for CSV.
@@ -132,29 +179,37 @@ export const generateCSV = (data, options = {}) => {
     : title.toUpperCase();
 
   const letterhead = [
-    lhRow("BCC Logo", "Republic of the Philippines"),   // line 1  — small
-    lhRow("",         "Region IV-B MIMAROPA"),           // line 2  — small
-    lhRow("",         "BACO COMMUNITY COLLEGE"),         // line 3  — large bold
-    lhRow("",         "Poblacion, Baco, Oriental Mindoro 5201"), // line 4 — small
-    lhRow("",         "Email: bccbaco@gmail.com"),       // line 5  — small
-    makeRow([]),                                          // divider (blank row)
-    makeRow([subHeaderText]),                             // sub-header bold
-    makeRow([                                             // Generated | Total Records
+    lhRow("BCC Logo", "Republic of the Philippines"), // line 1  — small
+    lhRow("", "Region IV-B MIMAROPA"), // line 2  — small
+    lhRow("", "BACO COMMUNITY COLLEGE"), // line 3  — large bold
+    lhRow("", "Poblacion, Baco, Oriental Mindoro 5201"), // line 4 — small
+    lhRow("", "Email: bccbaco@gmail.com"), // line 5  — small
+    makeRow([]), // divider (blank row)
+    makeRow([subHeaderText]), // sub-header bold
+    makeRow([
+      // Generated | Total Records
       `Generated: ${new Date().toLocaleString("en-PH")}`,
       `Total Records: ${data.length}`,
     ]),
-    makeRow([]),                                          // blank spacer → table
+    makeRow([]), // blank spacer → table
   ];
 
   // ── Column headers + data rows ────────────────────────────────────────
-  const headerLine = cols.map((h) => escapeCsvValue(getFieldLabel(h))).join(",");
-  const rowLines   = data.map((row) =>
-    cols.map((h) => {
-      const val = row[h];
-      if (val === null || val === undefined) return "";
-      if (typeof val === "boolean") return val ? "Yes" : "No";
-      return escapeCsvValue(val);
-    }).join(","),
+  const headerLine = cols
+    .map((h) => escapeCsvValue(getFieldLabel(h)))
+    .join(",");
+  const rowLines = data.map((row) =>
+    cols
+      .map((h) => {
+        const val = row[h];
+        if (val === null || val === undefined) return "";
+        if (typeof val === "boolean") return val ? "Yes" : "No";
+        if (NUMERIC_FIELDS.has(h) && !isNaN(val)) {
+          return escapeCsvValue(formatNumber(val));
+        }
+        return escapeCsvValue(val);
+      })
+      .join(","),
   );
 
   return [...letterhead, headerLine, ...rowLines].join("\n");
@@ -217,15 +272,18 @@ const fetchLogoAsBase64 = async (url) => {
  *
  * @returns {number} Y coordinate for the first table row
  */
-const drawLetterhead = (doc, { pageW, margin, logoBase64, title, programLabel, recordCount }) => {
+const drawLetterhead = (
+  doc,
+  { pageW, margin, logoBase64, title, programLabel, recordCount },
+) => {
   // ── Constants ────────────────────────────────────────────────────────────
-  const LOGO_SIZE    = 22;          // logo square (mm)
-  const LINE_GAP_SM  = 4.5;        // gap between small lines (mm)
-  const LINE_GAP_LG  = 7;          // gap after institution name
-  const DIVIDER_PAD  = 5;          // space above & below the rule
-  const SUB_LINE_GAP = 5.5;        // gap between sub-header lines
-  const META_GAP     = 4.5;        // gap between Generated / Total Records line
-  const BOTTOM_PAD   = 6;          // space below last meta line → table start
+  const LOGO_SIZE = 22; // logo square (mm)
+  const LINE_GAP_SM = 4.5; // gap between small lines (mm)
+  const LINE_GAP_LG = 7; // gap after institution name
+  const DIVIDER_PAD = 5; // space above & below the rule
+  const SUB_LINE_GAP = 5.5; // gap between sub-header lines
+  const META_GAP = 4.5; // gap between Generated / Total Records line
+  const BOTTOM_PAD = 6; // space below last meta line → table start
 
   // ── Letterhead text lines ─────────────────────────────────────────────
   const centerX = pageW / 2;
@@ -252,16 +310,18 @@ const drawLetterhead = (doc, { pageW, margin, logoBase64, title, programLabel, r
   // "Poblacion, Baco, Oriental Mindoro 5201"
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
-  doc.text("Poblacion, Baco, Oriental Mindoro 5201", centerX, y, { align: "center" });
+  doc.text("Poblacion, Baco, Oriental Mindoro 5201", centerX, y, {
+    align: "center",
+  });
   y += LINE_GAP_SM;
 
   // "Email: bccbaco@gmail.com"
   doc.text("Email: bccbaco@gmail.com", centerX, y, { align: "center" });
 
   // ── Logo — vertically centered on the text block ──────────────────────
-  const blockTop  = margin;
-  const blockBot  = y;
-  const logoY     = blockTop + (blockBot - blockTop) / 2 - LOGO_SIZE / 2;
+  const blockTop = margin;
+  const blockBot = y;
+  const logoY = blockTop + (blockBot - blockTop) / 2 - LOGO_SIZE / 2;
 
   if (logoBase64) {
     try {
@@ -289,7 +349,7 @@ const drawLetterhead = (doc, { pageW, margin, logoBase64, title, programLabel, r
 
   // Wrap long program names; each line advances y
   const maxTextWidth = pageW - margin * 2;
-  const titleLines   = doc.splitTextToSize(subText, maxTextWidth);
+  const titleLines = doc.splitTextToSize(subText, maxTextWidth);
   doc.text(titleLines, margin, y);
   y += titleLines.length * SUB_LINE_GAP;
 
@@ -319,6 +379,8 @@ const drawLetterhead = (doc, { pageW, margin, logoBase64, title, programLabel, r
  *   @param {boolean}  options.includeTimestamps  – include created_at / updated_at (default false)
  *   @param {string}   options.logoBase64         – optional pre-fetched base64 PNG/JPEG
  *   @param {string}   options.filename           – override auto-generated filename
+ *   @param {boolean}  options.showTotals         – append a bold totals row for numeric columns (default true)
+ *   @param {number[]} options.headerFillColor    – [r,g,b] header background (default BCC maroon)
  */
 export const downloadPDF = async (jsPDFLib, autoTableLib, data, options = {}) => {
   if (!data || data.length === 0) return;
@@ -331,7 +393,18 @@ export const downloadPDF = async (jsPDFLib, autoTableLib, data, options = {}) =>
     includeTimestamps = false,
     logoBase64: passedLogo = null,
     filename: customFilename = null,
+    showTotals = true,
+    headerFillColor = [128, 0, 32], // BCC maroon — change to match brand color
+    officeLabel: passedOfficeLabel = null, // e.g. "Registrar Office" | "HR Office"
   } = options;
+
+  // ── Resolve footer office label ─────────────────────────────────────────
+  // Explicit option always wins. Otherwise auto-detect from the report
+  // title / program label: payroll reports → HR Office, everything else
+  // (enrollment, students, grades, etc.) → Registrar Office.
+  const officeLabel =
+    passedOfficeLabel ||
+    (/payroll/i.test(`${title} ${programLabel}`) ? "HR Office" : "Registrar Office");
 
   // ── Resolve logo ────────────────────────────────────────────────────────
   const BCC_LOGO_URL =
@@ -346,7 +419,7 @@ export const downloadPDF = async (jsPDFLib, autoTableLib, data, options = {}) =>
         (h) => !["created_at", "updated_at", "deleted_at"].includes(h),
       );
 
-  const doc   = new jsPDFLib({ orientation, unit: "mm", format: "a4" });
+  const doc = new jsPDFLib({ orientation, unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 14;
@@ -361,42 +434,96 @@ export const downloadPDF = async (jsPDFLib, autoTableLib, data, options = {}) =>
     recordCount: data.length,
   });
 
+  // Column styles: right-align + auto width for numeric fields, left for text
+  const columnStyles = Object.fromEntries(
+    cols.map((h, i) => [
+      i,
+      NUMERIC_FIELDS.has(h)
+        ? { halign: "right", cellWidth: "auto" }
+        : { halign: "left", cellWidth: "auto" },
+    ]),
+  );
+
+  // ── Body rows ────────────────────────────────────────────────────────────
+  const bodyRows = data.map((row) =>
+    cols.map((h) => {
+      const val = row[h];
+      if (val === null || val === undefined) return "";
+      if (typeof val === "boolean") return val ? "Yes" : "No";
+      if (NUMERIC_FIELDS.has(h) && !isNaN(val)) return formatNumber(val);
+      return String(val);
+    }),
+  );
+
+  // ── Grand totals — appended as the LAST row of the SAME table so its
+  //    column widths always match the data rows above it exactly. A
+  //    separate autoTable() call recomputes "auto" widths independently
+  //    and can drift out of alignment with the main table above it —
+  //    that's what was causing the TOTAL row to look off. ──────────────────
+  const hasNumericCol = cols.some((h) => NUMERIC_FIELDS.has(h));
+  const includeTotalsRow = showTotals && hasNumericCol;
+
+  if (includeTotalsRow) {
+    const totalsRow = cols.map((h, i) => {
+      if (!NUMERIC_FIELDS.has(h)) return i === 0 ? "TOTAL" : "";
+      const sum = data.reduce((s, row) => s + (Number(row[h]) || 0), 0);
+      return formatNumber(sum);
+    });
+    bodyRows.push(totalsRow);
+  }
+
+  const totalsRowIndex = includeTotalsRow ? bodyRows.length - 1 : -1;
+
   // ── Table ────────────────────────────────────────────────────────────────
   autoTableLib(doc, {
     startY: tableStartY,
     margin: { left: margin, right: margin },
     head: [cols.map((h) => getFieldLabel(h))],
-    body: data.map((row) =>
-      cols.map((h) => {
-        const val = row[h];
-        if (val === null || val === undefined) return "";
-        if (typeof val === "boolean") return val ? "Yes" : "No";
-        return String(val);
-      }),
-    ),
+    body: bodyRows,
     styles: {
       fontSize: 8,
-      cellPadding: { top: 3, bottom: 3, left: 4, right: 4 },
+      cellPadding: { top: 3, bottom: 3, left: 3, right: 3 },
       overflow: "linebreak",
       textColor: [0, 0, 0],
       lineColor: [0, 0, 0],
       lineWidth: 0.1,
+      valign: "middle",
     },
     headStyles: {
-      fillColor: false,
-      textColor: [0, 0, 0],
+      fillColor: headerFillColor,
+      textColor: [255, 255, 255],
       fontStyle: "bold",
       halign: "center",
       valign: "middle",
-      fontSize: 8,
+      fontSize: 7.5,
       lineWidth: 0.1,
       lineColor: [0, 0, 0],
     },
+    columnStyles,
+    tableWidth: "auto",
     alternateRowStyles: {
-      fillColor: [245, 245, 245],
+      fillColor: [248, 248, 248],
     },
     tableLineColor: [0, 0, 0],
     tableLineWidth: 0.1,
+    // Bold the totals row and give it a heavier top border — without
+    // touching column widths, so it stays perfectly aligned with the body.
+    didParseCell: (hookData) => {
+      if (
+        includeTotalsRow &&
+        hookData.section === "body" &&
+        hookData.row.index === totalsRowIndex
+      ) {
+        hookData.cell.styles.fontStyle = "bold";
+        hookData.cell.styles.fillColor = [255, 255, 255];
+        hookData.cell.styles.lineWidth = {
+          top: 0.5,
+          bottom: 0.1,
+          left: 0.1,
+          right: 0.1,
+        };
+      }
+    },
     // Re-draw the letterhead on every subsequent page
     didAddPage: (hookData) => {
       if (hookData.pageNumber > 1) {
@@ -411,19 +538,21 @@ export const downloadPDF = async (jsPDFLib, autoTableLib, data, options = {}) =>
       }
     },
     didDrawPage: (hookData) => {
-      const pg    = hookData.pageNumber;
+      const pg = hookData.pageNumber;
       const total = doc.internal.getNumberOfPages();
       doc.setFontSize(7);
       doc.setTextColor(80, 80, 80);
-      doc.text(`Page ${pg} of ${total}`, pageW / 2, pageH - 6, { align: "center" });
+      doc.text(`Page ${pg} of ${total}`, pageW / 2, pageH - 6, {
+        align: "center",
+      });
       doc.text("Baco Community College – Registrar Office", margin, pageH - 6);
     },
   });
 
   // ── Save ─────────────────────────────────────────────────────────────────
   const safeTitle = title.replace(/[^a-z0-9]/gi, "_").toLowerCase();
-  const dateStr   = new Date().toISOString().split("T")[0];
-  const outFile   = customFilename || `BCC_${safeTitle}_${dateStr}.pdf`;
+  const dateStr = new Date().toISOString().split("T")[0];
+  const outFile = customFilename || `BCC_${safeTitle}_${dateStr}.pdf`;
   doc.save(outFile);
 };
 

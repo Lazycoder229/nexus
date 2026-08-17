@@ -1,11 +1,5 @@
 import GradesModel from "../model/grades.model.js";
 
-const toNumberOrNull = (value) => {
-  if (value === "" || value === null || value === undefined) return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-};
-
 const GradesService = {
   getAllGrades: async (filters) => {
     try {
@@ -15,9 +9,14 @@ const GradesService = {
     }
   },
 
+  // id is now the composite key "{student_id}-{course_id}-{period_id}"
   getGradeById: async (id) => {
     try {
-      const grade = await GradesModel.getGradeById(id);
+      const [studentId, courseId, periodId] = String(id).split("-");
+      if (!studentId || !courseId || !periodId) {
+        throw new Error("Invalid grade id");
+      }
+      const grade = await GradesModel.getGradeByComposite(studentId, courseId, periodId);
       if (!grade) {
         throw new Error("Grade not found");
       }
@@ -27,160 +26,28 @@ const GradesService = {
     }
   },
 
-  createGrade: async (gradeData) => {
-    try {
-      if (
-        !gradeData.student_user_id ||
-        !gradeData.course_id ||
-        !gradeData.period_id
-      ) {
-        throw new Error("Missing required fields");
-      }
-
-      // Check if grade already exists for this student, course, and period
-      const existingGrades = await GradesModel.getAllGrades({
-        student_user_id: gradeData.student_user_id,
-        course_id: gradeData.course_id,
-        period_id: gradeData.period_id,
-      });
-
-      if (existingGrades.length > 0) {
-        throw new Error(
-          "A grade already exists for this student, course, and academic period. Please edit the existing grade instead.",
-        );
-      }
-
-      const gradeId = await GradesModel.createGrade(gradeData);
-      return await GradesModel.getGradeById(gradeId);
-    } catch (error) {
-      throw new Error(`Error creating grade: ${error.message}`);
-    }
-  },
-
-  createBulkGrades: async (gradesData) => {
-    try {
-      if (!Array.isArray(gradesData) || gradesData.length === 0) {
-        throw new Error("No grades provided");
-      }
-
-      const createdGrades = [];
-      const errors = [];
-
-      for (const gradeData of gradesData) {
-        try {
-          const validWrittenOutput = Array.isArray(gradeData.writtenOutput)
-            ? gradeData.writtenOutput.filter((score) => score !== null && score !== "")
-            : [];
-          const validPerformanceTasks = Array.isArray(gradeData.performanceTasks)
-            ? gradeData.performanceTasks.filter((score) => score !== null && score !== "")
-            : [];
-
-          const writtenOutputAverage = validWrittenOutput.length
-            ? validWrittenOutput.reduce((sum, score) => sum + Number(score), 0) / validWrittenOutput.length
-            : 0;
-          const performanceTasksAverage = validPerformanceTasks.length
-            ? validPerformanceTasks.reduce((sum, score) => sum + Number(score), 0) / validPerformanceTasks.length
-            : 0;
-
-          const processedData = {
-            student_user_id: gradeData.studentId,
-            course_id: gradeData.courseId,
-            final_score: gradeData.finalGrade,
-            letter_grade: gradeData.letterGrade,
-            weighted_output_score: writtenOutputAverage * 0.3,
-            weighted_performance_score: performanceTasksAverage * 0.3,
-            midterm_exam_score: gradeData.midtermExam,
-            components_json: JSON.stringify({
-              writtenOutput: gradeData.writtenOutput,
-              performanceTasks: gradeData.performanceTasks,
-              midtermExam: gradeData.midtermExam,
-            }),
-            status: "submitted",
-          };
-
-          const gradeId = await GradesModel.createGrade(processedData);
-          createdGrades.push(gradeId);
-        } catch (error) {
-          errors.push({
-            studentId: gradeData.studentId,
-            error: error.message,
-          });
-        }
-      }
-
-      return {
-        success: true,
-        created: createdGrades.length,
-        failed: errors.length,
-        errors: errors.length > 0 ? errors : undefined,
-        message: `Successfully created ${createdGrades.length} grades${errors.length > 0 ? ` with ${errors.length} errors` : ""}`,
-      };
-    } catch (error) {
-      throw new Error(`Error creating bulk grades: ${error.message}`);
-    }
-  },
-
-  upsertBulkGrades: async (gradesData) => {
-    try {
-      if (!Array.isArray(gradesData) || gradesData.length === 0) {
-        throw new Error("No grades provided");
-      }
-
-      const normalizedGrades = gradesData
-        .filter((grade) => grade && grade.student_user_id && grade.course_id && grade.period_id)
-        .map((grade) => ({
-          student_user_id: grade.student_user_id,
-          course_id: grade.course_id,
-          period_id: grade.period_id,
-          prelim_grade: toNumberOrNull(grade.prelim_grade),
-          midterm_grade: toNumberOrNull(grade.midterm_grade),
-          finals_grade: toNumberOrNull(grade.finals_grade),
-          final_grade: toNumberOrNull(grade.final_grade),
-          remarks: grade.remarks || null,
-          status: grade.status || "draft",
-        }));
-
-      if (normalizedGrades.length === 0) {
-        throw new Error("No valid grades provided");
-      }
-
-      return await GradesModel.upsertBulkGrades(normalizedGrades);
-    } catch (error) {
-      throw new Error(`Error saving grades: ${error.message}`);
-    }
-  },
-
-  updateGrade: async (id, gradeData) => {
-    try {
-      const updated = await GradesModel.updateGrade(id, gradeData);
-      if (!updated) {
-        throw new Error("Grade not found or not updated");
-      }
-      return await GradesModel.getGradeById(id);
-    } catch (error) {
-      throw new Error(`Error updating grade: ${error.message}`);
-    }
-  },
-
-  deleteGrade: async (id) => {
-    try {
-      const deleted = await GradesModel.deleteGrade(id);
-      if (!deleted) {
-        throw new Error("Grade not found");
-      }
-      return { message: "Grade deleted successfully" };
-    } catch (error) {
-      throw new Error(`Error deleting grade: ${error.message}`);
-    }
-  },
-
+  // "Approve" here bulk-approves every grade_entries row for this
+  // student/course/period — a shortcut over the per-entry approval flow
+  // in GradeEntryApproval.jsx.
   approveGrade: async (id, approvedBy) => {
     try {
-      const approved = await GradesModel.approveGrade(id, approvedBy);
-      if (!approved) {
-        throw new Error("Grade not found or already approved");
+      const [studentId, courseId, periodId] = String(id).split("-");
+      if (!studentId || !courseId || !periodId) {
+        throw new Error("Invalid grade id");
       }
-      return await GradesModel.getGradeById(id);
+
+      const affectedRows = await GradesModel.approveAllEntriesFor(
+        studentId,
+        courseId,
+        periodId,
+        approvedBy,
+      );
+
+      if (affectedRows === 0) {
+        throw new Error("No pending entries found to approve for this student/course/period");
+      }
+
+      return await GradesModel.getGradeByComposite(studentId, courseId, periodId);
     } catch (error) {
       throw new Error(`Error approving grade: ${error.message}`);
     }

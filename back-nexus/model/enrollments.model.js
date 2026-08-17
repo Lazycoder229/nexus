@@ -202,11 +202,18 @@ export const createEnrollment = async ({
 };
 
 // Update enrollment
+// NOTE: section_id was previously missing here - it was destructured out of
+// the update payload and never appeared in the SQL SET clause, so a student's
+// section could never actually change even though the caller (service layer)
+// correctly adjusted the section current_enrolled counts. Both must move
+// together: this query updates the source of truth (enrollments.section_id),
+// while the service layer keeps the sections.current_enrolled counters in sync.
 export const updateEnrollment = async (
   id,
   {
     course_id,
     period_id,
+    section_id,
     year_level,
     enrollment_date,
     status,
@@ -217,12 +224,13 @@ export const updateEnrollment = async (
 ) => {
   await db.query(
     `UPDATE enrollments 
-     SET course_id = ?, period_id = ?, year_level = ?, enrollment_date = ?, status = ?, 
+     SET course_id = ?, period_id = ?, section_id = ?, year_level = ?, enrollment_date = ?, status = ?, 
          midterm_grade = ?, final_grade = ?, remarks = ?
      WHERE enrollment_id = ?`,
     [
       course_id,
       period_id,
+      section_id,
       year_level,
       enrollment_date,
       status,
@@ -282,15 +290,22 @@ export const deleteEnrollment = async (id) => {
 };
 
 // Check if enrollment exists (prevent duplicates)
+// NOTE: previously only checked student_id + course_id + period_id, silently
+// ignoring section_id even though the service layer already passes it in as
+// a 4th argument. That made it impossible for a student to ever be enrolled
+// in the same course/period under a different section, since any section
+// choice was flagged as "already enrolled". Uniqueness is now scoped to the
+// specific section, matching how the rest of the section-switch flow works.
 export const checkEnrollmentExists = async (
   student_id,
   course_id,
   period_id,
+  section_id,
 ) => {
   const [rows] = await db.query(
     `SELECT enrollment_id FROM enrollments 
-     WHERE student_id = ? AND course_id = ? AND period_id = ?`,
-    [student_id, course_id, period_id],
+     WHERE student_id = ? AND course_id = ? AND period_id = ? AND section_id = ?`,
+    [student_id, course_id, period_id, section_id],
   );
   return rows.length > 0;
 };

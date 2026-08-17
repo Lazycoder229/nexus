@@ -111,9 +111,14 @@ const EnrollmentModal = ({
   });
   const [sections, setSections] = useState([]);
   const [loadingSections, setLoadingSections] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-  // Fetch sections when course or period changes
+  // Fetch sections when course or period changes.
+  // In edit mode, the student's CURRENT section must stay selectable even
+  // if it's already at (or over) capacity - otherwise editing any other
+  // field on a full-section enrollment silently kicks the student's
+  // section out of the dropdown and forces a change nobody asked for.
   useEffect(() => {
     const fetchSections = async () => {
       if (!formData.course_id || !formData.period_id) {
@@ -129,11 +134,42 @@ const EnrollmentModal = ({
             period_id: formData.period_id,
           },
         });
+        let sectionRows = res.data || [];
+
+        // Ensure current section is present in edit mode even if full
+        const currentSectionId = mode === "edit" ? formData.section_id : null;
+        const hasCurrentSection =
+          currentSectionId &&
+          sectionRows.some(
+            (s) => String(s.section_id) === String(currentSectionId),
+          );
+
+        if (currentSectionId && !hasCurrentSection) {
+          try {
+            const currentRes = await axios.get(
+              `${API_BASE}/api/sections/${currentSectionId}`,
+            );
+            if (currentRes.data) {
+              sectionRows = [...sectionRows, currentRes.data];
+            }
+          } catch {
+            // If we can't fetch it, fall back to whatever the list returned.
+          }
+        }
+
         setSections(
-          (res.data || []).map((s) => ({
-            value: s.section_id,
-            label: `${s.section_name} (${s.current_enrolled || 0}/${s.max_capacity})`,
-          })),
+          sectionRows.map((s) => {
+            const isFull =
+              (s.current_enrolled || 0) >= s.max_capacity &&
+              String(s.section_id) !== String(currentSectionId);
+            return {
+              value: s.section_id,
+              label: `${s.section_name} (${s.current_enrolled || 0}/${s.max_capacity})${
+                isFull ? " - Full" : ""
+              }`,
+              isDisabled: isFull,
+            };
+          }),
         );
       } catch {
         setSections([]);
@@ -145,6 +181,7 @@ const EnrollmentModal = ({
   }, [formData.course_id, formData.period_id]);
 
   useEffect(() => {
+    setIsSubmitting(false);
     const hydrateEditData = async () => {
       if (!initialData) {
         setFormData({
@@ -182,9 +219,18 @@ const EnrollmentModal = ({
     hydrateEditData();
   }, [initialData, API_BASE]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    // Guard against double-fire (double-click, double Enter, etc.) which
+    // was sending two PUT/POST requests for a single user action and
+    // caused section counts to shift by 2 instead of 1.
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onSubmit(formData);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -206,7 +252,8 @@ const EnrollmentModal = ({
             </h2>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-600 transition-colors"
+              disabled={isSubmitting}
+              className="text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Plus size={24} className="rotate-45" />
             </button>
@@ -402,6 +449,7 @@ const EnrollmentModal = ({
                   placeholder={
                     loadingSections ? "Loading..." : "Select section..."
                   }
+                  isOptionDisabled={(option) => option.isDisabled}
                   isDisabled={
                     !formData.course_id ||
                     !formData.period_id ||
@@ -430,11 +478,21 @@ const EnrollmentModal = ({
                     }),
                     option: (base, state) => ({
                       ...base,
-                      backgroundColor: state.isSelected ? "#4F46E5" : "#FFFFFF",
-                      color: state.isSelected ? "#FFFFFF" : "#1E293B",
+                      backgroundColor: state.isSelected
+                        ? "#4F46E5"
+                        : state.isDisabled
+                          ? "#F1F5F9"
+                          : "#FFFFFF",
+                      color: state.isSelected
+                        ? "#FFFFFF"
+                        : state.isDisabled
+                          ? "#94A3B8"
+                          : "#1E293B",
                       "&:hover": {
-                        backgroundColor: "#EEF2FF",
-                        color: "#1E293B",
+                        backgroundColor: state.isDisabled
+                          ? "#F1F5F9"
+                          : "#EEF2FF",
+                        color: state.isDisabled ? "#94A3B8" : "#1E293B",
                       },
                     }),
                     menu: (base) => ({
@@ -579,15 +637,21 @@ const EnrollmentModal = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium"
+                disabled={isSubmitting}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {mode === "add" ? "Create Enrollment" : "Update Enrollment"}
+                {isSubmitting
+                  ? "Saving..."
+                  : mode === "add"
+                    ? "Create Enrollment"
+                    : "Update Enrollment"}
               </button>
             </div>
           </div>
@@ -637,70 +701,85 @@ const EnrollmentRecords = () => {
       console.error("Error fetching students:", err);
     }
   };
-const handleExportPDF = async (enrollment) => {
-  const firstName = localStorage.getItem("firstName") || "";
-  const lastName  = localStorage.getItem("lastName")  || "";
-  const role      = localStorage.getItem("role")      || "";
 
-let currentUser = {
-  full_name: "",
-  position: "",
-};
+  const handleExportPDF = async (enrollment) => {
+    const firstName = localStorage.getItem("firstName") || "";
+    const lastName = localStorage.getItem("lastName") || "";
+    const role = localStorage.getItem("role") || "";
+    // The logged-in user's own ID (registrar/admin generating the form),
+    // NOT the student's ID. Previously this was an undeclared variable
+    // (`someUserId`) which silently sent every request to
+    // `/api/users/undefined`, always failing and falling back to
+    // localStorage - so `position_title` from the DB was never actually
+    // being used.
+    const loggedInUserId = localStorage.getItem("userId");
 
-try {
-  const res = await api.get(`/api/users/${someUserId}`);
-  const u = res.data;
-
-  currentUser = {
-    full_name: `${u.first_name} ${u.last_name}`.trim(),
-    position: u.employee_details?.position_title || "Registrar",
-  };
-} catch {
-  currentUser = {
-    full_name: `${firstName} ${lastName}`.trim() || "Registrar",
-    position: "Registrar",
-  };
-}
-  // Student profile
-  let studentInfo = {};
-  try {
-    const res = await api.get(`/api/users/${enrollment.student_id}`);
-    const u = res.data;
-    studentInfo = {
-      student_number: u.student_number,
-      full_name:      `${u.first_name} ${u.last_name}`,
-      address:        u.address      || "",
-      birthday:       u.birthday     || "",
-      age:            u.age          || "",
-      gender:         u.gender       || "",
-      civil_status:   u.civil_status || "",
-      religion:       u.religion     || "",
-      nationality:    u.nationality  || "",
-      cell_phone:     u.phone        || "",
-      email:          u.email        || "",
-      program_year:   `${u.program || "N/A"} / ${enrollment.year_level || ""}`,
+    let currentUser = {
+      full_name: "",
+      position: "",
     };
-  } catch {}
 
-  // Invoice for this student/period
-  let invoice = {};
-  try {
-    const res = await api.get(`/api/invoices`, {
-      params: { academic_period_id: enrollment.period_id },
-    });
-    const invoices = res.data?.data || res.data || [];
-    invoice = invoices.find(
-      (inv) => String(inv.student_id) === String(enrollment.student_id)
-    ) || {};
-  } catch {}
+    try {
+      if (!loggedInUserId) throw new Error("No logged-in user id in storage");
+      const res = await api.get(`/api/users/${loggedInUserId}`);
+      const u = res.data;
 
-  await exportRegistrationFormPDF(enrollment, studentInfo, currentUser, invoice);
-};
+      currentUser = {
+        full_name: `${u.first_name} ${u.last_name}`.trim(),
+        position: u.employee_details?.position_title || "Registrar",
+      };
+    } catch {
+      currentUser = {
+        full_name: `${firstName} ${lastName}`.trim() || "Registrar",
+        position: role || "Registrar",
+      };
+    }
+
+    // Student profile
+    let studentInfo = {};
+    try {
+      const res = await api.get(`/api/users/${enrollment.student_id}`);
+      const u = res.data;
+      studentInfo = {
+        student_number: u.student_number,
+        full_name: `${u.first_name} ${u.last_name}`,
+        address: u.address || "",
+        birthday: u.birthday || "",
+        age: u.age || "",
+        gender: u.gender || "",
+        civil_status: u.civil_status || "",
+        religion: u.religion || "",
+        nationality: u.nationality || "",
+        cell_phone: u.phone || "",
+        email: u.email || "",
+        program_year: `${u.program || "N/A"} / ${enrollment.year_level || ""}`,
+      };
+    } catch {
+      // If the student profile fails to load, proceed with an empty
+      // studentInfo rather than failing the whole export.
+    }
+
+    // Invoice for this student/period
+    let invoice = {};
+    try {
+      const res = await api.get(`/api/invoices`, {
+        params: { academic_period_id: enrollment.period_id },
+      });
+      const invoices = res.data?.data || res.data || [];
+      invoice =
+        invoices.find(
+          (inv) => String(inv.student_id) === String(enrollment.student_id),
+        ) || {};
+    } catch {
+      // No invoice found/available - export continues without it.
+    }
+
+    await exportRegistrationFormPDF(enrollment, studentInfo, currentUser, invoice);
+  };
 
   const fetchCourses = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/course/courses`);
-      console.log("Courses API response:", res.data);
       const courseList = (res.data || [])
         .filter((c) => c && (c.id || c.course_id))
         .map((c) => ({
@@ -709,7 +788,6 @@ try {
             c.title || c.course_title || "N/A"
           }`,
         }));
-      console.log("Processed courses:", courseList);
       setCourses(courseList);
     } catch (err) {
       console.error("Error fetching courses:", err);
@@ -720,14 +798,12 @@ try {
   const fetchPeriods = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/academic-periods`);
-      console.log("Periods API response:", res.data);
       const periodList = (res.data || [])
         .filter((p) => p && (p.id || p.period_id))
         .map((p) => ({
           value: p.id || p.period_id,
           label: `${p.school_year || "N/A"} - ${p.semester || "N/A"}`,
         }));
-      console.log("Processed periods:", periodList);
       setPeriods(periodList);
     } catch (err) {
       console.error("Error fetching periods:", err);
@@ -958,13 +1034,13 @@ try {
                     >
                       <Trash2 size={16} />
                     </button>
-                     <button
-    onClick={() => handleExportPDF(enrollment)}
-    className="text-green-600 hover:text-green-800"
-    title="Download Registration Form"
-  >
-    <FileDown size={16} />
-  </button>
+                    <button
+                      onClick={() => handleExportPDF(enrollment)}
+                      className="text-green-600 hover:text-green-800"
+                      title="Download Registration Form"
+                    >
+                      <FileDown size={16} />
+                    </button>
                   </td>
                 </tr>
               ))

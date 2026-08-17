@@ -15,6 +15,7 @@ import {
   BookOpen,
   AlertCircle,
   TrendingUp,
+  Eye,
 } from "lucide-react";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 const StatusBadge = ({ status }) => {
@@ -30,6 +31,26 @@ const StatusBadge = ({ status }) => {
       }`}
     >
       {status?.toUpperCase()}
+    </span>
+  );
+};
+
+// Small badge for enrollment status inside the View Students modal
+// (distinct from section StatusBadge - different value set).
+const EnrollmentStatusBadge = ({ status }) => {
+  const colors = {
+    Enrolled: "bg-green-100 text-green-800",
+    Dropped: "bg-red-100 text-red-800",
+    Completed: "bg-blue-100 text-blue-800",
+    Failed: "bg-gray-100 text-gray-800",
+  };
+  return (
+    <span
+      className={`px-2 py-1 rounded-full text-xs font-semibold ${
+        colors[status] || colors.Enrolled
+      }`}
+    >
+      {status}
     </span>
   );
 };
@@ -61,6 +82,132 @@ const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
   </div>
 );
 
+// Modal that lists students currently enrolled in a given section.
+// Fetches GET /api/enrollments?section_id=X - the enrollments model
+// already supports a section_id filter (see getAllEnrollments), so no
+// new backend route is needed.
+const ViewStudentsModal = ({ isOpen, onClose, section }) => {
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen || !section) return;
+
+    const fetchStudents = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await axios.get(`${API_BASE}/api/enrollments`, {
+          params: { section_id: section.section_id },
+        });
+        setStudents(res.data || []);
+      } catch (err) {
+        console.error("Error fetching section students:", err);
+        setError("Failed to load enrolled students.");
+        setStudents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudents();
+  }, [isOpen, section]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-lg">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">
+              Enrolled Students
+            </h2>
+            {section && (
+              <p className="text-sm text-slate-500 mt-0.5">
+                {section.section_name} — {section.semester}{" "}
+                {section.school_year} ·{" "}
+                <span className="font-semibold">
+                  {section.current_enrolled}/{section.max_capacity}
+                </span>{" "}
+                slots
+              </p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X size={22} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {loading ? (
+            <p className="text-center text-slate-500 py-8 text-sm">
+              Loading students...
+            </p>
+          ) : error ? (
+            <p className="text-center text-red-500 py-8 text-sm">{error}</p>
+          ) : students.length === 0 ? (
+            <p className="text-center text-slate-500 italic py-8 text-sm">
+              No students enrolled in this section yet.
+            </p>
+          ) : (
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead>
+                <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                  <th className="px-3 py-2">Student</th>
+                  <th className="px-3 py-2">Student No.</th>
+                  <th className="px-3 py-2">Year Level</th>
+                  <th className="px-3 py-2">Status</th>
+                  <th className="px-3 py-2 text-center">Grades</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {students.map((s) => (
+                  <tr key={s.enrollment_id} className="text-sm text-slate-700">
+                    <td className="px-3 py-2 font-medium">
+                      {s.student_name}
+                    </td>
+                    <td className="px-3 py-2">{s.student_number || "N/A"}</td>
+                    <td className="px-3 py-2">{s.year_level || "N/A"}</td>
+                    <td className="px-3 py-2">
+                      <EnrollmentStatusBadge status={s.status} />
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {s.midterm_grade ?? "-"} / {s.final_grade ?? "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-3 flex justify-end rounded-b-lg">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm font-medium"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SubjectSections = () => {
   const [sections, setSections] = useState([]);
   const [periods, setPeriods] = useState([]);
@@ -82,6 +229,10 @@ const SubjectSections = () => {
     schedule_time_end: "",
     status: "active",
   });
+
+  // View Students modal state
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewSection, setViewSection] = useState(null);
 
   useEffect(() => {
     fetchSections();
@@ -180,6 +331,14 @@ const SubjectSections = () => {
       schedule_time_end: "",
       status: "active",
     });
+  };
+  const openViewModal = (section) => {
+    setViewSection(section);
+    setViewModalOpen(true);
+  };
+  const closeViewModal = () => {
+    setViewModalOpen(false);
+    setViewSection(null);
   };
   // Filter sections
   const filteredSections = sections.filter((section) => {
@@ -403,6 +562,13 @@ const periodOptions = periods.map((period) => ({
                         </td>
                         <td className="px-4 py-2 text-right space-x-2">
                           <button
+                            onClick={() => openViewModal(section)}
+                            title="View Enrolled Students"
+                            className="text-slate-600 hover:text-slate-900 transition-colors p-1 rounded-full hover:bg-slate-200"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
                             onClick={() => handleEdit(section)}
                             title="Edit"
                             className="text-indigo-600 hover:text-indigo-800 transition-colors p-1 rounded-full hover:bg-slate-200"
@@ -442,7 +608,7 @@ const periodOptions = periods.map((period) => ({
           />
         </div>
       </div>
-      {/* Modal */}
+      {/* Add/Edit Section Modal */}
       {showModal && (
         <div className="fixed inset-0  bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -580,6 +746,12 @@ const periodOptions = periods.map((period) => ({
           </div>
         </div>
       )}
+      {/* View Enrolled Students Modal */}
+      <ViewStudentsModal
+        isOpen={viewModalOpen}
+        onClose={closeViewModal}
+        section={viewSection}
+      />
     </div>
   );
 };

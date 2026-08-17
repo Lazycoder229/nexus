@@ -1,5 +1,7 @@
 // services/enrollments.service.js
 import * as enrollmentModel from "../model/enrollments.model.js";
+import db from "../config/db.js";
+import SectionsModel from "../model/sections.model.js";
 
 // Validate and clean enrollment data
 const validateEnrollmentData = (data) => {
@@ -53,13 +55,11 @@ export const getEnrollment = async (id) => {
 };
 
 // Create new enrollment
-import db from "../config/db.js";
-
 export const addEnrollment = async (data) => {
   // Validate and clean data
   const cleanData = validateEnrollmentData(data);
 
-  // Check if enrollment already exists
+  // Check if enrollment already exists (scoped per-section - see model)
   const exists = await enrollmentModel.checkEnrollmentExists(
     cleanData.student_id,
     cleanData.course_id,
@@ -73,19 +73,24 @@ export const addEnrollment = async (data) => {
     );
   }
 
+  // Capacity check before creating
+  const targetSection = await SectionsModel.getSectionById(cleanData.section_id);
+  if (!targetSection) {
+    throw new Error("Selected section does not exist");
+  }
+  if (targetSection.current_enrolled >= targetSection.max_capacity) {
+    throw new Error("Selected section is already full");
+  }
+
   const enrollment = await enrollmentModel.createEnrollment(cleanData);
 
   // Increment current_enrolled in sections table
   if (cleanData.section_id) {
-    await import("../model/sections.model.js").then(
-      ({ default: SectionsModel }) =>
-        SectionsModel.updateEnrollmentCount(cleanData.section_id, true),
-    );
+    await SectionsModel.updateEnrollmentCount(cleanData.section_id, true);
   }
 
   // Update admission status to "Enrolled" when student is first enrolled
   try {
-    // Get the student's email first
     const [userResult] = await db.query(
       `SELECT email FROM users WHERE user_id = ?`,
       [cleanData.student_id],
@@ -93,8 +98,7 @@ export const addEnrollment = async (data) => {
 
     if (userResult && userResult.length > 0) {
       const studentEmail = userResult[0].email;
-      
-      // Update admission status to "Enrolled" for this student
+
       await db.query(
         `UPDATE admissions SET status = 'Enrolled' WHERE email = ? AND status = 'Accepted'`,
         [studentEmail],
@@ -113,13 +117,48 @@ export const editEnrollment = async (id, data) => {
   // Validate and clean data
   const cleanData = validateEnrollmentData(data);
 
-  // Verify enrollment exists
-  await getEnrollment(id);
+  // Verify enrollment exists AND capture old section for count adjustment
+  const existingEnrollment = await getEnrollment(id);
+  const oldSectionId = existingEnrollment.section_id;
+  const newSectionId = cleanData.section_id;
 
-  return await enrollmentModel.updateEnrollment(id, cleanData);
+  const sectionChanged =
+    oldSectionId &&
+    newSectionId &&
+    String(oldSectionId) !== String(newSectionId);
+
+  // Capacity check BEFORE committing the update, so a full section
+  // never gets over-enrolled and a failed check doesn't leave a
+  // half-applied change.
+  if (sectionChanged) {
+    const targetSection = await SectionsModel.getSectionById(newSectionId);
+    if (!targetSection) {
+      throw new Error("Selected section does not exist");
+    }
+    if (targetSection.current_enrolled >= targetSection.max_capacity) {
+      throw new Error("Selected section is already full");
+    }
+  }
+
+  const updated = await enrollmentModel.updateEnrollment(id, cleanData);
+
+  // Adjust current_enrolled counts on both sections
+  if (sectionChanged) {
+    await SectionsModel.updateEnrollmentCount(oldSectionId, false); // -1 old
+    await SectionsModel.updateEnrollmentCount(newSectionId, true);  // +1 new
+  }
+
+  return updated;
 };
 
 // Delete enrollment
+// NOTE: enrollmentModel.deleteEnrollment already decrements
+// sections.current_enrolled itself, inside a DB transaction, floored at 0
+// with GREATEST(current_enrolled - 1, 0). Do NOT decrement again here -
+// doing so double-counted every delete (once safely inside the model's
+// transaction, once more here via SectionsModel.updateEnrollmentCount,
+// which has no floor guard) and pushed current_enrolled negative even
+// when only one student was ever enrolled.
 export const removeEnrollment = async (id) => {
   // Verify enrollment exists
   await getEnrollment(id);

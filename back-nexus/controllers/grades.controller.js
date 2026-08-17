@@ -7,7 +7,6 @@ const GradesController = {
         student_user_id: req.query.student_user_id,
         course_id: req.query.course_id,
         period_id: req.query.period_id,
-        status: req.query.status,
       };
 
       const grades = await GradesService.getAllGrades(filters);
@@ -26,51 +25,7 @@ const GradesController = {
     }
   },
 
-  createGrade: async (req, res) => {
-    try {
-      const grade = await GradesService.createGrade(req.body);
-      res.status(201).json(grade);
-    } catch (error) {
-      res.status(400).json({ error: error.message });
-    }
-  },
-
-  createBulkGrades: async (req, res) => {
-    try {
-      const result = await GradesService.createBulkGrades(req.body.grades);
-      res.status(201).json(result);
-    } catch (error) {
-      res.status(400).json({ error: error.message });
-    }
-  },
-
-  upsertBulkGrades: async (req, res) => {
-    try {
-      const result = await GradesService.upsertBulkGrades(req.body.grades);
-      res.status(200).json(result);
-    } catch (error) {
-      res.status(400).json({ error: error.message });
-    }
-  },
-
-  updateGrade: async (req, res) => {
-    try {
-      const grade = await GradesService.updateGrade(req.params.id, req.body);
-      res.status(200).json(grade);
-    } catch (error) {
-      res.status(400).json({ error: error.message });
-    }
-  },
-
-  deleteGrade: async (req, res) => {
-    try {
-      const result = await GradesService.deleteGrade(req.params.id);
-      res.status(200).json(result);
-    } catch (error) {
-      res.status(400).json({ error: error.message });
-    }
-  },
-
+  // Bulk-approves all grade_entries for this student/course/period
   approveGrade: async (req, res) => {
     try {
       const grade = await GradesService.approveGrade(
