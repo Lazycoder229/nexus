@@ -429,6 +429,42 @@ const ViewModal = ({ isOpen, onClose, data }) => {
     </div>
   );
 };
+// --- Delete Confirmation Modal ---
+const DeleteConfirmModal = ({ isOpen, onClose, onConfirm }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium text-gray-900 text-center mb-6">
+          Are you sure you want to delete this department?
+          <span className="text-red-400">This action cannot be undone !</span>
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+          >
+            Yes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- Main Component ---
 const Department = () => {
   const [departments, setDepartments] = useState([]);
@@ -439,6 +475,7 @@ const Department = () => {
   const [modalMode, setModalMode] = useState("add");
   const [currentRecord, setCurrentRecord] = useState(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   const rowsPerPage = 10;
 
@@ -551,8 +588,17 @@ const Department = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this department?")) return;
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+  };
+
+  const cancelDelete = () => {
+    setDeleteTargetId(null);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteTargetId;
+    if (!id) return;
     try {
       await axios.delete(
         `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments/${id}`,
@@ -560,6 +606,8 @@ const Department = () => {
       setDepartments((prev) => prev.filter((d) => d.id !== id));
     } catch (error) {
       console.error("Failed to delete department:", error);
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
@@ -711,6 +759,11 @@ const Department = () => {
         isOpen={viewModalOpen}
         onClose={() => setViewModalOpen(false)}
         data={currentRecord}
+      />
+      <DeleteConfirmModal
+        isOpen={deleteTargetId !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
       />
     </div>
   );

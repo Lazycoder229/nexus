@@ -9,6 +9,7 @@ const Header = ({ toggleSidebar, sidebarWidth, onLogout }) => {
     firstName || lastName ? `${firstName} ${lastName}`.trim() : "User";
   const userRole = localStorage.getItem("role") || "";
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isConfirmingLogout, setIsConfirmingLogout] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [countdown, setCountdown] = useState(5);
 
@@ -25,8 +26,18 @@ const Header = ({ toggleSidebar, sidebarWidth, onLogout }) => {
     return () => clearTimeout(timer);
   }, [isLoggingOut, countdown, onLogout]);
 
-  const startLogout = () => {
+  // Open the yes/no confirmation instead of logging out immediately
+  const requestLogout = () => {
     setIsDropdownOpen(false);
+    setIsConfirmingLogout(true);
+  };
+
+  const cancelLogout = () => {
+    setIsConfirmingLogout(false);
+  };
+
+  const confirmLogout = () => {
+    setIsConfirmingLogout(false);
     setCountdown(5);
     setIsLoggingOut(true);
   };
@@ -93,7 +104,7 @@ const Header = ({ toggleSidebar, sidebarWidth, onLogout }) => {
               <div className="py-1">
                 <button
                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition duration-150"
-                  onClick={startLogout}
+                  onClick={requestLogout}
                 >
                   <LogOut size={18} className="mr-2" />
                   Sign out
@@ -103,6 +114,31 @@ const Header = ({ toggleSidebar, sidebarWidth, onLogout }) => {
           )}
         </div>
       </div>
+
+      {/* Yes/No confirmation modal */}
+      {isConfirmingLogout && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg flex flex-col items-center gap-4 w-72">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 text-center">
+              Are you sure you want to sign out?
+            </p>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={cancelLogout}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition duration-150"
+              >
+                No
+              </button>
+              <button
+                onClick={confirmLogout}
+                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition duration-150"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Logout Modal */}
       {isLoggingOut && (

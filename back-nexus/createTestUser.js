@@ -23,7 +23,7 @@ async function createTestUser() {
        (email, password_hash, role, first_name, middle_name, last_name, suffix, status, phone, permanent_address)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        "admin@nexus.com",
+        "admin1@nexus.com",
         passwordHash,
         "Admin",
         "Admin",
@@ -40,7 +40,7 @@ async function createTestUser() {
 await db.query(
   `INSERT INTO employee_details (user_id, employee_id, position_title)
    VALUES (?, ?, ?)`,
-  [userId, "EMP-0000", "Registrar"]
+  [userId, "EMP-10000", "Registrar"]
 );
     // Create employee records for admin matching current setup
     await db.query(
