@@ -29,13 +29,13 @@ const findOptionByValue = (options, value) => {
   );
 };
 
-// section_id / section fields intentionally left out of this form-data
-// shape - enrollment no longer collects a section. Sectioning happens
-// afterward as a separate step (see the "Run Sectioning" action below).
+// Form-data mapping for enrollment creation/editing. Includes section_id
+// so that registrars can transfer/change a student's section directly in edit mode.
 const toEnrollmentFormData = (enrollment) => ({
   student_id: enrollment.student_id,
   course_id: enrollment.course_id,
   period_id: enrollment.period_id,
+  section_id: enrollment.section_id || null,
   year_level: enrollment.year_level || "",
   enrollment_date: toDateInputValue(
     enrollment.enrollment_date || new Date().toISOString().split("T")[0],
@@ -175,10 +175,9 @@ const ConfirmModal = ({
   );
 };
 
-// Add/Edit Enrollment modal - NO section field. Enrolling a student in a
-// subject no longer asks for a section; a student is only "this student
-// is taking this course this period." Sectioning is a separate, later
-// step (see SectioningModal / "Run Sectioning" button in the toolbar).
+// Add/Edit Enrollment modal.
+// In edit mode, allows transferring / changing the student's section directly
+// with live capacity info and transfer preview.
 const EnrollmentModal = ({
   isOpen,
   onClose,
@@ -188,11 +187,13 @@ const EnrollmentModal = ({
   students,
   courses,
   periods,
+  sections = [],
 }) => {
   const [formData, setFormData] = useState({
     student_id: null,
     course_id: null,
     period_id: null,
+    section_id: null,
     year_level: "",
     enrollment_date: new Date().toISOString().split("T")[0],
     status: "Enrolled",
@@ -209,6 +210,7 @@ const EnrollmentModal = ({
         student_id: null,
         course_id: null,
         period_id: null,
+        section_id: null,
         year_level: "",
         enrollment_date: new Date().toISOString().split("T")[0],
         status: "Enrolled",
@@ -221,10 +223,37 @@ const EnrollmentModal = ({
     setFormData(toEnrollmentFormData(initialData));
   }, [initialData]);
 
+  // Filter sections by selected academic period and format with capacity status
+  const sectionOptions = (sections || [])
+    .filter(
+      (s) =>
+        !formData.period_id ||
+        String(s.period_id) === String(formData.period_id),
+    )
+    .map((s) => {
+      const isCurrent =
+        initialData &&
+        String(initialData.section_id) === String(s.section_id);
+      const currentCount = Number(s.current_enrolled) || 0;
+      const maxCap = Number(s.max_capacity) || 40;
+      const isFull = currentCount >= maxCap && !isCurrent;
+      return {
+        value: s.section_id,
+        label: `${s.section_name}${
+          s.program_code ? ` (${s.program_code})` : ""
+        } — [${currentCount}/${maxCap} enrolled]${
+          isFull ? " (FULL)" : ""
+        }${isCurrent ? " (Current)" : ""}`,
+        section_name: s.section_name,
+        current_enrolled: currentCount,
+        max_capacity: maxCap,
+        program_code: s.program_code,
+        isFull,
+      };
+    });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Guard against double-fire (double-click, double Enter, etc.) which
-    // was sending two PUT/POST requests for a single user action.
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
@@ -235,6 +264,20 @@ const EnrollmentModal = ({
   };
 
   if (!isOpen) return null;
+
+  const currentSectionName = initialData?.section_name || "Unsectioned";
+  const selectedSectionObj = sectionOptions.find(
+    (o) => String(o.value) === String(formData.section_id),
+  );
+  const targetSectionName = selectedSectionObj
+    ? selectedSectionObj.section_name
+    : formData.section_id
+      ? "Selected Section"
+      : "Unsectioned";
+  const isTransferring =
+    mode === "edit" &&
+    String(initialData?.section_id || "") !==
+      String(formData.section_id || "");
 
   return (
     <div
@@ -248,9 +291,16 @@ const EnrollmentModal = ({
         {/* Sticky Header */}
         <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-6 py-4 rounded-t-lg">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-bold text-slate-800">
-              {mode === "add" ? "New Enrollment" : "Edit Enrollment"}
-            </h2>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">
+                {mode === "add" ? "New Enrollment" : "Edit Enrollment / Section Transfer"}
+              </h2>
+              {mode === "edit" && (
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Update student details or transfer student to another section.
+                </p>
+              )}
+            </div>
             <button
               onClick={onClose}
               disabled={isSubmitting}
@@ -477,6 +527,112 @@ const EnrollmentModal = ({
               </div>
             </div>
 
+            {/* Section / Section Transfer */}
+            <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/70">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  {mode === "edit"
+                    ? "Assigned Section (Transfer / Change Section)"
+                    : "Assigned Section (Optional)"}
+                </label>
+                {mode === "edit" && (
+                  <span className="text-[11px] text-slate-500">
+                    Current:{" "}
+                    <span className="font-semibold text-slate-700">
+                      {currentSectionName}
+                    </span>
+                  </span>
+                )}
+              </div>
+              <Select
+                value={findOptionByValue(sectionOptions, formData.section_id)}
+                onChange={(selected) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    section_id: selected?.value || null,
+                  }))
+                }
+                options={sectionOptions}
+                placeholder="Select section to assign or transfer..."
+                isClearable
+                isOptionDisabled={(option) => option.isFull}
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderColor: "#CBD5E1",
+                    backgroundColor: "#FFFFFF",
+                    fontSize: "0.875rem",
+                    boxShadow: "none",
+                    minHeight: "42px",
+                    "&:hover": {
+                      borderColor: "#CBD5E1",
+                    },
+                    "&:focus-within": {
+                      borderColor: "#4F46E5",
+                      boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
+                    },
+                  }),
+                  input: (base) => ({
+                    ...base,
+                    color: "#1E293B",
+                  }),
+                  option: (base, state) => ({
+                    ...base,
+                    backgroundColor: state.isSelected
+                      ? "#4F46E5"
+                      : state.isDisabled
+                      ? "#F1F5F9"
+                      : "#FFFFFF",
+                    color: state.isSelected
+                      ? "#FFFFFF"
+                      : state.isDisabled
+                      ? "#94A3B8"
+                      : "#1E293B",
+                    cursor: state.isDisabled ? "not-allowed" : "default",
+                    "&:hover": {
+                      backgroundColor: state.isDisabled
+                        ? "#F1F5F9"
+                        : state.isSelected
+                        ? "#4F46E5"
+                        : "#EEF2FF",
+                      color: state.isDisabled
+                        ? "#94A3B8"
+                        : state.isSelected
+                        ? "#FFFFFF"
+                        : "#1E293B",
+                    },
+                  }),
+                  menu: (base) => ({
+                    ...base,
+                    zIndex: 9999,
+                  }),
+                }}
+              />
+
+              {isTransferring && (
+                <div className="mt-2.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-2.5 flex items-center gap-2">
+                  <Shuffle size={16} className="text-amber-600 shrink-0" />
+                  <div>
+                    <span className="font-semibold">Section Transfer:</span> Student will be moved from{" "}
+                    <span className="underline font-medium">
+                      {currentSectionName}
+                    </span>{" "}
+                    to{" "}
+                    <span className="underline font-medium">
+                      {targetSectionName}
+                    </span>
+                    .
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[11px] text-slate-500 mt-1.5">
+                {mode === "edit"
+                  ? "Changing the section transfers the student and immediately updates section enrollment capacity."
+                  : "Leave unassigned if the student will be sectioned in bulk later."}
+              </p>
+            </div>
+
             {/* Status */}
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1.5">
@@ -581,7 +737,9 @@ const EnrollmentModal = ({
                   ? "Saving..."
                   : mode === "add"
                     ? "Create Enrollment"
-                    : "Update Enrollment"}
+                    : isTransferring
+                      ? "Save & Transfer Section"
+                      : "Update Enrollment"}
               </button>
             </div>
           </div>
@@ -756,6 +914,7 @@ const EnrollmentRecords = () => {
   const [courses, setCourses] = useState([]);
   const [periods, setPeriods] = useState([]);
   const [programs, setPrograms] = useState([]);
+  const [sections, setSections] = useState([]);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState(null);
   const [filterProgram, setFilterProgram] = useState(null);
@@ -779,6 +938,16 @@ const EnrollmentRecords = () => {
       toast.error(getErrorMessage(err, "Failed to load enrollments."), {
         position: "top-center",
       });
+    }
+  };
+
+  const fetchSections = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/sections`);
+      setSections(res.data || []);
+    } catch (err) {
+      console.error("Error fetching sections:", err);
+      setSections([]);
     }
   };
 
@@ -936,6 +1105,7 @@ const EnrollmentRecords = () => {
     fetchPrograms();
     fetchCourses();
     fetchPeriods();
+    fetchSections();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -967,8 +1137,6 @@ const EnrollmentRecords = () => {
   );
 
   const handleSubmit = async (data) => {
-    // Validate required fields - no section_id anymore, sectioning is a
-    // separate later step.
     if (!data.student_id || !data.course_id || !data.period_id || !data.year_level) {
       toast.error("Please fill in all required fields.", {
         position: "top-center",
@@ -977,9 +1145,10 @@ const EnrollmentRecords = () => {
     }
 
     try {
-      // Convert empty strings to null for numeric fields
+      // Convert empty strings to null for numeric fields and clean section_id
       const cleanData = {
         ...data,
+        section_id: data.section_id || null,
         midterm_grade: data.midterm_grade === "" ? null : parseFloat(data.midterm_grade),
         final_grade: data.final_grade === "" ? null : parseFloat(data.final_grade),
       };
@@ -999,6 +1168,7 @@ const EnrollmentRecords = () => {
         });
       }
       fetchEnrollments();
+      fetchSections();
       setModalOpen(false);
       setCurrentRecord(null);
     } catch (err) {
@@ -1045,6 +1215,7 @@ const EnrollmentRecords = () => {
       }
 
       fetchEnrollments();
+      fetchSections();
       setSectioningModalOpen(false);
     } catch (err) {
       console.error("Error running sectioning:", err);
@@ -1310,6 +1481,7 @@ const EnrollmentRecords = () => {
         students={students}
         courses={courses}
         periods={periods}
+        sections={sections}
       />
 
       <SectioningModal
