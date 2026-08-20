@@ -9,6 +9,55 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+// --- Generic Confirm Modal (same pattern as AcademicCalendar.jsx) ---
+const ConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  message,
+  confirmLabel = "Yes",
+  tone = "danger",
+}) => {
+  if (!isOpen) return null;
+
+  const confirmClasses =
+    tone === "danger"
+      ? "bg-red-600 hover:bg-red-700"
+      : "bg-green-600 hover:bg-green-700";
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-slate-800 rounded-xl shadow-lg w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium text-gray-900 dark:text-white text-center mb-6">
+          {message}
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 bg-gray-100 dark:bg-slate-700 rounded-md hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-md transition-colors ${confirmClasses}`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const EmployeeLeavePortal = () => {
   const [leaves, setLeaves] = useState([]);
@@ -23,6 +72,7 @@ const EmployeeLeavePortal = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [employeeId, setEmployeeId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   const leaveTypes = [
     "Sick Leave",
@@ -35,6 +85,24 @@ const EmployeeLeavePortal = () => {
   ];
 
   const statuses = ["Pending", "Approved", "Rejected"];
+
+  // Turn a raw axios error into a short, human-readable message
+  const getErrorMessage = (err, fallback) => {
+    const serverMessage =
+      err.response?.data?.message || err.response?.data?.error;
+    if (serverMessage) return serverMessage;
+    if (err.response?.status === 400)
+      return "Some fields are missing or invalid. Please check the form and try again.";
+    if (err.response?.status === 404)
+      return "This leave request no longer exists. It may have already been deleted.";
+    if (err.response?.status === 409)
+      return "A conflicting leave request already exists.";
+    if (err.response?.status === 500)
+      return "Something went wrong on the server. Please try again later.";
+    if (!err.response)
+      return "Can't reach the server. Check your connection and try again.";
+    return fallback;
+  };
 
   // Get current user and fetch their employee ID
   useEffect(() => {
@@ -69,6 +137,7 @@ const EmployeeLeavePortal = () => {
       }
     } catch (error) {
       console.error("❌ Error fetching employee ID:", error);
+      toast.error(getErrorMessage(error, "Failed to load employee record."));
     } finally {
       setLoading(false);
     }
@@ -94,6 +163,7 @@ const EmployeeLeavePortal = () => {
       setLeaves(response.data.data || []);
     } catch (error) {
       console.error("❌ Error fetching leaves:", error);
+      toast.error(getErrorMessage(error, "Failed to load leave requests."));
     }
   };
 
@@ -160,13 +230,10 @@ const EmployeeLeavePortal = () => {
       console.log("🔄 Refetching leaves after submission");
       await fetchLeaves();
 
-      alert("Leave request submitted successfully!");
+      toast.success("Leave request submitted successfully!");
     } catch (error) {
       console.error("❌ Error saving leave:", error);
-      alert(
-        "Failed to save leave request: " +
-          (error.response?.data?.message || error.message),
-      );
+      toast.error(getErrorMessage(error, "Failed to save leave request."));
     }
   };
 
@@ -175,22 +242,32 @@ const EmployeeLeavePortal = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Delete this leave request?")) {
-      try {
-        console.log("🗑️ Deleting leave ID:", id);
-        await api.delete(`/api/staff-leave/${id}`);
-        console.log("✅ Leave deleted successfully");
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+  };
 
-        // Refetch leaves to update the table
-        console.log("🔄 Refetching leaves after deletion");
-        await fetchLeaves();
+  const cancelDelete = () => {
+    setDeleteTargetId(null);
+  };
 
-        alert("Leave request deleted successfully!");
-      } catch (error) {
-        console.error("❌ Error deleting leave:", error);
-        alert("Failed to delete leave request");
-      }
+  const confirmDelete = async () => {
+    const id = deleteTargetId;
+    if (!id) return;
+    try {
+      console.log("🗑️ Deleting leave ID:", id);
+      await api.delete(`/api/staff-leave/${id}`);
+      console.log("✅ Leave deleted successfully");
+
+      // Refetch leaves to update the table
+      console.log("🔄 Refetching leaves after deletion");
+      await fetchLeaves();
+
+      toast.success("Leave request deleted successfully!");
+    } catch (error) {
+      console.error("❌ Error deleting leave:", error);
+      toast.error(getErrorMessage(error, "Failed to delete leave request."));
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
@@ -216,6 +293,8 @@ const EmployeeLeavePortal = () => {
 
   return (
     <div className="dark:bg-slate-900 p-3 sm:p-4 transition-colors duration-500">
+      <ToastContainer position="top-right" />
+
       <div className="w-full max-w-8xl mx-auto space-y-4 font-sans">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-3">
@@ -584,6 +663,21 @@ const EmployeeLeavePortal = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteTargetId !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        message={
+          <>
+            Are you sure you want to delete this leave request?{" "}
+            <span className="text-red-400">This action cannot be undone!</span>
+          </>
+        }
+        confirmLabel="Yes"
+        tone="danger"
+      />
     </div>
   );
 };

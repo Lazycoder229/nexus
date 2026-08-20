@@ -16,6 +16,8 @@ import {
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { saveAs } from "file-saver";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // --- Status Badge Component ---
 const StatusBadge = ({ status }) => (
@@ -413,6 +415,42 @@ const ProgramViewModal = ({ isOpen, onClose, program }) => {
   );
 };
 
+// --- Delete Confirmation Modal ---
+const DeleteConfirmModal = ({ isOpen, onClose, onConfirm }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium text-gray-900 text-center mb-6">
+          Are you sure you want to delete this program?{" "}
+          <span className="text-red-400">This action cannot be undone!</span>
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+          >
+            Yes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- Main Component ---
 function ProgramsOffering() {
   const [programs, setPrograms] = useState([]);
@@ -425,6 +463,7 @@ function ProgramsOffering() {
   const [currentRecord, setCurrentRecord] = useState(null);
   const [viewProgram, setViewProgram] = useState(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   // Fetch data
   const fetchPrograms = async () => {
@@ -515,6 +554,18 @@ function ProgramsOffering() {
     doc.save("programs.pdf");
   };
 
+  // Turn a raw axios error into a short, human-readable message
+  const getErrorMessage = (err, fallback) => {
+    const serverMessage = err.response?.data?.message || err.response?.data?.error;
+    if (serverMessage) return serverMessage;
+    if (err.response?.status === 400) return "Some fields are missing or invalid. Please check the form and try again.";
+    if (err.response?.status === 404) return "This program no longer exists. It may have already been deleted.";
+    if (err.response?.status === 409) return "A program with this code already exists.";
+    if (err.response?.status === 500) return "Something went wrong on the server. Please try again later.";
+    if (!err.response) return "Can't reach the server. Check your connection and try again.";
+    return fallback;
+  };
+
   // CRUD
   const handleSubmit = async (data) => {
     try {
@@ -525,6 +576,7 @@ function ProgramsOffering() {
           data,
         );
         setPrograms((prev) => [...prev, res.data]);
+        toast.success("Program added successfully.");
       } else {
         res = await axios.put(
           `${import.meta.env.VITE_API_BASE_URL}/api/programs/${data.id}`,
@@ -540,24 +592,44 @@ function ProgramsOffering() {
               : p,
           ),
         );
+        toast.success("Program updated successfully.");
       }
       setModalOpen(false);
     } catch (err) {
-      console.error("Failed to save program:", err);
-      alert(err.response?.data?.message || "Failed to save program");
+      console.error("Failed to save program:", err.response?.data || err.message);
+      toast.error(
+        getErrorMessage(
+          err,
+          modalMode === "add"
+            ? "Failed to add program."
+            : "Failed to update program.",
+        ),
+      );
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this program?")) return;
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+  };
+
+  const cancelDelete = () => {
+    setDeleteTargetId(null);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteTargetId;
+    if (!id) return;
     try {
       await axios.delete(
         `${import.meta.env.VITE_API_BASE_URL}/api/programs/${id}`,
       );
       setPrograms((prev) => prev.filter((p) => p.id !== id));
+      toast.success("Program deleted successfully.");
     } catch (err) {
-      console.error("Failed to delete program:", err);
-      alert(err.response?.data?.message || "Failed to delete program");
+      console.error("Failed to delete program:", err.response?.data || err.message);
+      toast.error(getErrorMessage(err, "Failed to delete program."));
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
@@ -569,6 +641,8 @@ function ProgramsOffering() {
 
   return (
     <div className="p-4">
+      <ToastContainer position="top-right" />
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <GraduationCap size={24} /> Programs Offering
@@ -723,6 +797,11 @@ function ProgramsOffering() {
         isOpen={viewModalOpen}
         onClose={() => setViewModalOpen(false)}
         program={viewProgram}
+      />
+      <DeleteConfirmModal
+        isOpen={deleteTargetId !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
       />
     </div>
   );

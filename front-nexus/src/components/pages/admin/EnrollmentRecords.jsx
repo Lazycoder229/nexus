@@ -44,6 +44,24 @@ const toEnrollmentFormData = (enrollment) => ({
   enrollment_id: enrollment.enrollment_id,
 });
 
+// Turn a raw axios error into a short, human-readable message
+const getErrorMessage = (err, fallback) => {
+  const serverMessage =
+    err.response?.data?.message || err.response?.data?.error;
+  if (serverMessage) return serverMessage;
+  if (err.response?.status === 400)
+    return "Some fields are missing or invalid. Please check the form and try again.";
+  if (err.response?.status === 404)
+    return "This record no longer exists. It may have already been deleted.";
+  if (err.response?.status === 409)
+    return "A conflicting record already exists.";
+  if (err.response?.status === 500)
+    return "Something went wrong on the server. Please try again later.";
+  if (!err.response)
+    return "Can't reach the server. Check your connection and try again.";
+  return fallback;
+};
+
 const StatusBadge = ({ status }) => {
   const colors = {
     Enrolled: "bg-green-100 text-green-800",
@@ -86,6 +104,56 @@ const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
     </div>
   </div>
 );
+
+// --- Generic Confirm Modal (Yes / No), same pattern as AcademicSem/Admission ---
+const ConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  message,
+  confirmLabel = "Yes",
+  tone = "danger",
+  loading = false,
+}) => {
+  if (!isOpen) return null;
+
+  const confirmClasses =
+    tone === "danger"
+      ? "bg-red-600 hover:bg-red-700"
+      : "bg-green-600 hover:bg-green-700";
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium text-gray-900 text-center mb-6">
+          {message}
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-md transition-colors disabled:opacity-50 ${confirmClasses}`}
+          >
+            {loading ? "Please wait..." : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const EnrollmentModal = ({
   isOpen,
@@ -673,6 +741,8 @@ const EnrollmentRecords = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("add");
   const [currentRecord, setCurrentRecord] = useState(null);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -682,6 +752,9 @@ const EnrollmentRecords = () => {
       setEnrollments(res.data);
     } catch (err) {
       console.error("Error fetching enrollments:", err);
+      toast.error(getErrorMessage(err, "Failed to load enrollments."), {
+        position: "top-center",
+      });
     }
   };
 
@@ -774,7 +847,14 @@ const EnrollmentRecords = () => {
       // No invoice found/available - export continues without it.
     }
 
-    await exportRegistrationFormPDF(enrollment, studentInfo, currentUser, invoice);
+    try {
+      await exportRegistrationFormPDF(enrollment, studentInfo, currentUser, invoice);
+    } catch (err) {
+      console.error("Error exporting registration form:", err);
+      toast.error("Failed to generate the registration form PDF.", {
+        position: "top-center",
+      });
+    }
   };
 
   const fetchCourses = async () => {
@@ -835,13 +915,15 @@ const EnrollmentRecords = () => {
   );
 
   const handleSubmit = async (data) => {
-    try {
-      // Validate required fields
-      if (!data.student_id || !data.course_id || !data.period_id || !data.section_id || !data.year_level) {
-        alert("Please fill in all required fields");
-        return;
-      }
+    // Validate required fields
+    if (!data.student_id || !data.course_id || !data.period_id || !data.section_id || !data.year_level) {
+      toast.error("Please fill in all required fields.", {
+        position: "top-center",
+      });
+      return;
+    }
 
+    try {
       // Convert empty strings to null for numeric fields
       const cleanData = {
         ...data,
@@ -868,14 +950,26 @@ const EnrollmentRecords = () => {
       setCurrentRecord(null);
     } catch (err) {
       console.error("Error saving enrollment:", err);
-      toast.error(err.response?.data?.message || "Failed to save enrollment", {
+      toast.error(getErrorMessage(err, "Failed to save enrollment"), {
         position: "top-center",
       });
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this enrollment record?")) return;
+  // Opens the Yes/No confirm modal for deleting an enrollment
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+  };
+
+  const cancelDelete = () => {
+    if (deleteLoading) return;
+    setDeleteTargetId(null);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteTargetId;
+    if (!id) return;
+    setDeleteLoading(true);
     try {
       await axios.delete(`${API_BASE}/api/enrollments/${id}`);
       fetchEnrollments();
@@ -884,9 +978,12 @@ const EnrollmentRecords = () => {
       });
     } catch (err) {
       console.error("Error deleting enrollment:", err);
-      toast.error(err.response?.data?.message || "Failed to delete enrollment", {
+      toast.error(getErrorMessage(err, "Failed to delete enrollment"), {
         position: "top-center",
       });
+    } finally {
+      setDeleteLoading(false);
+      setDeleteTargetId(null);
     }
   };
 
@@ -1077,6 +1174,21 @@ const EnrollmentRecords = () => {
         students={students}
         courses={courses}
         periods={periods}
+      />
+
+      <ConfirmModal
+        isOpen={deleteTargetId !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        message={
+          <>
+            Are you sure you want to delete this enrollment record?{" "}
+            <span className="text-red-400">This action cannot be undone!</span>
+          </>
+        }
+        confirmLabel="Yes"
+        tone="danger"
+        loading={deleteLoading}
       />
 
       <ToastContainer

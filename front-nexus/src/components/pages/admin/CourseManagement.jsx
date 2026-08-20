@@ -18,6 +18,8 @@ import {
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { saveAs } from "file-saver";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // --- Status Badge Component ---
 const StatusBadge = ({ status }) => (
@@ -553,6 +555,42 @@ const CourseViewModal = ({ isOpen, onClose, course }) => {
   );
 };
 
+// --- Delete Confirmation Modal ---
+const DeleteConfirmModal = ({ isOpen, onClose, onConfirm }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium text-gray-900 text-center mb-6">
+          Are you sure you want to delete this course?{" "}
+          <span className="text-red-400">This action cannot be undone!</span>
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+          >
+            Yes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- Main Component ---
 const CourseManagement = () => {
   const [courses, setCourses] = useState([]);
@@ -567,6 +605,7 @@ const CourseManagement = () => {
   const [currentRecord, setCurrentRecord] = useState(null);
   const [viewCourse, setViewCourse] = useState(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   // Fetch data
   const fetchCourses = async () => {
@@ -601,7 +640,9 @@ const CourseManagement = () => {
         }/api/dept/departments/eligible-heads`,
       );
       console.log("inst", res.data);
-      setInstructors(res.data);
+      // Only Faculty should show up as selectable instructors
+      const facultyOnly = res.data.filter((u) => u.role === "Faculty");
+      setInstructors(facultyOnly);
     } catch (err) {
       console.error(err);
     }
@@ -690,28 +731,56 @@ const CourseManagement = () => {
           data,
         );
         await fetchCourses();
+        toast.success("Course added successfully.");
       } else {
         res = await axios.put(
           `${import.meta.env.VITE_API_BASE_URL}/api/course/courses/${data.id}`,
           data,
         );
         await fetchCourses();
+        toast.success("Course updated successfully.");
       }
       setModalOpen(false);
     } catch (err) {
-      console.error(err);
+      // Log the server's actual validation message, not just the generic Axios error.
+      console.error(
+        "Failed to save course:",
+        err.response?.data || err.message,
+      );
+      toast.error(
+        err.response?.data?.message ||
+          (modalMode === "add"
+            ? "Failed to add course."
+            : "Failed to update course."),
+      );
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this course?")) return;
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+  };
+
+  const cancelDelete = () => {
+    setDeleteTargetId(null);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteTargetId;
+    if (!id) return;
     try {
       await axios.delete(
         `${import.meta.env.VITE_API_BASE_URL}/api/course/courses/${id}`,
       );
       setCourses((prev) => prev.filter((c) => c.id !== id));
+      toast.success("Course deleted successfully.");
     } catch (err) {
-      console.error(err);
+      console.error(
+        "Failed to delete course:",
+        err.response?.data || err.message,
+      );
+      toast.error("Failed to delete course.");
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
@@ -723,6 +792,8 @@ const CourseManagement = () => {
 
   return (
     <div className="p-4">
+      <ToastContainer position="top-right" />
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <BookOpenText size={24} /> Course Management
@@ -882,6 +953,11 @@ const CourseManagement = () => {
         isOpen={viewModalOpen}
         onClose={() => setViewModalOpen(false)}
         course={viewCourse}
+      />
+      <DeleteConfirmModal
+        isOpen={deleteTargetId !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
       />
     </div>
   );

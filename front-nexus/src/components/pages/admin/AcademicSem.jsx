@@ -18,6 +18,8 @@ import {
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { saveAs } from "file-saver";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // --- Status Badge Component ---
 const StatusBadge = ({ status }) => {
@@ -366,6 +368,46 @@ const AcademicPeriodViewModal = ({ isOpen, onClose, period }) => {
   );
 };
 
+// --- Generic Confirm Modal (used for delete + activate) ---
+const ConfirmModal = ({ isOpen, onClose, onConfirm, message, confirmLabel = "Yes", tone = "danger" }) => {
+  if (!isOpen) return null;
+
+  const confirmClasses =
+    tone === "danger"
+      ? "bg-red-600 hover:bg-red-700"
+      : "bg-green-600 hover:bg-green-700";
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium text-gray-900 text-center mb-6">
+          {message}
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-md transition-colors ${confirmClasses}`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- Main Component ---
 function AcademicSem() {
   const [periods, setPeriods] = useState([]);
@@ -377,6 +419,8 @@ function AcademicSem() {
   const [currentRecord, setCurrentRecord] = useState(null);
   const [viewPeriod, setViewPeriod] = useState(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [activateTargetId, setActivateTargetId] = useState(null);
 
   // Fetch data
   const fetchAcademicPeriods = async () => {
@@ -459,6 +503,24 @@ function AcademicSem() {
     doc.save("academic_periods.pdf");
   };
 
+  // Turn a raw axios error into a short, human-readable message
+  const getErrorMessage = (err, fallback) => {
+    const serverMessage =
+      err.response?.data?.message || err.response?.data?.error;
+    if (serverMessage) return serverMessage;
+    if (err.response?.status === 400)
+      return "Some fields are missing or invalid. Please check the form and try again.";
+    if (err.response?.status === 404)
+      return "This academic period no longer exists. It may have already been deleted.";
+    if (err.response?.status === 409)
+      return "An academic period with this school year and semester already exists.";
+    if (err.response?.status === 500)
+      return "Something went wrong on the server. Please try again later.";
+    if (!err.response)
+      return "Can't reach the server. Check your connection and try again.";
+    return fallback;
+  };
+
   // CRUD
   const handleSubmit = async (data) => {
     try {
@@ -469,6 +531,7 @@ function AcademicSem() {
           data,
         );
         setPeriods((prev) => [...prev, res.data]);
+        toast.success("Academic period added successfully.");
       } else {
         res = await axios.put(
           `${import.meta.env.VITE_API_BASE_URL}/api/academic-periods/${
@@ -486,31 +549,65 @@ function AcademicSem() {
               : p,
           ),
         );
+        toast.success("Academic period updated successfully.");
       }
       fetchAcademicPeriods(); // Refresh to get updated active status
       setModalOpen(false);
     } catch (err) {
-      console.error("Failed to save academic period:", err);
-      alert(err.response?.data?.message || "Failed to save academic period");
+      console.error(
+        "Failed to save academic period:",
+        err.response?.data || err.message,
+      );
+      toast.error(
+        getErrorMessage(
+          err,
+          modalMode === "add"
+            ? "Failed to add academic period."
+            : "Failed to update academic period.",
+        ),
+      );
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this academic period?"))
-      return;
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+  };
+
+  const cancelDelete = () => {
+    setDeleteTargetId(null);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteTargetId;
+    if (!id) return;
     try {
       await axios.delete(
         `${import.meta.env.VITE_API_BASE_URL}/api/academic-periods/${id}`,
       );
       setPeriods((prev) => prev.filter((p) => p.id !== id));
+      toast.success("Academic period deleted successfully.");
     } catch (err) {
-      console.error("Failed to delete academic period:", err);
-      alert(err.response?.data?.message || "Failed to delete academic period");
+      console.error(
+        "Failed to delete academic period:",
+        err.response?.data || err.message,
+      );
+      toast.error(getErrorMessage(err, "Failed to delete academic period."));
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
-  const handleActivate = async (id) => {
-    if (!confirm("Set this as the active academic period?")) return;
+  const handleActivate = (id) => {
+    setActivateTargetId(id);
+  };
+
+  const cancelActivate = () => {
+    setActivateTargetId(null);
+  };
+
+  const confirmActivate = async () => {
+    const id = activateTargetId;
+    if (!id) return;
     try {
       await axios.post(
         `${
@@ -518,10 +615,15 @@ function AcademicSem() {
         }/api/academic-periods/${id}/activate`,
       );
       fetchAcademicPeriods(); // Refresh to update all active statuses
-      alert("Academic period activated successfully");
+      toast.success("Academic period activated successfully.");
     } catch (err) {
-      console.error("Failed to activate period:", err);
-      alert(err.response?.data?.message || "Failed to activate period");
+      console.error(
+        "Failed to activate period:",
+        err.response?.data || err.message,
+      );
+      toast.error(getErrorMessage(err, "Failed to activate academic period."));
+    } finally {
+      setActivateTargetId(null);
     }
   };
 
@@ -533,6 +635,8 @@ function AcademicSem() {
 
   return (
     <div className="p-4">
+      <ToastContainer position="top-right" />
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Calendar size={24} /> Academic Year & Semester Management
@@ -706,6 +810,27 @@ function AcademicSem() {
         isOpen={viewModalOpen}
         onClose={() => setViewModalOpen(false)}
         period={viewPeriod}
+      />
+      <ConfirmModal
+        isOpen={deleteTargetId !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        message={
+          <>
+            Are you sure you want to delete this academic period?{" "}
+            <span className="text-red-400">This action cannot be undone!</span>
+          </>
+        }
+        confirmLabel="Yes"
+        tone="danger"
+      />
+      <ConfirmModal
+        isOpen={activateTargetId !== null}
+        onClose={cancelActivate}
+        onConfirm={confirmActivate}
+        message="Set this as the active academic period? The currently active period will be closed."
+        confirmLabel="Activate"
+        tone="success"
       />
     </div>
   );

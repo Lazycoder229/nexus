@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Select from "react-select";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import {
   BookOpen,
   Search,
@@ -13,6 +15,74 @@ import {
   Calendar,
   Users,
 } from "lucide-react";
+
+// Turn a raw axios error into a short, human-readable message
+const getErrorMessage = (err, fallback) => {
+  const serverMessage =
+    err.response?.data?.message || err.response?.data?.error;
+  if (serverMessage) return serverMessage;
+  if (err.response?.status === 400)
+    return "Some fields are missing or invalid. Please check the form and try again.";
+  if (err.response?.status === 404)
+    return "This record no longer exists. It may have already been deleted.";
+  if (err.response?.status === 409)
+    return "A conflicting record already exists.";
+  if (err.response?.status === 500)
+    return "Something went wrong on the server. Please try again later.";
+  if (!err.response)
+    return "Can't reach the server. Check your connection and try again.";
+  return fallback;
+};
+
+// --- Generic Confirm Modal (Yes / No), same pattern used across the module ---
+const ConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  message,
+  confirmLabel = "Yes",
+  tone = "danger",
+  loading = false,
+}) => {
+  if (!isOpen) return null;
+
+  const confirmClasses =
+    tone === "danger"
+      ? "bg-red-600 hover:bg-red-700"
+      : "bg-green-600 hover:bg-green-700";
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium text-gray-900 text-center mb-6">
+          {message}
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-md transition-colors disabled:opacity-50 ${confirmClasses}`}
+          >
+            {loading ? "Please wait..." : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const AssignmentModal = ({
   isOpen,
@@ -96,6 +166,12 @@ const AssignmentModal = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (!formData.faculty_id || !formData.course_id || !formData.period_id) {
+      toast.error("Please select faculty, course, and academic period.");
+      return;
+    }
+
     console.log("formData before submit:", formData);
     const dataToSend = {
       ...formData,
@@ -467,6 +543,8 @@ const FacultyAssignCourse = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("add");
   const [currentRecord, setCurrentRecord] = useState(null);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -486,6 +564,7 @@ const FacultyAssignCourse = () => {
       setAssignments(res.data);
     } catch (err) {
       console.error("Error fetching assignments:", err);
+      toast.error(getErrorMessage(err, "Failed to load course assignments."));
     }
   };
 
@@ -555,28 +634,54 @@ const FacultyAssignCourse = () => {
     try {
       if (modalMode === "add") {
         await axios.post(`${API_BASE}/api/faculty-assignments`, data);
+        toast.success("Course assignment created successfully.");
       } else {
         await axios.put(
           `${API_BASE}/api/faculty-assignments/${data.assignment_id}`,
           data,
         );
+        toast.success("Course assignment updated successfully.");
       }
       fetchAssignments();
       setModalOpen(false);
       setCurrentRecord(null);
     } catch (err) {
       console.error("Error saving assignment:", err);
-      alert(err.response?.data?.message || "Failed to save assignment");
+      toast.error(
+        getErrorMessage(
+          err,
+          modalMode === "add"
+            ? "Failed to create assignment."
+            : "Failed to update assignment.",
+        ),
+      );
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this assignment?")) return;
+  // Opens the Yes/No confirm modal for deleting an assignment
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+  };
+
+  const cancelDelete = () => {
+    if (deleteLoading) return;
+    setDeleteTargetId(null);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteTargetId;
+    if (!id) return;
+    setDeleteLoading(true);
     try {
       await axios.delete(`${API_BASE}/api/faculty-assignments/${id}`);
+      toast.success("Course assignment deleted successfully.");
       fetchAssignments();
     } catch (err) {
       console.error("Error deleting assignment:", err);
+      toast.error(getErrorMessage(err, "Failed to delete assignment."));
+    } finally {
+      setDeleteLoading(false);
+      setDeleteTargetId(null);
     }
   };
 
@@ -588,6 +693,8 @@ const FacultyAssignCourse = () => {
 
   return (
     <div className="p-3 sm:p-4 transition-colors duration-500">
+      <ToastContainer position="top-right" />
+
       <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-200 pb-3">
@@ -810,6 +917,21 @@ const FacultyAssignCourse = () => {
           faculty={faculty}
           courses={courses}
           periods={periods}
+        />
+
+        <ConfirmModal
+          isOpen={deleteTargetId !== null}
+          onClose={cancelDelete}
+          onConfirm={confirmDelete}
+          message={
+            <>
+              Are you sure you want to delete this course assignment?{" "}
+              <span className="text-red-400">This action cannot be undone!</span>
+            </>
+          }
+          confirmLabel="Yes"
+          tone="danger"
+          loading={deleteLoading}
         />
       </div>
     </div>

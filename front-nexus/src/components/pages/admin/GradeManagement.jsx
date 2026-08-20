@@ -16,7 +16,58 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+// --- Generic Confirm Modal (same pattern as AcademicSem.jsx / AcademicCalendar.jsx) ---
+const ConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  message,
+  confirmLabel = "Yes",
+  tone = "danger",
+}) => {
+  if (!isOpen) return null;
+
+  const confirmClasses =
+    tone === "danger"
+      ? "bg-red-600 hover:bg-red-700"
+      : "bg-green-600 hover:bg-green-700";
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium text-gray-900 text-center mb-6">
+          {message}
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-md transition-colors ${confirmClasses}`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const GradeManagement = () => {
   const [grades, setGrades] = useState([]);
   const [students, setStudents] = useState([]);
@@ -31,6 +82,11 @@ const GradeManagement = () => {
   const [filterStatus, setFilterStatus] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Confirm-modal targets
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [approveTargetId, setApproveTargetId] = useState(null);
+  const [duplicateGrade, setDuplicateGrade] = useState(null);
 
   const [formData, setFormData] = useState({
     student_user_id: "",
@@ -51,12 +107,31 @@ const GradeManagement = () => {
     fetchPeriods();
   }, []);
 
+  // Turn a raw axios error into a short, human-readable message
+  const getErrorMessage = (err, fallback) => {
+    const serverMessage =
+      err.response?.data?.message || err.response?.data?.error;
+    if (serverMessage) return serverMessage;
+    if (err.response?.status === 400)
+      return "Some fields are missing or invalid. Please check the form and try again.";
+    if (err.response?.status === 404)
+      return "This grade no longer exists. It may have already been deleted.";
+    if (err.response?.status === 409)
+      return "A grade already exists for this student in this course and period.";
+    if (err.response?.status === 500)
+      return "Something went wrong on the server. Please try again later.";
+    if (!err.response)
+      return "Can't reach the server. Check your connection and try again.";
+    return fallback;
+  };
+
   const fetchGrades = async () => {
     try {
       const response = await axios.get(`${API_BASE}/api/grades`);
       setGrades(response.data);
     } catch (error) {
       console.error("Error fetching grades:", error);
+      toast.error(getErrorMessage(error, "Failed to load grades."));
     }
   };
 
@@ -69,28 +144,27 @@ const GradeManagement = () => {
       setStudents(studentsList);
     } catch (error) {
       console.error("Error fetching students:", error);
+      toast.error(getErrorMessage(error, "Failed to load students."));
     }
   };
 
   const fetchCourses = async () => {
     try {
-      const response = await axios.get(
-        `${API_BASE}/api/course/courses`,
-      );
+      const response = await axios.get(`${API_BASE}/api/course/courses`);
       setCourses(response.data);
     } catch (error) {
       console.error("Error fetching courses:", error);
+      toast.error(getErrorMessage(error, "Failed to load courses."));
     }
   };
 
   const fetchPeriods = async () => {
     try {
-      const response = await axios.get(
-        `${API_BASE}/api/academic-periods`,
-      );
+      const response = await axios.get(`${API_BASE}/api/academic-periods`);
       setPeriods(response.data);
     } catch (error) {
       console.error("Error fetching periods:", error);
+      toast.error(getErrorMessage(error, "Failed to load academic periods."));
     }
   };
 
@@ -143,6 +217,7 @@ const GradeManagement = () => {
           `${API_BASE}/api/grades/${currentGrade.grade_id}`,
           formData,
         );
+        toast.success("Grade updated successfully.");
       } else {
         // Check if a grade already exists for this combination
         const existingGrade = grades.find(
@@ -153,24 +228,23 @@ const GradeManagement = () => {
         );
 
         if (existingGrade) {
-          const confirmEdit = window.confirm(
-            `A grade already exists for this student in this course and period.\n\nWould you like to edit the existing grade instead?`,
-          );
-          if (confirmEdit) {
-            handleEdit(existingGrade);
-            return;
-          } else {
-            return;
-          }
+          setDuplicateGrade(existingGrade);
+          return;
         }
 
         await axios.post(`${API_BASE}/api/grades`, formData);
+        toast.success("Grade added successfully.");
       }
       fetchGrades();
       closeModal();
     } catch (error) {
       console.error("Error saving grade:", error);
-      alert(error.response?.data?.error || "Error saving grade");
+      toast.error(
+        getErrorMessage(
+          error,
+          editMode ? "Failed to update grade." : "Failed to add grade.",
+        ),
+      );
     }
   };
 
@@ -191,33 +265,67 @@ const GradeManagement = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this grade?")) {
-      try {
-        await axios.delete(`${API_BASE}/api/grades/${id}`);
-        fetchGrades();
-      } catch (error) {
-        console.error("Error deleting grade:", error);
-        alert(error.response?.data?.error || "Error deleting grade");
-      }
+  // --- Delete flow ---
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+  };
+
+  const cancelDelete = () => {
+    setDeleteTargetId(null);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteTargetId;
+    if (!id) return;
+    try {
+      await axios.delete(`${API_BASE}/api/grades/${id}`);
+      fetchGrades();
+      toast.success("Grade deleted successfully.");
+    } catch (error) {
+      console.error("Error deleting grade:", error);
+      toast.error(getErrorMessage(error, "Failed to delete grade."));
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
-  const handleApprove = async (gradeId) => {
-    if (window.confirm("Are you sure you want to approve this grade?")) {
-      try {
-        const user = JSON.parse(localStorage.getItem("user"));
-        await axios.post(
-          `${API_BASE}/api/grades/${gradeId}/approve`,
-          {
-            approved_by: user.user_id,
-          },
-        );
-        fetchGrades();
-      } catch (error) {
-        console.error("Error approving grade:", error);
-        alert(error.response?.data?.error || "Error approving grade");
-      }
+  // --- Approve flow ---
+  const handleApprove = (gradeId) => {
+    setApproveTargetId(gradeId);
+  };
+
+  const cancelApprove = () => {
+    setApproveTargetId(null);
+  };
+
+  const confirmApprove = async () => {
+    const gradeId = approveTargetId;
+    if (!gradeId) return;
+    try {
+      const user = JSON.parse(localStorage.getItem("user"));
+      await axios.post(`${API_BASE}/api/grades/${gradeId}/approve`, {
+        approved_by: user.user_id,
+      });
+      fetchGrades();
+      toast.success("Grade approved successfully.");
+    } catch (error) {
+      console.error("Error approving grade:", error);
+      toast.error(getErrorMessage(error, "Failed to approve grade."));
+    } finally {
+      setApproveTargetId(null);
+    }
+  };
+
+  // --- Duplicate-grade flow (replaces the old window.confirm "edit existing?" prompt) ---
+  const cancelDuplicate = () => {
+    setDuplicateGrade(null);
+  };
+
+  const confirmDuplicate = () => {
+    const grade = duplicateGrade;
+    setDuplicateGrade(null);
+    if (grade) {
+      handleEdit(grade);
     }
   };
 
@@ -295,12 +403,9 @@ const GradeManagement = () => {
   // Helper Components
   const StatusBadge = ({ status }) => {
     const colorMap = {
-      draft:
-        "bg-slate-100 text-slate-700",
-      submitted:
-        "bg-indigo-100 text-indigo-700",
-      approved:
-        "bg-green-100 text-green-700",
+      draft: "bg-slate-100 text-slate-700",
+      submitted: "bg-indigo-100 text-indigo-700",
+      approved: "bg-green-100 text-green-700",
     };
     return (
       <span
@@ -370,6 +475,8 @@ const GradeManagement = () => {
 
   return (
     <div className=" p-3 sm:p-4 transition-colors duration-500">
+      <ToastContainer position="top-right" />
+
       <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-200 pb-3">
@@ -385,36 +492,28 @@ const GradeManagement = () => {
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-            <p className="text-sm text-slate-600">
-              Total Grades
-            </p>
+            <p className="text-sm text-slate-600">Total Grades</p>
             <p className="text-2xl font-bold text-indigo-600">
               {totalGrades}
             </p>
           </div>
 
           <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-            <p className="text-sm text-slate-600">
-              Approved
-            </p>
+            <p className="text-sm text-slate-600">Approved</p>
             <p className="text-2xl font-bold text-green-600">
               {approvedGrades}
             </p>
           </div>
 
           <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-            <p className="text-sm text-slate-600">
-              Passed Students
-            </p>
+            <p className="text-sm text-slate-600">Passed Students</p>
             <p className="text-2xl font-bold text-purple-600">
               {passedStudents}
             </p>
           </div>
 
           <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-            <p className="text-sm text-slate-600">
-              Average Grade
-            </p>
+            <p className="text-sm text-slate-600">Average Grade</p>
             <p className="text-2xl font-bold text-orange-600">
               {averageGrade}
             </p>
@@ -625,7 +724,7 @@ const GradeManagement = () => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Add/Edit Modal */}
       {showModal && (
         <div
           className="fixed inset-0 bg-black/30 flex items-center justify-center p-2 z-50 transition-opacity duration-300"
@@ -828,6 +927,41 @@ const GradeManagement = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteTargetId !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        message={
+          <>
+            Are you sure you want to delete this grade?{" "}
+            <span className="text-red-400">This action cannot be undone!</span>
+          </>
+        }
+        confirmLabel="Yes"
+        tone="danger"
+      />
+
+      {/* Approve Confirmation Modal */}
+      <ConfirmModal
+        isOpen={approveTargetId !== null}
+        onClose={cancelApprove}
+        onConfirm={confirmApprove}
+        message="Are you sure you want to approve this grade?"
+        confirmLabel="Approve"
+        tone="success"
+      />
+
+      {/* Duplicate Grade Confirmation Modal */}
+      <ConfirmModal
+        isOpen={duplicateGrade !== null}
+        onClose={cancelDuplicate}
+        onConfirm={confirmDuplicate}
+        message="A grade already exists for this student in this course and period. Would you like to edit the existing grade instead?"
+        confirmLabel="Edit Existing"
+        tone="success"
+      />
     </div>
   );
 };

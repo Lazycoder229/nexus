@@ -15,6 +15,18 @@ const pickValue = (source, ...keys) => {
 
 const joinAddressParts = (...parts) => parts.filter(Boolean).join(", ");
 
+// Remove sensitive fields (like password_hash) from a user row (or array of
+// rows) before it's returned from the model layer. Centralized here so every
+// read path (getAllUsers, findUserById, etc.) is guaranteed to scrub it,
+// instead of relying on each caller to remember to omit it.
+const omitSensitiveFields = (row) => {
+  if (!row) return row;
+  const { password_hash, ...safeRow } = row;
+  return safeRow;
+};
+
+const omitSensitiveFieldsFromRows = (rows) => rows.map(omitSensitiveFields);
+
 const studentDetailSelect = `
       s.student_number,
   s.student_type,
@@ -207,6 +219,10 @@ const buildStudentDetailPayload = (studentData, studentNumber) => ({
   scholarship_assistance_3: pickValue(studentData, "scholarshipAssistance3"),
 });
 
+// Used internally by the login/auth flow only — this one is ALLOWED to
+// include password_hash, because the auth controller needs it to verify the
+// submitted password. Never pass this function's result straight through to
+// an API response; strip password_hash first if you ever expose it.
 export const findUserByEmail = async (email) => {
   const [rows] = await db.query("SELECT * FROM users WHERE email = ?", [email]);
   // console.log("findUserByEmail result:", rows);
@@ -234,7 +250,9 @@ ${studentDetailSelect},
   `,
     [userId],
   );
-  return rows[0];
+  // Never return password_hash to callers — this result is used to build
+  // API responses (e.g. "get current user" / "get user by id").
+  return omitSensitiveFields(rows[0]);
 };
 // Fetch all users with their student or employee details
 export const getAllUsers = async (role = null) => {
@@ -259,7 +277,10 @@ ${studentDetailSelect},
   }
   
   const [rows] = role ? await db.query(query, [role]) : await db.query(query);
-  return rows;
+  // Never return password_hash to callers — this feeds list endpoints like
+  // /api/users, which the frontend renders directly (student/faculty pickers,
+  // user management tables, etc.).
+  return omitSensitiveFieldsFromRows(rows);
 };
 
 // Create a new student user

@@ -11,6 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const runtimeHostApiBase =
   typeof window !== "undefined"
@@ -38,6 +40,53 @@ const apiFetch = async (path, options = {}) => {
   throw lastError;
 };
 
+// --- Generic Confirm Modal (same pattern as AcademicSem.jsx / AcademicCalendar.jsx / GradeManagement.jsx) ---
+const ConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  message,
+  confirmLabel = "Yes",
+  tone = "danger",
+}) => {
+  if (!isOpen) return null;
+
+  const confirmClasses =
+    tone === "danger"
+      ? "bg-red-600 hover:bg-red-700"
+      : "bg-green-600 hover:bg-green-700";
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium text-gray-900 text-center mb-6">
+          {message}
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-md transition-colors ${confirmClasses}`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ExamSetup = () => {
   const [exams, setExams] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -55,6 +104,7 @@ const ExamSetup = () => {
   });
   const [showModal, setShowModal] = useState(false);
   const [editingExam, setEditingExam] = useState(null);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
   const [formData, setFormData] = useState({
     exam_name: "",
     course_id: "",
@@ -78,6 +128,20 @@ const ExamSetup = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Turn a fetch/response error into a short, human-readable message
+  const getErrorMessage = async (errorOrResponse, fallback) => {
+    // response object with data already parsed
+    if (errorOrResponse && errorOrResponse.__parsedData) {
+      const data = errorOrResponse.__parsedData;
+      return data?.message || data?.error || fallback;
+    }
+    // network-level error (fetch threw)
+    if (errorOrResponse instanceof Error) {
+      return "Can't reach the server. Check your connection and try again.";
+    }
+    return fallback;
+  };
+
   const fetchExams = async () => {
     try {
       setLoading(true);
@@ -86,9 +150,12 @@ const ExamSetup = () => {
       const data = await response.json();
       if (data.success) {
         setExams(data.data);
+      } else {
+        toast.error(data?.message || data?.error || "Failed to load exams.");
       }
     } catch (error) {
       console.error("Error fetching exams:", error);
+      toast.error(await getErrorMessage(error, "Failed to load exams."));
     } finally {
       setLoading(false);
     }
@@ -105,6 +172,7 @@ const ExamSetup = () => {
       }
     } catch (error) {
       console.error("Error fetching sections:", error);
+      toast.error(await getErrorMessage(error, "Failed to load sections."));
     }
   };
 
@@ -124,6 +192,7 @@ const ExamSetup = () => {
       }
     } catch (error) {
       console.error("Error fetching courses:", error);
+      toast.error(await getErrorMessage(error, "Failed to load courses."));
     }
   };
 
@@ -152,12 +221,15 @@ const ExamSetup = () => {
     } catch (error) {
       console.error("Error fetching rooms:", error);
       setRooms([]);
+      toast.error("Failed to load rooms.");
     }
   };
 
   const fetchFacultyByDepartment = async (departmentId) => {
     if (!departmentId) {
-      setFaculty([]);
+      // Fallback: no department_id on the course, so load all faculty instead
+      // (same pattern as GradeManagement.jsx: fetch all users, filter by role)
+      fetchAllFaculty();
       return;
     }
     try {
@@ -165,12 +237,58 @@ const ExamSetup = () => {
         `/api/faculty/department/${departmentId}`,
       );
       const data = await response.json();
-      if (Array.isArray(data)) {
+      console.log(`Faculty for department ${departmentId}:`, data); // Debug
+      if (Array.isArray(data) && data.length > 0) {
         setFaculty(data);
+      } else {
+        // Department endpoint returned nothing usable (or an empty list,
+        // meaning no faculty is assigned to that specific department) —
+        // fall back to showing all faculty instead of leaving it empty.
+        console.log(
+          "No faculty found for this department, falling back to all faculty",
+        ); // Debug
+        fetchAllFaculty();
       }
     } catch (error) {
       console.error("Error fetching faculty:", error);
       setFaculty([]);
+      toast.error(await getErrorMessage(error, "Failed to load faculty."));
+    }
+  };
+
+  // Fallback: fetch ALL faculty (any department) when the course has no
+  // department_id or the department-specific endpoint has nothing to offer.
+  const fetchAllFaculty = async () => {
+    try {
+      const response = await apiFetch("/api/users");
+      const data = await response.json();
+      console.log("Raw /api/users response:", data); // Debug
+
+      const usersList = Array.isArray(data)
+        ? data
+        : data?.data || data?.users || [];
+      console.log("Users list after unwrap:", usersList); // Debug
+      console.log(
+        "Distinct roles found:",
+        [...new Set(usersList.map((u) => u.role))],
+      ); // Debug
+
+      // Case-insensitive match so "Faculty", "faculty", "FACULTY" all work
+      const facultyList = usersList.filter(
+        (user) => (user.role || "").toLowerCase() === "faculty",
+      );
+      console.log("Filtered faculty list:", facultyList); // Debug
+
+      setFaculty(facultyList);
+      if (facultyList.length === 0) {
+        toast.error(
+          "No faculty accounts found. Check that users have role = 'Faculty' in the database.",
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching all faculty:", error);
+      setFaculty([]);
+      toast.error(await getErrorMessage(error, "Failed to load faculty."));
     }
   };
 
@@ -181,9 +299,9 @@ const ExamSetup = () => {
       const selectedCourse = courses.find((c) => c.id === exam.course_id);
       if (selectedCourse) {
         fetchAllRooms();
-        if (selectedCourse.department_id) {
-          fetchFacultyByDepartment(selectedCourse.department_id);
-        }
+        // fetchFacultyByDepartment falls back to fetchAllFaculty when there's
+        // no department_id, so always call it once we have the course.
+        fetchFacultyByDepartment(selectedCourse.department_id);
       }
       setFormData({
         exam_name: exam.exam_name || "",
@@ -271,27 +389,56 @@ const ExamSetup = () => {
 
       const data = await response.json();
       if (data.success) {
+        toast.success(
+          editingExam ? "Exam updated successfully." : "Exam created successfully.",
+        );
         fetchExams();
         handleCloseModal();
+      } else {
+        toast.error(
+          data?.message ||
+            data?.error ||
+            (editingExam ? "Failed to update exam." : "Failed to create exam."),
+        );
       }
     } catch (error) {
       console.error("Error saving exam:", error);
+      toast.error(
+        await getErrorMessage(
+          error,
+          editingExam ? "Failed to update exam." : "Failed to create exam.",
+        ),
+      );
     }
   };
 
-  const handleDelete = async (examId) => {
-    if (window.confirm("Are you sure you want to delete this exam?")) {
-      try {
-        const response = await apiFetch(`/api/exams/${examId}`, {
-          method: "DELETE",
-        });
-        const data = await response.json();
-        if (data.success) {
-          fetchExams();
-        }
-      } catch (error) {
-        console.error("Error deleting exam:", error);
+  const handleDelete = (examId) => {
+    setDeleteTargetId(examId);
+  };
+
+  const cancelDelete = () => {
+    setDeleteTargetId(null);
+  };
+
+  const confirmDelete = async () => {
+    const examId = deleteTargetId;
+    if (!examId) return;
+    try {
+      const response = await apiFetch(`/api/exams/${examId}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+      if (data.success) {
+        fetchExams();
+        toast.success("Exam deleted successfully.");
+      } else {
+        toast.error(data?.message || data?.error || "Failed to delete exam.");
       }
+    } catch (error) {
+      console.error("Error deleting exam:", error);
+      toast.error(await getErrorMessage(error, "Failed to delete exam."));
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
@@ -337,6 +484,8 @@ const ExamSetup = () => {
 
   return (
     <div className=" p-3 sm:p-4 transition-colors duration-500">
+      <ToastContainer position="top-right" />
+
       <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-200 pb-3">
@@ -732,14 +881,14 @@ const ExamSetup = () => {
                             console.log("Fetching all rooms"); // Debug
                             fetchAllRooms();
                           }
-                          if (selectedCourse && selectedCourse.department_id) {
+                          if (selectedCourse) {
+                            // fetchFacultyByDepartment falls back to all
+                            // faculty when department_id is missing.
                             fetchFacultyByDepartment(
                               selectedCourse.department_id,
                             );
                           } else {
-                            console.log(
-                              "No department_id found in selected course",
-                            ); // Debug
+                            setFaculty([]);
                           }
                         }}
                         className="text-sm"
@@ -1084,6 +1233,23 @@ const ExamSetup = () => {
             </div>
           </div>
         )}
+
+        {/* Delete Confirmation Modal */}
+        <ConfirmModal
+          isOpen={deleteTargetId !== null}
+          onClose={cancelDelete}
+          onConfirm={confirmDelete}
+          message={
+            <>
+              Are you sure you want to delete this exam?{" "}
+              <span className="text-red-400">
+                This action cannot be undone!
+              </span>
+            </>
+          }
+          confirmLabel="Yes"
+          tone="danger"
+        />
       </div>
     </div>
   );

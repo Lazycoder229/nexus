@@ -73,11 +73,11 @@ const Menu = {
           icons: ClipboardList,
           link: "/admin/admin_enrollment",
         },
-        {
+        /* {
           label: "Course Transfer & Shifting",
           icons: FileText,
           link: "/admin/admin_course_transfer",
-        },
+        }, */
         {
           label: "Academic History",
           icons: CalendarCheck,
@@ -224,7 +224,7 @@ const Menu = {
     },
  */
     {
-      title: "Events & Communication",
+      title: "Announcement",
       icons: Bell,
       submenu: [
         {

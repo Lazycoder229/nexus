@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { generateCSV, downloadCSV, downloadPDF } from "../../../utils/exportHelpers";
 
 /* -------------------------
@@ -20,6 +22,24 @@ const formatDateForInput = (dateValue) => {
     return dateValue;
   }
   return "";
+};
+
+// Turn a raw axios error into a short, human-readable message
+const getErrorMessage = (err, fallback) => {
+  const serverMessage =
+    err.response?.data?.message || err.response?.data?.error;
+  if (serverMessage) return serverMessage;
+  if (err.response?.status === 400)
+    return "Some fields are missing or invalid. Please check the form and try again.";
+  if (err.response?.status === 404)
+    return "This user no longer exists. It may have already been deleted.";
+  if (err.response?.status === 409)
+    return "A user with these details already exists.";
+  if (err.response?.status === 500)
+    return "Something went wrong on the server. Please try again later.";
+  if (!err.response)
+    return "Can't reach the server. Check your connection and try again.";
+  return fallback;
 };
 
 /**
@@ -301,6 +321,55 @@ const SectionDivider = ({ title }) => (
     {title}
   </p>
 );
+
+/* -------------------------
+   GENERIC CONFIRM MODAL (same pattern as AcademicCalendar.jsx)
+   ------------------------- */
+const ConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  message,
+  confirmLabel = "Yes",
+  tone = "danger",
+}) => {
+  if (!isOpen) return null;
+
+  const confirmClasses =
+    tone === "danger"
+      ? "bg-red-600 hover:bg-red-700"
+      : "bg-green-600 hover:bg-green-700";
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium text-gray-900 text-center mb-6">
+          {message}
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-md transition-colors ${confirmClasses}`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 /* -------------------------
    VIEW USER MODAL
@@ -777,6 +846,8 @@ function UserManagement() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewingUser,     setViewingUser]     = useState(null);
 
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
+
   const [query,      setQuery]      = useState("");
   const [filterRole, setFilterRole] = useState("");
   const [page,       setPage]       = useState(1);
@@ -798,7 +869,10 @@ function UserManagement() {
       const token = localStorage.getItem("token");
       const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/users`, { headers: { Authorization: `Bearer ${token}` } });
       setUsers(res.data);
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+      toast.error(getErrorMessage(err, "Failed to load users."));
+    }
   };
 
   const fetchDepartments = async () => {
@@ -806,7 +880,10 @@ function UserManagement() {
       const token = localStorage.getItem("token");
       const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`, { headers: { Authorization: `Bearer ${token}` } });
       setDepartments(res.data);
-    } catch (err) { console.error("Error fetching departments:", err); }
+    } catch (err) {
+      console.error("Error fetching departments:", err);
+      toast.error(getErrorMessage(err, "Failed to load departments."));
+    }
   };
 
   const fetchPrograms = async () => {
@@ -814,7 +891,10 @@ function UserManagement() {
       const token = localStorage.getItem("token");
       const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/programs`, { headers: { Authorization: `Bearer ${token}` } });
       setPrograms(res.data);
-    } catch (err) { console.error("Error fetching programs:", err); }
+    } catch (err) {
+      console.error("Error fetching programs:", err);
+      toast.error(getErrorMessage(err, "Failed to load programs."));
+    }
   };
 
   const fetchRbac = async () => {
@@ -827,7 +907,10 @@ function UserManagement() {
         for (const role of Object.keys(prev)) { if (fetched[role]) merged[role] = fetched[role]; }
         return merged;
       });
-    } catch (err) { console.error("Error fetching RBAC config:", err); }
+    } catch (err) {
+      console.error("Error fetching RBAC config:", err);
+      toast.error(getErrorMessage(err, "Failed to load RBAC configuration."));
+    }
   };
 
   // Kasama ng ibang useEffect mo — nasa UserManagement component
@@ -998,16 +1081,27 @@ const handleRoleChange = (e) => {
     setIsFormModalOpen(true);
   };
 
-  const handleDelete = async (userId) => {
-    if (!confirm("Delete this user? This action cannot be undone.")) return;
+  const handleDelete = (userId) => {
+    setDeleteTargetId(userId);
+  };
+
+  const cancelDelete = () => {
+    setDeleteTargetId(null);
+  };
+
+  const confirmDelete = async () => {
+    const userId = deleteTargetId;
+    if (!userId) return;
     try {
       const token = localStorage.getItem("token");
       await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/api/users/${userId}`, { headers: { Authorization: `Bearer ${token}` } });
       setUsers((prev) => prev.filter((u) => u.user_id !== userId));
-      alert("User deleted successfully");
+      toast.success("User deleted successfully.");
     } catch (err) {
       console.error(err);
-      alert(`Error deleting user: ${err.response?.data?.message || err.message}`);
+      toast.error(getErrorMessage(err, "Failed to delete user."));
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
@@ -1018,19 +1112,19 @@ const handleRoleChange = (e) => {
 
       if (!isEditing) {
         if (!formData.password || formData.password !== formData.confirmPassword) {
-          alert("Password and Confirm Password must match and cannot be empty.");
+          toast.error("Password and Confirm Password must match and cannot be empty.");
           return;
         }
         if (selectedRole !== "Student") {
           const missing = ["email", "firstName", "lastName"].filter((f) => !payload[f]?.trim());
           if (missing.length) {
-            alert(`Please fill required fields: ${missing.join(", ")}`);
+            toast.error(`Please fill required fields: ${missing.join(", ")}`);
             return;
           }
         } else {
           const missing = ["academicYear", "semester", "courseProgram", "yearLevel"].filter((f) => !payload[f]?.toString().trim());
           if (missing.length) {
-            alert(`Please fill required student fields: ${missing.join(", ")}`);
+            toast.error(`Please fill required student fields: ${missing.join(", ")}`);
             return;
           }
         }
@@ -1053,7 +1147,7 @@ const handleRoleChange = (e) => {
           : await axios.put(`${BASE}/api/users/employee/${currentId}`, payload, { headers });
       }
 
-      alert(response.data.message || "Success!");
+      toast.success(response.data.message || "Success!");
       fetchUsers();
       if (response.data.token) localStorage.setItem("token", response.data.token);
       closeFormModal();
@@ -1061,9 +1155,9 @@ const handleRoleChange = (e) => {
       console.error("Response data:", JSON.stringify(error.response?.data, null, 2));
       const serverErrors = error.response?.data?.errors;
       if (serverErrors?.length) {
-        alert("Validation failed:\n" + serverErrors.map((e) => `• ${e.field}: ${e.message}`).join("\n"));
+        toast.error("Validation failed: " + serverErrors.map((e) => `${e.field}: ${e.message}`).join("; "));
       } else {
-        alert(error.response?.data?.message || "Something went wrong.");
+        toast.error(getErrorMessage(error, "Something went wrong."));
       }
     }
   };
@@ -1075,10 +1169,11 @@ const handleRoleChange = (e) => {
       const token = localStorage.getItem("token");
       await axios.put(`${import.meta.env.VITE_API_BASE_URL}/api/rbac`, rbac, { headers: { Authorization: `Bearer ${token}` } });
       setRbacSaved(true);
+      toast.success("RBAC configuration saved.");
       setTimeout(() => setRbacSaved(false), 3000);
     } catch (error) {
       console.error("Error saving RBAC:", error);
-      alert(error.response?.data?.message || "Failed to save RBAC configuration.");
+      toast.error(getErrorMessage(error, "Failed to save RBAC configuration."));
     } finally { setRbacSaving(false); }
   };
 
@@ -1116,7 +1211,7 @@ const handleRoleChange = (e) => {
 
   /* ── Export ── */
   const exportCSV = () => {
-    if (users.length === 0) { alert("No users to export."); return; }
+    if (users.length === 0) { toast.error("No users to export."); return; }
     const exportData = users.map((u) => ({
       first_name:     u.first_name     || "",
       last_name:      u.last_name      || "",
@@ -1139,7 +1234,7 @@ const handleRoleChange = (e) => {
   };
 
   const exportPDF = () => {
-    if (users.length === 0) { alert("No users to export."); return; }
+    if (users.length === 0) { toast.error("No users to export."); return; }
     const exportData = users.map((u) => ({
       first_name: u.first_name || "",
       last_name:  u.last_name  || "",
@@ -1335,6 +1430,8 @@ const handleRoleChange = (e) => {
   /* ── Main render ── */
   return (
     <div className="w-full overflow-hidden bg-slate-50 sm:p-4 flex flex-col">
+      <ToastContainer position="top-right" />
+
       <div className="w-full mx-auto flex flex-col gap-3 font-sans flex-1 min-h-0">
         <div className="flex-shrink-0 flex justify-between items-center border-b border-slate-200 pb-2">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
@@ -1388,6 +1485,21 @@ const handleRoleChange = (e) => {
           user={viewingUser}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteTargetId !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        message={
+          <>
+            Are you sure you want to delete this user?{" "}
+            <span className="text-red-400">This action cannot be undone!</span>
+          </>
+        }
+        confirmLabel="Yes"
+        tone="danger"
+      />
     </div>
   );
 }

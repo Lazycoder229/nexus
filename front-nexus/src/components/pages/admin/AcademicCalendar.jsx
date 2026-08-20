@@ -15,7 +15,58 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+// --- Generic Confirm Modal (same pattern as AcademicSem.jsx) ---
+const ConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  message,
+  confirmLabel = "Yes",
+  tone = "danger",
+}) => {
+  if (!isOpen) return null;
+
+  const confirmClasses =
+    tone === "danger"
+      ? "bg-red-600 hover:bg-red-700"
+      : "bg-green-600 hover:bg-green-700";
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium text-gray-900 text-center mb-6">
+          {message}
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-md transition-colors ${confirmClasses}`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const AcademicCalendar = () => {
   const [events, setEvents] = useState([]);
   const [periods, setPeriods] = useState([]);
@@ -26,6 +77,7 @@ const AcademicCalendar = () => {
   const [filterPeriod, setFilterPeriod] = useState(null);
   const [filterType, setFilterType] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
   const itemsPerPage = 10;
 
   const [formData, setFormData] = useState({
@@ -61,33 +113,54 @@ const AcademicCalendar = () => {
     fetchEvents();
     fetchPeriods();
   }, []);
-const fetchEvents = async () => {
-  try {
-    const response = await axios.get(`${API_BASE}/api/academic-events`);
-    // ✅ Handle both array and { data: [...] } response
-    const data = Array.isArray(response.data) 
-      ? response.data 
-      : response.data.data || [];
-    setEvents(data);
-  } catch (error) {
-    console.error("Error fetching events:", error);
-    setEvents([]); // ✅ Fallback para hindi mag-crash
-  }
-};
 
-const fetchPeriods = async () => {
-  try {
-    const response = await axios.get(`${API_BASE}/api/academic-periods`);
-    // ✅ Handle both array and { data: [...] } response
-    const data = Array.isArray(response.data) 
-      ? response.data 
-      : response.data.data || [];
-    setPeriods(data);
-  } catch (error) {
-    console.error("Error fetching periods:", error);
-    setPeriods([]); // ✅ Fallback
-  }
-};
+  const fetchEvents = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/api/academic-events`);
+      // ✅ Handle both array and { data: [...] } response
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.data || [];
+      setEvents(data);
+    } catch (error) {
+      console.error("Error fetching events:", error);
+      setEvents([]); // ✅ Fallback para hindi mag-crash
+      toast.error(getErrorMessage(error, "Failed to load events."));
+    }
+  };
+
+  const fetchPeriods = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/api/academic-periods`);
+      // ✅ Handle both array and { data: [...] } response
+      const data = Array.isArray(response.data)
+        ? response.data
+        : response.data.data || [];
+      setPeriods(data);
+    } catch (error) {
+      console.error("Error fetching periods:", error);
+      setPeriods([]); // ✅ Fallback
+      toast.error(getErrorMessage(error, "Failed to load academic periods."));
+    }
+  };
+
+  // Turn a raw axios error into a short, human-readable message
+  const getErrorMessage = (err, fallback) => {
+    const serverMessage =
+      err.response?.data?.message || err.response?.data?.error;
+    if (serverMessage) return serverMessage;
+    if (err.response?.status === 400)
+      return "Some fields are missing or invalid. Please check the form and try again.";
+    if (err.response?.status === 404)
+      return "This event no longer exists. It may have already been deleted.";
+    if (err.response?.status === 409)
+      return "An event with these details already exists.";
+    if (err.response?.status === 500)
+      return "Something went wrong on the server. Please try again later.";
+    if (!err.response)
+      return "Can't reach the server. Check your connection and try again.";
+    return fallback;
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -106,14 +179,21 @@ const fetchPeriods = async () => {
           `${API_BASE}/api/academic-events/${currentEvent.event_id}`,
           formData,
         );
+        toast.success("Event updated successfully.");
       } else {
         await axios.post(`${API_BASE}/api/academic-events`, formData);
+        toast.success("Event added successfully.");
       }
       fetchEvents();
       closeModal();
     } catch (error) {
       console.error("Error saving event:", error);
-      alert(error.response?.data?.error || "Error saving event");
+      toast.error(
+        getErrorMessage(
+          error,
+          editMode ? "Failed to update event." : "Failed to add event.",
+        ),
+      );
     }
   };
 
@@ -133,15 +213,26 @@ const fetchPeriods = async () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this event?")) {
-      try {
-        await axios.delete(`${API_BASE}/api/academic-events/${id}`);
-        fetchEvents();
-      } catch (error) {
-        console.error("Error deleting event:", error);
-        alert(error.response?.data?.error || "Error deleting event");
-      }
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+  };
+
+  const cancelDelete = () => {
+    setDeleteTargetId(null);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteTargetId;
+    if (!id) return;
+    try {
+      await axios.delete(`${API_BASE}/api/academic-events/${id}`);
+      fetchEvents();
+      toast.success("Event deleted successfully.");
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      toast.error(getErrorMessage(error, "Failed to delete event."));
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
@@ -204,18 +295,13 @@ const fetchPeriods = async () => {
   const StatusBadge = ({ type }) => {
     const eventTypeObj = eventTypes.find((t) => t.value === type);
     const colorMap = {
-      enrollment:
-        "bg-blue-100 text-blue-700",
+      enrollment: "bg-blue-100 text-blue-700",
       exam: "bg-red-100 text-red-700",
-      holiday:
-        "bg-green-100 text-green-700",
-      meeting:
-        "bg-purple-100 text-purple-700",
-      deadline:
-        "bg-orange-100 text-orange-700",
+      holiday: "bg-green-100 text-green-700",
+      meeting: "bg-purple-100 text-purple-700",
+      deadline: "bg-orange-100 text-orange-700",
       activity: "bg-teal-100 text-teal-700",
-      other:
-        "bg-slate-100 text-slate-700",
+      other: "bg-slate-100 text-slate-700",
     };
     return (
       <span
@@ -269,6 +355,8 @@ const fetchPeriods = async () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
+      <ToastContainer position="top-right" />
+
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -509,7 +597,7 @@ const fetchPeriods = async () => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0  bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -704,6 +792,21 @@ const fetchPeriods = async () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteTargetId !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        message={
+          <>
+            Are you sure you want to delete this event?{" "}
+            <span className="text-red-400">This action cannot be undone!</span>
+          </>
+        }
+        confirmLabel="Yes"
+        tone="danger"
+      />
     </div>
   );
 };

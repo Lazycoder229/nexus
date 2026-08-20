@@ -13,6 +13,8 @@ import {
   Users,
   Check,
 } from "lucide-react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // ---------------------------------------------------------------------------
 // Academic period helpers (shared by the Admissions table and the
@@ -85,6 +87,24 @@ const getAcademicPeriodKey = (period) => {
   return `${period.school_year || ""}|${period.semester || ""}`;
 };
 
+// Turn a raw axios error into a short, human-readable message
+const getErrorMessage = (err, fallback) => {
+  const serverMessage =
+    err.response?.data?.message || err.response?.data?.error;
+  if (serverMessage) return serverMessage;
+  if (err.response?.status === 400)
+    return "Some fields are missing or invalid. Please check the form and try again.";
+  if (err.response?.status === 404)
+    return "This record no longer exists. It may have already been deleted.";
+  if (err.response?.status === 409)
+    return "A conflicting record already exists.";
+  if (err.response?.status === 500)
+    return "Something went wrong on the server. Please try again later.";
+  if (!err.response)
+    return "Can't reach the server. Check your connection and try again.";
+  return fallback;
+};
+
 const StatusBadge = ({ status }) => {
   const colors = {
     Pending: "bg-yellow-100 text-yellow-800",
@@ -128,6 +148,56 @@ const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
     </div>
   </div>
 );
+
+// --- Generic Confirm Modal (Yes / No), same pattern as AcademicSem ---
+const ConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  message,
+  confirmLabel = "Yes",
+  tone = "danger",
+  loading = false,
+}) => {
+  if (!isOpen) return null;
+
+  const confirmClasses =
+    tone === "danger"
+      ? "bg-red-600 hover:bg-red-700"
+      : "bg-green-600 hover:bg-green-700";
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium text-gray-900 text-center mb-6">
+          {message}
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-md transition-colors disabled:opacity-50 ${confirmClasses}`}
+          >
+            {loading ? "Please wait..." : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const AdmissionModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
   const [formData, setFormData] = useState({
@@ -182,6 +252,7 @@ const AdmissionModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
         setAdmins(res.data || []);
       } catch (err) {
         console.error("Error fetching admins:", err);
+        toast.error(getErrorMessage(err, "Failed to load admin list."));
       }
     };
     fetchAdmins();
@@ -717,6 +788,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
   const [programs, setPrograms] = useState([]);
   const [academicPeriods, setAcademicPeriods] = useState([]);
   const [defaultAcademicPeriod, setDefaultAcademicPeriod] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -764,6 +836,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
         setSelectedIds(new Set());
       } catch (error) {
         console.error("Error loading bulk enroll lookup data:", error);
+        toast.error(getErrorMessage(error, "Failed to load bulk enroll data."));
       }
     };
 
@@ -843,12 +916,17 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
     }
   };
 
-  const handleBulkEnroll = async () => {
+  // Triggered by the "Enroll" button - opens the Yes/No confirm modal
+  const handleBulkEnrollClick = () => {
     if (selectedIds.size === 0) {
-      alert("Please select at least one applicant");
+      toast.error("Please select at least one applicant.");
       return;
     }
+    setConfirmOpen(true);
+  };
 
+  // Triggered by "Yes" on the confirm modal - performs the actual submission
+  const performBulkEnroll = async () => {
     setLoading(true);
     try {
       await onSubmit(Array.from(selectedIds));
@@ -858,8 +936,10 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
       setFilterDepartment("");
     } catch (error) {
       console.error("Error during bulk enroll:", error);
+      // toast for this is already handled by the parent onSubmit
     } finally {
       setLoading(false);
+      setConfirmOpen(false);
     }
   };
 
@@ -1033,7 +1113,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
               Cancel
             </button>
             <button
-              onClick={handleBulkEnroll}
+              onClick={handleBulkEnrollClick}
               disabled={loading || selectedIds.size === 0}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -1043,6 +1123,16 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmOpen}
+        onClose={() => !loading && setConfirmOpen(false)}
+        onConfirm={performBulkEnroll}
+        message={`Are you sure you want to enroll ${selectedIds.size} applicant(s)? This action cannot be undone.`}
+        confirmLabel="Enroll"
+        tone="success"
+        loading={loading}
+      />
     </div>
   );
 };
@@ -1057,6 +1147,8 @@ const Admission = () => {
   const [modalMode, setModalMode] = useState("add");
   const [currentRecord, setCurrentRecord] = useState(null);
   const [bulkEnrollModalOpen, setBulkEnrollModalOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
   const formatDisplayDate = (dateString) => {
@@ -1075,6 +1167,7 @@ const Admission = () => {
       setAdmissions(res.data);
     } catch (err) {
       console.error("Error fetching admissions:", err);
+      toast.error(getErrorMessage(err, "Failed to load admissions."));
     }
   };
 
@@ -1111,46 +1204,69 @@ const Admission = () => {
     try {
       if (modalMode === "add") {
         await axios.post(`${API_BASE}/api/admissions`, data);
+        toast.success("Application created successfully.");
       } else {
         await axios.put(
           `${API_BASE}/api/admissions/${data.admission_id}`,
           data,
         );
+        toast.success("Application updated successfully.");
       }
       fetchAdmissions();
       setModalOpen(false);
       setCurrentRecord(null);
     } catch (err) {
       console.error("Error saving admission:", err);
-      alert(err.response?.data?.message || "Failed to save admission");
+      toast.error(
+        getErrorMessage(
+          err,
+          modalMode === "add"
+            ? "Failed to create application."
+            : "Failed to update application.",
+        ),
+      );
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this admission record?")) return;
+  // Opens the Yes/No confirm modal for deleting a single admission
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+  };
+
+  const cancelDelete = () => {
+    if (deleteLoading) return;
+    setDeleteTargetId(null);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteTargetId;
+    if (!id) return;
+    setDeleteLoading(true);
     try {
       await axios.delete(`${API_BASE}/api/admissions/${id}`);
+      toast.success("Admission record deleted successfully.");
       fetchAdmissions();
     } catch (err) {
       console.error("Error deleting admission:", err);
+      toast.error(getErrorMessage(err, "Failed to delete admission record."));
+    } finally {
+      setDeleteLoading(false);
+      setDeleteTargetId(null);
     }
   };
 
   const handleBulkEnroll = async (selectedIds) => {
     try {
-      const confirmMessage = `Are you sure you want to enroll ${selectedIds.length} applicant(s)? This action cannot be undone.`;
-      if (!window.confirm(confirmMessage)) return;
-
       await axios.post(`${API_BASE}/api/admissions/bulk-enroll`, {
         admission_ids: selectedIds,
       });
 
-      alert(`Successfully enrolled ${selectedIds.length} applicant(s)`);
+      toast.success(`Successfully enrolled ${selectedIds.length} applicant(s).`);
       fetchAdmissions();
       setBulkEnrollModalOpen(false);
     } catch (err) {
       console.error("Error during bulk enroll:", err);
-      alert(err.response?.data?.message || "Failed to enroll applicants");
+      toast.error(getErrorMessage(err, "Failed to enroll applicants."));
       throw err;
     }
   };
@@ -1163,6 +1279,8 @@ const Admission = () => {
 
   return (
     <div className="p-4">
+      <ToastContainer position="top-right" />
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <FileText size={24} /> Admissions
@@ -1315,6 +1433,21 @@ const Admission = () => {
         onClose={() => setBulkEnrollModalOpen(false)}
         admissions={admissions}
         onSubmit={handleBulkEnroll}
+      />
+
+      <ConfirmModal
+        isOpen={deleteTargetId !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        message={
+          <>
+            Are you sure you want to delete this admission record?{" "}
+            <span className="text-red-400">This action cannot be undone!</span>
+          </>
+        }
+        confirmLabel="Yes"
+        tone="danger"
+        loading={deleteLoading}
       />
     </div>
   );

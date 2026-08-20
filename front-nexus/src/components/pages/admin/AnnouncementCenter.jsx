@@ -11,7 +11,58 @@ import {
   Bell,
   Eye,
 } from "lucide-react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+// --- Generic Confirm Modal (same pattern as AcademicCalendar.jsx) ---
+const ConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  message,
+  confirmLabel = "Yes",
+  tone = "danger",
+}) => {
+  if (!isOpen) return null;
+
+  const confirmClasses =
+    tone === "danger"
+      ? "bg-red-600 hover:bg-red-700"
+      : "bg-green-600 hover:bg-green-700";
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium text-gray-900 text-center mb-6">
+          {message}
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-md transition-colors ${confirmClasses}`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const AnnouncementCenter = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [statistics, setStatistics] = useState(null);
@@ -20,6 +71,7 @@ const AnnouncementCenter = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
   const itemsPerPage = 10;
 
   const [formData, setFormData] = useState({
@@ -45,6 +97,24 @@ const AnnouncementCenter = () => {
     // fetchStatistics(); // Temporarily disabled due to backend error
   }, []);
 
+  // Turn a raw axios error into a short, human-readable message
+  const getErrorMessage = (err, fallback) => {
+    const serverMessage =
+      err.response?.data?.message || err.response?.data?.error;
+    if (serverMessage) return serverMessage;
+    if (err.response?.status === 400)
+      return "Some fields are missing or invalid. Please check the form and try again.";
+    if (err.response?.status === 404)
+      return "This announcement no longer exists. It may have already been deleted.";
+    if (err.response?.status === 409)
+      return "An announcement with these details already exists.";
+    if (err.response?.status === 500)
+      return "Something went wrong on the server. Please try again later.";
+    if (!err.response)
+      return "Can't reach the server. Check your connection and try again.";
+    return fallback;
+  };
+
   const fetchData = async () => {
     try {
       const params = new URLSearchParams();
@@ -57,6 +127,7 @@ const AnnouncementCenter = () => {
       setAnnouncements(response.data);
     } catch (error) {
       console.error("Error:", error);
+      toast.error(getErrorMessage(error, "Failed to load announcements."));
     }
   };
 
@@ -68,6 +139,7 @@ const AnnouncementCenter = () => {
       setStatistics(response.data);
     } catch (error) {
       console.error("Error:", error);
+      toast.error(getErrorMessage(error, "Failed to load statistics."));
     }
   };
 
@@ -78,47 +150,43 @@ const AnnouncementCenter = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted");
     try {
       const userId = parseInt(localStorage.getItem("userId"));
       const submitData = current
         ? formData
         : { ...formData, created_by: userId };
 
-      console.log("Submitting data:", submitData);
-
-      let response;
       if (current) {
-        response = await axios.put(
+        await axios.put(
           `${API_BASE}/api/events/announcements/${current.announcement_id}`,
           submitData,
           authHeaders(),
         );
+        toast.success("Announcement updated successfully.");
       } else {
-        response = await axios.post(
+        await axios.post(
           `${API_BASE}/api/events/announcements`,
           submitData,
           authHeaders(),
         );
+        toast.success("Announcement added successfully.");
       }
-      console.log("Save successful, response:", response.data);
-      alert("Announcement saved successfully!");
-      console.log("Fetching updated data...");
       await fetchData();
-      console.log("Data fetched, closing modal...");
       // fetchStatistics(); // Temporarily disabled
       closeModal();
-      console.log("Modal closed");
     } catch (error) {
       console.error("Error details:", error);
       console.error("Error response:", error.response);
       if (error.code === "ECONNABORTED") {
-        alert("Request timeout - server is not responding");
+        toast.error("Request timeout - server is not responding.");
       } else {
-        alert(
-          error.response?.data?.error ||
-            error.message ||
-            "Error saving announcement",
+        toast.error(
+          getErrorMessage(
+            error,
+            current
+              ? "Failed to update announcement."
+              : "Failed to add announcement.",
+          ),
         );
       }
     }
@@ -146,18 +214,30 @@ const AnnouncementCenter = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Delete this announcement?")) {
-      try {
-        await axios.delete(
-          `${API_BASE}/api/events/announcements/${id}`,
-          authHeaders(),
-        );
-        fetchData();
-        // fetchStatistics(); // Temporarily disabled
-      } catch (error) {
-        console.error("Error:", error);
-      }
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+  };
+
+  const cancelDelete = () => {
+    setDeleteTargetId(null);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteTargetId;
+    if (!id) return;
+    try {
+      await axios.delete(
+        `${API_BASE}/api/events/announcements/${id}`,
+        authHeaders(),
+      );
+      fetchData();
+      // fetchStatistics(); // Temporarily disabled
+      toast.success("Announcement deleted successfully.");
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error(getErrorMessage(error, "Failed to delete announcement."));
+    } finally {
+      setDeleteTargetId(null);
     }
   };
 
@@ -213,6 +293,8 @@ const AnnouncementCenter = () => {
 
   return (
     <div className="p-3 sm:p-4 transition-colors duration-500">
+      <ToastContainer position="top-right" />
+
       <div className="w-full max-w-7xl mx-auto space-y-4 font-sans">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-200 pb-3">
@@ -600,6 +682,21 @@ const AnnouncementCenter = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteTargetId !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        message={
+          <>
+            Are you sure you want to delete this announcement?{" "}
+            <span className="text-red-400">This action cannot be undone!</span>
+          </>
+        }
+        confirmLabel="Yes"
+        tone="danger"
+      />
     </div>
   );
 };

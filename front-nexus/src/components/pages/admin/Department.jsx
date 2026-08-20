@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import Select from "react-select";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const statusOptions = ["Active", "Inactive", "Pending"];
 
@@ -444,7 +446,6 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm }) => {
       >
         <p className="text-sm font-medium text-gray-900 text-center mb-6">
           Are you sure you want to delete this department?
-          <span className="text-red-400">This action cannot be undone !</span>
         </p>
         <div className="flex gap-3">
           <button
@@ -555,6 +556,7 @@ const Department = () => {
         };
 
         setDepartments((prev) => [...prev, newDept]);
+        toast.success("Department added successfully.");
       } else {
         res = await axios.put(
           `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments/${
@@ -580,11 +582,17 @@ const Department = () => {
               : d,
           ),
         );
+        toast.success("Department updated successfully.");
       }
 
       setPage(1);
     } catch (error) {
       console.error("Failed to save department:", error);
+      toast.error(
+        modalMode === "add"
+          ? "Failed to add department."
+          : "Failed to update department.",
+      );
     }
   };
 
@@ -604,8 +612,10 @@ const Department = () => {
         `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments/${id}`,
       );
       setDepartments((prev) => prev.filter((d) => d.id !== id));
+      toast.success("Department deleted successfully.");
     } catch (error) {
       console.error("Failed to delete department:", error);
+      toast.error("Failed to delete department.");
     } finally {
       setDeleteTargetId(null);
     }
@@ -613,6 +623,8 @@ const Department = () => {
 
   return (
     <div className="p-4">
+      <ToastContainer position="top-right" />
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <BookOpen /> Department Management

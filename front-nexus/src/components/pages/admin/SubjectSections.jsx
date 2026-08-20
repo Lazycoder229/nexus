@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Select from "react-select";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import {
   Plus,
   Edit,
@@ -18,6 +20,74 @@ import {
   Eye,
 } from "lucide-react";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+// Turn a raw axios error into a short, human-readable message
+const getErrorMessage = (err, fallback) => {
+  const serverMessage = err.response?.data?.error || err.response?.data?.message;
+  if (serverMessage) return serverMessage;
+  if (err.response?.status === 400)
+    return "Some fields are missing or invalid. Please check the form and try again.";
+  if (err.response?.status === 404)
+    return "This record no longer exists. It may have already been deleted.";
+  if (err.response?.status === 409)
+    return "A conflicting record already exists.";
+  if (err.response?.status === 500)
+    return "Something went wrong on the server. Please try again later.";
+  if (!err.response)
+    return "Can't reach the server. Check your connection and try again.";
+  return fallback;
+};
+
+// --- Generic Confirm Modal (Yes / No), same pattern used across the module ---
+const ConfirmModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  message,
+  confirmLabel = "Yes",
+  tone = "danger",
+  loading = false,
+}) => {
+  if (!isOpen) return null;
+
+  const confirmClasses =
+    tone === "danger"
+      ? "bg-red-600 hover:bg-red-700"
+      : "bg-green-600 hover:bg-green-700";
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-medium text-gray-900 text-center mb-6">
+          {message}
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+          >
+            No
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-md transition-colors disabled:opacity-50 ${confirmClasses}`}
+          >
+            {loading ? "Please wait..." : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const StatusBadge = ({ status }) => {
   const colors = {
     active: "bg-green-100 text-green-800",
@@ -234,6 +304,10 @@ const SubjectSections = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewSection, setViewSection] = useState(null);
 
+  // Delete confirm modal state
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   useEffect(() => {
     fetchSections();
     fetchPeriods();
@@ -244,6 +318,7 @@ const SubjectSections = () => {
       setSections(response.data);
     } catch (error) {
       console.error("Error fetching sections:", error);
+      toast.error(getErrorMessage(error, "Failed to load sections."));
     }
   };
   const fetchPeriods = async () => {
@@ -280,15 +355,21 @@ const SubjectSections = () => {
           `${API_BASE}/api/sections/${currentSection.section_id}`,
           formData,
         );
+        toast.success("Section updated successfully.");
       } else {
-   
         await axios.post(`${API_BASE}/api/sections`, formData);
+        toast.success("Section created successfully.");
       }
       fetchSections();
       closeModal();
     } catch (error) {
       console.error("Error saving section:", error);
-      alert(error.response?.data?.error || "Error saving section");
+      toast.error(
+        getErrorMessage(
+          error,
+          editMode ? "Failed to update section." : "Failed to create section.",
+        ),
+      );
     }
   };
   const handleEdit = (section) => {
@@ -306,17 +387,34 @@ const SubjectSections = () => {
     setEditMode(true);
     setShowModal(true);
   };
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this section?")) {
-      try {
-        await axios.delete(`${API_BASE}/api/sections/${id}`);
-        fetchSections();
-      } catch (error) {
-        console.error("Error deleting section:", error);
-        alert(error.response?.data?.error || "Error deleting section");
-      }
+
+  // Opens the Yes/No confirm modal for deleting a section
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+  };
+
+  const cancelDelete = () => {
+    if (deleteLoading) return;
+    setDeleteTargetId(null);
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteTargetId;
+    if (!id) return;
+    setDeleteLoading(true);
+    try {
+      await axios.delete(`${API_BASE}/api/sections/${id}`);
+      toast.success("Section deleted successfully.");
+      fetchSections();
+    } catch (error) {
+      console.error("Error deleting section:", error);
+      toast.error(getErrorMessage(error, "Failed to delete section."));
+    } finally {
+      setDeleteLoading(false);
+      setDeleteTargetId(null);
     }
   };
+
   const closeModal = () => {
     setShowModal(false);
     setEditMode(false);
@@ -380,6 +478,7 @@ const periodOptions = periods.map((period) => ({
   );
   return (
     <div className="min-h-screen bg-gray-50 p-8">
+      <ToastContainer position="top-right" />
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -751,6 +850,22 @@ const periodOptions = periods.map((period) => ({
         isOpen={viewModalOpen}
         onClose={closeViewModal}
         section={viewSection}
+      />
+
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={deleteTargetId !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        message={
+          <>
+            Are you sure you want to delete this section?{" "}
+            <span className="text-red-400">This action cannot be undone!</span>
+          </>
+        }
+        confirmLabel="Yes"
+        tone="danger"
+        loading={deleteLoading}
       />
     </div>
   );
