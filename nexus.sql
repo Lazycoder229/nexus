@@ -548,8 +548,8 @@ CREATE INDEX idx_schedule_day ON faculty_schedules(day_of_week);
 -- ===========================
 CREATE TABLE IF NOT EXISTS sections (
     section_id INT PRIMARY KEY AUTO_INCREMENT,
-    course_id INT NOT NULL,
     period_id INT NOT NULL,
+    program_id INT NULL,
     section_name VARCHAR(50) NOT NULL,
     room VARCHAR(100),
     max_capacity INT DEFAULT 40,
@@ -560,9 +560,9 @@ CREATE TABLE IF NOT EXISTS sections (
     status ENUM('active', 'inactive', 'full') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (course_id) REFERENCES courses(course_id) ON DELETE CASCADE,
     FOREIGN KEY (period_id) REFERENCES academic_periods(period_id) ON DELETE CASCADE,
-    UNIQUE KEY unique_section (course_id, period_id, section_name)
+    FOREIGN KEY (program_id) REFERENCES programs(program_id) ON DELETE SET NULL,
+    UNIQUE KEY unique_section (period_id, program_id, section_name)
 );
 
 -- ===========================
@@ -3123,3 +3123,13 @@ ADD computer_fee DECIMAL(10,2) DEFAULT 0,
 ADD cultural_fee DECIMAL(10,2) DEFAULT 0,
 ADD development_fee DECIMAL(10,2) DEFAULT 0,
 ADD nstp_fee DECIMAL(10,2) DEFAULT 0;
+
+
+-- 1. Add the program_id column to the sections table
+ALTER TABLE sections 
+ADD COLUMN program_id INT NULL AFTER period_id;
+
+-- 2. Add the foreign key relationship to the programs table
+ALTER TABLE sections 
+ADD CONSTRAINT fk_sections_program 
+FOREIGN KEY (program_id) REFERENCES programs(program_id) ON DELETE SET NULL;

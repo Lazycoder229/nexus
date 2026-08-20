@@ -3,7 +3,7 @@ import db from "../config/db.js";
 
 // Get all enrollments with student, course, and period details
 export const getAllEnrollments = async (filters = {}) => {
-  const { course_id, period_id, section_id, student_id } = filters;
+  const { course_id, period_id, section_id, student_id, program_id } = filters;
 
   let query = `SELECT 
         e.enrollment_id,
@@ -14,10 +14,16 @@ export const getAllEnrollments = async (filters = {}) => {
         sd.student_number,
         COALESCE(e.year_level, sd.year_level) AS year_level,
         sd.course AS student_course,
+        stp.program_id AS student_program_id,
+        stp.code AS student_program_code,
+        stp.name AS student_program_name,
         
         e.course_id,
         e.section_id,
-      s.section_name,
+        s.section_name,
+        s.program_id AS section_program_id,
+        sp.code AS section_program_code,
+        sp.name AS section_program_name,
         c.code AS course_code,
         c.title AS course_title,
         c.units,
@@ -36,8 +42,10 @@ export const getAllEnrollments = async (filters = {}) => {
      FROM enrollments e
      JOIN users u ON e.student_id = u.user_id
      LEFT JOIN student_details sd ON e.student_id = sd.user_id
+     LEFT JOIN programs stp ON (sd.course = stp.code OR sd.course = stp.name)
      JOIN courses c ON e.course_id = c.course_id
-        LEFT JOIN sections s ON e.section_id = s.section_id
+     LEFT JOIN sections s ON e.section_id = s.section_id
+     LEFT JOIN programs sp ON s.program_id = sp.program_id
      JOIN academic_periods ap ON e.period_id = ap.period_id`;
 
   const params = [];
@@ -58,6 +66,10 @@ export const getAllEnrollments = async (filters = {}) => {
   if (student_id) {
     constraints.push("e.student_id = ?");
     params.push(student_id);
+  }
+  if (program_id) {
+    constraints.push("(s.program_id = ? OR stp.program_id = ?)");
+    params.push(program_id, program_id);
   }
 
   if (constraints.length > 0) {
@@ -168,6 +180,12 @@ export const getEnrollmentById = async (id) => {
 };
 
 // Create new enrollment
+// NOTE: section_id is NOT collected at enrollment time anymore. Enrolling
+// just means "this student is taking this subject this period" - it
+// always starts with section_id = null. Sectioning (grouping students
+// into sections) is now a separate batch step that runs AFTER enrollment,
+// see getUnsectionedEnrollments / setEnrollmentSection below and
+// enrollments.service.js -> runSectioning().
 export const createEnrollment = async ({
   student_id,
   course_id,
@@ -202,12 +220,6 @@ export const createEnrollment = async ({
 };
 
 // Update enrollment
-// NOTE: section_id was previously missing here - it was destructured out of
-// the update payload and never appeared in the SQL SET clause, so a student's
-// section could never actually change even though the caller (service layer)
-// correctly adjusted the section current_enrolled counts. Both must move
-// together: this query updates the source of truth (enrollments.section_id),
-// while the service layer keeps the sections.current_enrolled counters in sync.
 export const updateEnrollment = async (
   id,
   {
@@ -264,7 +276,7 @@ export const deleteEnrollment = async (id) => {
     // 2. Idelete yung enrollment record
     await conn.query(`DELETE FROM enrollments WHERE enrollment_id = ?`, [id]);
 
-    // 3. I-decrement yung current_enrolled ng section (section_id pwedeng null kung walang section)
+    // 3. I-decrement yung current_enrolled ng section (section_id pwedeng null kung walang section pa)
     if (section_id) {
       await conn.query(
         `UPDATE sections 
@@ -290,24 +302,61 @@ export const deleteEnrollment = async (id) => {
 };
 
 // Check if enrollment exists (prevent duplicates)
-// NOTE: previously only checked student_id + course_id + period_id, silently
-// ignoring section_id even though the service layer already passes it in as
-// a 4th argument. That made it impossible for a student to ever be enrolled
-// in the same course/period under a different section, since any section
-// choice was flagged as "already enrolled". Uniqueness is now scoped to the
-// specific section, matching how the rest of the section-switch flow works.
+// Scoped to student + course + period ONLY - not section. A student can
+// only be enrolled once in a given course for a given period; section is
+// assigned afterward by the sectioning step, so it can never be part of
+// the uniqueness key at enrollment time.
 export const checkEnrollmentExists = async (
   student_id,
   course_id,
   period_id,
-  section_id,
 ) => {
   const [rows] = await db.query(
     `SELECT enrollment_id FROM enrollments 
-     WHERE student_id = ? AND course_id = ? AND period_id = ? AND section_id = ?`,
-    [student_id, course_id, period_id, section_id],
+     WHERE student_id = ? AND course_id = ? AND period_id = ?`,
+    [student_id, course_id, period_id],
   );
   return rows.length > 0;
+};
+
+// Get enrollment_id + student_id for students enrolled in a period (and optionally course/program)
+// who do NOT have a section yet (section_id IS NULL).
+export const getUnsectionedEnrollments = async (course_id, period_id, program_id = null) => {
+  let query = `
+    SELECT e.enrollment_id, e.student_id, e.course_id, e.period_id,
+           sd.course AS student_course,
+           p.program_id, p.code AS program_code, p.name AS program_name
+    FROM enrollments e
+    LEFT JOIN student_details sd ON e.student_id = sd.user_id
+    LEFT JOIN programs p ON (sd.course = p.code OR sd.course = p.name)
+    WHERE e.period_id = ? AND e.section_id IS NULL
+  `;
+  const params = [period_id];
+
+  if (course_id) {
+    query += " AND e.course_id = ?";
+    params.push(course_id);
+  }
+
+  if (program_id) {
+    query += " AND (p.program_id = ? OR sd.course = ?)";
+    params.push(program_id, program_id);
+  }
+
+  const [rows] = await db.query(query, params);
+  return rows;
+};
+
+// Attach a section to an already-existing enrollment row. This does NOT
+// touch sections.current_enrolled itself - the caller (service layer,
+// during runSectioning) is responsible for incrementing that alongside
+// this call, same bookkeeping pattern used everywhere else in this file.
+export const setEnrollmentSection = async (enrollment_id, section_id) => {
+  await db.query(
+    `UPDATE enrollments SET section_id = ? WHERE enrollment_id = ?`,
+    [section_id, enrollment_id],
+  );
+  return getEnrollmentById(enrollment_id);
 };
 
 // Get enrolled students by faculty assignment ID

@@ -2,11 +2,10 @@
 import * as enrollmentService from "../services/enrollments.service.js";
 
 // Get all enrollments
-// Get all enrollments
 export const getAllEnrollments = async (req, res) => {
   try {
-    const { course_id, period_id, section_id, student_id } = req.query;
-    const filters = { course_id, period_id, section_id, student_id };
+    const { course_id, period_id, section_id, student_id, program_id } = req.query;
+    const filters = { course_id, period_id, section_id, student_id, program_id };
     const enrollments = await enrollmentService.listEnrollments(filters);
     res.json(enrollments);
   } catch (err) {
@@ -94,5 +93,17 @@ export const getStudentsByAssignment = async (req, res) => {
       message: "Failed to fetch students for assignment",
       error: err.message,
     });
+  }
+};
+
+// Run sectioning: takes every enrolled-but-unsectioned student in a
+// course/period and spreads them across that period's sections, evenly.
+export const runSectioning = async (req, res) => {
+  try {
+    const result = await enrollmentService.runSectioning(req.body);
+    res.status(200).json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ message: err.message });
   }
 };

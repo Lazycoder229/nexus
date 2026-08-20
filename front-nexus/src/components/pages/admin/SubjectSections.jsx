@@ -15,6 +15,7 @@ import {
   Clock,
   MapPin,
   BookOpen,
+  GraduationCap,
   AlertCircle,
   TrendingUp,
   Eye,
@@ -106,7 +107,6 @@ const StatusBadge = ({ status }) => {
 };
 
 // Small badge for enrollment status inside the View Students modal
-// (distinct from section StatusBadge - different value set).
 const EnrollmentStatusBadge = ({ status }) => {
   const colors = {
     Enrolled: "bg-green-100 text-green-800",
@@ -153,9 +153,6 @@ const Pagination = ({ currentPage, totalPages, setPage, totalItems }) => (
 );
 
 // Modal that lists students currently enrolled in a given section.
-// Fetches GET /api/enrollments?section_id=X - the enrollments model
-// already supports a section_id filter (see getAllEnrollments), so no
-// new backend route is needed.
 const ViewStudentsModal = ({ isOpen, onClose, section }) => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -203,6 +200,11 @@ const ViewStudentsModal = ({ isOpen, onClose, section }) => {
             </h2>
             {section && (
               <p className="text-sm text-slate-500 mt-0.5">
+                {section.program_code && (
+                  <span className="font-semibold text-indigo-600 mr-1.5">
+                    [{section.program_code}]
+                  </span>
+                )}
                 {section.section_name} — {section.semester}{" "}
                 {section.school_year} ·{" "}
                 <span className="font-semibold">
@@ -281,15 +283,18 @@ const ViewStudentsModal = ({ isOpen, onClose, section }) => {
 const SubjectSections = () => {
   const [sections, setSections] = useState([]);
   const [periods, setPeriods] = useState([]);
+  const [programs, setPrograms] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentSection, setCurrentSection] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   const [filterPeriod, setFilterPeriod] = useState(null);
+  const [filterProgram, setFilterProgram] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [formData, setFormData] = useState({
+    program_id: "",
     period_id: "",
     section_name: "",
     room: "",
@@ -311,7 +316,9 @@ const SubjectSections = () => {
   useEffect(() => {
     fetchSections();
     fetchPeriods();
+    fetchPrograms();
   }, []);
+
   const fetchSections = async () => {
     try {
       const response = await axios.get(`${API_BASE}/api/sections`);
@@ -321,34 +328,88 @@ const SubjectSections = () => {
       toast.error(getErrorMessage(error, "Failed to load sections."));
     }
   };
+
   const fetchPeriods = async () => {
     try {
-      const response = await axios.get(
-        `${API_BASE}/api/academic-periods`,
-      );
+      const response = await axios.get(`${API_BASE}/api/academic-periods`);
       setPeriods(response.data);
-          const activePeriod = Array.isArray(response.data)
-            ? response.data.find((period) => period.is_active)
-            : null;
-          if (activePeriod) {
-            setFormData((prev) => ({
-              ...prev,
-              period_id: activePeriod.id,
-            }));
-          }
+      const activePeriod = Array.isArray(response.data)
+        ? response.data.find((period) => period.is_active)
+        : null;
+      if (activePeriod) {
+        setFormData((prev) => ({
+          ...prev,
+          period_id: activePeriod.id || activePeriod.period_id,
+        }));
+      }
     } catch (error) {
       console.error("Error fetching periods:", error);
     }
   };
+
+  const fetchPrograms = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/api/programs`);
+      setPrograms(response.data || []);
+    } catch (error) {
+      console.error("Error fetching programs:", error);
+    }
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
+
   const handleSelectChange = (selectedOption, field) => {
-    setFormData({ ...formData, [field]: selectedOption?.value || "" });
+    setFormData((prev) => ({ ...prev, [field]: selectedOption?.value || "" }));
   };
+
+  // Helper to suggest or format section name with program code
+  const handleProgramSelect = (selectedOption) => {
+    const progId = selectedOption?.value || "";
+    const selectedProg = programs.find((p) => (p.id || p.program_id) === progId);
+    
+    setFormData((prev) => {
+      let nextSectionName = prev.section_name;
+      // If section name is empty or already matches another program prefix, help format it
+      if (selectedProg) {
+        if (!nextSectionName) {
+          nextSectionName = `${selectedProg.code}-1A`;
+        }
+      }
+      return {
+        ...prev,
+        program_id: progId,
+        section_name: nextSectionName,
+      };
+    });
+  };
+
+  const setSectionSuffix = (suffix) => {
+    const selectedProg = programs.find((p) => (p.id || p.program_id) === formData.program_id);
+    const prefix = selectedProg ? `${selectedProg.code}-` : "";
+    setFormData((prev) => ({
+      ...prev,
+      section_name: `${prefix}${suffix}`,
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.program_id) {
+      toast.error("Please select a Program Offering.");
+      return;
+    }
+    if (!formData.period_id) {
+      toast.error("Please select an Academic Period.");
+      return;
+    }
+    if (!formData.section_name?.trim()) {
+      toast.error("Please enter a Section Name.");
+      return;
+    }
+
     try {
       if (editMode) {
         await axios.put(
@@ -372,17 +433,19 @@ const SubjectSections = () => {
       );
     }
   };
+
   const handleEdit = (section) => {
     setCurrentSection(section);
     setFormData({
-      period_id: section.period_id,
-      section_name: section.section_name,
-      room: section.room,
-      max_capacity: section.max_capacity,
-      schedule_day: section.schedule_day,
-      schedule_time_start: section.schedule_time_start,
-      schedule_time_end: section.schedule_time_end,
-      status: section.status,
+      program_id: section.program_id || "",
+      period_id: section.period_id || "",
+      section_name: section.section_name || "",
+      room: section.room || "",
+      max_capacity: section.max_capacity || 40,
+      schedule_day: section.schedule_day || "",
+      schedule_time_start: section.schedule_time_start || "",
+      schedule_time_end: section.schedule_time_end || "",
+      status: section.status || "active",
     });
     setEditMode(true);
     setShowModal(true);
@@ -419,8 +482,12 @@ const SubjectSections = () => {
     setShowModal(false);
     setEditMode(false);
     setCurrentSection(null);
+    const activePeriod = Array.isArray(periods)
+      ? periods.find((p) => p.is_active)
+      : null;
     setFormData({
-      period_id: "",
+      program_id: "",
+      period_id: activePeriod ? (activePeriod.id || activePeriod.period_id) : "",
       section_name: "",
       room: "",
       max_capacity: 40,
@@ -430,24 +497,35 @@ const SubjectSections = () => {
       status: "active",
     });
   };
+
   const openViewModal = (section) => {
     setViewSection(section);
     setViewModalOpen(true);
   };
+
   const closeViewModal = () => {
     setViewModalOpen(false);
     setViewSection(null);
   };
+
   // Filter sections
   const filteredSections = sections.filter((section) => {
+    const q = searchTerm.toLowerCase();
     const matchesSearch =
-      section.section_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      section.room?.toLowerCase().includes(searchTerm.toLowerCase());
-  
+      (section.section_name || "").toLowerCase().includes(q) ||
+      (section.room || "").toLowerCase().includes(q) ||
+      (section.program_code || "").toLowerCase().includes(q) ||
+      (section.program_name || "").toLowerCase().includes(q);
+
     const matchesPeriod =
       !filterPeriod || String(section.period_id) === String(filterPeriod.value);
-    return matchesSearch && matchesPeriod;
+
+    const matchesProgram =
+      !filterProgram || String(section.program_id) === String(filterProgram.value);
+
+    return matchesSearch && matchesPeriod && matchesProgram;
   });
+
   // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -457,15 +535,24 @@ const SubjectSections = () => {
   );
   const totalPages = Math.ceil(filteredSections.length / itemsPerPage);
 
-const periodOptions = periods.map((period) => ({
-  value: period.id,
-  label: `${period.semester} ${period.school_year}`,
-}));
+  const periodOptions = periods.map((period) => ({
+    value: period.id || period.period_id,
+    label: `${period.semester} ${period.school_year}`,
+  }));
+
+  const programOptions = programs.map((prog) => ({
+    value: prog.id || prog.program_id,
+    label: `${prog.code} - ${prog.name}`,
+    code: prog.code,
+    name: prog.name,
+  }));
+
   const statusOptions = [
     { value: "active", label: "Active" },
     { value: "inactive", label: "Inactive" },
     { value: "full", label: "Full" },
   ];
+
   // Calculate statistics
   const totalSections = sections.length;
   const activeSections = sections.filter((s) => s.status === "active").length;
@@ -476,6 +563,7 @@ const periodOptions = periods.map((period) => ({
     (sum, s) => sum + (s.current_enrolled || 0),
     0,
   );
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <ToastContainer position="top-right" />
@@ -486,9 +574,10 @@ const periodOptions = periods.map((period) => ({
             Subject & Sections Management
           </h1>
           <p className="text-gray-600">
-            Manage sections, schedules, and enrollment capacity
+            Manage academic program sections, capacity, and student sectioning
           </p>
         </div>
+
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
@@ -544,6 +633,7 @@ const periodOptions = periods.map((period) => ({
             </div>
           </div>
         </div>
+
         {/* Main Content */}
         <div className="space-y-3">
           {/* Controls Bar */}
@@ -552,7 +642,7 @@ const periodOptions = periods.map((period) => ({
             <div className="relative flex-grow max-w-xs">
               <input
                 type="text"
-                placeholder="Search by section, course, or room..."
+                placeholder="Search by section, program, or room..."
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -565,9 +655,23 @@ const periodOptions = periods.map((period) => ({
                 size={14}
               />
             </div>
+
             {/* Filter & Action Buttons - RIGHT */}
-            <div className="flex items-center gap-2">
-              
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="w-52">
+                <Select
+                  options={programOptions}
+                  value={filterProgram}
+                  onChange={(option) => {
+                    setFilterProgram(option);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Filter by Program"
+                  isClearable
+                  className="text-sm"
+                  classNamePrefix="react-select"
+                />
+              </div>
               <div className="w-48">
                 <Select
                   options={periodOptions}
@@ -591,13 +695,14 @@ const periodOptions = periods.map((period) => ({
               </button>
             </div>
           </div>
+
           {/* Table */}
-          <div className="overflow-x-auto rounded border border-slate-200">
+          <div className="overflow-x-auto rounded border border-slate-200 bg-white">
             <table className="min-w-full divide-y divide-slate-200">
               <thead className="bg-slate-100">
                 <tr className="text-left text-xs font-bold uppercase tracking-wider text-slate-700">
-                  <th className="px-4 py-2.5">Section</th>
-                  
+                  <th className="px-4 py-2.5">Program Offering</th>
+                  <th className="px-4 py-2.5">Section Name</th>
                   <th className="px-4 py-2.5">Period</th>
                   <th className="px-4 py-2.5">Room</th>
                   <th className="px-4 py-2.5">Capacity</th>
@@ -616,11 +721,22 @@ const periodOptions = periods.map((period) => ({
                         className="text-sm text-slate-700 hover:bg-indigo-50/50 transition duration-150"
                       >
                         <td className="px-4 py-2">
-                          <div className="font-semibold">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold text-xs">
+                              {section.program_code || "General"}
+                            </span>
+                            {section.program_name && (
+                              <span className="text-xs text-slate-500 truncate max-w-[200px]" title={section.program_name}>
+                                {section.program_name}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2">
+                          <div className="font-semibold text-gray-900">
                             {section.section_name}
                           </div>
                         </td>
-                       
                         <td className="px-4 py-2">
                           {section.semester} {section.school_year}
                         </td>
@@ -630,7 +746,6 @@ const periodOptions = periods.map((period) => ({
                             {section.room || "N/A"}
                           </div>
                         </td>
-
                         <td className="px-4 py-2">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
@@ -688,8 +803,8 @@ const periodOptions = periods.map((period) => ({
                 ) : (
                   <tr>
                     <td
-                      colSpan="8"
-                      className="p-4 text-center text-slate-500 italic"
+                      colSpan="7"
+                      className="p-8 text-center text-slate-500 italic"
                     >
                       No sections found matching your search criteria.
                     </td>
@@ -698,6 +813,7 @@ const periodOptions = periods.map((period) => ({
               </tbody>
             </table>
           </div>
+
           {/* Pagination */}
           <Pagination
             currentPage={currentPage}
@@ -707,10 +823,11 @@ const periodOptions = periods.map((period) => ({
           />
         </div>
       </div>
+
       {/* Add/Edit Section Modal */}
       {showModal && (
-        <div className="fixed inset-0  bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900">
@@ -723,21 +840,39 @@ const periodOptions = periods.map((period) => ({
                 <X size={24} />
               </button>
             </div>
+
             {/* Modal Body */}
             <form onSubmit={handleSubmit}>
               <div className="p-6 space-y-6">
-                {/* Course Information */}
+                {/* Program & Academic Period */}
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                    <BookOpen size={18} className="text-blue-500" />
-                    Course Information
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <GraduationCap size={18} className="text-indigo-600" />
+                    Program & Period Details
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      
-                     
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                        Program Offering <span className="text-red-500">*</span>
+                      </label>
+                      <Select
+                        options={programOptions}
+                        value={programOptions.find(
+                          (o) => o.value === formData.program_id,
+                        )}
+                        onChange={handleProgramSelect}
+                        placeholder="Select Program..."
+                        required
+                        className="react-select-container text-sm"
+                        classNamePrefix="react-select"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        Sections are tied to programs (e.g. BPA, BAHISTO).
+                      </p>
+                    </div>
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Academic Period <span className="text-red-500">*</span>
                       </label>
                       <Select
@@ -748,23 +883,24 @@ const periodOptions = periods.map((period) => ({
                         onChange={(option) =>
                           handleSelectChange(option, "period_id")
                         }
-                        placeholder="Select Period"
+                        placeholder="Select Period..."
                         required
-                        className="react-select-container"
+                        className="react-select-container text-sm"
                         classNamePrefix="react-select"
                       />
                     </div>
                   </div>
                 </div>
+
                 {/* Section Details */}
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                    <Users size={18} className="text-green-500" />
-                    Section Details
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <Users size={18} className="text-green-600" />
+                    Section Identification & Settings
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">
                         Section Name <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -772,59 +908,81 @@ const periodOptions = periods.map((period) => ({
                         name="section_name"
                         value={formData.section_name}
                         onChange={handleInputChange}
-                        placeholder="e.g., A, B, 1A, etc."
+                        placeholder="e.g., BPA-1A, BAHISTO-1A, BPA - 1A"
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium"
                       />
+
+                      {/* Quick Suffix Buttons */}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        <span className="text-xs text-slate-500 mr-1">
+                          Quick Presets:
+                        </span>
+                        {["1A", "1B", "1C", "2A", "2B", "3A", "4A"].map((suf) => (
+                          <button
+                            key={suf}
+                            type="button"
+                            onClick={() => setSectionSuffix(suf)}
+                            className="px-2 py-0.5 text-xs bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 border border-slate-200 rounded font-medium transition-colors"
+                          >
+                            {suf}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Max Capacity <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        name="max_capacity"
-                        value={formData.max_capacity}
-                        onChange={handleInputChange}
-                        min="1"
-                        required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Room
-                      </label>
-                      <input
-                        type="text"
-                        name="room"
-                        value={formData.room}
-                        onChange={handleInputChange}
-                        placeholder="e.g., Room 301"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Status
-                      </label>
-                      <Select
-                        options={statusOptions}
-                        value={statusOptions.find(
-                          (o) => o.value === formData.status,
-                        )}
-                        onChange={(option) =>
-                          handleSelectChange(option, "status")
-                        }
-                        placeholder="Select Status"
-                        className="react-select-container"
-                        classNamePrefix="react-select"
-                      />
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          Max Capacity <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          name="max_capacity"
+                          value={formData.max_capacity}
+                          onChange={handleInputChange}
+                          min="1"
+                          required
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          Room
+                        </label>
+                        <input
+                          type="text"
+                          name="room"
+                          value={formData.room}
+                          onChange={handleInputChange}
+                          placeholder="e.g., Room 101"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                          Status
+                        </label>
+                        <Select
+                          options={statusOptions}
+                          value={statusOptions.find(
+                            (o) => o.value === formData.status,
+                          )}
+                          onChange={(option) =>
+                            handleSelectChange(option, "status")
+                          }
+                          placeholder="Select Status"
+                          className="react-select-container text-sm"
+                          classNamePrefix="react-select"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-                </div>
               </div>
+
               {/* Modal Footer */}
               <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-end gap-3">
                 <button
@@ -836,7 +994,7 @@ const periodOptions = periods.map((period) => ({
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow"
                 >
                   {editMode ? "Update Section" : "Create Section"}
                 </button>
@@ -845,6 +1003,7 @@ const periodOptions = periods.map((period) => ({
           </div>
         </div>
       )}
+
       {/* View Enrolled Students Modal */}
       <ViewStudentsModal
         isOpen={viewModalOpen}
@@ -860,10 +1019,10 @@ const periodOptions = periods.map((period) => ({
         message={
           <>
             Are you sure you want to delete this section?{" "}
-            <span className="text-red-400">This action cannot be undone!</span>
+            <span className="text-red-500 font-semibold">This action cannot be undone!</span>
           </>
         }
-        confirmLabel="Yes"
+        confirmLabel="Yes, Delete"
         tone="danger"
         loading={deleteLoading}
       />

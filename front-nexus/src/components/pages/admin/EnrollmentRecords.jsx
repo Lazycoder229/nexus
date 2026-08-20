@@ -13,6 +13,7 @@ import {
   FileDown,
   ChevronLeft,
   ChevronRight,
+  Shuffle,
 } from "lucide-react";
 import { exportRegistrationFormPDF } from "../../../utils/exportRegistrationForm";
 const toDateInputValue = (value) => {
@@ -28,11 +29,13 @@ const findOptionByValue = (options, value) => {
   );
 };
 
+// section_id / section fields intentionally left out of this form-data
+// shape - enrollment no longer collects a section. Sectioning happens
+// afterward as a separate step (see the "Run Sectioning" action below).
 const toEnrollmentFormData = (enrollment) => ({
   student_id: enrollment.student_id,
   course_id: enrollment.course_id,
   period_id: enrollment.period_id,
-  section_id: enrollment.section_id || null,
   year_level: enrollment.year_level || "",
   enrollment_date: toDateInputValue(
     enrollment.enrollment_date || new Date().toISOString().split("T")[0],
@@ -76,6 +79,23 @@ const StatusBadge = ({ status }) => {
       }`}
     >
       {status}
+    </span>
+  );
+};
+
+// Small badge shown in the table when a row still has no section - makes
+// it obvious at a glance who's waiting on "Run Sectioning".
+const SectionBadge = ({ sectionName }) => {
+  if (!sectionName) {
+    return (
+      <span className="px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+        Unsectioned
+      </span>
+    );
+  }
+  return (
+    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+      {sectionName}
     </span>
   );
 };
@@ -155,6 +175,10 @@ const ConfirmModal = ({
   );
 };
 
+// Add/Edit Enrollment modal - NO section field. Enrolling a student in a
+// subject no longer asks for a section; a student is only "this student
+// is taking this course this period." Sectioning is a separate, later
+// step (see SectioningModal / "Run Sectioning" button in the toolbar).
 const EnrollmentModal = ({
   isOpen,
   onClose,
@@ -169,7 +193,6 @@ const EnrollmentModal = ({
     student_id: null,
     course_id: null,
     period_id: null,
-    section_id: null,
     year_level: "",
     enrollment_date: new Date().toISOString().split("T")[0],
     status: "Enrolled",
@@ -177,121 +200,31 @@ const EnrollmentModal = ({
     final_grade: "",
     remarks: "",
   });
-  const [sections, setSections] = useState([]);
-  const [loadingSections, setLoadingSections] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
-
-  // Fetch sections when course or period changes.
-  // In edit mode, the student's CURRENT section must stay selectable even
-  // if it's already at (or over) capacity - otherwise editing any other
-  // field on a full-section enrollment silently kicks the student's
-  // section out of the dropdown and forces a change nobody asked for.
-  useEffect(() => {
-    const fetchSections = async () => {
-      if (!formData.course_id || !formData.period_id) {
-        setSections([]);
-        setFormData((prev) => ({ ...prev, section_id: null }));
-        return;
-      }
-      setLoadingSections(true);
-      try {
-        const res = await axios.get(`${API_BASE}/api/sections`, {
-          params: {
-            course_id: formData.course_id,
-            period_id: formData.period_id,
-          },
-        });
-        let sectionRows = res.data || [];
-
-        // Ensure current section is present in edit mode even if full
-        const currentSectionId = mode === "edit" ? formData.section_id : null;
-        const hasCurrentSection =
-          currentSectionId &&
-          sectionRows.some(
-            (s) => String(s.section_id) === String(currentSectionId),
-          );
-
-        if (currentSectionId && !hasCurrentSection) {
-          try {
-            const currentRes = await axios.get(
-              `${API_BASE}/api/sections/${currentSectionId}`,
-            );
-            if (currentRes.data) {
-              sectionRows = [...sectionRows, currentRes.data];
-            }
-          } catch {
-            // If we can't fetch it, fall back to whatever the list returned.
-          }
-        }
-
-        setSections(
-          sectionRows.map((s) => {
-            const isFull =
-              (s.current_enrolled || 0) >= s.max_capacity &&
-              String(s.section_id) !== String(currentSectionId);
-            return {
-              value: s.section_id,
-              label: `${s.section_name} (${s.current_enrolled || 0}/${s.max_capacity})${
-                isFull ? " - Full" : ""
-              }`,
-              isDisabled: isFull,
-            };
-          }),
-        );
-      } catch {
-        setSections([]);
-      }
-      setLoadingSections(false);
-    };
-    fetchSections();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.course_id, formData.period_id]);
 
   useEffect(() => {
     setIsSubmitting(false);
-    const hydrateEditData = async () => {
-      if (!initialData) {
-        setFormData({
-          student_id: null,
-          course_id: null,
-          period_id: null,
-          section_id: null,
-          year_level: "",
-          enrollment_date: new Date().toISOString().split("T")[0],
-          status: "Enrolled",
-          midterm_grade: "",
-          final_grade: "",
-          remarks: "",
-        });
-        return;
-      }
-
-      setFormData(toEnrollmentFormData(initialData));
-
-      // Fallback for list payloads that don't include section_id yet.
-      if (!initialData.section_id && initialData.enrollment_id) {
-        try {
-          const res = await axios.get(
-            `${API_BASE}/api/enrollments/${initialData.enrollment_id}`,
-          );
-          if (res.data) {
-            setFormData(toEnrollmentFormData(res.data));
-          }
-        } catch {
-          // Keep existing form data if detailed fetch fails.
-        }
-      }
-    };
-
-    hydrateEditData();
-  }, [initialData, API_BASE]);
+    if (!initialData) {
+      setFormData({
+        student_id: null,
+        course_id: null,
+        period_id: null,
+        year_level: "",
+        enrollment_date: new Date().toISOString().split("T")[0],
+        status: "Enrolled",
+        midterm_grade: "",
+        final_grade: "",
+        remarks: "",
+      });
+      return;
+    }
+    setFormData(toEnrollmentFormData(initialData));
+  }, [initialData]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     // Guard against double-fire (double-click, double Enter, etc.) which
-    // was sending two PUT/POST requests for a single user action and
-    // caused section counts to shift by 2 instead of 1.
+    // was sending two PUT/POST requests for a single user action.
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
@@ -499,78 +432,7 @@ const EnrollmentModal = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Section */}
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  Section *
-                </label>
-                <Select
-                  value={findOptionByValue(sections, formData.section_id)}
-                  onChange={(selected) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      section_id: selected?.value || null,
-                    }))
-                  }
-                  options={sections}
-                  placeholder={
-                    loadingSections ? "Loading..." : "Select section..."
-                  }
-                  isOptionDisabled={(option) => option.isDisabled}
-                  isDisabled={
-                    !formData.course_id ||
-                    !formData.period_id ||
-                    loadingSections
-                  }
-                  required
-                  styles={{
-                    control: (base) => ({
-                      ...base,
-                      borderColor: "#CBD5E1",
-                      backgroundColor: "#FFFFFF",
-                      fontSize: "0.875rem",
-                      boxShadow: "none",
-                      minHeight: "42px",
-                      "&:hover": {
-                        borderColor: "#CBD5E1",
-                      },
-                      "&:focus-within": {
-                        borderColor: "#4F46E5",
-                        boxShadow: "0 0 0 3px rgba(79, 70, 229, 0.1)",
-                      },
-                    }),
-                    input: (base) => ({
-                      ...base,
-                      color: "#1E293B",
-                    }),
-                    option: (base, state) => ({
-                      ...base,
-                      backgroundColor: state.isSelected
-                        ? "#4F46E5"
-                        : state.isDisabled
-                          ? "#F1F5F9"
-                          : "#FFFFFF",
-                      color: state.isSelected
-                        ? "#FFFFFF"
-                        : state.isDisabled
-                          ? "#94A3B8"
-                          : "#1E293B",
-                      "&:hover": {
-                        backgroundColor: state.isDisabled
-                          ? "#F1F5F9"
-                          : "#EEF2FF",
-                        color: state.isDisabled ? "#94A3B8" : "#1E293B",
-                      },
-                    }),
-                    menu: (base) => ({
-                      ...base,
-                      zIndex: 9999,
-                    }),
-                  }}
-                />
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Year Level */}
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
@@ -729,13 +591,174 @@ const EnrollmentModal = ({
   );
 };
 
+// --- Sectioning Modal ---
+// Runs AFTER enrollment. Students are automatically grouped into sections
+// that correspond to their academic program offering (e.g. BPA students into
+// BPA sections like BPA - 1A, BAHISTO students into BAHISTO sections like BAHISTO-1A).
+const SectioningModal = ({ isOpen, onClose, onSubmit, courses, periods, programs }) => {
+  const [formData, setFormData] = useState({
+    period_id: null,
+    program_id: null,
+    course_id: null,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      const activePeriod = periods.find((p) => p.is_active);
+      setFormData({
+        period_id: activePeriod ? activePeriod.value : (periods[0]?.value || null),
+        program_id: null,
+        course_id: null,
+      });
+    }
+  }, [isOpen, periods]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+    if (!formData.period_id) {
+      toast.error("Please select an academic period.", {
+        position: "top-center",
+      });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await onSubmit(formData);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-slate-50 border-b border-slate-200 px-6 py-4">
+          <div className="flex justify-between items-start gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Shuffle size={20} className="text-emerald-600" /> Run Program Sectioning
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Evenly distributes unsectioned students into sections tied to their academic program (e.g., BPA-1A, BAHISTO-1A).
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-40 shrink-0"
+            >
+              <Plus size={24} className="rotate-45" />
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Academic Period <span className="text-red-500">*</span>
+              </label>
+              <Select
+                value={findOptionByValue(periods, formData.period_id)}
+                onChange={(selected) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    period_id: selected?.value || null,
+                  }))
+                }
+                options={periods}
+                placeholder="Select period..."
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Program Offering (Optional)
+              </label>
+              <Select
+                value={findOptionByValue(programs, formData.program_id)}
+                onChange={(selected) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    program_id: selected?.value || null,
+                  }))
+                }
+                options={programs}
+                placeholder="All Programs (or select specific program)..."
+                isClearable
+              />
+              <p className="text-[11px] text-slate-500 mt-1">
+                Leave empty to section all programs at once into their respective program sections.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Subject / Course (Optional)
+              </label>
+              <Select
+                value={findOptionByValue(courses, formData.course_id)}
+                onChange={(selected) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    course_id: selected?.value || null,
+                  }))
+                }
+                options={courses}
+                placeholder="All Subjects (or select specific course)..."
+                isClearable
+              />
+            </div>
+
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-900">
+              <span className="font-semibold block mb-0.5">Program Section Matching:</span>
+              Students enrolled in <strong>BPA</strong> will only be placed into <strong>BPA</strong> sections, and students in <strong>BAHISTO</strong> into <strong>BAHISTO</strong> sections.
+            </div>
+          </div>
+
+          <div className="bg-slate-50 border-t border-slate-200 px-6 py-4 flex gap-3 justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors text-sm font-medium disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-5 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium disabled:opacity-50 shadow"
+            >
+              {isSubmitting ? "Sectioning..." : "Run Sectioning"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const EnrollmentRecords = () => {
   const [enrollments, setEnrollments] = useState([]);
   const [students, setStudents] = useState([]);
   const [courses, setCourses] = useState([]);
   const [periods, setPeriods] = useState([]);
+  const [programs, setPrograms] = useState([]);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState(null);
+  const [filterProgram, setFilterProgram] = useState(null);
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(10);
   const [modalOpen, setModalOpen] = useState(false);
@@ -743,6 +766,7 @@ const EnrollmentRecords = () => {
   const [currentRecord, setCurrentRecord] = useState(null);
   const [deleteTargetId, setDeleteTargetId] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [sectioningModalOpen, setSectioningModalOpen] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -775,16 +799,30 @@ const EnrollmentRecords = () => {
     }
   };
 
+  const fetchPrograms = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/programs`);
+      const programList = (res.data || [])
+        .filter((p) => p && (p.id || p.program_id))
+        .map((p) => ({
+          value: p.id || p.program_id,
+          label: `${p.code} - ${p.name}`,
+          code: p.code,
+          name: p.name,
+        }));
+      setPrograms(programList);
+    } catch (err) {
+      console.error("Error fetching programs:", err);
+      setPrograms([]);
+    }
+  };
+
   const handleExportPDF = async (enrollment) => {
     const firstName = localStorage.getItem("firstName") || "";
     const lastName = localStorage.getItem("lastName") || "";
     const role = localStorage.getItem("role") || "";
     // The logged-in user's own ID (registrar/admin generating the form),
-    // NOT the student's ID. Previously this was an undeclared variable
-    // (`someUserId`) which silently sent every request to
-    // `/api/users/undefined`, always failing and falling back to
-    // localStorage - so `position_title` from the DB was never actually
-    // being used.
+    // NOT the student's ID.
     const loggedInUserId = localStorage.getItem("userId");
 
     let currentUser = {
@@ -825,7 +863,7 @@ const EnrollmentRecords = () => {
         nationality: u.nationality || "",
         cell_phone: u.phone || "",
         email: u.email || "",
-        program_year: `${u.program || "N/A"} / ${enrollment.year_level || ""}`,
+        program_year: `${u.program || enrollment.student_course || "N/A"} / ${enrollment.year_level || ""}`,
       };
     } catch {
       // If the student profile fails to load, proceed with an empty
@@ -883,6 +921,7 @@ const EnrollmentRecords = () => {
         .map((p) => ({
           value: p.id || p.period_id,
           label: `${p.school_year || "N/A"} - ${p.semester || "N/A"}`,
+          is_active: p.is_active,
         }));
       setPeriods(periodList);
     } catch (err) {
@@ -894,18 +933,31 @@ const EnrollmentRecords = () => {
   useEffect(() => {
     fetchEnrollments();
     fetchStudents();
+    fetchPrograms();
     fetchCourses();
     fetchPeriods();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = enrollments.filter((e) => {
+    const q = search.toLowerCase();
     const matchSearch =
-      (e.student_name || "").toLowerCase().includes(search.toLowerCase()) ||
-      (e.course_title || "").toLowerCase().includes(search.toLowerCase()) ||
-      (e.course_code || "").toLowerCase().includes(search.toLowerCase());
+      (e.student_name || "").toLowerCase().includes(q) ||
+      (e.student_number || "").toLowerCase().includes(q) ||
+      (e.course_title || "").toLowerCase().includes(q) ||
+      (e.course_code || "").toLowerCase().includes(q) ||
+      (e.student_course || "").toLowerCase().includes(q) ||
+      (e.student_program_code || "").toLowerCase().includes(q) ||
+      (e.section_name || "").toLowerCase().includes(q);
+
     const matchStatus = !filterStatus || e.status === filterStatus.value;
-    return matchSearch && matchStatus;
+    const matchProgram =
+      !filterProgram ||
+      String(e.student_program_id) === String(filterProgram.value) ||
+      String(e.section_program_id) === String(filterProgram.value) ||
+      (e.student_course && (e.student_course === filterProgram.code || e.student_course === filterProgram.name));
+
+    return matchSearch && matchStatus && matchProgram;
   });
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
@@ -915,8 +967,9 @@ const EnrollmentRecords = () => {
   );
 
   const handleSubmit = async (data) => {
-    // Validate required fields
-    if (!data.student_id || !data.course_id || !data.period_id || !data.section_id || !data.year_level) {
+    // Validate required fields - no section_id anymore, sectioning is a
+    // separate later step.
+    if (!data.student_id || !data.course_id || !data.period_id || !data.year_level) {
       toast.error("Please fill in all required fields.", {
         position: "top-center",
       });
@@ -951,6 +1004,51 @@ const EnrollmentRecords = () => {
     } catch (err) {
       console.error("Error saving enrollment:", err);
       toast.error(getErrorMessage(err, "Failed to save enrollment"), {
+        position: "top-center",
+      });
+    }
+  };
+
+  // Runs sectioning for students into sections matching their academic program
+  const handleRunSectioning = async (data) => {
+    try {
+      const res = await axios.post(
+        `${API_BASE}/api/enrollments/run-sectioning`,
+        data,
+      );
+      const { summary, failed, unassigned } = res.data;
+
+      if (summary.totalUnsectioned === 0) {
+        toast.info(
+          "No unsectioned students found matching the selected criteria.",
+          { position: "top-center" },
+        );
+      } else {
+        toast.success(
+          `Sectioned ${summary.assigned}/${summary.totalUnsectioned} student(s) into their program sections.`,
+          { position: "top-center" },
+        );
+      }
+      if (summary.unassigned > 0) {
+        toast.warn(
+          `${summary.unassigned} student(s) couldn't be placed (missing or full program sections).`,
+          { position: "top-center" },
+        );
+        console.warn("Unassigned students:", unassigned);
+      }
+      if (summary.failed > 0) {
+        toast.error(
+          `${summary.failed} student(s) failed to be sectioned. Check console for details.`,
+          { position: "top-center" },
+        );
+        console.error("Sectioning failures:", failed);
+      }
+
+      fetchEnrollments();
+      setSectioningModalOpen(false);
+    } catch (err) {
+      console.error("Error running sectioning:", err);
+      toast.error(getErrorMessage(err, "Failed to run sectioning."), {
         position: "top-center",
       });
     }
@@ -1007,8 +1105,7 @@ const EnrollmentRecords = () => {
           <ClipboardList size={24} /> Student Subject Enlistment Records
         </h1>
         <p className="text-sm text-slate-600 mt-1">
-          View and manage all student enrollment records across academic
-          periods.
+          View and manage student course enrollments. Sections are connected to academic program offerings (e.g., BPA - 1A, BAHISTO-1A) and assigned via "Run Sectioning".
         </p>
       </div>
 
@@ -1021,18 +1118,29 @@ const EnrollmentRecords = () => {
             />
             <input
               type="text"
-              placeholder="Search by student or course..."
+              placeholder="Search by student, number, program, course, or section..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-10 pr-3 py-2 border rounded-md"
+              className="w-full pl-10 pr-3 py-2 border rounded-md text-sm"
             />
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Select
+            value={filterProgram}
+            onChange={(selected) => {
+              setFilterProgram(selected);
+              setPage(1);
+            }}
+            options={programs}
+            placeholder="Filter by Program"
+            isClearable
+            className="w-48 text-sm"
+          />
           <Select
             value={filterStatus}
             onChange={(selected) => {
@@ -1042,110 +1150,138 @@ const EnrollmentRecords = () => {
             options={statusOptions}
             placeholder="Status"
             isClearable
-            className="w-40"
+            className="w-36 text-sm"
           />
           <button
+            onClick={() => setSectioningModalOpen(true)}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-md flex items-center gap-2 hover:bg-emerald-700 text-sm font-medium shadow-sm"
+          >
+            <Shuffle size={16} /> Run Sectioning
+          </button>
+          <button
             onClick={() => openModal("add")}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md flex items-center gap-2 hover:bg-indigo-700"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md flex items-center gap-2 hover:bg-indigo-700 text-sm font-medium shadow-sm"
           >
             <Plus size={16} /> New Enrollment
           </button>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded border">
-        <table className="min-w-full divide-y">
+      <div className="overflow-x-auto rounded border bg-white">
+        <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-100">
             <tr>
-              <th className="px-3 py-2 text-left text-sm font-semibold">ID</th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
+              <th className="px-3 py-2.5 text-left text-xs font-bold uppercase text-slate-700">ID</th>
+              <th className="px-3 py-2.5 text-left text-xs font-bold uppercase text-slate-700">
                 Student
               </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
-               Programs
+              <th className="px-3 py-2.5 text-left text-xs font-bold uppercase text-slate-700">
+                Program Offering
               </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
+              <th className="px-3 py-2.5 text-left text-xs font-bold uppercase text-slate-700">
+                Subject / Course
+              </th>
+              <th className="px-3 py-2.5 text-left text-xs font-bold uppercase text-slate-700">
                 Period
               </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
+              <th className="px-3 py-2.5 text-left text-xs font-bold uppercase text-slate-700">
                 Year Level
               </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
+              <th className="px-3 py-2.5 text-left text-xs font-bold uppercase text-slate-700">
+                Section
+              </th>
+              <th className="px-3 py-2.5 text-left text-xs font-bold uppercase text-slate-700">
                 Enrollment Date
               </th>
-              <th className="px-3 py-2 text-left text-sm font-semibold">
+              <th className="px-3 py-2.5 text-left text-xs font-bold uppercase text-slate-700">
                 Status
               </th>
-              <th className="px-3 py-2 text-center text-sm font-semibold">
+              <th className="px-3 py-2.5 text-center text-xs font-bold uppercase text-slate-700">
                 Grades
               </th>
-              <th className="px-3 py-2 text-right text-sm font-semibold">
+              <th className="px-3 py-2.5 text-right text-xs font-bold uppercase text-slate-700">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y">
+          <tbody className="bg-white divide-y divide-slate-100">
             {displayed.length > 0 ? (
               displayed.map((enrollment) => (
                 <tr
                   key={enrollment.enrollment_id}
-                  className="hover:bg-slate-50"
+                  className="hover:bg-slate-50 text-sm"
                 >
-                  <td className="px-3 py-2 text-sm">
-                    {enrollment.enrollment_id}
+                  <td className="px-3 py-2 font-mono text-xs text-slate-500">
+                    #{enrollment.enrollment_id}
                   </td>
-                  <td className="px-3 py-2 text-sm">
-                    {enrollment.student_name}
+                  <td className="px-3 py-2">
+                    <div className="font-medium text-slate-900">{enrollment.student_name}</div>
+                    {enrollment.student_number && (
+                      <div className="text-xs text-slate-500">{enrollment.student_number}</div>
+                    )}
                   </td>
-                  <td className="px-3 py-2 text-sm">
-                    {enrollment.course_code} - {enrollment.course_title}
+                  <td className="px-3 py-2">
+                    <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-semibold text-xs">
+                      {enrollment.student_program_code || enrollment.student_course || "General"}
+                    </span>
                   </td>
-                  <td className="px-3 py-2 text-sm">
+                  <td className="px-3 py-2">
+                    <div className="font-medium text-slate-800">{enrollment.course_code}</div>
+                    <div className="text-xs text-slate-500 truncate max-w-[180px]">{enrollment.course_title}</div>
+                  </td>
+                  <td className="px-3 py-2 text-xs text-slate-600">
                     {enrollment.school_year && enrollment.semester
-                      ? `${enrollment.school_year} - ${enrollment.semester}`
+                      ? `${enrollment.school_year} · ${enrollment.semester}`
                       : "N/A"}
                   </td>
-                  <td className="px-3 py-2 text-sm">
+                  <td className="px-3 py-2 text-xs">
                     {enrollment.year_level || "N/A"}
                   </td>
-                  <td className="px-3 py-2 text-sm">
+                  <td className="px-3 py-2 font-semibold">
+                    <SectionBadge sectionName={enrollment.section_name} />
+                  </td>
+                  <td className="px-3 py-2 text-xs text-slate-600">
                     {toDateInputValue(enrollment.enrollment_date) || "N/A"}
                   </td>
-                  <td className="px-3 py-2 text-sm">
+                  <td className="px-3 py-2">
                     <StatusBadge status={enrollment.status} />
                   </td>
-                  <td className="px-3 py-2 text-sm text-center">
+                  <td className="px-3 py-2 text-center text-xs">
                     {enrollment.midterm_grade || "-"} /{" "}
                     {enrollment.final_grade || "-"}
                   </td>
-                  <td className="px-3 py-2 text-right flex justify-end gap-2">
-                    <button
-                      onClick={() => openModal("edit", enrollment)}
-                      className="text-indigo-600 hover:text-indigo-800"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(enrollment.enrollment_id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleExportPDF(enrollment)}
-                      className="text-green-600 hover:text-green-800"
-                      title="Download Registration Form"
-                    >
-                      <FileDown size={16} />
-                    </button>
+                  <td className="px-3 py-2 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => openModal("edit", enrollment)}
+                        className="text-indigo-600 hover:text-indigo-800 p-1 hover:bg-slate-100 rounded"
+                        title="Edit Record"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(enrollment.enrollment_id)}
+                        className="text-red-600 hover:text-red-800 p-1 hover:bg-slate-100 rounded"
+                        title="Delete Record"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                      <button
+                        onClick={() => handleExportPDF(enrollment)}
+                        className="text-emerald-600 hover:text-emerald-800 p-1 hover:bg-slate-100 rounded"
+                        title="Download Registration Form"
+                      >
+                        <FileDown size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
                 <td
-                  colSpan={9}
-                  className="text-center py-4 text-slate-500 italic"
+                  colSpan={11}
+                  className="text-center py-8 text-slate-500 italic"
                 >
                   No enrollment records found.
                 </td>
@@ -1176,6 +1312,15 @@ const EnrollmentRecords = () => {
         periods={periods}
       />
 
+      <SectioningModal
+        isOpen={sectioningModalOpen}
+        onClose={() => setSectioningModalOpen(false)}
+        onSubmit={handleRunSectioning}
+        courses={courses}
+        periods={periods}
+        programs={programs}
+      />
+
       <ConfirmModal
         isOpen={deleteTargetId !== null}
         onClose={cancelDelete}
@@ -1183,10 +1328,10 @@ const EnrollmentRecords = () => {
         message={
           <>
             Are you sure you want to delete this enrollment record?{" "}
-            <span className="text-red-400">This action cannot be undone!</span>
+            <span className="text-red-500 font-semibold">This action cannot be undone!</span>
           </>
         }
-        confirmLabel="Yes"
+        confirmLabel="Yes, Delete"
         tone="danger"
         loading={deleteLoading}
       />

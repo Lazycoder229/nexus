@@ -5,6 +5,7 @@ const SectionsController = {
     try {
       const filters = {
         period_id: req.query.period_id,
+        program_id: req.query.program_id,
         search: req.query.search,
       };
 
