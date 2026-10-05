@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useMemo, useEffect } from "react";
 import {
   Search,
@@ -113,7 +114,7 @@ const Prerequisites = () => {
 
   const handleAddPrerequisite = async () => {
     if (!prereqForm.course || prereqForm.course.length === 0) {
-      alert("Please select at least one course to add as a prerequisite.");
+      toast.warning("Please select at least one course to add as a prerequisite.");
       return;
     }
     const results = { created: [], skipped: [], errors: [] };
@@ -156,13 +157,9 @@ const Prerequisites = () => {
     // Summarize results
     if (results.errors.length > 0) {
       console.error("Some prerequisites failed:", results.errors);
-      alert(
-        `Completed with errors. Created: ${results.created.length}, Skipped: ${results.skipped.length}, Errors: ${results.errors.length}`
-      );
+      toast.error(`Completed with errors. Created: ${results.created.length}, Skipped: ${results.skipped.length}, Errors: ${results.errors.length}`);
     } else {
-      alert(
-        `Done. Created: ${results.created.length}, Skipped: ${results.skipped.length}`
-      );
+      toast.info(`Done. Created: ${results.created.length}, Skipped: ${results.skipped.length}`);
     }
   };
 
@@ -174,10 +171,10 @@ const Prerequisites = () => {
         `${import.meta.env.VITE_API_BASE_URL}/api/prerequisites/${prereqId}`
       );
       fetchPrerequisites(selectedCourse.id);
-      alert("Prerequisite deleted successfully!");
+      toast.success("Prerequisite deleted successfully!");
     } catch (err) {
       console.error("Failed to delete prerequisite:", err);
-      alert(err.response?.data?.message || "Failed to delete prerequisite");
+      toast.error(err.response?.data?.message || "Failed to delete prerequisite");
     }
   };
 
@@ -194,7 +191,7 @@ const Prerequisites = () => {
       fetchPrerequisites(selectedCourse.id);
     } catch (err) {
       console.error("Failed to update prerequisite:", err);
-      alert(err.response?.data?.message || "Failed to update prerequisite");
+      toast.error(err.response?.data?.message || "Failed to update prerequisite");
     }
   };
 

@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Select from "react-select";
@@ -400,7 +401,7 @@ const FacultyEvaluation = () => {
       setCurrentRecord(null);
     } catch (err) {
       console.error("Error saving evaluation:", err);
-      alert(err.response?.data?.message || "Failed to save evaluation");
+      toast.error(err.response?.data?.message || "Failed to save evaluation");
     }
   };
 

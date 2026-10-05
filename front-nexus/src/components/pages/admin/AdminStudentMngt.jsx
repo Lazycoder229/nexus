@@ -19,9 +19,7 @@ import {
   Filter,
   Download,
 } from "lucide-react";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
-import { saveAs } from "file-saver";
+import { downloadPDF, downloadExcel } from "../../../utils/exportHelpers";
 
 // Status Badge Component
 const StatusBadge = ({ status }) => {
@@ -332,43 +330,36 @@ const AdminStudentMngt = () => {
 
   // Export functions
   const exportCSV = (data) => {
-    const csv = [
-      ["Student Number", "Name", "Email", "Year Level", "Course", "Status"],
-      ...data.map((s) => [
-        s.student_number || "",
-        `${s.first_name} ${s.last_name}`,
-        s.email,
-        s.year_level || "",
-        s.course || "",
-        s.status || "",
-      ]),
-    ]
-      .map((row) => row.join(","))
-      .join("\n");
-    saveAs(
-      new Blob([csv], { type: "text/csv;charset=utf-8;" }),
-      "students.csv"
-    );
+    const exportData = data.map((s) => ({
+      student_number: s.student_number || "",
+      student_name: `${s.first_name || ""} ${s.last_name || ""}`.trim(),
+      email: s.email || "",
+      year_level: s.year_level || "",
+      program_name: s.course || "",
+      status: s.status || "",
+    }));
+    downloadExcel(exportData, {
+      title: "Students Masterlist",
+      officeLabel: "Registrar Office",
+      headers: ["student_number", "student_name", "email", "year_level", "program_name", "status"],
+    });
   };
 
   const exportPDF = (data) => {
-    const doc = new jsPDF();
-    doc.text("Student List", 14, 16);
-    doc.autoTable({
-      head: [
-        ["Student Number", "Name", "Email", "Year Level", "Course", "Status"],
-      ],
-      body: data.map((s) => [
-        s.student_number || "",
-        `${s.first_name} ${s.last_name}`,
-        s.email,
-        s.year_level || "",
-        s.course || "",
-        s.status || "",
-      ]),
-      startY: 20,
+    const exportData = data.map((s) => ({
+      student_number: s.student_number || "",
+      student_name: `${s.first_name || ""} ${s.last_name || ""}`.trim(),
+      email: s.email || "",
+      year_level: s.year_level || "",
+      program_name: s.course || "",
+      status: s.status || "",
+    }));
+    downloadPDF(exportData, {
+      title: "Students Masterlist",
+      officeLabel: "Registrar Office",
+      orientation: "portrait",
+      headers: ["student_number", "student_name", "email", "year_level", "program_name", "status"],
     });
-    doc.save("students.pdf");
   };
 
   const handleViewStudent = (student) => {

@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Select from "react-select";
@@ -172,7 +173,7 @@ const GradeManagement = () => {
       closeModal();
     } catch (error) {
       console.error("Error saving grade:", error);
-      alert(error.response?.data?.error || "Error saving grade");
+      toast.error(error.response?.data?.error || "Error saving grade");
     }
   };
 
@@ -200,7 +201,7 @@ const GradeManagement = () => {
         fetchGrades();
       } catch (error) {
         console.error("Error deleting grade:", error);
-        alert(error.response?.data?.error || "Error deleting grade");
+        toast.error(error.response?.data?.error || "Error deleting grade");
       }
     }
   };
@@ -218,7 +219,7 @@ const GradeManagement = () => {
         fetchGrades();
       } catch (error) {
         console.error("Error approving grade:", error);
-        alert(error.response?.data?.error || "Error approving grade");
+        toast.error(error.response?.data?.error || "Error approving grade");
       }
     }
   };

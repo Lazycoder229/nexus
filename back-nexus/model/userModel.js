@@ -229,6 +229,12 @@ export const findUserByEmail = async (email) => {
   return rows[0];
 };
 
+// Used internally by auth/password change flows to verify existing password hash.
+export const findUserWithPasswordById = async (userId) => {
+  const [rows] = await db.query("SELECT * FROM users WHERE user_id = ?", [userId]);
+  return rows[0] || null;
+};
+
 export const findUserById = async (userId) => {
   const [rows] = await db.query(
     `
@@ -417,93 +423,57 @@ export const createEmployeeUser = async (userData) => {
 };
 // Update a student user
 export const updateStudentUser = async (userId, userData) => {
-  const {
-    email,
-    passwordHash, // optional, only update if provided
-    firstName,
-    middleName,
-    lastName,
-    suffix,
-    dateOfBirth,
-    gender,
-    phone,
-    permanentAddress,
-    profilePictureUrl,
-    studentNumber,
-    course,
-    major,
-    yearLevel,
-    previousSchool,
-    seniorHighSchool,
-    yearGraduated,
-    seniorHighYearGraduated,
-    mailingAddress,
-    fatherName,
-    motherName,
-    parentPhone,
-  } = userData;
-
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
 
-    // 1️ Update users table
-    const updateUserFields = [
-      email,
-      firstName,
-      middleName || null,
-      lastName,
-      suffix || null,
-      dateOfBirth || null,
-      gender || null,
-      phone || null,
-      permanentAddress || null,
-      profilePictureUrl || null,
-    ];
+    // 1️⃣ Update users table (dynamic partial update)
+    const userFields = [];
+    const userValues = [];
+    const userMappings = {
+      email: "email",
+      firstName: "first_name",
+      middleName: "middle_name",
+      lastName: "last_name",
+      suffix: "suffix",
+      dateOfBirth: "date_of_birth",
+      dob: "date_of_birth",
+      gender: "gender",
+      phone: "phone",
+      permanentAddress: "permanent_address",
+      profilePictureUrl: "profile_picture_url",
+      passwordHash: "password_hash",
+    };
 
-    let query = `
-      UPDATE users
-      SET email = ?, first_name = ?, middle_name = ?, last_name = ?, suffix = ?, 
-          date_of_birth = ?, gender = ?, phone = ?, permanent_address = ?, profile_picture_url = ?
-    `;
-    if (passwordHash) query += `, password_hash = ?`;
+    Object.keys(userMappings).forEach((key) => {
+      if (userData[key] !== undefined) {
+        userFields.push(`${userMappings[key]} = ?`);
+        userValues.push(userData[key]);
+      }
+    });
 
-    query += ` WHERE user_id = ?`;
+    if (userFields.length > 0) {
+      userValues.push(userId);
+      const userQuery = `UPDATE users SET ${userFields.join(", ")} WHERE user_id = ?`;
+      await connection.query(userQuery, userValues);
+    }
 
-    if (passwordHash) updateUserFields.push(passwordHash);
-    updateUserFields.push(userId);
+    // 2️⃣ Upsert student_details with full StudentRegistrationForm payload
+    const requestedStudentNumber = pickValue(userData, "studentNumber");
+    const studentDetails = buildStudentDetailPayload(userData, requestedStudentNumber);
+    const studentDetailColumns = Object.keys(studentDetails);
+    const studentDetailValues = Object.values(studentDetails);
 
-    await connection.query(query, updateUserFields);
+    const updateSet = studentDetailColumns
+      .map((col) => `${col} = VALUES(${col})`)
+      .join(", ");
 
-    // 2️ Upsert student_details so legacy users without a row can still save profile data.
     await connection.query(
       `INSERT INTO student_details
-       (user_id, student_number, course, major, year_level, previous_school, year_graduated, mailing_address, father_name, mother_name, parent_phone)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         student_number = VALUES(student_number),
-         course = VALUES(course),
-         major = VALUES(major),
-         year_level = VALUES(year_level),
-         previous_school = VALUES(previous_school),
-         year_graduated = VALUES(year_graduated),
-         mailing_address = VALUES(mailing_address),
-         father_name = VALUES(father_name),
-         mother_name = VALUES(mother_name),
-         parent_phone = VALUES(parent_phone)`,
-      [
-        userId,
-        studentNumber,
-        course,
-        major,
-        yearLevel,
-        previousSchool || seniorHighSchool,
-        yearGraduated || seniorHighYearGraduated,
-        mailingAddress,
-        fatherName,
-        motherName,
-        parentPhone,
-      ],
+       (user_id, ${studentDetailColumns.join(", ")})
+       VALUES (?, ${studentDetailColumns.map(() => "?").join(", ")})
+       ON DUPLICATE KEY UPDATE ${updateSet}`,
+      [userId, ...studentDetailValues],
     );
 
     await connection.commit();
@@ -515,6 +485,7 @@ export const updateStudentUser = async (userId, userData) => {
     throw err;
   }
 };
+
 export const updateEmployeeUser = async (userId, userData) => {
   const connection = await db.getConnection();
   try {

@@ -15,7 +15,10 @@ import {
   ChevronRight,
   Shuffle,
 } from "lucide-react";
-import { exportRegistrationFormPDF } from "../../../utils/exportRegistrationForm";
+import {
+  exportRegistrationFormPDF,
+  exportRegistrationFormsPDF,
+} from "../../../utils/exportRegistrationForm";
 const toDateInputValue = (value) => {
   if (!value) return "";
   const stringValue = String(value);
@@ -926,6 +929,7 @@ const EnrollmentRecords = () => {
   const [deleteTargetId, setDeleteTargetId] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [sectioningModalOpen, setSectioningModalOpen] = useState(false);
+  const [bulkExporting, setBulkExporting] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -986,7 +990,7 @@ const EnrollmentRecords = () => {
     }
   };
 
-  const handleExportPDF = async (enrollment) => {
+  const getRegistrarInfo = async () => {
     const firstName = localStorage.getItem("firstName") || "";
     const lastName = localStorage.getItem("lastName") || "";
     const role = localStorage.getItem("role") || "";
@@ -1014,7 +1018,10 @@ const EnrollmentRecords = () => {
         position: role || "Registrar",
       };
     }
+    return currentUser;
+  };
 
+  const getRegistrationFormDetails = async (enrollment) => {
     // Student profile
     let studentInfo = {};
     try {
@@ -1054,13 +1061,52 @@ const EnrollmentRecords = () => {
       // No invoice found/available - export continues without it.
     }
 
+    return { enrollment, studentInfo, invoice };
+  };
+
+  const handleExportPDF = async (enrollment) => {
     try {
-      await exportRegistrationFormPDF(enrollment, studentInfo, currentUser, invoice);
+      const [currentUser, form] = await Promise.all([
+        getRegistrarInfo(),
+        getRegistrationFormDetails(enrollment),
+      ]);
+      await exportRegistrationFormPDF(
+        form.enrollment,
+        form.studentInfo,
+        currentUser,
+        form.invoice,
+      );
     } catch (err) {
       console.error("Error exporting registration form:", err);
       toast.error("Failed to generate the registration form PDF.", {
         position: "top-center",
       });
+    }
+  };
+
+  const handleBulkExportPDF = async () => {
+    if (!filtered.length || bulkExporting) return;
+    setBulkExporting(true);
+    try {
+      const currentUser = await getRegistrarInfo();
+      const forms = [];
+      for (const enrollment of filtered) {
+        forms.push({
+          ...(await getRegistrationFormDetails(enrollment)),
+          currentUser,
+        });
+      }
+      await exportRegistrationFormsPDF(forms);
+      toast.success(`Downloaded ${forms.length} registration forms in one PDF.`, {
+        position: "top-center",
+      });
+    } catch (err) {
+      console.error("Error exporting filtered registration forms:", err);
+      toast.error("Failed to generate the filtered registration forms PDF.", {
+        position: "top-center",
+      });
+    } finally {
+      setBulkExporting(false);
     }
   };
 
@@ -1195,7 +1241,7 @@ const EnrollmentRecords = () => {
         );
       } else {
         toast.success(
-          `Sectioned ${summary.assigned}/${summary.totalUnsectioned} student(s) into their program sections.`,
+          `Sectioned ${summary.assigned}/${summary.totalUnsectioned} student(s); into their program sections.`,
           { position: "top-center" },
         );
       }
@@ -1208,7 +1254,7 @@ const EnrollmentRecords = () => {
       }
       if (summary.failed > 0) {
         toast.error(
-          `${summary.failed} student(s) failed to be sectioned. Check console for details.`,
+          `${summary.failed} student(s); failed to be sectioned. Check console for details.`,
           { position: "top-center" },
         );
         console.error("Sectioning failures:", failed);
@@ -1323,6 +1369,17 @@ const EnrollmentRecords = () => {
             isClearable
             className="w-36 text-sm"
           />
+          <button
+            onClick={handleBulkExportPDF}
+            disabled={!filtered.length || bulkExporting}
+            className="px-4 py-2 bg-emerald-700 text-white rounded-md flex items-center gap-2 hover:bg-emerald-800 text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Download registration forms for all filtered enrollment records"
+          >
+            <FileDown size={16} />
+            {bulkExporting
+              ? "Preparing PDFs..."
+              : `Download Filtered PDFs (${filtered.length})`}
+          </button>
           <button
             onClick={() => setSectioningModalOpen(true)}
             className="px-4 py-2 bg-emerald-600 text-white rounded-md flex items-center gap-2 hover:bg-emerald-700 text-sm font-medium shadow-sm"

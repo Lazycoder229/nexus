@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Mail, Send, User, Search } from "lucide-react";
@@ -45,7 +46,7 @@ const StudentEmailFaculty = () => {
       });
       setShowCompose(false);
       setFormData({ to_faculty_id: "", subject: "", message: "" });
-      alert("Email sent successfully!");
+      toast.success("Email sent successfully!");
     } catch (error) {
       console.error("Error sending email:", error);
     }

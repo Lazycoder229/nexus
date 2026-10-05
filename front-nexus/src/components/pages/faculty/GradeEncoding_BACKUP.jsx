@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import {
@@ -373,8 +374,8 @@ const GradeEncoding = () => {
   useEffect(() => { fetchActivityMeta(); }, [fetchActivityMeta]);
 
   const syncFromLMS = useCallback(async () => {
-    if (!selectedCourse) { alert("Please select a course before syncing."); return; }
-    if (!activePeriodId) { alert("❌ Error: No active academic period found."); return; }
+    if (!selectedCourse) { toast.warning("Please select a course before syncing."); return; }
+    if (!activePeriodId) { toast.error("❌ Error: No active academic period found."); return; }
 
     try {
       setLoading(true);
@@ -386,14 +387,14 @@ const GradeEncoding = () => {
 
       if (response.data?.success) {
         const count = response.data.synced || 0;
-        alert(count === 0 ? "✓ Sync complete: No graded assignments/quizzes found yet." : `✅ Synced ${count} graded assignments/quizzes from LMS`);
+        toast.warning(count === 0 ? "✓ Sync complete: No graded assignments/quizzes found yet." : `✅ Synced ${count} graded assignments/quizzes from LMS`);
         await loadExistingGradeEntries();
       } else {
-        alert(response.data?.message || "Sync completed but no records were synced");
+        toast.warning(response.data?.message || "Sync completed but no records were synced");
       }
     } catch (error) {
       console.error("Error syncing from LMS:", error);
-      alert(`❌ Sync failed:\n${error.response?.data?.message || error.message}`);
+      toast.error(`❌ Sync failed:\n${error.response?.data?.message || error.message}`);
     } finally {
       setLoading(false);
     }
@@ -512,19 +513,19 @@ const GradeEncoding = () => {
       });
 
       setGrades((prev) => ({ ...prev, ...importedGrades }));
-      alert("Grades imported successfully.");
+      toast.success("Grades imported successfully.");
     } catch (error) {
       console.error("Error importing Excel file:", error);
-      alert(`Failed to import Excel file: ${error.message}`);
+      toast.error(`Failed to import Excel file: ${error.message}`);
     }
   };
 
   const handleSave = async () => {
-    if (!selectedCourse) { alert("Please select a course before saving."); return; }
-    if (!activePeriodId) { alert("No active academic period found."); return; }
+    if (!selectedCourse) { toast.warning("Please select a course before saving."); return; }
+    if (!activePeriodId) { toast.warning("No active academic period found."); return; }
 
     const facultyId = Number(localStorage.getItem("userId") || localStorage.getItem("user_id") || 0);
-    if (!facultyId) { alert("Faculty account not detected. Please log in again."); return; }
+    if (!facultyId) { toast.warning("Faculty account not detected. Please log in again."); return; }
 
     try {
       setLoading(true);
@@ -594,15 +595,15 @@ const GradeEncoding = () => {
         }
       });
 
-      if (requests.length === 0) { alert("No grade entries to save."); return; }
+      if (requests.length === 0) { toast.warning("No grade entries to save."); return; }
 
       const results = await Promise.allSettled(requests);
       const failed = results.filter((r) => r.status === "rejected").length;
-      alert(failed > 0 ? `Grades saved with ${failed} failed request(s). Check console for details.` : "Grades saved successfully.");
+      toast.error(failed > 0 ? `Grades saved with ${failed} failed request(s);. Check console for details.` : "Grades saved successfully.");
       await loadExistingGradeEntries();
     } catch (error) {
       console.error("Error saving grades:", error);
-      alert(error.response?.data?.error || error.message || "Failed to save grades");
+      toast.error(error.response?.data?.error || error.message || "Failed to save grades");
     } finally {
       setLoading(false);
     }

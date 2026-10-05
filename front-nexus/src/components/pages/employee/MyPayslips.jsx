@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import {
@@ -47,7 +48,7 @@ const MyPayslips = () => {
       if (!window.html2pdf) {
         console.error("❌ html2pdf library not loaded");
         setDownloadingPayslipId(null);
-        alert("PDF library is loading. Please try again in a moment.");
+        toast.warning("PDF library is loading. Please try again in a moment.");
         return;
       }
 
@@ -75,7 +76,7 @@ const MyPayslips = () => {
     } catch (error) {
       console.error("Error downloading PDF:", error);
       setDownloadingPayslipId(null);
-      alert("Failed to download payslip");
+      toast.error("Failed to download payslip");
     }
   };
 
@@ -309,12 +310,12 @@ const MyPayslips = () => {
               }
               console.error("❌ Error in PDF save:", error);
               setDownloadingPayslipId(null);
-              alert("Failed to save PDF: " + (error.message || error));
+              toast.error("Failed to save PDF: " + (error.message || error));
             });
         } catch (error) {
           console.error("❌ Error during PDF generation:", error);
           setDownloadingPayslipId(null);
-          alert("Failed to generate PDF: " + error.message);
+          toast.error("Failed to generate PDF: " + error.message);
         }
       }, 50); // Small delay to ensure UI updates first
     });

@@ -13,9 +13,7 @@ import {
   GraduationCap,
   BookOpen,
 } from "lucide-react";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
-import { saveAs } from "file-saver";
+import { downloadPDF, downloadExcel } from "../../../utils/exportHelpers";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -513,45 +511,36 @@ function ProgramsOffering() {
 
   // Export
   const exportCSV = (data) => {
-    const csv = [
-      ["ID", "Code", "Name", "Degree Type", "Duration", "Department", "Status"],
-      ...data.map((p) => [
-        p.id,
-        p.code,
-        p.name,
-        p.degree_type,
-        p.duration_years,
-        p.department_name || "N/A",
-        p.status,
-      ]),
-    ]
-      .map((e) => e.join(","))
-      .join("\n");
-    saveAs(
-      new Blob([csv], { type: "text/csv;charset=utf-8;" }),
-      "programs.csv",
-    );
+    const exportData = data.map((p) => ({
+      program_code: p.code || "",
+      program_name: p.name || "",
+      degree_type: p.degree_type || "",
+      duration_years: p.duration_years || "",
+      department: p.department_name || "N/A",
+      status: p.status || "",
+    }));
+    downloadExcel(exportData, {
+      title: "Academic Programs",
+      officeLabel: "Registrar Office",
+      headers: ["program_code", "program_name", "degree_type", "duration_years", "department", "status"],
+    });
   };
 
   const exportPDF = (data) => {
-    const doc = new jsPDF();
-    doc.text("Programs Offering", 14, 16);
-    doc.autoTable({
-      head: [
-        ["ID", "Code", "Name", "Degree", "Duration", "Department", "Status"],
-      ],
-      body: data.map((p) => [
-        p.id,
-        p.code,
-        p.name,
-        p.degree_type,
-        `${p.duration_years} yrs`,
-        p.department_name || "N/A",
-        p.status,
-      ]),
-      startY: 20,
+    const exportData = data.map((p) => ({
+      program_code: p.code || "",
+      program_name: p.name || "",
+      degree_type: p.degree_type || "",
+      duration_years: p.duration_years ? `${p.duration_years} yrs` : "",
+      department: p.department_name || "N/A",
+      status: p.status || "",
+    }));
+    downloadPDF(exportData, {
+      title: "Academic Programs",
+      officeLabel: "Registrar Office",
+      orientation: "portrait",
+      headers: ["program_code", "program_name", "degree_type", "duration_years", "department", "status"],
     });
-    doc.save("programs.pdf");
   };
 
   // Turn a raw axios error into a short, human-readable message

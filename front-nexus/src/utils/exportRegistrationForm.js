@@ -109,21 +109,26 @@ function cell(doc, text, x, y, w, h, opts = {}) {
   doc.setFontSize(fontSize);
   doc.setFont("helvetica", bold ? "bold" : "normal");
 
-  const textY =
-    valign === "middle"
-      ? y + h / 2 + fontSize * 0.35
-      : y + padding + fontSize * 0.52;
-
   const maxW = w - padding * 2;
-  const str  = String(text ?? "");
+  const lines = Array.isArray(text) ? text : [String(text ?? "")];
+  const lineHeight = fontSize * 1.15;
+  const contentHeight = lines.length * lineHeight;
+  const firstLineY = lines.length === 1
+    ? (valign === "middle"
+        ? y + h / 2 + fontSize * 0.35
+        : y + padding + fontSize * 0.52)
+    : y + (h - contentHeight) / 2 + fontSize * 0.8;
 
-  if (align === "center") {
-    doc.text(str, x + w / 2, textY, { align: "center", maxWidth: maxW });
-  } else if (align === "right") {
-    doc.text(str, x + w - padding, textY, { align: "right", maxWidth: maxW });
-  } else {
-    doc.text(str, x + padding, textY, { align: "left", maxWidth: maxW });
-  }
+  lines.forEach((line, index) => {
+    const textY = firstLineY + index * lineHeight;
+    if (align === "center") {
+      doc.text(line, x + w / 2, textY, { align: "center", maxWidth: maxW });
+    } else if (align === "right") {
+      doc.text(line, x + w - padding, textY, { align: "right", maxWidth: maxW });
+    } else {
+      doc.text(line, x + padding, textY, { align: "left", maxWidth: maxW });
+    }
+  });
 }
 
 // safe display — turns 0 / "0" / null / undefined into ""
@@ -278,19 +283,27 @@ function drawCopy(doc, data, startY, isCopy, headerImg) {
 
   for (let i = 0; i < totalRows; i++) {
     const s  = (subjects || [])[i] || {};
+    const descriptionLines = doc.splitTextToSize(
+      safe(s.subject_name),
+      CW[1] - 4,
+    );
+    const rowHeight = Math.max(
+      ROW_H,
+      descriptionLines.length * 7.5 * 1.15 + 4,
+    );
     cx = ML;
     const rowCells = [
       { text: safe(s.subject_code), align: "center" },
-      { text: safe(s.subject_name), align: "center" },
+      { text: descriptionLines, align: "center" },
       { text: s.units > 0 ? String(s.units) : "", align: "center" },
       { text: (!isCopy && safe(s.section_code)) || "", align: "center" },
       { text: safe(s.room), align: "center" },
     ];
     rowCells.forEach((rc, ci) => {
-      cell(doc, rc.text, cx, y, CW[ci], ROW_H, { align: "center", fontSize: 7.5, valign: "middle" });
+      cell(doc, rc.text, cx, y, CW[ci], rowHeight, { align: "center", fontSize: 7.5, valign: "middle" });
       cx += CW[ci];
     });
-    y += ROW_H;
+    y += rowHeight;
   }
 
   // Total units row
@@ -427,6 +440,7 @@ export async function exportRegistrationFormPDF(
   studentInfo = {},
   currentUser = {},
   invoice     = {},
+  options     = {},
 ) {
   // Build fee list from the actual invoice data; fall back to all-zero defaults
   const fees = Object.keys(invoice).length > 0
@@ -479,18 +493,24 @@ export async function exportRegistrationFormPDF(
 
   // Load the header image once — reused for both copies.
   // If it fails to load (e.g. file missing from /public), fall back to text header.
-  let headerImg = null;
-  try {
-    headerImg = await loadImage(HEADER_IMG_URL);
-  } catch (err) {
-    console.warn("Registration form header image not loaded:", err.message);
+  let { doc, headerImg, addPage = false, save = true } = options;
+  if (headerImg === undefined) {
+    headerImg = null;
+    try {
+      headerImg = await loadImage(HEADER_IMG_URL);
+    } catch (err) {
+      console.warn("Registration form header image not loaded:", err.message);
+    }
   }
 
-  const doc = new jsPDF({
-    unit:        "pt",
-    format:      [PW, PH],
-    orientation: "portrait",
-  });
+  if (!doc) {
+    doc = new jsPDF({
+      unit:        "pt",
+      format:      [PW, PH],
+      orientation: "portrait",
+    });
+  }
+  if (addPage) doc.addPage([PW, PH], "portrait");
 
   // Copy 1: Office copy
   const divY = drawCopy(doc, formData, 10, false, headerImg);
@@ -508,5 +528,32 @@ export async function exportRegistrationFormPDF(
     formData.studentName
       .replace(/\s+/g, "_")
       .replace(/[^a-zA-Z0-9_]/g, "") || "student";
-  doc.save(`BCC_RegistrationForm_${safeName}.pdf`);
+  if (save) doc.save(`BCC_RegistrationForm_${safeName}.pdf`);
+  return doc;
+}
+
+/** Export several registration forms into one PDF, one enrollment per page. */
+export async function exportRegistrationFormsPDF(forms = []) {
+  if (!forms.length) throw new Error("No enrollment forms to export.");
+
+  let headerImg = null;
+  try {
+    headerImg = await loadImage(HEADER_IMG_URL);
+  } catch (err) {
+    console.warn("Registration form header image not loaded:", err.message);
+  }
+
+  let doc = null;
+  for (let i = 0; i < forms.length; i += 1) {
+    const { enrollment, studentInfo, currentUser, invoice } = forms[i];
+    doc = await exportRegistrationFormPDF(
+      enrollment,
+      studentInfo,
+      currentUser,
+      invoice,
+      { doc, headerImg, addPage: i > 0, save: false },
+    );
+  }
+
+  doc.save("BCC_RegistrationForms_Filtered.pdf");
 }

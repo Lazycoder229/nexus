@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import { Download, FileText, Calendar, Search } from "lucide-react";
@@ -35,7 +36,7 @@ const PayrollReports = () => {
 
   const generateReport = async () => {
     if (!selectedSetup) {
-      alert("Please select a payroll period");
+      toast.warning("Please select a payroll period");
       return;
     }
 
@@ -50,7 +51,7 @@ const PayrollReports = () => {
       setReportData(response.data.data);
     } catch (error) {
       console.error("Error generating report:", error);
-      alert("Failed to generate report");
+      toast.error("Failed to generate report");
     } finally {
       setLoading(false);
     }
@@ -58,7 +59,7 @@ const PayrollReports = () => {
 
   const downloadReport = () => {
     if (!reportData) {
-      alert("Generate a report first");
+      toast.info("Generate a report first");
       return;
     }
 
@@ -120,7 +121,7 @@ const PayrollReports = () => {
 
   const downloadReportPDF = () => {
     if (!reportData) {
-      alert("Generate a report first");
+      toast.info("Generate a report first");
       return;
     }
 
@@ -143,7 +144,7 @@ const PayrollReports = () => {
     const filename = `Payroll ${reportType} Report`;
     downloadPDF(jsPDF, autoTable, exportData, {
       title: filename,
-      orientation: "landscape",
+      orientation: "portrait",
       headers: [
         "employee_number",
         "employee_name",

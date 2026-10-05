@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import Select from "react-select";
 import {
@@ -194,13 +195,13 @@ const StudentAttendance = () => {
       }
 
       if (data.success || data.attendance_id) {
-        alert("Attendance saved successfully!");
+        toast.success("Attendance saved successfully!");
         fetchAttendanceRecords();
         handleCloseModal();
       }
     } catch (error) {
       console.error("Error saving attendance:", error);
-      alert(`Error: ${error.message}`);
+      toast.error(`Error: ${error.message}`);
     }
   };
 

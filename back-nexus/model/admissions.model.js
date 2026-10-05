@@ -29,9 +29,12 @@ export const getAllAdmissions = async () => {
   const [rows] = await db.query(
     `SELECT 
         a.*,
+        COALESCE(NULLIF(a.year_level, ''), sd.year_level, '1st Year') AS year_level,
         CONCAT(u.first_name, ' ', u.last_name) AS decision_by_name
      FROM admissions a
      LEFT JOIN users u ON a.decision_by = u.user_id
+     LEFT JOIN users u_student ON a.email = u_student.email COLLATE utf8mb4_unicode_ci
+     LEFT JOIN student_details sd ON u_student.user_id = sd.user_id
      ORDER BY a.created_at DESC`
   );
   return rows;
@@ -40,9 +43,14 @@ export const getAllAdmissions = async () => {
 // Get single admission
 export const getAdmissionById = async (id) => {
   const [rows] = await db.query(
-    `SELECT a.*, CONCAT(u.first_name, ' ', u.last_name) AS decision_by_name
+    `SELECT 
+        a.*,
+        COALESCE(NULLIF(a.year_level, ''), sd.year_level, '1st Year') AS year_level,
+        CONCAT(u.first_name, ' ', u.last_name) AS decision_by_name
      FROM admissions a
      LEFT JOIN users u ON a.decision_by = u.user_id
+     LEFT JOIN users u_student ON a.email = u_student.email COLLATE utf8mb4_unicode_ci
+     LEFT JOIN student_details sd ON u_student.user_id = sd.user_id
      WHERE a.admission_id = ?`,
     [id]
   );
@@ -54,9 +62,9 @@ export const createAdmission = async (data) => {
   const [result] = await db.query(
     `INSERT INTO admissions 
      (first_name, middle_name, last_name, email, phone, date_of_birth, gender, address,
-      previous_school, year_graduated, program_applied, application_date, entrance_exam_score,
+      previous_school, year_graduated, program_applied, year_level, application_date, entrance_exam_score,
       interview_date, interview_notes, status, decision_date, decision_by, remarks, documents_submitted)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.first_name,
       data.middle_name,
@@ -69,6 +77,7 @@ export const createAdmission = async (data) => {
       data.previous_school,
       data.year_graduated,
       data.program_applied,
+      data.year_level || "1st Year",
       normalizeOptionalDate(data.application_date),
       normalizeOptionalDecimal(data.entrance_exam_score),
       normalizeOptionalDate(data.interview_date),
@@ -89,7 +98,7 @@ export const updateAdmission = async (id, data) => {
     `UPDATE admissions SET
       first_name = ?, middle_name = ?, last_name = ?, email = ?, phone = ?,
       date_of_birth = ?, gender = ?, address = ?, previous_school = ?,
-      year_graduated = ?, program_applied = ?, application_date = ?,
+      year_graduated = ?, program_applied = ?, year_level = ?, application_date = ?,
       entrance_exam_score = ?, interview_date = ?, interview_notes = ?,
       status = ?, decision_date = ?, decision_by = ?, remarks = ?, documents_submitted = ?
      WHERE admission_id = ?`,
@@ -105,6 +114,7 @@ export const updateAdmission = async (id, data) => {
       data.previous_school,
       data.year_graduated,
       data.program_applied,
+      data.year_level || "1st Year",
       normalizeOptionalDate(data.application_date),
       normalizeOptionalDecimal(data.entrance_exam_score),
       normalizeOptionalDate(data.interview_date),

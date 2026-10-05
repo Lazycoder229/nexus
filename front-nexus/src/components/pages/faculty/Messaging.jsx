@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import {
   MessageCircle,
@@ -115,7 +116,7 @@ const Messaging = () => {
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      alert("Failed to send message");
+      toast.error("Failed to send message");
     }
   };
 
@@ -131,7 +132,7 @@ const Messaging = () => {
       });
 
       if (response.data.success) {
-        alert("Message sent successfully!");
+        toast.success("Message sent successfully!");
         setShowNewMessageModal(false);
         setNewMessageData({
           recipient_id: "",
@@ -143,7 +144,7 @@ const Messaging = () => {
       }
     } catch (error) {
       console.error("Error sending new message:", error);
-      alert("Failed to send message");
+      toast.error("Failed to send message");
     } finally {
       setLoading(false);
     }
@@ -160,13 +161,13 @@ const Messaging = () => {
       );
 
       if (response.data.success) {
-        alert("Conversation deleted!");
+        toast.info("Conversation deleted!");
         setSelectedConversation(null);
         fetchConversations();
       }
     } catch (error) {
       console.error("Error deleting conversation:", error);
-      alert("Failed to delete conversation");
+      toast.error("Failed to delete conversation");
     }
   };
 

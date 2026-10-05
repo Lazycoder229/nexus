@@ -3,13 +3,25 @@ import GradesController from "../controllers/grades.controller.js";
 
 const router = express.Router();
 
-// GET all grades (live-computed from grade_entries)
+// GET all grades (combines grades table and live-computed grade_entries)
 router.get("/", GradesController.getAllGrades);
 
-// GET one grade by composite id "{student_id}-{course_id}-{period_id}"
+// POST create/add a new grade
+router.post("/", GradesController.createGrade);
+
+// POST bulk-upsert grades (from faculty report sheet)
+router.post("/bulk/upsert", GradesController.bulkUpsertGrades);
+
+// GET one grade by id or composite key "{student_id}-{course_id}-{period_id}"
 router.get("/:id", GradesController.getGradeById);
 
-// POST bulk-approve all grade_entries for this student/course/period
+// PUT update a grade by id
+router.put("/:id", GradesController.updateGrade);
+
+// DELETE a grade by id
+router.delete("/:id", GradesController.deleteGrade);
+
+// POST approve grade for this student/course/period
 router.post("/:id/approve", GradesController.approveGrade);
 
 export default router;

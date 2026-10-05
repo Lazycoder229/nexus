@@ -18,6 +18,7 @@ import {
   User,
   Award,
 } from "lucide-react";
+import { downloadPDF, downloadExcel } from "../../../utils/exportHelpers";
 
 const AssignedSubjects = () => {
   const [loading, setLoading] = useState(true);
@@ -184,47 +185,66 @@ const AssignedSubjects = () => {
   });
 
   const handleExportList = () => {
-    // Create CSV content
-    const headers = [
-      "Course Code",
-      "Course Name",
-      "Section",
-      "Schedule",
-      "Room",
-      "Enrolled Students",
-      "Max Students",
-      "Units",
-      "Semester",
-      "Status",
-    ];
-    const rows = filteredCourses.map((course) => [
-      course.code,
-      course.name,
-      course.section,
-      course.schedule,
-      course.room,
-      course.students,
-      course.maxStudents,
-      course.units,
-      `${course.semester} ${course.school_year}`,
-      course.status,
-    ]);
+    const exportData = filteredCourses.map((course) => ({
+      code: course.code || "",
+      title: course.name || "",
+      section: course.section || "",
+      schedule: course.schedule || "",
+      room: course.room || "",
+      students: course.students ?? 0,
+      maxStudents: course.maxStudents ?? 0,
+      units: course.units ?? 0,
+      semester: `${course.semester || ""} ${course.school_year || ""}`.trim(),
+      status: course.status || "",
+    }));
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
-    ].join("\n");
+    downloadExcel(exportData, {
+      title: "Assigned Teaching Load",
+      officeLabel: "Academic Affairs",
+      headers: [
+        "code",
+        "title",
+        "section",
+        "schedule",
+        "room",
+        "students",
+        "maxStudents",
+        "units",
+        "semester",
+        "status",
+      ],
+    });
+  };
 
-    // Download CSV
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `assigned-courses-${new Date().toISOString().split("T")[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+  const handleExportListPDF = () => {
+    const exportData = filteredCourses.map((course) => ({
+      code: course.code || "",
+      title: course.name || "",
+      section: course.section || "",
+      schedule: course.schedule || "",
+      room: course.room || "",
+      students: course.students ?? 0,
+      maxStudents: course.maxStudents ?? 0,
+      units: course.units ?? 0,
+      status: course.status || "",
+    }));
+
+    downloadPDF(exportData, {
+      title: "Assigned Teaching Load",
+      officeLabel: "Academic Affairs",
+      orientation: "portrait",
+      headers: [
+        "code",
+        "title",
+        "section",
+        "schedule",
+        "room",
+        "students",
+        "maxStudents",
+        "units",
+        "status",
+      ],
+    });
   };
 
   const handleViewDetails = (courseId) => {
@@ -264,30 +284,39 @@ const AssignedSubjects = () => {
 
   const exportStudentList = () => {
     if (!students.length) return;
+    const exportData = students.map((student) => ({
+      student_id: student.student_id || "",
+      full_name: student.name || "",
+      email: student.email || "",
+      phone: student.phone || "N/A",
+      status: student.status || "",
+    }));
 
-    const headers = ["Student ID", "Name", "Email", "Phone", "Status"];
-    const rows = students.map((student) => [
-      student.student_id,
-      student.name,
-      student.email,
-      student.phone || "N/A",
-      student.status,
-    ]);
+    const courseTitle = `${selectedCourse?.code || "Course"} Section ${selectedCourse?.section || ""}`;
+    downloadExcel(exportData, {
+      title: `Student Roster - ${courseTitle}`,
+      officeLabel: "Academic Affairs",
+      headers: ["student_id", "full_name", "email", "phone", "status"],
+    });
+  };
 
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
-    ].join("\n");
+  const exportStudentListPDF = () => {
+    if (!students.length) return;
+    const exportData = students.map((student) => ({
+      student_id: student.student_id || "",
+      full_name: student.name || "",
+      email: student.email || "",
+      phone: student.phone || "N/A",
+      status: student.status || "",
+    }));
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `students-${selectedCourse?.code}-${new Date().toISOString().split("T")[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    const courseTitle = `${selectedCourse?.code || "Course"} Section ${selectedCourse?.section || ""}`;
+    downloadPDF(exportData, {
+      title: `Student Roster - ${courseTitle}`,
+      officeLabel: "Academic Affairs",
+      orientation: "portrait",
+      headers: ["student_id", "full_name", "email", "phone", "status"],
+    });
   };
 
   if (loading) {
@@ -368,10 +397,19 @@ const AssignedSubjects = () => {
             </div>
             <button
               onClick={handleExportList}
-              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-md font-medium text-sm transition-colors shadow-md shadow-indigo-500/30 whitespace-nowrap"
+              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-md font-medium text-sm transition-colors shadow-sm whitespace-nowrap"
+              title="Export to Excel"
             >
               <Download size={14} />
-              Export List
+              Excel
+            </button>
+            <button
+              onClick={handleExportListPDF}
+              className="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white px-3 py-2 rounded-md font-medium text-sm transition-colors shadow-sm whitespace-nowrap"
+              title="Export to PDF"
+            >
+              <FileText size={14} />
+              PDF
             </button>
           </div>
         </div>
@@ -736,10 +774,20 @@ const AssignedSubjects = () => {
                     <button
                       onClick={exportStudentList}
                       disabled={students.length === 0}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
+                      className="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 text-sm font-medium"
+                      title="Export Excel"
                     >
-                      <Download size={16} />
-                      Export CSV
+                      <Download size={14} />
+                      Excel
+                    </button>
+                    <button
+                      onClick={exportStudentListPDF}
+                      disabled={students.length === 0}
+                      className="px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 text-sm font-medium"
+                      title="Export PDF"
+                    >
+                      <FileText size={14} />
+                      PDF
                     </button>
                     <button
                       onClick={() => setShowStudentsModal(false)}

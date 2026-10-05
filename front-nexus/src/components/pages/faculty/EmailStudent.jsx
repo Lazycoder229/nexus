@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import {
   Mail,
@@ -153,13 +154,13 @@ const EmailStudent = () => {
       );
 
       if (response.data.success) {
-        alert("Email sent successfully!");
+        toast.success("Email sent successfully!");
         resetForm();
         fetchSentEmails();
       }
     } catch (error) {
       console.error("Error sending email:", error);
-      alert("Failed to send email");
+      toast.error("Failed to send email");
     } finally {
       setLoading(false);
     }

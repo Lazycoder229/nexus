@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Select from "react-select";
@@ -139,7 +140,7 @@ const BorrowReturn = () => {
       closeModal();
     } catch (error) {
       console.error("Error creating transaction:", error);
-      alert(error.response?.data?.error || "Error creating transaction");
+      toast.error(error.response?.data?.error || "Error creating transaction");
     }
   };
 
@@ -156,7 +157,7 @@ const BorrowReturn = () => {
       closeReturnModal();
     } catch (error) {
       console.error("Error returning book:", error);
-      alert(error.response?.data?.error || "Error returning book");
+      toast.error(error.response?.data?.error || "Error returning book");
     }
   };
 

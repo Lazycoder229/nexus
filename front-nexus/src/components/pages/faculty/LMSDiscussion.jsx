@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   MessageCircle,
@@ -137,7 +138,7 @@ const LMSDiscussion = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.academic_period_id) {
-      alert("Please select an academic period.");
+      toast.warning("Please select an academic period.");
       return;
     }
 
@@ -159,14 +160,14 @@ const LMSDiscussion = () => {
       );
 
       if (response.data.success) {
-        alert("Discussion created successfully!");
+        toast.success("Discussion created successfully!");
         setShowCreateModal(false);
         resetForm();
         fetchDiscussions();
       }
     } catch (error) {
       console.error("Error creating discussion:", error);
-      alert("Failed to create discussion");
+      toast.error("Failed to create discussion");
     } finally {
       setLoading(false);
     }
@@ -195,7 +196,7 @@ const LMSDiscussion = () => {
       }
     } catch (error) {
       console.error("Error posting reply:", error);
-      alert("Failed to post reply");
+      toast.error("Failed to post reply");
     }
   };
 
@@ -210,12 +211,12 @@ const LMSDiscussion = () => {
       );
 
       if (response.data.success) {
-        alert("Discussion deleted successfully!");
+        toast.success("Discussion deleted successfully!");
         fetchDiscussions();
       }
     } catch (error) {
       console.error("Error deleting discussion:", error);
-      alert("Failed to delete discussion");
+      toast.error("Failed to delete discussion");
     }
   };
 

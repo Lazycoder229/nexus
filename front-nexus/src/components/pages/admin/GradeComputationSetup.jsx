@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import Select from "react-select";
 import {
@@ -181,19 +182,17 @@ const GradeComputationSetup = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert(
-          editingSetting
+        toast.success(editingSetting
             ? "Setting updated successfully"
-            : "Setting created successfully",
-        );
+            : "Setting created successfully",);
         handleCloseModal();
         fetchSettings();
       } else {
-        alert("Error: " + (data.message || "Failed to save setting"));
+        toast.error("Error: " + (data.message || "Failed to save setting"));
       }
     } catch (error) {
       console.error("Error saving setting:", error);
-      alert("Error saving setting");
+      toast.error("Error saving setting");
     }
   };
 
@@ -206,12 +205,12 @@ const GradeComputationSetup = () => {
       );
       const data = await response.json();
       if (data.success) {
-        alert("Setting deleted successfully");
+        toast.success("Setting deleted successfully");
         fetchSettings();
       }
     } catch (error) {
       console.error("Error deleting setting:", error);
-      alert("Error deleting setting");
+      toast.error("Error deleting setting");
     }
   };
 

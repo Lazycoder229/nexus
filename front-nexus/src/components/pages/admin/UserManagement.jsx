@@ -1246,7 +1246,7 @@ const handleRoleChange = (e) => {
     }));
     downloadPDF(jsPDF, autoTable, exportData, {
       title: "Users Report",
-      orientation: "landscape",
+      orientation: "portrait",
       headers: ["first_name","last_name","email","role","id_number","department","status"],
       includeTimestamps: false,
     });

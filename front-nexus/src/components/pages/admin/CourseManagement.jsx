@@ -15,9 +15,7 @@ import {
   BookAlert,
   EyeIcon,
 } from "lucide-react";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
-import { saveAs } from "file-saver";
+import { downloadPDF, downloadExcel } from "../../../utils/exportHelpers";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -82,12 +80,14 @@ const CourseModal = ({
     units: 3,
     hours: 3,
     type: "Major",
+    curriculum_type: "New",
     semester_offer: "",
     department_id: null,
     instructor_id: null,
     status: "Active",
   });
   useEffect(() => {
+    if (!isOpen) return;
     if (initialData) {
       setFormData({
         code: initialData.code || "",
@@ -96,6 +96,7 @@ const CourseModal = ({
         units: initialData.units || 3,
         hours: initialData.hours || 3,
         type: initialData.type || "Major",
+        curriculum_type: initialData.curriculum_type || "Old",
         semester_offer: initialData.semester_offer || "",
         department_id: initialData.department_id || null,
         instructor_id: initialData.instructor_id || null,
@@ -110,6 +111,7 @@ const CourseModal = ({
         units: 3,
         hours: 3,
         type: "Major",
+        curriculum_type: "New",
         semester_offer: "",
         department_id: null,
         instructor_id: null,
@@ -117,16 +119,14 @@ const CourseModal = ({
         id: null,
       });
     }
-  }, [initialData]);
+  }, [initialData, isOpen]);
 
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
-    console.log("Form data being submitted:", formData);
-    onClose();
+    await onSubmit(formData);
   };
 
   if (!isOpen) return null;
@@ -257,6 +257,22 @@ const CourseModal = ({
                   <option value="Minor">Minor</option>
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Curriculum
+              </label>
+              <select
+                name="curriculum_type"
+                value={formData.curriculum_type}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="New">New Curriculum</option>
+                <option value="Old">Old Curriculum</option>
+              </select>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
@@ -595,9 +611,14 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm }) => {
 const CourseManagement = () => {
   const [courses, setCourses] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [programs, setPrograms] = useState([]);
   const [instructors, setInstructors] = useState([]);
   const [semesters, setSemesters] = useState([]);
   const [search, setSearch] = useState("");
+  const [filterYearLevel, setFilterYearLevel] = useState("");
+  const [filterProgram, setFilterProgram] = useState("");
+  const [filterSemesterOffer, setFilterSemesterOffer] = useState("");
+  const [filterCurriculum, setFilterCurriculum] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(10);
   const [modalOpen, setModalOpen] = useState(false);
@@ -648,14 +669,33 @@ const CourseManagement = () => {
     }
   };
 
+  const fetchPrograms = async () => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/programs`);
+      // GET /api/programs returns an array with id, code, and name fields.
+      const responseData = res.data;
+      const programRows = Array.isArray(responseData)
+        ? responseData
+        : responseData?.programs || responseData?.data || [];
+      setPrograms(Array.isArray(programRows) ? programRows : []);
+    } catch (err) {
+      console.error("Failed to fetch programs:", err);
+    }
+  };
+
   const fetchSemesters = async () => {
     try {
       const res = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/api/academic-periods`,
       );
       // Extract unique semesters from academic periods
-      const uniqueSemesters = [...new Set(res.data.map((period) => period.semester))];
-      setSemesters(uniqueSemesters);
+      // GET /api/academic-periods returns rows with period_id alias `id` and `semester`.
+      const responseData = res.data;
+      const periods = Array.isArray(responseData)
+        ? responseData
+        : responseData?.periods || responseData?.data || [];
+      const uniqueSemesters = [...new Set(periods.map((period) => period.semester).filter(Boolean))];
+      setSemesters([...new Set([...uniqueSemesters, "Summer"])]);
     } catch (err) {
       console.error("Failed to fetch semesters:", err);
     }
@@ -665,6 +705,7 @@ const CourseManagement = () => {
     fetchCourses();
     fetchDepartments();
     fetchInstructors();
+    fetchPrograms();
     fetchSemesters();
   }, []);
 
@@ -673,10 +714,14 @@ const CourseManagement = () => {
     () =>
       courses.filter(
         (c) =>
-          (c.code || "").toLowerCase().includes(search.toLowerCase()) ||
-          (c.title || "").toLowerCase().includes(search.toLowerCase()),
+          ((c.code || "").toLowerCase().includes(search.toLowerCase()) ||
+            (c.title || "").toLowerCase().includes(search.toLowerCase())) &&
+          (!filterYearLevel || String(c.year_level || c.yearLevel || "") === filterYearLevel) &&
+          (!filterProgram || String(c.program_id || c.programId || "") === filterProgram) &&
+          (!filterSemesterOffer || String(c.semester_offer || "") === filterSemesterOffer) &&
+          (!filterCurriculum || String(c.curriculum_type || "Old") === filterCurriculum),
       ),
-    [courses, search],
+    [courses, search, filterYearLevel, filterProgram, filterSemesterOffer, filterCurriculum],
   );
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
@@ -687,38 +732,36 @@ const CourseManagement = () => {
 
   // Export
   const exportCSV = (data) => {
-    const csv = [
-      ["ID", "Code", "Title", "Department", "Instructor", "Units"],
-      ...data.map((c) => [
-        c.course_id,
-        c.code,
-        c.title,
-        c.department_name,
-        c.instructor_name || "N/A",
-        c.units,
-      ]),
-    ]
-      .map((e) => e.join(","))
-      .join("\n");
-    saveAs(new Blob([csv], { type: "text/csv;charset=utf-8;" }), "courses.csv");
+    const exportData = data.map((c) => ({
+      course_id: c.course_id,
+      code: c.code || "",
+      title: c.title || "",
+      department: c.department_name || "",
+      instructor: c.instructor_name || "N/A",
+      units: c.units ?? 0,
+    }));
+    downloadExcel(exportData, {
+      title: "Course Catalog",
+      officeLabel: "Registrar Office",
+      headers: ["course_id", "code", "title", "department", "instructor", "units"],
+    });
   };
 
   const exportPDF = (data) => {
-    const doc = new jsPDF();
-    doc.text("Courses", 14, 16);
-    doc.autoTable({
-      head: [["ID", "Code", "Title", "Department", "Instructor", "Units"]],
-      body: data.map((c) => [
-        c.course_id,
-        c.code,
-        c.title,
-        c.department_name,
-        c.instructor_name || "N/A",
-        c.units,
-      ]),
-      startY: 20,
+    const exportData = data.map((c) => ({
+      course_id: c.course_id,
+      code: c.code || "",
+      title: c.title || "",
+      department: c.department_name || "",
+      instructor: c.instructor_name || "N/A",
+      units: c.units ?? 0,
+    }));
+    downloadPDF(exportData, {
+      title: "Course Catalog",
+      officeLabel: "Registrar Office",
+      orientation: "portrait",
+      headers: ["course_id", "code", "title", "department", "instructor", "units"],
     });
-    doc.save("courses.pdf");
   };
 
   // CRUD
@@ -741,6 +784,7 @@ const CourseManagement = () => {
         toast.success("Course updated successfully.");
       }
       setModalOpen(false);
+      return true;
     } catch (err) {
       // Log the server's actual validation message, not just the generic Axios error.
       console.error(
@@ -753,6 +797,7 @@ const CourseManagement = () => {
             ? "Failed to add course."
             : "Failed to update course."),
       );
+      return false;
     }
   };
 
@@ -805,6 +850,7 @@ const CourseManagement = () => {
       </div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:flex-1">
         <input
           type="text"
           placeholder="Search courses..."
@@ -813,8 +859,26 @@ const CourseManagement = () => {
             setSearch(e.target.value);
             setPage(1);
           }}
-          className="px-2 py-1 border border-slate-400 rounded-md w-full sm:w-1/3 focus:ring-1 focus:ring-indigo-500"
+          className="px-2 py-1 border border-slate-400 rounded-md w-full sm:max-w-xs focus:ring-1 focus:ring-indigo-500"
         />
+        <select value={filterYearLevel} onChange={(e) => { setFilterYearLevel(e.target.value); setPage(1); }} className="px-2 py-1 border border-slate-400 rounded-md bg-white text-sm">
+          <option value="">All Year Levels</option>
+          {["1st Year", "2nd Year", "3rd Year", "4th Year"].map((year) => <option key={year} value={year}>{year}</option>)}
+        </select>
+        <select value={filterProgram} onChange={(e) => { setFilterProgram(e.target.value); setPage(1); }} className="px-2 py-1 border border-slate-400 rounded-md bg-white text-sm">
+          <option value="">All Programs</option>
+          {programs.map((program) => <option key={program.program_id || program.id} value={program.program_id || program.id}>{program.code ? `${program.code} - ` : ""}{program.name || program.program_name}</option>)}
+        </select>
+        <select value={filterSemesterOffer} onChange={(e) => { setFilterSemesterOffer(e.target.value); setPage(1); }} className="px-2 py-1 border border-slate-400 rounded-md bg-white text-sm">
+          <option value="">All Semester Offers</option>
+          {semesters.map((semester) => <option key={semester} value={semester}>{semester}</option>)}
+        </select>
+        <select value={filterCurriculum} onChange={(e) => { setFilterCurriculum(e.target.value); setPage(1); }} className="px-2 py-1 border border-slate-400 rounded-md bg-white text-sm">
+          <option value="">All Curricula</option>
+          <option value="New">New Curriculum</option>
+          <option value="Old">Old Curriculum</option>
+        </select>
+        </div>
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => exportCSV(filtered)}
@@ -852,6 +916,9 @@ const CourseManagement = () => {
                 Title
               </th>
               <th className="px-3 py-2 text-left text-sm font-semibold">
+                Curriculum
+              </th>
+              <th className="px-3 py-2 text-left text-sm font-semibold">
                 Department
               </th>
               <th className="px-3 py-2 text-left text-sm font-semibold">
@@ -878,6 +945,7 @@ const CourseManagement = () => {
                   <td className="px-3 py-2 text-sm">{c.id}</td>
                   <td className="px-3 py-2 text-sm">{c.code}</td>
                   <td className="px-3 py-2 text-sm">{c.title}</td>
+                  <td className="px-3 py-2 text-sm">{c.curriculum_type || "Old"}</td>
                   <td className="px-3 py-2 text-sm">{c.department_name}</td>
                   <td className="px-3 py-2 text-sm">
                     {c.instructor_name || "N/A"}
@@ -920,7 +988,7 @@ const CourseManagement = () => {
             ) : (
               <tr key="no-courses">
                 <td
-                  colSpan={9}
+                  colSpan={10}
                   className="text-center py-4 text-slate-500 italic"
                 >
                   No courses found.

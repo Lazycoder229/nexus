@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import {
@@ -127,7 +128,7 @@ const BookCatalog = () => {
       closeModal();
     } catch (error) {
       console.error("Error saving book:", error);
-      alert(error.response?.data?.error || "Error saving book");
+      toast.error(error.response?.data?.error || "Error saving book");
     }
   };
 
@@ -170,7 +171,7 @@ const BookCatalog = () => {
         fetchStatistics();
       } catch (error) {
         console.error("Error deleting book:", error);
-        alert(error.response?.data?.error || "Error deleting book");
+        toast.error(error.response?.data?.error || "Error deleting book");
       }
     }
   };

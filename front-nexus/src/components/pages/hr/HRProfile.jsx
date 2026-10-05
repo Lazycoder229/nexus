@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
@@ -135,13 +136,11 @@ const HRProfile = () => {
     } catch (error) {
       console.error("Error fetching profile:", error);
       if (error.response?.status === 401) {
-        alert("Session expired. Please login again.");
+        toast.error("Session expired. Please login again.");
         localStorage.clear();
       } else {
-        alert(
-          error.response?.data?.message ||
-            "Failed to load profile. Please try again."
-        );
+        toast.error(error.response?.data?.message ||
+            "Failed to load profile. Please try again.");
       }
       setLoading(false);
     }
@@ -151,7 +150,7 @@ const HRProfile = () => {
     const storedUserId = localStorage.getItem("userId");
     const token = localStorage.getItem("token");
     if (!storedUserId || !token) {
-      alert("Please login first");
+      toast.warning("Please login first");
       return;
     }
     setUserId(storedUserId);

@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import {
@@ -108,7 +109,7 @@ const TuitionFeeSetup = () => {
       fetchFees();
     } catch (error) {
       console.error("Error saving fee:", error);
-      alert("Failed to save tuition fee setup");
+      toast.error("Failed to save tuition fee setup");
     }
   };
 

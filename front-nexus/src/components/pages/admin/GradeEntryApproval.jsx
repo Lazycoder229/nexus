@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import Select from "react-select";
 import {
@@ -225,19 +226,17 @@ const GradeEntryApproval = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert(
-          editingEntry
+        toast.success(editingEntry
             ? "Grade entry updated successfully"
-            : "Grade entry created successfully",
-        );
+            : "Grade entry created successfully",);
         handleCloseModal();
         fetchGradeEntries();
       } else {
-        alert("Error: " + (data.message || "Failed to save grade entry"));
+        toast.error("Error: " + (data.message || "Failed to save grade entry"));
       }
     } catch (error) {
       console.error("Error saving grade entry:", error);
-      alert("Error saving grade entry");
+      toast.error("Error saving grade entry");
     }
   };
 

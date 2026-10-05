@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import Select from "react-select";
 import {
@@ -163,19 +164,17 @@ const ExamScheduleBuilder = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert(
-          editingSchedule
+        toast.success(editingSchedule
             ? "Schedule updated successfully"
-            : "Schedule created successfully",
-        );
+            : "Schedule created successfully",);
         handleCloseModal();
         fetchSchedules();
       } else {
-        alert("Error: " + (data.message || "Failed to save schedule"));
+        toast.error("Error: " + (data.message || "Failed to save schedule"));
       }
     } catch (error) {
       console.error("Error saving schedule:", error);
-      alert("Error saving schedule");
+      toast.error("Error saving schedule");
     }
   };
 
@@ -188,12 +187,12 @@ const ExamScheduleBuilder = () => {
       );
       const data = await response.json();
       if (data.success) {
-        alert("Schedule deleted successfully");
+        toast.success("Schedule deleted successfully");
         fetchSchedules();
       }
     } catch (error) {
       console.error("Error deleting schedule:", error);
-      alert("Error deleting schedule");
+      toast.error("Error deleting schedule");
     }
   };
 

@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import { Bell, AlertTriangle, Users, Calendar, Mail, Phone, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import dayjs from "dayjs";
@@ -152,12 +153,12 @@ const AbsenteeAlerts = () => {
       );
       
       if (response.ok) {
-        alert(`Notification sent to ${student.name}`);
+        toast.info(`Notification sent to ${student.name}`);
         fetchAbsentees();
       }
     } catch (error) {
       console.error("Error sending notification:", error);
-      alert("Failed to send notification");
+      toast.error("Failed to send notification");
     }
   };
 

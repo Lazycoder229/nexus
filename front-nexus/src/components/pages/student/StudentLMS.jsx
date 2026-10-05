@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
@@ -257,7 +258,7 @@ const StudentLMS = () => {
       const questions = response.data?.questions || [];
 
       if (questions.length === 0) {
-        alert("This quiz has no questions yet.");
+        toast.warning("This quiz has no questions yet.");
         return;
       }
 
@@ -266,7 +267,7 @@ const StudentLMS = () => {
       setSelectedQuiz(quiz);
     } catch (error) {
       console.error("Error fetching quiz questions:", error);
-      alert("Failed to load quiz.");
+      toast.error("Failed to load quiz.");
     }
   };
 
@@ -292,9 +293,9 @@ const StudentLMS = () => {
       const { score } = submitRes.data;
 
       if (score !== undefined) {
-        alert(`Quiz submitted! Your score: ${score}/${totalPoints}`);
+        toast.info(`Quiz submitted! Your score: ${score}/${totalPoints}`);
       } else {
-        alert("Quiz submitted successfully!");
+        toast.success("Quiz submitted successfully!");
       }
 
       setSelectedQuiz(null);
@@ -303,7 +304,7 @@ const StudentLMS = () => {
       fetchAssignmentsAndQuizzes();
     } catch (error) {
       console.error("Error submitting quiz:", error);
-      alert("Failed to submit quiz.");
+      toast.error("Failed to submit quiz.");
     }
   };
 
@@ -317,7 +318,7 @@ const StudentLMS = () => {
       const questions = response.data?.questions || [];
 
       if (questions.length === 0) {
-        alert("Unable to load quiz results.");
+        toast.error("Unable to load quiz results.");
         return;
       }
 
@@ -328,7 +329,7 @@ const StudentLMS = () => {
       setSelectedQuiz(quiz);
     } catch (error) {
       console.error("Error fetching quiz results:", error);
-      alert("Failed to load quiz results. Ensure you have submitted the quiz.");
+      toast.error("Failed to load quiz results. Ensure you have submitted the quiz.");
     }
   };
 
@@ -379,13 +380,13 @@ const StudentLMS = () => {
           },
         });
 
-        alert("Assignment submitted successfully!");
+        toast.success("Assignment submitted successfully!");
         setSelectedAssignment(null);
         setSubmissionFile(null);
         fetchAssignmentsAndQuizzes(); // Refresh list
       } catch (error) {
         console.error("Error submitting assignment:", error);
-        alert(`Failed to submit assignment: ${error.message || "Unknown error"}`);
+        toast.error(`Failed to submit assignment: ${error.message || "Unknown error"}`);
       } finally {
         setIsSubmittingAssignment(false);
       }
@@ -393,7 +394,7 @@ const StudentLMS = () => {
 
     reader.onerror = (error) => {
       console.error("Error reading file:", error);
-      alert("Failed to read file for upload");
+      toast.error("Failed to read file for upload");
       setIsSubmittingAssignment(false);
     };
   };
@@ -417,7 +418,7 @@ const StudentLMS = () => {
       fetchDiscussions();
     } catch (error) {
       console.error("Error submitting reply:", error);
-      alert("Failed to submit reply");
+      toast.error("Failed to submit reply");
     }
   };
 

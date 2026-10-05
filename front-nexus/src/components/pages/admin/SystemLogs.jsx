@@ -1,5 +1,7 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import { FileText, Search, ChevronLeft, ChevronRight, BarChart3, Trash2, AlertCircle, Activity, Database, Shield, Download } from "lucide-react";
+import { downloadPDF, downloadExcel } from "../../../utils/exportHelpers";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 const SystemLogs = () => {
   const [logs, setLogs] = useState([]);
@@ -77,38 +79,47 @@ const SystemLogs = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert(`Successfully deleted ${data.deleted_count} log entries`);
+        toast.success(`Successfully deleted ${data.deleted_count} log entries`);
         fetchLogs();
         fetchStatistics();
       }
     } catch (error) {
       console.error("Error cleaning up logs:", error);
-      alert("Failed to cleanup logs");
+      toast.error("Failed to cleanup logs");
     }
   };
 
   const handleExport = () => {
-    const csvContent = [
-      ["Date/Time", "Type", "Message", "User", "IP Address", "Module"].join(","),
-      ...filteredData.map((log) =>
-        [
-          new Date(log.created_at).toLocaleString(),
-          log.log_type,
-          `"${log.message.replace(/"/g, '""')}"`,
-          log.username || "System",
-          log.ip_address || "N/A",
-          log.module || "N/A",
-        ].join(",")
-      ),
-    ].join("\n");
+    const exportData = filteredData.map((log) => ({
+      created_at: new Date(log.created_at).toLocaleString(),
+      log_type: log.log_type || "",
+      message: log.message || "",
+      username: log.username || "System",
+      ip_address: log.ip_address || "N/A",
+      module: log.module || "N/A",
+    }));
+    downloadExcel(exportData, {
+      title: "System Audit Logs",
+      officeLabel: "Management Information System",
+      headers: ["created_at", "log_type", "message", "username", "ip_address", "module"],
+    });
+  };
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `system_logs_${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const handleExportPDF = () => {
+    const exportData = filteredData.map((log) => ({
+      created_at: new Date(log.created_at).toLocaleString(),
+      log_type: log.log_type || "",
+      message: log.message || "",
+      username: log.username || "System",
+      ip_address: log.ip_address || "N/A",
+      module: log.module || "N/A",
+    }));
+    downloadPDF(exportData, {
+      title: "System Audit Logs",
+      officeLabel: "Management Information System",
+      orientation: "portrait",
+      headers: ["created_at", "log_type", "message", "username", "ip_address", "module"],
+    });
   };
 
   const filteredData = logs.filter((item) => {
@@ -157,10 +168,19 @@ const SystemLogs = () => {
         <div className="flex gap-2">
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium"
+            title="Export Excel"
           >
             <Download className="h-4 w-4" />
-            Export Logs
+            Excel
+          </button>
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg transition-colors text-sm font-medium"
+            title="Export PDF"
+          >
+            <FileText className="h-4 w-4" />
+            PDF
           </button>
           <button
             onClick={handleCleanup}

@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import { CalendarCheck, Plus, Edit, Trash2, Users, MapPin, Clock, Search, ChevronLeft, ChevronRight } from "lucide-react";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -76,7 +77,7 @@ const EventScheduling = () => {
         handleCloseModal();
       } else {
         console.error("Save failed:", data);
-        alert(`Error: ${data.error || "Failed to save event"}`);
+        toast.error(`Error: ${data.error || "Failed to save event"}`);
       }
     } catch (error) {
       console.error("Error saving event:", error);

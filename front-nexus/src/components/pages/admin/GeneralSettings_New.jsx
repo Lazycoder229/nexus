@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import { Settings, Globe, GraduationCap, Shield, Bell, Wrench, Save, RefreshCw } from "lucide-react";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -157,11 +158,11 @@ const GeneralSettingsNew = () => {
         });
       }
 
-      alert("Settings saved successfully!");
+      toast.success("Settings saved successfully!");
       fetchSettings();
     } catch (error) {
       console.error("Error saving settings:", error);
-      alert("Failed to save settings");
+      toast.error("Failed to save settings");
     } finally {
       setSaving(false);
     }

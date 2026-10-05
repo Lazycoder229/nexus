@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useEffect, useMemo, useState } from "react";
 import { Check, ArrowLeft, ArrowRight, BookOpen, Calendar, Hash, LayoutDashboard, MapPin, Phone, GraduationCap, ShieldCheck, User, Users, School, Building2, Eye, EyeOff, AlertCircle, Lock } from "lucide-react";
 import api from "../../api/axios";
@@ -395,7 +396,7 @@ const StudentRegistrationForm = ({ onBackToLogin }) => {
       setVerificationEmail(emailToVerify);
       setIsVerifying(true);
     } catch (error) {
-      alert(error.response?.data?.message || "Registration failed. Please try again.");
+      toast.error(error.response?.data?.message || "Registration failed. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -639,8 +640,19 @@ const StudentRegistrationForm = ({ onBackToLogin }) => {
 
   if (isVerifying) {
     return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-slate-950 p-4 font-sans">
-        <div className="w-full max-w-3xl">
+      <div className="relative flex min-h-screen w-full items-center justify-center p-4 font-sans overflow-hidden">
+        {/* Background Image Overlay */}
+        <div
+          className="absolute top-0 left-0 w-full h-full pointer-events-none"
+          style={{
+            backgroundImage: "url('/Baco_Mahalta.jpg')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: "brightness(0.5) blur(1px)",
+            zIndex: 0,
+          }}
+        />
+        <div className="relative z-10 w-full max-w-3xl">
           <EmailVerification
             email={verificationEmail}
             onVerificationSuccess={() => {
@@ -661,9 +673,21 @@ const StudentRegistrationForm = ({ onBackToLogin }) => {
     : "No active academic period";
 
   return (
-    <div className="flex min-h-screen w-full flex-col overflow-hidden bg-slate-100 md:flex-row">
-      <aside className="relative order-1 overflow-hidden bg-gradient-to-br from-blue-800 to-indigo-900 p-5 text-white md:order-1 md:w-[34%] md:p-8">
-        <div className="absolute inset-0 opacity-20">
+    <div className="relative flex min-h-screen w-full flex-col overflow-hidden md:flex-row font-sans">
+      {/* Background Image Overlay */}
+      <div
+        className="absolute top-0 left-0 w-full h-full pointer-events-none"
+        style={{
+          backgroundImage: "url('/Baco_Mahalta.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          filter: "brightness(0.5) blur(1px)",
+          zIndex: 0,
+        }}
+      />
+
+      <aside className="relative z-10 order-1 overflow-hidden bg-gradient-to-br from-blue-900/90 via-indigo-950/90 to-slate-950/90 p-5 text-white backdrop-blur-md md:order-1 md:w-[34%] md:p-8">
+        <div className="absolute inset-0 opacity-20 pointer-events-none">
           <div className="absolute -right-16 top-0 h-44 w-44 rounded-full border-4 border-white/20" />
           <div className="absolute left-[-20px] bottom-[18%] h-20 w-20 rounded-full bg-white/10 blur-2xl" />
         </div>
@@ -683,7 +707,7 @@ const StudentRegistrationForm = ({ onBackToLogin }) => {
             </p>
           </div>
 
-          <div className="mt-6 hidden space-y-4 rounded-2xl border border-white/10 bg-blue-900/20 p-4 backdrop-blur-md md:mt-8 md:block">
+          <div className="mt-6 hidden space-y-4 rounded-2xl border border-white/10 bg-blue-900/30 p-4 backdrop-blur-md md:mt-8 md:block">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-blue-200">Student ID</p>
               <p className="mt-1 text-xl font-black text-white md:text-2xl">
@@ -691,11 +715,11 @@ const StudentRegistrationForm = ({ onBackToLogin }) => {
               </p>
             </div>
             <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-              <div className="rounded-xl bg-black/10 p-3">
+              <div className="rounded-xl bg-black/20 p-3">
                 <p className="text-[10px] uppercase tracking-[0.2em] text-blue-200">Date Registered</p>
                 <p className="mt-1 font-semibold text-white">{formData.dateRegistered}</p>
               </div>
-              <div className="rounded-xl bg-black/10 p-3">
+              <div className="rounded-xl bg-black/20 p-3">
                 <p className="text-[10px] uppercase tracking-[0.2em] text-blue-200">Academic Period</p>
                 <p className="mt-1 font-semibold text-white">{activePeriodLabel}</p>
               </div>
@@ -708,8 +732,8 @@ const StudentRegistrationForm = ({ onBackToLogin }) => {
         </div>
       </aside>
 
-      <main className="order-1 flex-1 bg-white p-3 md:order-2 md:bg-slate-50 md:p-6 dark:bg-slate-900 dark:md:bg-slate-900">
-        <div className="mx-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-950 md:max-h-[92vh] md:rounded-3xl md:shadow-xl">
+      <main className="relative z-10 order-1 flex-1 p-3 md:order-2 md:p-6 flex items-center justify-center">
+        <div className="mx-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/20 bg-white/95 shadow-2xl backdrop-blur-md dark:border-slate-700 dark:bg-slate-950/95 md:max-h-[92vh] md:rounded-3xl">
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800 md:px-6 md:py-4">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-600">Registration Form</p>

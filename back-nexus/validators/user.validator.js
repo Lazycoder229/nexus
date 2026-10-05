@@ -20,7 +20,10 @@ const phoneField = z
 const nameField = (label) =>
   z.string().min(1, `${label} is required`).max(100, `${label} too long`);
 
-const optionalString = z.string().optional().nullable();
+const optionalString = z.preprocess(
+  (val) => (val !== null && val !== undefined ? String(val) : val),
+  z.string().optional().nullable(),
+);
 
 /* ==========================================
    AUTH SCHEMAS
@@ -67,8 +70,8 @@ export const registerStudentSchema = z.object({
   firstName: nameField("First name"),
   middleName: optionalString,
   lastName: nameField("Last name"),
-  dateOfBirth: z.string().optional().nullable(),
-  gender: z.string().optional().nullable(),
+  dateOfBirth: optionalString,
+  gender: optionalString,
   phone: phoneField,
 
   permanentAddress: optionalString,
@@ -89,6 +92,8 @@ export const registerStudentSchema = z.object({
   citizenship: optionalString,
   studentType: optionalString,
 
+  previousSchool: optionalString,
+  yearGraduated: optionalString,
   elementarySchool: optionalString,
   elementaryYearGraduated: optionalString,
   juniorHighSchool: optionalString,
@@ -136,30 +141,87 @@ export const registerStudentSchema = z.object({
 
 export const updateStudentSchema = z.object({
   email: z.string().email("Invalid email format").optional(),
-  password: passwordField.optional(),           // ← DAGDAG ITO
+  password: passwordField.optional(),
   confirmPassword: z.string().optional(),
+
   firstName: nameField("First name").optional(),
   middleName: optionalString,
   lastName: nameField("Last name").optional(),
   suffix: z.enum(["", "Jr.", "Sr.", "III", "IV"]).optional().nullable(),
-   dateOfBirth: optionalString, // dob → dateOfBirth
-  gender: z
-    .enum(["Male", "Female", "Non-Binary", "Prefer not to say", ""])
-    .optional()
-    .nullable(),
+  dateOfBirth: optionalString,
+  dob: optionalString,
+  gender: optionalString,
   phone: phoneField,
   parentPhone: phoneField,
+
   permanentAddress: optionalString,
   mailingAddress: optionalString,
-  fatherName: optionalString,
-  motherName: optionalString,
   studentNumber: optionalString,
+
+  academicYear: optionalString,
+  semester: optionalString,
   course: optionalString,
+  courseProgram: optionalString,
   major: optionalString,
   yearLevel: optionalString,
+  dateRegistered: optionalString,
+
+  civilStatus: optionalString,
+  religion: optionalString,
+  isPwd: optionalString,
+  indigenousPeople: optionalString,
+  zipCode: optionalString,
+  birthPlace: optionalString,
+  citizenship: optionalString,
+  studentType: optionalString,
+
   previousSchool: optionalString,
   yearGraduated: optionalString,
+  elementarySchool: optionalString,
+  elementaryYearGraduated: optionalString,
+  juniorHighSchool: optionalString,
+  juniorHighYearGraduated: optionalString,
+  seniorHighSchool: optionalString,
+  seniorHighYearGraduated: optionalString,
+  collegeProgramAttended: optionalString,
+  schoolYearAttended: optionalString,
+
+  fatherName: optionalString,
+  fatherStatus: optionalString,
+  fatherResidenceStreet: optionalString,
+  fatherResidenceBarangay: optionalString,
+  fatherResidenceCity: optionalString,
+  fatherResidenceProvince: optionalString,
+  fatherResidenceZipCode: optionalString,
+  fatherOccupation: optionalString,
+  fatherPhone: optionalString,
+
+  motherName: optionalString,
+  motherStatus: optionalString,
+  motherResidenceStreet: optionalString,
+  motherResidenceBarangay: optionalString,
+  motherResidenceCity: optionalString,
+  motherResidenceProvince: optionalString,
+  motherResidenceZipCode: optionalString,
+  motherOccupation: optionalString,
+  motherPhone: optionalString,
+
+  guardianName: optionalString,
+  guardianRelationship: optionalString,
+  guardianResidenceStreet: optionalString,
+  guardianResidenceBarangay: optionalString,
+  guardianResidenceCity: optionalString,
+  guardianResidenceProvince: optionalString,
+  guardianResidenceZipCode: optionalString,
+  guardianOccupation: optionalString,
+  guardianPhone: optionalString,
+
+  otherFinancialAssistance: optionalString,
+  scholarshipAssistance1: optionalString,
+  scholarshipAssistance2: optionalString,
+  scholarshipAssistance3: optionalString,
 });
+
 
 /* ==========================================
    EMPLOYEE SCHEMAS

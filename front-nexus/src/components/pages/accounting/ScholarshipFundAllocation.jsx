@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import { Plus, Edit, Trash2, Award, DollarSign, Users, Search, ChevronLeft, ChevronRight } from "lucide-react";
@@ -77,10 +78,10 @@ const ScholarshipFundAllocation = () => {
       setShowProgramModal(false);
       resetProgramForm();
       fetchPrograms();
-      alert("Scholarship program saved successfully!");
+      toast.success("Scholarship program saved successfully!");
     } catch (error) {
       console.error("Error saving program:", error);
-      alert("Failed to save scholarship program");
+      toast.error("Failed to save scholarship program");
     }
   };
 

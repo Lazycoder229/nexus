@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Select from "react-select";
@@ -222,7 +223,7 @@ const TimetableBuilder = () => {
   const handleSaveSchedule = async () => {
     try {
       if (!formData.section_id) {
-        alert("Please select a section");
+        toast.warning("Please select a section");
         return;
       }
 
@@ -232,7 +233,7 @@ const TimetableBuilder = () => {
       );
 
       if (!currentSection) {
-        alert("Section not found");
+        toast.info("Section not found");
         return;
       }
 
@@ -256,16 +257,14 @@ const TimetableBuilder = () => {
       );
 
       console.log("Save response:", response);
-      alert("Schedule saved successfully!");
+      toast.success("Schedule saved successfully!");
       handleCloseModal();
       fetchSections();
     } catch (error) {
       console.error("Error saving schedule:", error);
       console.error("Error response:", error.response?.data);
       console.error("Error status:", error.response?.status);
-      alert(
-        `Failed to save schedule: ${error.response?.data?.error || error.message}`,
-      );
+      toast.error(`Failed to save schedule: ${error.response?.data?.error || error.message}`,);
     }
   };
 

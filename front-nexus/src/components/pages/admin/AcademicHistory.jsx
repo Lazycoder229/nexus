@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Select from "react-select";
@@ -544,7 +545,7 @@ const AcademicHistory = () => {
       setCurrentRecord(null);
     } catch (err) {
       console.error("Error saving academic history:", err);
-      alert(err.response?.data?.message || "Failed to save academic history");
+      toast.error(err.response?.data?.message || "Failed to save academic history");
     }
   };
 
@@ -555,7 +556,7 @@ const AcademicHistory = () => {
       await fetchHistory();
     } catch (err) {
       console.error("Error deleting academic history:", err);
-      alert(err.response?.data?.message || "Failed to delete academic history");
+      toast.error(err.response?.data?.message || "Failed to delete academic history");
     }
   };
 

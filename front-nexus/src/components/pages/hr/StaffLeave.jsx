@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import {
@@ -119,7 +120,7 @@ const StaffLeave = () => {
       fetchSummary();
     } catch (error) {
       console.error("Error saving leave:", error);
-      alert("Failed to save leave request");
+      toast.error("Failed to save leave request");
     }
   };
 
@@ -150,7 +151,7 @@ const StaffLeave = () => {
         fetchSummary();
       } catch (error) {
         console.error("Error approving leave:", error);
-        alert("Failed to approve leave request");
+        toast.error("Failed to approve leave request");
       }
     }
   };
@@ -165,7 +166,7 @@ const StaffLeave = () => {
         fetchSummary();
       } catch (error) {
         console.error("Error rejecting leave:", error);
-        alert("Failed to reject leave request");
+        toast.error("Failed to reject leave request");
       }
     }
   };

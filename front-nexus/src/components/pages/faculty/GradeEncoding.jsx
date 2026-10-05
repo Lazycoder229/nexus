@@ -403,7 +403,7 @@ const GradeEncoding = () => {
   const handleAddColumn = (section) => {
     const current = colCounts[section];
     if (current >= MAX_COLUMNS) {
-      alert(`You can have at most ${MAX_COLUMNS} ${section === "writtenOutput" ? "written output" : "performance task"} items.`);
+      toast.info(`You can have at most ${MAX_COLUMNS} ${section === "writtenOutput" ? "written output" : "performance task"} items.`);
       return;
     }
     growColumns(section, current + 1);
@@ -817,8 +817,8 @@ const GradeEncoding = () => {
 
   // ─── LMS sync ─────────────────────────────────────────────────────────────
   const syncFromLMS = useCallback(async () => {
-    if (!selectedCourse)  { alert("Please select a course before syncing."); return; }
-    if (!activePeriodId)  { alert("❌ Error: No active academic period found."); return; }
+    if (!selectedCourse)  { toast.warning("Please select a course before syncing."); return; }
+    if (!activePeriodId)  { toast.error("❌ Error: No active academic period found."); return; }
     try {
       setLoading(true);
       const facultyId = Number(localStorage.getItem("userId") || localStorage.getItem("user_id") || 0);
@@ -829,11 +829,11 @@ const GradeEncoding = () => {
       if (response.data?.success) {
         await loadExistingGradeEntries();
       } else {
-        alert(response.data?.message || "Sync completed but no records were synced");
+        toast.warning(response.data?.message || "Sync completed but no records were synced");
       }
     } catch (error) {
       console.error("Error syncing from LMS:", error);
-      alert(`❌ Sync failed:\n${error.response?.data?.message || error.message}`);
+      toast.error(`❌ Sync failed:\n${error.response?.data?.message || error.message}`);
     } finally {
       setLoading(false);
     }
@@ -854,10 +854,10 @@ const GradeEncoding = () => {
   // wasted network calls. A `skippedLocked` counter is surfaced in the final
   // alert so faculty know some cells were intentionally not saved.
   const handleSave = async () => {
-    if (!selectedCourse)  { alert("Please select a course before saving."); return; }
-    if (!activePeriodId)  { alert("No active academic period found."); return; }
+    if (!selectedCourse)  { toast.warning("Please select a course before saving."); return; }
+    if (!activePeriodId)  { toast.warning("No active academic period found."); return; }
     const facultyId = Number(localStorage.getItem("userId") || localStorage.getItem("user_id") || 0);
-    if (!facultyId) { alert("Faculty account not detected. Please log in again."); return; }
+    if (!facultyId) { toast.warning("Faculty account not detected. Please log in again."); return; }
 
     const labelMap   = { midterm: "midterm", final: "tentative_final" };
     const gradeLabel = labelMap[period] || "midterm";
@@ -956,7 +956,7 @@ const GradeEncoding = () => {
       const failed  = results.filter((r) => r.status === "rejected").length;
 
       if (failed > 0) {
-        toast.error(`Grades saved with ${failed} failed request(s). Check console for details.`, {
+        toast.error(`Grades saved with ${failed} failed request(s);. Check console for details.`, {
           position: "top-center",
         });
       } else {
@@ -1022,7 +1022,7 @@ const GradeEncoding = () => {
       });
     } catch (error) {
       console.error("Export failed:", error);
-      alert("Failed to export grades: " + error.message);
+      toast.error("Failed to export grades: " + error.message);
     }
   };
 
@@ -1061,10 +1061,10 @@ const GradeEncoding = () => {
       });
 
       setGrades((prev) => ({ ...prev, ...importedGrades }));
-      alert("Grades imported successfully.");
+      toast.success("Grades imported successfully.");
     } catch (error) {
       console.error("Error importing Excel file:", error);
-      alert(`Failed to import Excel file: ${error.message}`);
+      toast.error(`Failed to import Excel file: ${error.message}`);
     }
   };
 
@@ -1092,8 +1092,8 @@ const GradeEncoding = () => {
   };
 
   const handleSaveReportGrades = async () => {
-    if (!selectedCourse) { alert("Please select a course before saving report grades."); return; }
-    if (!activePeriodId) { alert("No active academic period found."); return; }
+    if (!selectedCourse) { toast.warning("Please select a course before saving report grades."); return; }
+    if (!activePeriodId) { toast.warning("No active academic period found."); return; }
 
     try {
       setLoading(true);
@@ -1118,7 +1118,7 @@ const GradeEncoding = () => {
         .filter(Boolean);
 
       if (reportGrades.length === 0) {
-        alert("No report grades to save.");
+        toast.warning("No report grades to save.");
         return;
       }
 
@@ -1126,10 +1126,10 @@ const GradeEncoding = () => {
         grades: reportGrades,
       });
 
-      alert(response.data?.message || "Report grades saved successfully.");
+      toast.success(response.data?.message || "Report grades saved successfully.");
     } catch (error) {
       console.error("Error saving report grades:", error);
-      alert(error.response?.data?.error || error.message || "Failed to save report grades");
+      toast.error(error.response?.data?.error || error.message || "Failed to save report grades");
     } finally {
       setLoading(false);
     }

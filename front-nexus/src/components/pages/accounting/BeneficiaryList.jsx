@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import Select from "react-select";
@@ -147,7 +148,7 @@ const BeneficiaryList = () => {
       closeModal();
     } catch (error) {
       console.error("Error saving beneficiary:", error);
-      alert(error.response?.data?.error || "Error saving beneficiary");
+      toast.error(error.response?.data?.error || "Error saving beneficiary");
     }
   };
 
@@ -180,7 +181,7 @@ const BeneficiaryList = () => {
         fetchStatistics();
       } catch (error) {
         console.error("Error deleting beneficiary:", error);
-        alert(error.response?.data?.error || "Error deleting beneficiary");
+        toast.error(error.response?.data?.error || "Error deleting beneficiary");
       }
     }
   };

@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import { Settings, Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, BarChart3, Save, X } from "lucide-react";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -60,14 +61,14 @@ const GeneralSettings = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert(selectedSetting ? "Setting updated successfully!" : "Setting created successfully!");
+        toast.success(selectedSetting ? "Setting updated successfully!" : "Setting created successfully!");
         setShowModal(false);
         resetForm();
         fetchSettings();
       }
     } catch (error) {
       console.error("Error saving setting:", error);
-      alert("Failed to save setting");
+      toast.error("Failed to save setting");
     }
   };
 
@@ -81,12 +82,12 @@ const GeneralSettings = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert("Setting deleted successfully!");
+        toast.success("Setting deleted successfully!");
         fetchSettings();
       }
     } catch (error) {
       console.error("Error deleting setting:", error);
-      alert("Failed to delete setting");
+      toast.error("Failed to delete setting");
     }
   };
 

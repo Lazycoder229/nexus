@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import {
   Bell,
@@ -94,18 +95,16 @@ const Announcements = () => {
       }
 
       if (response.data.success) {
-        alert(
-          editMode
+        toast.success(editMode
             ? "Announcement updated successfully!"
-            : "Announcement posted successfully!"
-        );
+            : "Announcement posted successfully!");
         setShowModal(false);
         resetForm();
         fetchAnnouncements();
       }
     } catch (error) {
       console.error("Error saving announcement:", error);
-      alert("Failed to save announcement");
+      toast.error("Failed to save announcement");
     } finally {
       setLoading(false);
     }
@@ -140,12 +139,12 @@ const Announcements = () => {
       );
 
       if (response.data.success) {
-        alert("Announcement deleted successfully!");
+        toast.success("Announcement deleted successfully!");
         fetchAnnouncements();
       }
     } catch (error) {
       console.error("Error deleting announcement:", error);
-      alert("Failed to delete announcement");
+      toast.error("Failed to delete announcement");
     }
   };
 

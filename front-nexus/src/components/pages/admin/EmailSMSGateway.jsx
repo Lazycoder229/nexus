@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import { Mail, MessageSquare, Plus, Edit, Trash2, Search, ChevronLeft, ChevronRight, BarChart3, Save, X, Send, Power, CheckCircle } from "lucide-react";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -68,14 +69,14 @@ const EmailSMSGateway = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert(selectedGateway ? "Gateway updated successfully!" : "Gateway created successfully!");
+        toast.success(selectedGateway ? "Gateway updated successfully!" : "Gateway created successfully!");
         setShowModal(false);
         resetForm();
         fetchGateways();
       }
     } catch (error) {
       console.error("Error saving gateway:", error);
-      alert("Failed to save gateway");
+      toast.error("Failed to save gateway");
     }
   };
 
@@ -89,12 +90,12 @@ const EmailSMSGateway = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert("Gateway deleted successfully!");
+        toast.success("Gateway deleted successfully!");
         fetchGateways();
       }
     } catch (error) {
       console.error("Error deleting gateway:", error);
-      alert("Failed to delete gateway");
+      toast.error("Failed to delete gateway");
     }
   };
 
@@ -120,13 +121,13 @@ const EmailSMSGateway = () => {
       });
       const data = await response.json();
       if (data.success) {
-        alert("Connection test successful!");
+        toast.success("Connection test successful!");
       } else {
-        alert("Connection test failed!");
+        toast.error("Connection test failed!");
       }
     } catch (error) {
       console.error("Error testing gateway:", error);
-      alert("Connection test failed!");
+      toast.error("Connection test failed!");
     }
   };
 

@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import {
@@ -103,7 +104,7 @@ const MarkAttendance = () => {
       // DON'T fetch sections here - we'll fetch them when course/period is selected
     } catch (error) {
       console.error("Error fetching initial data:", error);
-      alert("Failed to load initial data");
+      toast.error("Failed to load initial data");
     } finally {
       setLoading(false);
     }
@@ -184,7 +185,7 @@ const MarkAttendance = () => {
       await fetchExistingAttendance(enrolledStudents);
     } catch (error) {
       console.error("Error fetching students:", error);
-      alert("Failed to load students. Check browser console for details.");
+      toast.error("Failed to load students. Check browser console for details.");
       setStudents([]);
     } finally {
       setLoading(false);
@@ -283,17 +284,17 @@ const MarkAttendance = () => {
 
   const handleSubmit = async () => {
     if (!selectedCourse || !selectedPeriod) {
-      alert("Please select a course and academic period");
+      toast.warning("Please select a course and academic period");
       return;
     }
 
     if (filteredStudents.length === 0) {
-      alert("No students to save attendance for");
+      toast.warning("No students to save attendance for");
       return;
     }
 
     if (!facultyUserId) {
-      alert("Error: User ID not found. Please log in again.");
+      toast.error("Error: User ID not found. Please log in again.");
       return;
     }
 
@@ -336,18 +337,16 @@ const MarkAttendance = () => {
       console.log("Response from server:", response.data);
 
       if (response.data.success) {
-        alert(
-          `✓ Attendance saved successfully! ${response.data.recordsCreated || attendanceRecords.length} records created.`,
-        );
+        toast.success(`✓ Attendance saved successfully! ${response.data.recordsCreated || attendanceRecords.length} records created.`,);
         // Refresh the attendance data
         await fetchExistingAttendance(filteredStudents);
       } else {
-        alert(`Error: ${response.data.message || "Failed to save attendance"}`);
+        toast.error(`Error: ${response.data.message || "Failed to save attendance"}`);
       }
     } catch (error) {
       console.error("Error saving attendance:", error);
       const errorMessage = error.response?.data?.message || error.message || "Failed to save attendance";
-      alert(`Error saving attendance: ${errorMessage}`);
+      toast.error(`Error saving attendance: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

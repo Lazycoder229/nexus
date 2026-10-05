@@ -16,6 +16,7 @@ import axios from "axios";
 import Select from "react-select";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { downloadPDF, downloadExcel } from "../../../utils/exportHelpers";
 
 const statusOptions = ["Active", "Inactive", "Pending"];
 
@@ -37,74 +38,37 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-// --- CSV Export ---
+// --- CSV/Excel Export ---
 const exportCSV = (data) => {
-  if (!data.length) return alert("No departments to export.");
-  const headers = ["ID", "Name", "Head", "Status"];
-  const rows = data.map((d) =>
-    headers
-      .map(
-        (h) =>
-          `"${(d[h.toLowerCase()] || d[h] || "")
-            .toString()
-            .replace(/"/g, '""')}"`,
-      )
-      .join(","),
-  );
-  const csv = [headers.join(","), ...rows].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `departments_export_${new Date()
-    .toISOString()
-    .slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+  if (!data.length) return toast.warning("No departments to export.");
+  const exportData = data.map((d) => ({
+    department_id: d.id,
+    department_name: d.name,
+    head: d.head || "N/A",
+    status: d.status || "",
+  }));
+  downloadExcel(exportData, {
+    title: "Departments List",
+    officeLabel: "Registrar Office",
+    headers: ["department_id", "department_name", "head", "status"],
+  });
 };
 
 // --- PDF Export ---
 const exportPDF = (data) => {
-  if (!data.length) return alert("No departments to export.");
-  const printWindow = window.open("", "_blank");
-  const content = `
-    <html>
-      <head>
-        <title>Departments Export</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; color: #111; }
-          header { text-align: center; margin-bottom: 20px; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { border: 1px solid #ccc; padding: 6px; text-align: left; font-size: 12px; }
-          th { background: #f4f4f4; }
-        </style>
-      </head>
-      <body>
-        <header>
-          <h1>Baco Community College</h1>
-          <h2>Departments Export</h2>
-          <p>${new Date().toLocaleString()}</p>
-        </header>
-        <table>
-          <thead>
-            <tr><th>ID</th><th>Name</th><th>Head</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            ${data
-              .map(
-                (d) =>
-                  `<tr><td>${d.id}</td><td>${d.name}</td><td>${d.head}</td><td>${d.status}</td></tr>`,
-              )
-              .join("")}
-          </tbody>
-        </table>
-      </body>
-    </html>
-  `;
-  printWindow.document.write(content);
-  printWindow.document.close();
-  printWindow.focus();
-  setTimeout(() => printWindow.print(), 250);
+  if (!data.length) return toast.warning("No departments to export.");
+  const exportData = data.map((d) => ({
+    department_id: d.id,
+    department_name: d.name,
+    head: d.head || "N/A",
+    status: d.status || "",
+  }));
+  downloadPDF(exportData, {
+    title: "Departments List",
+    officeLabel: "Registrar Office",
+    orientation: "portrait",
+    headers: ["department_id", "department_name", "head", "status"],
+  });
 };
 
 // --- Pagination ---
@@ -712,7 +676,7 @@ const Department = () => {
                 <tr key={d.id} className="hover:bg-slate-50 transition">
                   <td className="px-4 py-2 text-sm">{d.id}</td>
                   <td className="px-4 py-2 text-sm">{d.name}</td>
-                  <td className="px-4 py-2 text-sm">{d.head}</td>
+                  <td className="px-4 py-2 text-sm">{d.head || <span className="text-slate-400 italic">N/A</span>}</td>
                   <td className="px-4 py-2">
                     <StatusBadge status={d.status} />
                   </td>

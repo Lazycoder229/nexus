@@ -199,6 +199,7 @@ CREATE TABLE courses (
     units INT DEFAULT 3, 
     hours INT NOT NULL,
     type ENUM('Major','Minor') NOT NULL,                           -- Course type
+    curriculum_type ENUM('New','Old') NOT NULL DEFAULT 'New',      -- Curriculum version
     department_id INT NOT NULL,                     -- FK to department offering the course
     instructor_id INT,                              -- FK to faculty member (user_id)
     semester_offer VARCHAR(100) NOT NULL,

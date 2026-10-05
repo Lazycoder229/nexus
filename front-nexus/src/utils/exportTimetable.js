@@ -8,12 +8,15 @@
 
 import { jsPDF } from "jspdf";
 
+// Official BCC Header Image URL from the public directory
+const HEADER_IMG_URL = `${import.meta.env.BASE_URL}bccheader.jpg`;
+
 // ─── Page / Layout constants (all in pt) ─────────────────────────────────────
 const PW = 8.5 * 72; // 612 pt
 const PH = 11 * 72;  // 792 pt
-const ML = 40;
-const MR = PW - 40;
-const BODY_W = MR - ML; // 532 pt
+const ML = 10;
+const MR = PW - 10;
+const BODY_W = MR - ML; // 592 pt
 
 const DAY_ORDER = [
   "Monday",
@@ -24,7 +27,17 @@ const DAY_ORDER = [
   "Saturday",
 ];
 
-// ─── Cell drawing helper (same pattern as exportRegistrationForm.js) ────────
+// Helper to load image as HTMLImageElement
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
+    img.src = url;
+  });
+}
+
+// ─── Cell drawing helper ──────────────────────────────────────────────────────
 function cell(doc, text, x, y, w, h, opts = {}) {
   const {
     align = "left",
@@ -90,36 +103,57 @@ export async function exportTimetablePDF(
     orientation: "portrait",
   });
 
-  let y = 40;
+  let headerImg = null;
+  try {
+    headerImg = await loadImage(HEADER_IMG_URL);
+  } catch (e) {
+    console.warn("BCC Timetable: could not load header image –", e.message);
+  }
 
-  // ── HEADER ────────────────────────────────────────────────────────────────
+  let y = 30;
+
+  // ── HEADER WITH bccheader.jpg (matching exportRegistrationForm.js) ─────────
+  if (headerImg) {
+    const HEADER_H = 50; // exact height matching exportRegistrationForm.js
+    doc.addImage(headerImg, "JPEG", ML, y, BODY_W, HEADER_H);
+    y += HEADER_H + 10;
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("BACO COMMUNITY COLLEGE", PW / 2, y, { align: "center" });
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    doc.text("Poblacion Baco, Oriental Mindoro", PW / 2, y, { align: "center" });
+    y += 18;
+  }
+
+  // Divider line
+  doc.setLineWidth(0.4);
+  doc.setDrawColor(0);
+  doc.line(ML, y, MR, y);
+  y += 12;
+
+  // Title
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.text("Baco Community College", PW / 2, y, { align: "center" });
-  y += 14;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.text("Poblacion Baco, Oriental Mindoro", PW / 2, y, { align: "center" });
+  doc.setFontSize(12);
+  doc.text("OFFICIAL CLASS SCHEDULE", PW / 2, y, { align: "center" });
   y += 18;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("CLASS SCHEDULE", PW / 2, y, { align: "center" });
-  y += 24;
+  // ── STUDENT INFO BOX ────────────────────────────────────────────────────────
+  const infoStartY = y;
+  doc.setFontSize(8.5);
 
-  // ── STUDENT INFO ROW ────────────────────────────────────────────────────────
-  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.text("Student Name:", ML, y);
   doc.setFont("helvetica", "normal");
   doc.text(safe(studentInfo.full_name) || "N/A", ML + 80, y);
 
   doc.setFont("helvetica", "bold");
-  doc.text("Student No.:", ML + 280, y);
+  doc.text("Student No.:", ML + 300, y);
   doc.setFont("helvetica", "normal");
-  doc.text(safe(studentInfo.student_number) || "N/A", ML + 350, y);
-  y += 16;
+  doc.text(safe(studentInfo.student_number) || "N/A", ML + 380, y);
+  y += 14;
 
   doc.setFont("helvetica", "bold");
   doc.text("Academic Year:", ML, y);
@@ -127,66 +161,75 @@ export async function exportTimetablePDF(
   doc.text(safe(periodMeta.school_year) || "N/A", ML + 80, y);
 
   doc.setFont("helvetica", "bold");
-  doc.text("Semester:", ML + 280, y);
+  doc.text("Semester:", ML + 300, y);
   doc.setFont("helvetica", "normal");
-  doc.text(safe(periodMeta.semester) || "N/A", ML + 350, y);
-  y += 16;
+  doc.text(safe(periodMeta.semester) || "N/A", ML + 380, y);
+  y += 14;
 
   if (periodMeta.year_level) {
     doc.setFont("helvetica", "bold");
     doc.text("Year Level:", ML, y);
     doc.setFont("helvetica", "normal");
     doc.text(safe(periodMeta.year_level), ML + 80, y);
-    y += 16;
+    y += 14;
   }
 
-  y += 8;
+  y += 6;
 
-  // ── TABLE ────────────────────────────────────────────────────────────────
-  const headers = ["Day", "Time", "Code", "Subject", "Room", "Instructor"];
-  const colWidths = [62, 92, 60, 150, 60, BODY_W - (62 + 92 + 60 + 150 + 60)];
-  const HDR_H = 20;
-  const ROW_H = 18;
+  // ── TIMETABLE TABLE ─────────────────────────────────────────────────────────
+  const colWidths = [70, 95, 75, 140, 75, 85];
+  const totalW = colWidths.reduce((a, b) => a + b, 0);
+  const scale = BODY_W / totalW;
+  const scaledWidths = colWidths.map((w) => Math.round(w * scale));
 
-  const drawHeaderRow = () => {
-    let cx = ML;
-    headers.forEach((h, i) => {
-      cell(doc, h, cx, y, colWidths[i], HDR_H, {
-        align: "center",
-        bold: true,
-        fontSize: 8,
-        fill: [210, 210, 210],
-        valign: "middle",
-      });
-      cx += colWidths[i];
-    });
-    y += HDR_H;
-  };
+  const headers = [
+    "DAY",
+    "TIME",
+    "CODE",
+    "SUBJECT TITLE",
+    "ROOM",
+    "INSTRUCTOR",
+  ];
 
-  drawHeaderRow();
-
-  // Sort by day-of-week order, then by start time
-  const sorted = [...(timetable || [])].sort((a, b) => {
-    const dayDiff = DAY_ORDER.indexOf(a.day) - DAY_ORDER.indexOf(b.day);
-    if (dayDiff !== 0) return dayDiff;
-    return String(a.start_time || "").localeCompare(String(b.start_time || ""));
-  });
-
-  if (sorted.length === 0) {
-    cell(doc, "No classes scheduled", ML, y, BODY_W, ROW_H, {
+  // Header row (BCC Maroon)
+  let cx = ML;
+  headers.forEach((h, i) => {
+    cell(doc, h, cx, y, scaledWidths[i], 18, {
       align: "center",
+      bold: true,
       fontSize: 8,
+      fill: [128, 0, 32],
       valign: "middle",
     });
-    y += ROW_H;
+    doc.setTextColor(255, 255, 255);
+    doc.text(h, cx + scaledWidths[i] / 2, y + 18 / 2 + 8 * 0.35, {
+      align: "center",
+    });
+    doc.setTextColor(0, 0, 0);
+    cx += scaledWidths[i];
+  });
+  y += 18;
+
+  // Body rows
+  const sorted = [...timetable].sort((a, b) => {
+    const da = DAY_ORDER.indexOf(a.day);
+    const db = DAY_ORDER.indexOf(b.day);
+    return (da === -1 ? 99 : da) - (db === -1 ? 99 : db);
+  });
+
+  const ROW_H = 17;
+
+  if (sorted.length === 0) {
+    cell(doc, "No scheduled subjects found.", ML, y, BODY_W, ROW_H * 2, {
+      align: "center",
+      fontSize: 9,
+      valign: "middle",
+    });
+    y += ROW_H * 2;
   } else {
-    sorted.forEach((item) => {
-      // Page-break check — re-draw the header row on the new page
-      if (y + ROW_H > PH - 50) {
-        doc.addPage();
-        y = 40;
-        drawHeaderRow();
-      }
+    sorted.forEach((item, rIdx) => {
+      const isEven = rIdx % 2 === 0;
+      const fill = isEven ? null : [248, 248, 248];
 
       let cx = ML;
       const rowVals = [
@@ -198,26 +241,38 @@ export async function exportTimetablePDF(
         safe(item.instructor) || "TBA",
       ];
       rowVals.forEach((v, i) => {
-        cell(doc, v, cx, y, colWidths[i], ROW_H, {
-          align: "center",
+        cell(doc, v, cx, y, scaledWidths[i], ROW_H, {
+          align: i === 3 ? "left" : "center",
           fontSize: 7.5,
+          fill,
           valign: "middle",
         });
-        cx += colWidths[i];
+        cx += scaledWidths[i];
       });
       y += ROW_H;
     });
   }
 
-  // ── FOOTER / GENERATED DATE ─────────────────────────────────────────────
-  y += 20;
-  doc.setFont("helvetica", "italic");
+  // ── FOOTER / GENERATED DATE ─────────────────────────────────────────────────
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  doc.setTextColor(100, 100, 100);
+  doc.setTextColor(80, 80, 80);
   doc.text(
-    `Generated on ${new Date().toLocaleString("en-US")}`,
+    `Generated on ${new Date().toLocaleString("en-PH")}`,
     ML,
-    y,
+    PH - 24,
+  );
+  doc.text(
+    "Page 1 of 1",
+    PW / 2,
+    PH - 24,
+    { align: "center" },
+  );
+  doc.text(
+    "Baco Community College – Registrar Office",
+    MR,
+    PH - 24,
+    { align: "right" },
   );
   doc.setTextColor(0, 0, 0);
 

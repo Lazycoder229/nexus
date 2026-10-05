@@ -70,17 +70,32 @@ export const deleteAdmission = async (req, res) => {
 
 export const bulkEnroll = async (req, res) => {
   try {
-    const { admission_ids } = req.body;
+    const { admission_ids, year_level, send_email = true, remarks } = req.body;
 
     if (!admission_ids || !Array.isArray(admission_ids) || admission_ids.length === 0) {
       return res.status(400).json({ message: "No admission IDs provided" });
     }
 
-    const results = await admissionService.bulkEnrollAdmissions(admission_ids);
+    const shouldSendEmail = send_email !== false && send_email !== "false";
+    const results = await admissionService.bulkEnrollAdmissions(admission_ids, year_level, {
+      sendEmail: shouldSendEmail,
+      remarks,
+    });
+
+    let message = `Successfully enrolled ${results.enrolled} applicant(s)`;
+    if (shouldSendEmail) {
+      message += ` and sent ${results.emails_sent} Gmail confirmation(s)`;
+      if (results.emails_failed > 0) {
+        message += ` (${results.emails_failed} email(s) not delivered or missing email)`;
+      }
+    }
+
     res.json({
-      message: `Successfully enrolled ${results.enrolled} applicant(s)`,
+      message,
       enrolled: results.enrolled,
       failed: results.failed,
+      emails_sent: results.emails_sent,
+      emails_failed: results.emails_failed,
       errors: results.errors,
     });
   } catch (err) {

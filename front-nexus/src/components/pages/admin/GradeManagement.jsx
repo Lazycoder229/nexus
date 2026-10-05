@@ -115,7 +115,9 @@ const GradeManagement = () => {
     if (err.response?.status === 400)
       return "Some fields are missing or invalid. Please check the form and try again.";
     if (err.response?.status === 404)
-      return "This grade no longer exists. It may have already been deleted.";
+      return editMode
+        ? "This grade no longer exists. It may have already been deleted."
+        : "Grade endpoint or resource not found.";
     if (err.response?.status === 409)
       return "A grade already exists for this student in this course and period.";
     if (err.response?.status === 500)

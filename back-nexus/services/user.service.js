@@ -5,6 +5,7 @@ import {
   createEmployeeUser,
   findUserByEmail,
   findUserById,
+  findUserWithPasswordById,
   getAllUsers,
   previewNextStudentNumber,
   previewNextEmployeeId,
@@ -15,7 +16,11 @@ import {
   verifyUserEmailInDb,
   getUserVerificationStatus,
 } from "../model/userModel.js";
-import { sendVerificationEmail } from "./email.service.js";
+import {
+  sendVerificationEmail,
+  sendAccountWelcomeEmail,
+  sendPasswordChangedEmail,
+} from "./email.service.js";
 
 /**
  * Generate a secure 6-digit numeric OTP code.
@@ -71,6 +76,16 @@ export const registerStudentService = async (studentData) => {
     console.error("Failed to send initial verification email:", err.message);
   });
 
+  // Send Welcome email asynchronously
+  sendAccountWelcomeEmail({
+    to: email,
+    firstName: studentData.firstName,
+    role: "Student",
+    identifier: studentNumber,
+  }).catch((err) => {
+    console.error("Failed to send student welcome email:", err.message);
+  });
+
   return {
     userId,
     studentNumber,
@@ -119,6 +134,16 @@ export const registerEmployeeService = async (employeeData) => {
       console.error("Failed to send employee verification email:", err.message);
     });
   }
+
+  // Send Welcome Email to the new employee asynchronously
+  sendAccountWelcomeEmail({
+    to: email,
+    firstName,
+    role: role || "Staff",
+    identifier: result.employeeId,
+  }).catch((err) => {
+    console.error("Failed to send employee welcome email:", err.message);
+  });
 
   return {
     userId: result.userId,
@@ -209,9 +234,25 @@ export const resendVerificationService = async (email) => {
 
 export const updateStudentService = async (userId, studentData) => {
   const { password } = studentData;
+  const existingUser = await findUserById(userId);
+  const targetEmail = (existingUser && existingUser.email) || studentData.email;
+  const firstName = (existingUser && existingUser.first_name) || studentData.firstName || "";
+
   if (password) {
     studentData.passwordHash = await bcrypt.hash(password, 10);
     delete studentData.password;
+
+    if (targetEmail) {
+      console.log(`📧 Sending password changed notification email to student: ${targetEmail}`);
+      sendPasswordChangedEmail({
+        to: targetEmail,
+        firstName,
+        changedAt: new Date().toLocaleString(),
+        changedByAdmin: true,
+      }).catch((err) =>
+        console.error("Failed to send student password update email:", err.message),
+      );
+    }
   }
   await updateStudentUser(userId, studentData);
   return true;
@@ -219,9 +260,25 @@ export const updateStudentService = async (userId, studentData) => {
 
 export const updateEmployeeService = async (userId, employeeData) => {
   const { password } = employeeData;
+  const existingUser = await findUserById(userId);
+  const targetEmail = (existingUser && existingUser.email) || employeeData.email;
+  const firstName = (existingUser && existingUser.first_name) || employeeData.firstName || "";
+
   if (password) {
     employeeData.passwordHash = await bcrypt.hash(password, 10);
     delete employeeData.password;
+
+    if (targetEmail) {
+      console.log(`📧 Sending password changed notification email to employee: ${targetEmail}`);
+      sendPasswordChangedEmail({
+        to: targetEmail,
+        firstName,
+        changedAt: new Date().toLocaleString(),
+        changedByAdmin: true,
+      }).catch((err) =>
+        console.error("Failed to send employee password update email:", err.message),
+      );
+    }
   }
   await updateEmployeeUser(userId, employeeData);
   return true;
@@ -230,17 +287,34 @@ export const updateEmployeeService = async (userId, employeeData) => {
 export const changePasswordService = async (userId, currentPassword, newPassword) => {
   if (!currentPassword || !newPassword) throw new Error("Current password and new password are required");
   if (currentPassword === newPassword) throw new Error("New password must be different from current password");
-  const user = await findUserById(userId);
+  
+  const user = await findUserWithPasswordById(userId);
   if (!user) throw new Error("User not found");
   const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
   if (!isMatch) throw new Error("Current password is incorrect");
+  
   const passwordHash = await bcrypt.hash(newPassword, 10);
   await updateEmployeeUser(userId, { passwordHash });
+
+  // Send security notification to user
+  if (user.email) {
+    console.log(`📧 Sending self-service password changed notification email to: ${user.email}`);
+    sendPasswordChangedEmail({
+      to: user.email,
+      firstName: user.first_name,
+      changedAt: new Date().toLocaleString(),
+      changedByAdmin: false,
+    }).catch((err) => {
+      console.error("Failed to send password changed email:", err.message);
+    });
+  }
+
   return true;
 };
+
 
 export const deleteUserService = async (userId) => {
   if (!userId) throw new Error("User ID is required");
   await deleteUser(userId);
   return true;
-};
+};

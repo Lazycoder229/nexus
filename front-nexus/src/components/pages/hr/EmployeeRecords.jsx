@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 // UserManagement.jsx
 import React, { useState, useMemo, useEffect } from "react";
 import axios from "axios";
@@ -25,6 +26,7 @@ import {
   ChevronRight,
   ChevronLeft,
 } from "lucide-react";
+import { downloadPDF, downloadExcel } from "../../../utils/exportHelpers";
 
 /* -------------------------
    INITIAL STATE TEMPLATES
@@ -44,19 +46,49 @@ const initialCommonState = {
   profilePicture: "", // base64 data URI
 };
 
-/* const studentSpecifics = {
-  parentPhone: "",
-  mailingAddress: "",
-  fatherName: "",
-  motherName: "",
+const studentSpecifics = {
   studentNumber: "",
+  studentType: "New Student",
   course: "",
+  courseProgram: "",
   major: "",
   yearLevel: "",
+  academicYear: "",
+  semester: "",
+  civilStatus: "Single",
+  religion: "",
+  isPwd: "No",
+  indigenousPeople: "No",
+  zipCode: "5201",
+  birthPlace: "",
+  citizenship: "Filipino",
+  elementarySchool: "",
+  elementaryYearGraduated: "",
+  juniorHighSchool: "",
+  juniorHighYearGraduated: "",
+  seniorHighSchool: "",
+  seniorHighYearGraduated: "",
+  collegeProgramAttended: "",
+  schoolYearAttended: "",
   previousSchool: "",
   yearGraduated: "",
+  fatherName: "",
+  fatherOccupation: "",
+  fatherPhone: "",
+  motherName: "",
+  motherOccupation: "",
+  motherPhone: "",
+  guardianName: "",
+  guardianRelationship: "",
+  guardianPhone: "",
+  parentPhone: "",
+  mailingAddress: "",
+  otherFinancialAssistance: "No",
+  scholarshipAssistance1: "",
+  scholarshipAssistance2: "",
+  scholarshipAssistance3: "",
 };
- */
+
 const employeeCommon = {
   employeeId: "",
   department: "",
@@ -513,7 +545,12 @@ function EmployeeRecords() {
 
   function getInitialFormState(role) {
     let specificFields = {};
-    if (role === "Admin")
+    if (role === "Student")
+      specificFields = {
+        ...studentSpecifics,
+        role: "Student",
+      };
+    else if (role === "Admin")
       specificFields = {
         ...employeeCommon,
         ...adminSpecifics,
@@ -592,9 +629,7 @@ function EmployeeRecords() {
           !submitData.password ||
           submitData.password !== submitData.confirmPassword
         ) {
-          alert(
-            "Password and Confirm Password must match and cannot be empty.",
-          );
+          toast.error("Password and Confirm Password must match and cannot be empty.",);
           return;
         }
 
@@ -610,7 +645,7 @@ function EmployeeRecords() {
             (field) => !submitData[field] || String(submitData[field]).trim() === "",
           );
           if (missing.length) {
-            alert(`Please fill required fields: ${missing.join(", ")}`);
+            toast.warning(`Please fill required fields: ${missing.join(", ")}`);
             return;
         }
 
@@ -624,14 +659,45 @@ function EmployeeRecords() {
       else {
         const userId = currentId;
 
-        response = await axios.put(
-          `${import.meta.env.VITE_API_BASE_URL}/api/users/employee/${userId}`,
-          submitData,
-        );
+        if (selectedRole === "Student") {
+          const payload = {
+            ...submitData,
+            courseProgram: submitData.courseProgram || submitData.course || "",
+            course: submitData.course || submitData.courseProgram || "",
+            dateOfBirth: submitData.dateOfBirth || submitData.dob || "",
+            dob: submitData.dateOfBirth || submitData.dob || "",
+            yearGraduated: String(submitData.yearGraduated || ""),
+            elementaryYearGraduated: String(submitData.elementaryYearGraduated || ""),
+            juniorHighYearGraduated: String(submitData.juniorHighYearGraduated || ""),
+            seniorHighYearGraduated: String(submitData.seniorHighYearGraduated || ""),
+            zipCode: String(submitData.zipCode || ""),
+          };
+          if (submitData.password) {
+            if (submitData.password !== submitData.confirmPassword) {
+              toast.warning("Password and Confirm Password must match.");
+              return;
+            }
+            payload.password = submitData.password;
+            payload.confirmPassword = submitData.confirmPassword;
+          } else {
+            delete payload.password;
+            delete payload.confirmPassword;
+          }
+
+          response = await axios.put(
+            `${import.meta.env.VITE_API_BASE_URL}/api/users/student/${userId}`,
+            payload,
+          );
+        } else {
+          response = await axios.put(
+            `${import.meta.env.VITE_API_BASE_URL}/api/users/employee/${userId}`,
+            submitData,
+          );
+        }
       }
 
       // Handle success
-      alert(response.data.message || "Success!");
+      toast.success(response.data.message || "Success!");
       console.log("Server Response:", response.data);
       fetchUsers();
       // Optional token save
@@ -641,7 +707,7 @@ function EmployeeRecords() {
       closeFormModal();
     } catch (error) {
       console.error("Submission error:", error);
-      alert(error.response?.data?.message || "Something went wrong.");
+      toast.error(error.response?.data?.message || "Something went wrong.");
     }
   };
 
@@ -672,24 +738,64 @@ function EmployeeRecords() {
     setFormData({
       ...getInitialFormState(user.role),
       email: user.email || "",
-      firstName: user.first_name || "",
-      middleName: user.middle_name || "",
-      lastName: user.last_name || "",
+      password: "",
+      confirmPassword: "",
+      firstName: user.first_name || user.firstName || "",
+      middleName: user.middle_name || user.middleName || "",
+      lastName: user.last_name || user.lastName || "",
       suffix: user.suffix || "",
-      dateOfBirth: user.dateOfBirth || "",
+      dateOfBirth: user.date_of_birth ? user.date_of_birth.split("T")[0] : (user.dateOfBirth || user.dob || ""),
+      dob: user.date_of_birth ? user.date_of_birth.split("T")[0] : (user.dateOfBirth || user.dob || ""),
       gender: user.gender || "",
       phone: user.phone || "",
-      permanentAddress: user.permanent_address || "",
-      studentNumber: user.student_number || "",
-      course: user.course || "",
+      permanentAddress: user.permanent_address || user.permanentAddress || "",
+
+      // Student details matching StudentRegistrationForm:
+      studentNumber: user.student_number || user.studentNumber || "",
+      studentType: user.student_type || user.studentType || "New Student",
+      course: user.course || user.courseProgram || "",
+      courseProgram: user.course || user.courseProgram || "",
       major: user.major || "",
-      yearLevel: user.year_level || "",
-      previousSchool: user.previous_school || "",
-      yearGraduated: user.year_graduated || "",
-      mailingAddress: user.mailing_address || "",
-      fatherName: user.father_name || "",
-      motherName: user.mother_name || "",
-      parentPhone: user.parent_phone || "",
+      yearLevel: user.year_level || user.yearLevel || "",
+      academicYear: user.academic_year || user.academicYear || "",
+      semester: user.semester || "",
+      civilStatus: user.civil_status || user.civilStatus || "Single",
+      religion: user.religion || "",
+      isPwd: user.is_pwd || user.isPwd || "No",
+      indigenousPeople: user.indigenous_people || user.indigenousPeople || "No",
+      zipCode: String(user.zip_code || user.zipCode || ""),
+      birthPlace: user.birth_place || user.birthPlace || "",
+      citizenship: user.citizenship || "Filipino",
+      dateRegistered: user.date_registered ? user.date_registered.split("T")[0] : "",
+
+      previousSchool: user.previous_school || user.previousSchool || user.senior_high_school_completed_at || "",
+      yearGraduated: String(user.year_graduated || user.yearGraduated || user.senior_high_school_year_graduated || ""),
+      elementarySchool: user.elementary_school_completed_at || user.elementarySchool || "",
+      elementaryYearGraduated: String(user.elementary_school_year_graduated || user.elementaryYearGraduated || ""),
+      juniorHighSchool: user.junior_high_school_completed_at || user.juniorHighSchool || "",
+      juniorHighYearGraduated: String(user.junior_high_school_year_graduated || user.juniorHighYearGraduated || ""),
+      seniorHighSchool: user.senior_high_school_completed_at || user.seniorHighSchool || "",
+      seniorHighYearGraduated: String(user.senior_high_school_year_graduated || user.seniorHighYearGraduated || ""),
+      collegeProgramAttended: user.college_program_course_attended || user.collegeProgramAttended || "",
+      schoolYearAttended: user.school_year_attended || user.schoolYearAttended || "",
+
+      fatherName: user.father_name || user.fatherName || "",
+      fatherOccupation: user.father_occupation || user.fatherOccupation || "",
+      fatherPhone: user.father_phone || user.fatherPhone || "",
+      motherName: user.mother_name || user.motherName || "",
+      motherOccupation: user.mother_occupation || user.motherOccupation || "",
+      motherPhone: user.mother_phone || user.motherPhone || "",
+      guardianName: user.guardian_name || user.guardianName || "",
+      guardianRelationship: user.guardian_relationship || user.guardianRelationship || "",
+      guardianPhone: user.guardian_phone || user.guardianPhone || "",
+      parentPhone: user.parent_phone || user.parentPhone || "",
+      mailingAddress: user.mailing_address || user.mailingAddress || "",
+
+      otherFinancialAssistance: user.other_financial_assistance || user.otherFinancialAssistance || "No",
+      scholarshipAssistance1: user.scholarship_assistance_1 || user.scholarshipAssistance1 || "",
+      scholarshipAssistance2: user.scholarship_assistance_2 || user.scholarshipAssistance2 || "",
+      scholarshipAssistance3: user.scholarship_assistance_3 || user.scholarshipAssistance3 || "",
+
       employeeId: user.employee_id || "",
       department: user.department || "",
       positionTitle: user.position_title || "",
@@ -702,6 +808,7 @@ function EmployeeRecords() {
     });
     setIsFormModalOpen(true);
   };
+
 
   const handleViewUser = (user) => {
     setViewingUser(user);
@@ -718,12 +825,10 @@ function EmployeeRecords() {
 
       setUsers((prev) => prev.filter((u) => u.user_id !== userId));
 
-      alert("User deleted successfully");
+      toast.success("User deleted successfully");
     } catch (err) {
       console.error(err);
-      alert(
-        `Error deleting user: ${err.response?.data?.message || err.message}`,
-      );
+      toast.error(`Error deleting user: ${err.response?.data?.message || err.message}`,);
     }
   };
 
@@ -736,6 +841,10 @@ function EmployeeRecords() {
     }));
   };
 
+  // Determine logged-in user role
+  const loggedInRole = (localStorage.getItem("role") || "").trim();
+  const isHR = loggedInRole.toLowerCase() === "hr";
+
   /* -------------------------
    Search, filter, sort, paginate
    ------------------------- */
@@ -743,18 +852,21 @@ function EmployeeRecords() {
     // Ensure users is always an array
     const userList = Array.isArray(users) ? users : [];
 
-    let result = [...userList];
+    // When HR is logged in, never show student accounts
+    let result = isHR
+      ? userList.filter((u) => u.role !== "Student")
+      : [...userList];
 
     // search by name, email, studentNumber, or employeeID
     if (query.trim()) {
       const q = query.toLowerCase();
       result = result.filter(
         (u) =>
-          (u.firstName || "").toLowerCase().includes(q) ||
-          (u.lastName || "").toLowerCase().includes(q) ||
+          (u.firstName || u.first_name || "").toLowerCase().includes(q) ||
+          (u.lastName || u.last_name || "").toLowerCase().includes(q) ||
           (u.email || "").toLowerCase().includes(q) ||
-          (u.studentNumber || "").toLowerCase().includes(q) ||
-          (u.employeeId || "").toLowerCase().includes(q),
+          (u.studentNumber || u.student_number || "").toLowerCase().includes(q) ||
+          (u.employeeId || u.employee_id || "").toLowerCase().includes(q),
       );
     }
 
@@ -783,7 +895,7 @@ function EmployeeRecords() {
     });
 
     return result;
-  }, [users, query, filterRole, sortField, sortDir]);
+  }, [users, query, filterRole, sortField, sortDir, isHR]);
 
   const pageCount = Math.max(1, Math.ceil(filteredSorted.length / pageSize));
   useEffect(() => {
@@ -799,151 +911,60 @@ function EmployeeRecords() {
      Export helpers
      ------------------------- */
   const exportCSV = () => {
-    if (users.length === 0) {
-      alert("No users to export.");
+    if (filteredSorted.length === 0) {
+      toast.warning("No users to export.");
       return;
     }
-    const headers = [
-      "id",
-      "role",
-      "firstName",
-      "lastName",
-      "email",
-      "phone",
-      "employeeId",
-      "studentNumber",
-      "department",
-      "positionTitle",
-      "dateHired",
-      "status",
-    ];
-    const rows = users.map((u) =>
-      headers
-        .map((h) => `"${(u[h] || "")?.toString().replace(/"/g, '""')}"`)
-        .join(","),
-    );
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `users_export_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const exportData = filteredSorted.map((u) => ({
+      first_name: u.first_name || u.firstName || "",
+      last_name: u.last_name || u.lastName || "",
+      email: u.email || "",
+      phone: u.phone || "",
+      role: u.role || "",
+      employee_id: u.employee_id || u.employeeId || (u.role === "Student" ? u.student_number || u.studentNumber : "") || "",
+      department: u.department || (u.role === "Student" ? u.course || "" : "") || "",
+      position_title: u.position_title || u.positionTitle || "",
+      date_hired: u.date_hired || u.dateHired || "",
+      status: u.status || "",
+    }));
+    downloadExcel(exportData, {
+      title: "Employee & User Records",
+      officeLabel: "HR Office",
+      headers: [
+        "first_name",
+        "last_name",
+        "email",
+        "phone",
+        "role",
+        "employee_id",
+        "department",
+        "position_title",
+        "date_hired",
+        "status",
+      ],
+    });
   };
 
   const exportPDF = () => {
-    if (users.length === 0) {
-      alert("No users to export.");
+    if (filteredSorted.length === 0) {
+      toast.warning("No users to export.");
       return;
     }
-    // Simple printable view — user can "Save as PDF" from print dialog
-    const printWindow = window.open("", "_blank");
-    const content = `
-     <html>
-  <head>
-    <title>Users Export</title>
-    <style>
-      @media print {
-        body { margin: 0; padding: 0; }
-        header, footer { position: fixed; width: 100%; }
-        header { top: 0; }
-        footer { bottom: 0; text-align: center; font-size: 10px; }
-        table { margin-top: 100px; margin-bottom: 50px; }
-      }
-
-      body {
-        font-family: Arial, sans-serif;
-        padding: 20px;
-        color: #111;
-      }
-
-      header {
-        text-align: center;
-        margin-bottom: 20px;
-      }
-
-      footer {
-        text-align: center;
-        margin-top: 20px;
-        font-size: 10px;
-        color: #555;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 12px;
-      }
-
-      th, td {
-        border: 1px solid #ccc;
-        padding: 6px;
-        text-align: left;
-        font-size: 12px;
-      }
-
-      th {
-        background: #f4f4f4;
-      }
-    </style>
-  </head>
-  <body>
-    <header>
-      <h1>Baco Community College</h1>
-      <h2>Users Export</h2>
-      <p>${new Date().toLocaleString()}</p>
-    </header>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Role</th>
-          <th>ID/Number</th>
-          <th>Department / Course</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${users
-          .map(
-            (u) =>
-              `<tr>
-                <td>${u.last_name || ""}, ${u.first_name || ""}</td>
-                <td>${u.email || ""}</td>
-                <td>${u.role || ""}</td>
-                <td>${
-                  u.role === "Student"
-                    ? u.student_number || ""
-                    : u.employee_id || ""
-                }</td>
-                <td>${
-                  u.role === "Student" ? u.course || "" : u.department || ""
-                }</td>
-                <td>${u.status || ""}</td>
-              </tr>`,
-          )
-          .join("")}
-      </tbody>
-    </table>
-
-    <footer>
-      Baco Community College - Page 1
-    </footer>
-  </body>
-</html>
-
-    `;
-    printWindow.document.open();
-    printWindow.document.write(content);
-    printWindow.document.close();
-    printWindow.focus();
-    // Allow slight delay then open print dialog
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
+    const exportData = filteredSorted.map((u) => ({
+      first_name: u.first_name || u.firstName || "",
+      last_name: u.last_name || u.lastName || "",
+      email: u.email || "",
+      role: u.role || "",
+      employee_id: u.employee_id || u.employeeId || (u.role === "Student" ? u.student_number || u.studentNumber : "") || "",
+      department: u.department || (u.role === "Student" ? u.course || "" : "") || "",
+      status: u.status || "",
+    }));
+    downloadPDF(exportData, {
+      title: "Employee & User Records",
+      officeLabel: "HR Office",
+      orientation: "portrait",
+      headers: ["first_name", "last_name", "email", "role", "employee_id", "department", "status"],
+    });
   };
 
   /* -------------------------
@@ -988,118 +1009,332 @@ function EmployeeRecords() {
     </div>
   );
 
-  /*   const renderStudentFields = () => (
-    <div className="p-3 mt-4 rounded-xl bg-indigo-50 border border-indigo-200 shadow-inner">
-      <div className="flex items-center justify-between">
-        <SectionTitle
-          icon={GraduationCap}
-          title="Student Academic Details"
-          color="text-indigo-800"
-        />
-        <button
-          type="button"
-          onClick={() => setCollapsed((s) => ({ ...s, student: !s.student }))}
-          className="text-xs text-indigo-700"
-        >
-          {collapsed.student ? (
-            <ChevronUp className="inline w-4 h-4" />
-          ) : (
-            <ChevronDown className="inline w-4 h-4" />
-          )}
-        </button>
-      </div>
-
-      {!collapsed.student && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+  const renderStudentFields = () => (
+    <div className="space-y-6">
+      <div>
+        <SectionDivider title="Academic & Program details" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <TextInput
             name="studentNumber"
+            label="Student Number *"
             placeholder="Student Number"
             value={formData.studentNumber}
             onChange={handleInputChange}
-            required={selectedRole === "Student"}
+            disabled={isEditing}
+            required
           />
-          <SelectInput
-            name="course"
-            value={formData.course}
+          <ReactSelectInput
+            name="studentType"
+            label="Student Type"
+            placeholder="Select Type"
+            value={formData.studentType}
             onChange={handleInputChange}
-          >
-            <option value="" disabled>
-              Select Course (Program)
-            </option>
-            {programs.map((prog) => (
-              <option key={prog.id} value={prog.code}>
-                {prog.code} - {prog.name}
-              </option>
-            ))}
-          </SelectInput>
+            options={[
+              { value: "New Student", label: "New Student" },
+              { value: "Transferee", label: "Transferee" },
+              { value: "Returnee", label: "Returnee" },
+              { value: "Continuing", label: "Continuing" },
+            ]}
+          />
+          <TextInput
+            name="course"
+            label="Program / Course *"
+            placeholder="e.g., BSIT, BSBA, BSED"
+            value={formData.course || formData.courseProgram}
+            onChange={handleInputChange}
+          />
           <TextInput
             name="major"
-            placeholder="Major"
+            label="Major"
+            placeholder="e.g., Network Administration"
             value={formData.major}
             onChange={handleInputChange}
           />
-          <SelectInput
+          <ReactSelectInput
             name="yearLevel"
+            label="Year Level *"
+            placeholder="Select Year Level"
             value={formData.yearLevel}
             onChange={handleInputChange}
-          >
-            <option value="1st Year">1st Year</option>
-            <option value="2nd Year">2nd Year</option>
-            <option value="3rd Year">3rd Year</option>
-            <option value="4th Year">4th Year</option>
-          </SelectInput>
+            options={[
+              { value: "1st Year", label: "1st Year" },
+              { value: "2nd Year", label: "2nd Year" },
+              { value: "3rd Year", label: "3rd Year" },
+              { value: "4th Year", label: "4th Year" },
+            ]}
+          />
           <TextInput
-            name="previousSchool"
-            placeholder="Previous School"
-            value={formData.previousSchool}
+            name="academicYear"
+            label="Academic Year"
+            placeholder="e.g., 2024-2025"
+            value={formData.academicYear}
+            onChange={handleInputChange}
+          />
+          <ReactSelectInput
+            name="semester"
+            label="Semester"
+            placeholder="Select Semester"
+            value={formData.semester}
+            onChange={handleInputChange}
+            options={[
+              { value: "1st Semester", label: "1st Semester" },
+              { value: "2nd Semester", label: "2nd Semester" },
+              { value: "Summer", label: "Summer" },
+            ]}
+          />
+        </div>
+      </div>
+
+      <div>
+        <SectionDivider title="Educational Background" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <TextInput
+            name="elementarySchool"
+            label="Elementary School"
+            placeholder="School Name"
+            value={formData.elementarySchool}
             onChange={handleInputChange}
           />
           <TextInput
-            name="yearGraduated"
-            placeholder="Year Graduated"
-            value={formData.yearGraduated}
+            name="elementaryYearGraduated"
+            label="Elementary Year Graduated"
+            placeholder="e.g., 2016"
+            value={formData.elementaryYearGraduated}
             onChange={handleInputChange}
           />
-          <div className="lg:col-span-3">
+          <TextInput
+            name="juniorHighSchool"
+            label="Junior High School"
+            placeholder="School Name"
+            value={formData.juniorHighSchool}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            name="juniorHighYearGraduated"
+            label="Junior High Year Graduated"
+            placeholder="e.g., 2020"
+            value={formData.juniorHighYearGraduated}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            name="seniorHighSchool"
+            label="Senior High School / Previous School"
+            placeholder="School Name"
+            value={formData.seniorHighSchool || formData.previousSchool}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            name="seniorHighYearGraduated"
+            label="Senior High Year Graduated"
+            placeholder="e.g., 2022"
+            value={formData.seniorHighYearGraduated || formData.yearGraduated}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            name="collegeProgramAttended"
+            label="College Program Attended (Transferee)"
+            placeholder="Previous Program if any"
+            value={formData.collegeProgramAttended}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            name="schoolYearAttended"
+            label="School Year Attended (College)"
+            placeholder="e.g., 2022-2023"
+            value={formData.schoolYearAttended}
+            onChange={handleInputChange}
+          />
+        </div>
+      </div>
+
+      <div>
+        <SectionDivider title="Demographics & Additional Info" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <ReactSelectInput
+            name="civilStatus"
+            label="Civil Status"
+            placeholder="Select Status"
+            value={formData.civilStatus}
+            onChange={handleInputChange}
+            options={[
+              { value: "Single", label: "Single" },
+              { value: "Married", label: "Married" },
+              { value: "Widowed", label: "Widowed" },
+              { value: "Separated", label: "Separated" },
+            ]}
+          />
+          <TextInput
+            name="religion"
+            label="Religion"
+            placeholder="Religion"
+            value={formData.religion}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            name="citizenship"
+            label="Citizenship"
+            placeholder="Citizenship"
+            value={formData.citizenship}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            name="birthPlace"
+            label="Birth Place"
+            placeholder="Town / Province"
+            value={formData.birthPlace}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            name="zipCode"
+            label="Zip Code"
+            placeholder="e.g., 5201"
+            value={formData.zipCode}
+            onChange={handleInputChange}
+          />
+          <ReactSelectInput
+            name="isPwd"
+            label="Person With Disability (PWD)"
+            placeholder="Select"
+            value={formData.isPwd}
+            onChange={handleInputChange}
+            options={[
+              { value: "No", label: "No" },
+              { value: "Yes", label: "Yes" },
+            ]}
+          />
+          <ReactSelectInput
+            name="indigenousPeople"
+            label="Indigenous People (IP)"
+            placeholder="Select"
+            value={formData.indigenousPeople}
+            onChange={handleInputChange}
+            options={[
+              { value: "No", label: "No" },
+              { value: "Yes", label: "Yes" },
+            ]}
+          />
+        </div>
+      </div>
+
+      <div>
+        <SectionDivider title="Family & Guardian details" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <TextInput
+            name="fatherName"
+            label="Father's Name"
+            placeholder="Full Name"
+            value={formData.fatherName}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            name="fatherOccupation"
+            label="Father's Occupation"
+            placeholder="Occupation"
+            value={formData.fatherOccupation}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            type="tel"
+            name="fatherPhone"
+            label="Father's Contact"
+            placeholder="Phone number"
+            value={formData.fatherPhone}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            name="motherName"
+            label="Mother's Name"
+            placeholder="Full Name"
+            value={formData.motherName}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            name="motherOccupation"
+            label="Mother's Occupation"
+            placeholder="Occupation"
+            value={formData.motherOccupation}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            type="tel"
+            name="motherPhone"
+            label="Mother's Contact"
+            placeholder="Phone number"
+            value={formData.motherPhone}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            name="guardianName"
+            label="Guardian's Name"
+            placeholder="Full Name"
+            value={formData.guardianName}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            name="guardianRelationship"
+            label="Guardian Relationship"
+            placeholder="e.g., Aunt, Grandparent"
+            value={formData.guardianRelationship}
+            onChange={handleInputChange}
+          />
+          <TextInput
+            type="tel"
+            name="guardianPhone"
+            label="Guardian Contact"
+            placeholder="Phone number"
+            value={formData.guardianPhone || formData.parentPhone}
+            onChange={handleInputChange}
+          />
+          <div className="md:col-span-3">
             <TextAreaInput
               name="mailingAddress"
-              placeholder="Mailing Address (if different from Permanent)"
+              label="Mailing Address (if different from Permanent)"
+              placeholder="Present / Mailing Address"
               value={formData.mailingAddress}
               onChange={handleInputChange}
             />
           </div>
-
-          <SectionTitle
-            icon={Users}
-            title="Parent/Guardian Information"
-            color="text-indigo-800"
-          />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 col-span-full">
-            <TextInput
-              name="fatherName"
-              placeholder="Father's Name"
-              value={formData.fatherName}
-              onChange={handleInputChange}
-            />
-            <TextInput
-              name="motherName"
-              placeholder="Mother's Name"
-              value={formData.motherName}
-              onChange={handleInputChange}
-            />
-            <TextInput
-              type="tel"
-              name="parentPhone"
-              placeholder="Parent's Phone"
-              value={formData.parentPhone}
-              onChange={handleInputChange}
-            />
-          </div>
         </div>
-      )}
+      </div>
+
+      <div>
+        <SectionDivider title="Financial Assistance & Scholarship" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <ReactSelectInput
+            name="otherFinancialAssistance"
+            label="Other Financial Assistance"
+            placeholder="Select"
+            value={formData.otherFinancialAssistance}
+            onChange={handleInputChange}
+            options={[
+              { value: "No", label: "No" },
+              { value: "Yes", label: "Yes" },
+            ]}
+          />
+          {formData.otherFinancialAssistance === "Yes" && (
+            <>
+              <TextInput
+                name="scholarshipAssistance1"
+                label="Scholarship Source 1"
+                placeholder="Grant / Scholarship Name"
+                value={formData.scholarshipAssistance1}
+                onChange={handleInputChange}
+              />
+              <TextInput
+                name="scholarshipAssistance2"
+                label="Scholarship Source 2"
+                placeholder="Grant / Scholarship Name"
+                value={formData.scholarshipAssistance2}
+                onChange={handleInputChange}
+              />
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
- */
+
+
   const renderEmployeeFields = () => (
     <div className="space-y-5">
       <div>
@@ -1210,7 +1445,7 @@ function EmployeeRecords() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-3 gap-3">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-bold text-gray-700">
-            All Users ({users.length})
+            All Users ({filteredSorted.length})
           </h2>
           <div className="flex items-center gap-2">
             <input
@@ -1227,7 +1462,8 @@ function EmployeeRecords() {
               className="w-40"
             >
               <option value="">All Roles</option>
-
+              {!isHR && <option value="Student">Student</option>}
+              <option value="Admin">Admin</option>
               <option value="Faculty">Faculty</option>
               <option value="Staff">Staff</option>
               <option value="HR">HR</option>
@@ -1487,7 +1723,10 @@ function EmployeeRecords() {
             renderCommonFields()
           )}
 
-          {activeFormTab === "role" && renderEmployeeFields()}
+          {activeFormTab === "role" &&
+            (selectedRole === "Student"
+              ? renderStudentFields()
+              : renderEmployeeFields())}
 
           <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-slate-200">
             <button

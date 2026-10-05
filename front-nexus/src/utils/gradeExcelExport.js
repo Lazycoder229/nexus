@@ -74,9 +74,10 @@ const F = {
   blue:       (sz = 9)  => ({ name: "Arial", sz, bold: true,  color: { rgb: "1E40AF" } }),
   title:      ()        => ({ name: "Arial", sz: 14, bold: true, color: { rgb: "0F172A" } }),
   subtitle:   ()        => ({ name: "Arial", sz: 9,  bold: false, color: { rgb: "64748B" } }),
-  schoolName: ()        => ({ name: "Arial", sz: 14, bold: true,  color: { rgb: "FFFFFF" } }),
-  schoolSub:  ()        => ({ name: "Arial", sz: 9,  bold: false, color: { rgb: "DBEAFE" } }),
-  schoolBold: ()        => ({ name: "Arial", sz: 10, bold: true,  color: { rgb: "FFFFFF" } }),
+  schoolName: ()        => ({ name: "Arial", sz: 14, bold: true,  color: { rgb: "800020" } }),
+  schoolSub:  ()        => ({ name: "Arial", sz: 9,  bold: false, color: { rgb: "1E293B" } }),
+  schoolSubMuted: ()    => ({ name: "Arial", sz: 8.5, bold: false, color: { rgb: "475569" } }),
+  schoolBold: ()        => ({ name: "Arial", sz: 10, bold: true,  color: { rgb: "0F172A" } }),
   officeLabel:()        => ({ name: "Arial", sz: 11, bold: true,  color: { rgb: "FFFFFF" } }),
 };
 
@@ -269,9 +270,9 @@ function buildSchoolHeader(ws, totalCols) {
   };
 
   // ── Row 1: Republic of the Philippines ──────────────────────────────────
-  fillRow(row, P.SCHOOL_BG);
+  fillRow(row, P.WHITE);
   setCell(ws, row, 1, cell("Republic of the Philippines", {
-    fill: P.SCHOOL_BG,
+    fill: P.WHITE,
     font: F.schoolSub(),
     alignment: { horizontal: "center", vertical: "center", wrapText: false },
     border: noBorder(),
@@ -280,9 +281,9 @@ function buildSchoolHeader(ws, totalCols) {
   row++;
 
   // ── Row 2: Region IV-B MIMAROPA ─────────────────────────────────────────
-  fillRow(row, P.SCHOOL_BG);
-  setCell(ws, row, 1, cell("Region IV-B MIMAROPA", {
-    fill: P.SCHOOL_BG,
+  fillRow(row, P.WHITE);
+  setCell(ws, row, 1, cell("Region IV-B  MIMAROPA", {
+    fill: P.WHITE,
     font: F.schoolSub(),
     alignment: { horizontal: "center", vertical: "center", wrapText: false },
     border: noBorder(),
@@ -291,9 +292,9 @@ function buildSchoolHeader(ws, totalCols) {
   row++;
 
   // ── Row 3: BACO COMMUNITY COLLEGE (large) ───────────────────────────────
-  fillRow(row, P.SCHOOL_BG);
+  fillRow(row, P.WHITE);
   setCell(ws, row, 1, cell("BACO COMMUNITY COLLEGE", {
-    fill: P.SCHOOL_BG,
+    fill: P.WHITE,
     font: F.schoolName(),
     alignment: { horizontal: "center", vertical: "center", wrapText: false },
     border: noBorder(),
@@ -302,10 +303,10 @@ function buildSchoolHeader(ws, totalCols) {
   row++;
 
   // ── Row 4: Address ───────────────────────────────────────────────────────
-  fillRow(row, P.SCHOOL_BG);
+  fillRow(row, P.WHITE);
   setCell(ws, row, 1, cell("Poblacion, Baco, Oriental Mindoro, 5201", {
-    fill: P.SCHOOL_BG,
-    font: F.schoolSub(),
+    fill: P.WHITE,
+    font: F.schoolSubMuted(),
     alignment: { horizontal: "center", vertical: "center", wrapText: false },
     border: noBorder(),
   }));
@@ -313,44 +314,28 @@ function buildSchoolHeader(ws, totalCols) {
   row++;
 
   // ── Row 5: Email ─────────────────────────────────────────────────────────
-  fillRow(row, P.SCHOOL_BG);
+  fillRow(row, P.WHITE);
   setCell(ws, row, 1, cell("Email: bccbaco@gmail.com", {
-    fill: P.SCHOOL_BG,
-    font: F.schoolSub(),
+    fill: P.WHITE,
+    font: F.schoolSubMuted(),
     alignment: { horizontal: "center", vertical: "center", wrapText: false },
     border: noBorder(),
   }));
   merge(ws, row, 1, row, TC);
   row++;
 
-  // ── Row 6: Thin separator ────────────────────────────────────────────────
+  // ── Row 6: Divider line matching PDF line ────────────────────────────────
   for (let c = 1; c <= TC; c++) {
     setCell(ws, row, c, cell("", {
-      fill: { fgColor: { rgb: "DBEAFE" } },
-      border: noBorder(),
+      fill: P.WHITE,
+      border: { top: { style: "none" }, bottom: { style: "medium", color: { rgb: "000000" } }, left: { style: "none" }, right: { style: "none" } },
     }));
   }
   merge(ws, row, 1, row, TC);
   row++;
 
-  // ── Row 7: Office of the Registrar ──────────────────────────────────────
-  fillRow(row, P.OFFICE_BG);
-  setCell(ws, row, 1, cell("Office of the Registrar", {
-    fill: P.OFFICE_BG,
-    font: F.officeLabel(),
-    alignment: { horizontal: "center", vertical: "center", wrapText: false },
-    border: noBorder(),
-  }));
-  merge(ws, row, 1, row, TC);
-  row++;
-
-  // ── Row 8: Another thin separator before grade title ────────────────────
-  for (let c = 1; c <= TC; c++) {
-    setCell(ws, row, c, cell("", {
-      fill: P.META_BG,
-      border: noBorder(),
-    }));
-  }
+  // ── Row 7: Blank spacer ──────────────────────────────────────────────────
+  fillRow(row, P.WHITE);
   merge(ws, row, 1, row, TC);
   row++;
 
@@ -817,5 +802,10 @@ export async function exportGradeEncoding({
   const buf   = new ArrayBuffer(wbout.length);
   const view  = new Uint8Array(buf);
   for (let i = 0; i < wbout.length; i++) view[i] = wbout.charCodeAt(i) & 0xff;
-  saveAs(new Blob([buf], { type: "application/octet-stream" }), fileName);
+  saveAs(
+    new Blob([buf], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }),
+    fileName
+  );
 }

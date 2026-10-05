@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import { MessageCircle, Bell, Star, Send, Filter, CheckCircle, AlertCircle, Eye } from "lucide-react";
 import api from "../../../api/axios";
@@ -80,12 +81,12 @@ const StudentAnnouncements = () => {
     e.preventDefault();
     try {
       await api.post(`/api/feedback`, feedbackForm);
-      alert("Feedback submitted successfully!");
+      toast.success("Feedback submitted successfully!");
       setFeedbackForm({ category: "", rating: 5, message: "" });
       fetchFeedback();
     } catch (error) {
       console.error("Error submitting feedback:", error);
-      alert("Failed to submit feedback");
+      toast.error("Failed to submit feedback");
     }
   };
 

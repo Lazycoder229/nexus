@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import { Plus, Edit, Trash2, Search, FileText, ChevronLeft, ChevronRight, Users } from "lucide-react";
@@ -150,7 +151,7 @@ const InvoiceManagement = () => {
       fetchSummary();
     } catch (e) {
       console.error("Error saving invoice:", e);
-      alert("Failed to save invoice");
+      toast.error("Failed to save invoice");
     }
   };
 
@@ -195,10 +196,10 @@ const InvoiceManagement = () => {
       resetStaffForm();
       fetchInvoices();
       fetchSummary();
-      alert("Staff invoice created and recorded as income successfully.");
+      toast.success("Staff invoice created and recorded as income successfully.");
     } catch (e) {
       console.error("Error saving staff invoice:", e);
-      alert("Failed to save staff invoice: " + JSON.stringify(e.response?.data || e.message));
+      toast.error("Failed to save staff invoice: " + JSON.stringify(e.response?.data || e.message));
     }
   };
 

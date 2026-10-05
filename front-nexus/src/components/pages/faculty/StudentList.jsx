@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Users, Search, Mail, FileText, Download, Filter, Eye, BookOpen } from "lucide-react";
+import { downloadPDF, downloadExcel } from "../../../utils/exportHelpers";
 
 const StudentList = () => {
   const [loading, setLoading] = useState(true);
@@ -110,8 +111,70 @@ const StudentList = () => {
   });
 
   const handleExportCSV = () => {
-    // TODO: Implement CSV export
-    alert('Exporting student list...');
+    if (!filteredStudents.length) return;
+    const exportData = filteredStudents.map((s) => ({
+      student_id: s.studentId || "",
+      student_name: `${s.firstName || ""} ${s.lastName || ""}`.trim(),
+      email: s.email || "",
+      course_code: s.course || "",
+      section: s.section || "",
+      program_name: s.program || "",
+      year_level: s.yearLevel || "",
+      status: s.status || "",
+      attendance_rate: s.attendance ? `${s.attendance}%` : "",
+      final_grade: s.grade || "",
+    }));
+
+    downloadExcel(exportData, {
+      title: "Faculty Student Roster",
+      officeLabel: "Academic Affairs",
+      headers: [
+        "student_id",
+        "student_name",
+        "email",
+        "course_code",
+        "section",
+        "program_name",
+        "year_level",
+        "status",
+        "attendance_rate",
+        "final_grade",
+      ],
+    });
+  };
+
+  const handleExportPDF = () => {
+    if (!filteredStudents.length) return;
+    const exportData = filteredStudents.map((s) => ({
+      student_id: s.studentId || "",
+      student_name: `${s.firstName || ""} ${s.lastName || ""}`.trim(),
+      email: s.email || "",
+      course_code: s.course || "",
+      section: s.section || "",
+      program_name: s.program || "",
+      year_level: s.yearLevel || "",
+      status: s.status || "",
+      attendance_rate: s.attendance ? `${s.attendance}%` : "",
+      final_grade: s.grade || "",
+    }));
+
+    downloadPDF(exportData, {
+      title: "Faculty Student Roster",
+      officeLabel: "Academic Affairs",
+      orientation: "portrait",
+      headers: [
+        "student_id",
+        "student_name",
+        "email",
+        "course_code",
+        "section",
+        "program_name",
+        "year_level",
+        "status",
+        "attendance_rate",
+        "final_grade",
+      ],
+    });
   };
 
   if (loading) {
@@ -135,7 +198,7 @@ const StudentList = () => {
 
       {/* Filters and Actions */}
       <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           <div className="md:col-span-2 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -165,10 +228,19 @@ const StudentList = () => {
 
           <button
             onClick={handleExportCSV}
-            className="flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            className="flex items-center justify-center px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium"
+            title="Export Excel"
           >
-            <Download className="w-5 h-5 mr-2" />
-            Export
+            <Download className="w-4 h-4 mr-1.5" />
+            Excel
+          </button>
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center justify-center px-3 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-colors text-sm font-medium"
+            title="Export PDF"
+          >
+            <FileText className="w-4 h-4 mr-1.5" />
+            PDF
           </button>
         </div>
       </div>

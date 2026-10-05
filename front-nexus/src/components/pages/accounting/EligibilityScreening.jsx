@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import Select from "react-select";
@@ -127,7 +128,7 @@ const EligibilityScreening = () => {
       closeModal();
     } catch (error) {
       console.error("Error saving screening:", error);
-      alert(error.response?.data?.error || "Error saving screening");
+      toast.error(error.response?.data?.error || "Error saving screening");
     }
   };
 
@@ -165,7 +166,7 @@ const EligibilityScreening = () => {
         fetchStatistics();
       } catch (error) {
         console.error("Error deleting screening:", error);
-        alert(error.response?.data?.error || "Error deleting screening");
+        toast.error(error.response?.data?.error || "Error deleting screening");
       }
     }
   };

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Menu, Bell, Settings, LogOut, ChevronDown } from "lucide-react";
 
-const Header = ({ toggleSidebar, sidebarWidth, onLogout }) => {
+const Header = ({ toggleSidebar, onLogout }) => {
   const firstName = localStorage.getItem("firstName") || "";
   const lastName = localStorage.getItem("lastName") || "";
   const userName =
@@ -44,8 +44,7 @@ const Header = ({ toggleSidebar, sidebarWidth, onLogout }) => {
 
   return (
     <header
-      className="flex justify-between items-center h-16 bg-white shadow-md px-4 transition-all duration-300"
-      style={{ width: `calc(100% - ${sidebarWidth}px)` }}
+      className="flex justify-between items-center h-16 w-full bg-white shadow-md px-4 transition-all duration-300"
     >
       {/* Left Section */}
       <div className="flex items-center">

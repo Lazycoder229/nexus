@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import {
@@ -125,10 +126,10 @@ const PaymentCollection = () => {
       resetForm();
       fetchPayments();
       fetchSummary();
-      alert("Payment recorded successfully!");
+      toast.success("Payment recorded successfully!");
     } catch (error) {
       console.error("Error creating payment:", error);
-      alert("Failed to record payment");
+      toast.error("Failed to record payment");
     }
   };
 

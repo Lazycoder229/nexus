@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import {
@@ -119,10 +120,10 @@ const PaymentGateway = () => {
       setShowGatewayModal(false);
       resetGatewayForm();
       fetchGateways();
-      alert("Gateway configuration saved!");
+      toast.info("Gateway configuration saved!");
     } catch (error) {
       console.error("Error saving gateway:", error);
-      alert("Failed to save gateway configuration");
+      toast.error("Failed to save gateway configuration");
     }
   };
 
@@ -147,10 +148,10 @@ const PaymentGateway = () => {
       await api.post(`/api/payment-gateway/transactions/${id}/verify`);
       fetchTransactions();
       fetchSummary();
-      alert("Transaction verified!");
+      toast.info("Transaction verified!");
     } catch (error) {
       console.error("Error verifying transaction:", error);
-      alert("Failed to verify transaction");
+      toast.error("Failed to verify transaction");
     }
   };
 

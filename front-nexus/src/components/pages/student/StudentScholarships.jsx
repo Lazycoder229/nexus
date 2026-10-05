@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import {
@@ -57,7 +58,7 @@ const StudentScholarships = () => {
       const studentId = localStorage.getItem("userId");
 
       if (!studentId) {
-        alert("Please log in to apply for scholarships.");
+        toast.warning("Please log in to apply for scholarships.");
         return;
       }
 
@@ -71,18 +72,14 @@ const StudentScholarships = () => {
 
       await api.post(`/api/scholarships/applications`, payload);
 
-      alert(
-        `Application for ${selectedProgram.scholarship_name} submitted successfully!`,
-      );
+      toast.success(`Application for ${selectedProgram.scholarship_name} submitted successfully!`,);
       setShowApplyModal(false);
       setSelectedProgram(null);
       fetchData(); // Refresh lists
     } catch (err) {
       console.error("Error submitting application:", err);
-      alert(
-        err.response?.data?.error ||
-          "Failed to submit application. Please try again.",
-      );
+      toast.error(err.response?.data?.error ||
+          "Failed to submit application. Please try again.",);
     } finally {
       setSubmitting(false);
     }

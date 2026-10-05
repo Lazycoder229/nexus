@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import {
@@ -96,7 +97,7 @@ const ScholarshipTypeSetup = () => {
       closeModal();
     } catch (error) {
       console.error("Error saving scholarship type:", error);
-      alert(error.response?.data?.error || "Error saving scholarship type");
+      toast.error(error.response?.data?.error || "Error saving scholarship type");
     }
   };
 
@@ -138,7 +139,7 @@ const ScholarshipTypeSetup = () => {
         fetchStatistics();
       } catch (error) {
         console.error("Error deleting scholarship type:", error);
-        alert("Error deleting scholarship type");
+        toast.error("Error deleting scholarship type");
       }
     }
   };

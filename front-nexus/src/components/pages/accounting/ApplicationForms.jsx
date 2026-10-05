@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import Select from "react-select";
@@ -113,7 +114,7 @@ const ApplicationForms = () => {
       closeModal();
     } catch (error) {
       console.error("Error saving application:", error);
-      alert(error.response?.data?.error || "Error saving application");
+      toast.error(error.response?.data?.error || "Error saving application");
     }
   };
 
@@ -144,7 +145,7 @@ const ApplicationForms = () => {
         setCurrentPage(1);
       } catch (error) {
         console.error("Error deleting application:", error);
-        alert(error.response?.data?.error || "Error deleting application");
+        toast.error(error.response?.data?.error || "Error deleting application");
       }
     }
   };

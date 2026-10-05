@@ -15,9 +15,7 @@ import {
   XCircle,
   Power,
 } from "lucide-react";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
-import { saveAs } from "file-saver";
+import { downloadPDF, downloadExcel } from "../../../utils/exportHelpers";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -458,49 +456,36 @@ function AcademicSem() {
 
   // Export
   const exportCSV = (data) => {
-    const csv = [
-      [
-        "ID",
-        "School Year",
-        "Semester",
-        "Start Date",
-        "End Date",
-        "Status",
-        "Active",
-      ],
-      ...data.map((p) => [
-        p.id,
-        p.school_year,
-        p.semester,
-        p.start_date,
-        p.end_date,
-        p.status,
-        p.is_active ? "Yes" : "No",
-      ]),
-    ]
-      .map((e) => e.join(","))
-      .join("\n");
-    saveAs(
-      new Blob([csv], { type: "text/csv;charset=utf-8;" }),
-      "academic_periods.csv",
-    );
+    const exportData = data.map((p) => ({
+      school_year: p.school_year || "",
+      semester: p.semester || "",
+      start_date: p.start_date ? new Date(p.start_date).toLocaleDateString() : "",
+      end_date: p.end_date ? new Date(p.end_date).toLocaleDateString() : "",
+      status: p.status || "",
+      is_active: p.is_active ? "Yes" : "No",
+    }));
+    downloadExcel(exportData, {
+      title: "Academic Periods",
+      officeLabel: "Registrar Office",
+      headers: ["school_year", "semester", "start_date", "end_date", "status", "is_active"],
+    });
   };
 
   const exportPDF = (data) => {
-    const doc = new jsPDF();
-    doc.text("Academic Periods", 14, 16);
-    doc.autoTable({
-      head: [["School Year", "Semester", "Start Date", "End Date", "Status"]],
-      body: data.map((p) => [
-        p.school_year,
-        p.semester,
-        new Date(p.start_date).toLocaleDateString(),
-        new Date(p.end_date).toLocaleDateString(),
-        p.status,
-      ]),
-      startY: 20,
+    const exportData = data.map((p) => ({
+      school_year: p.school_year || "",
+      semester: p.semester || "",
+      start_date: p.start_date ? new Date(p.start_date).toLocaleDateString() : "",
+      end_date: p.end_date ? new Date(p.end_date).toLocaleDateString() : "",
+      status: p.status || "",
+      is_active: p.is_active ? "Yes" : "No",
+    }));
+    downloadPDF(exportData, {
+      title: "Academic Periods",
+      officeLabel: "Registrar Office",
+      orientation: "portrait",
+      headers: ["school_year", "semester", "start_date", "end_date", "status", "is_active"],
     });
-    doc.save("academic_periods.pdf");
   };
 
   // Turn a raw axios error into a short, human-readable message

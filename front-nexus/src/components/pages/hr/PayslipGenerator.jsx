@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import {
@@ -216,7 +217,7 @@ const resolveDepartment = (user) => {
       fetchPayrollSetups();
     } catch (error) {
       console.error("Error saving payroll setup:", error);
-      alert("Failed to save payroll setup");
+      toast.error("Failed to save payroll setup");
     }
   };
 
@@ -224,7 +225,7 @@ const resolveDepartment = (user) => {
     e.preventDefault();
 
     if (!selectedUserId) {
-      alert("Please select an employee/user.");
+      toast.warning("Please select an employee/user.");
       return;
     }
 
@@ -270,8 +271,7 @@ const resolveDepartment = (user) => {
           }
         } catch (err) {
           console.error("Auto-create failed", err);
-          alert(
-            "Failed to auto-create employee record: " +
+          toast.error("Failed to auto-create employee record: " +
               JSON.stringify(err.response?.data || err.message),
           );
           setIsAutoCreating(false);
@@ -339,8 +339,7 @@ const resolveDepartment = (user) => {
       fetchPayslips(selectedSetup);
     } catch (error) {
       console.error("Error saving payslip:", error);
-      alert(
-        "Failed to save payslip: " +
+      toast.error("Failed to save payslip: " +
           JSON.stringify(error.response?.data || error.message),
       );
     } finally {
@@ -350,7 +349,7 @@ const resolveDepartment = (user) => {
 
   const handleAutoCreatePayslips = async () => {
     if (!selectedSetup) {
-      alert("Please select a payroll period first");
+      toast.warning("Please select a payroll period first");
       return;
     }
 
@@ -366,9 +365,7 @@ const resolveDepartment = (user) => {
       );
 
       if (response.data.success) {
-        alert(
-          `${response.data.message}\nCreated: ${response.data.created}, Skipped: ${response.data.skipped}`,
-        );
+        toast.info(`${response.data.message}\nCreated: ${response.data.created}, Skipped: ${response.data.skipped}`,);
 
         // ✅ Auto-log bulk payroll as Expense if any were created
         if (response.data.created > 0) {
@@ -411,12 +408,11 @@ const resolveDepartment = (user) => {
 
         fetchPayslips(selectedSetup);
       } else {
-        alert("Failed to auto-create payslips");
+        toast.error("Failed to auto-create payslips");
       }
     } catch (error) {
       console.error("Error auto-creating payslips:", error);
-      alert(
-        "Error auto-creating payslips: " +
+      toast.error("Error auto-creating payslips: " +
           JSON.stringify(error.response?.data || error.message),
       );
     } finally {

@@ -995,6 +995,10 @@ const LoginLayout = ({ onNavigateToAdmin, onNavigateByRole }) => {
     }
   };
 
+  if (view === "register") {
+    return <StudentRegistrationForm onBackToLogin={() => setView("login")} />;
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 font-sans relative overflow-hidden">
       {/* Renders the toast notifications */}
@@ -1004,8 +1008,7 @@ const LoginLayout = ({ onNavigateToAdmin, onNavigateByRole }) => {
       <div
         className="absolute top-0 left-0 w-full h-full pointer-events-none"
         style={{
-          backgroundImage:
-            "url('https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/Baco_Mahalta.jpg/1100px-Baco_Mahalta.jpg')",
+          backgroundImage: "url('/Baco_Mahalta.jpg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           filter: "brightness(0.5) blur(1px)",
@@ -1024,15 +1027,13 @@ const LoginLayout = ({ onNavigateToAdmin, onNavigateByRole }) => {
               setView("verify");
             }}
           />
-        ) : view === "verify" ? (
+        ) : (
           <EmailVerification
             email={verificationEmail}
             onVerificationSuccess={() => setView("login")}
             onBackToLogin={() => setView("login")}
             onChangeEmail={() => setView("register")}
           />
-        ) : (
-          <StudentRegistrationForm onBackToLogin={() => setView("login")} />
         )}
       </div>
     </div>

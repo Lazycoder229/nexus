@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Select from "react-select";
@@ -63,6 +64,7 @@ const normalizeAdmission = (admission) => {
     previous_school: pickValue(admission, "previous_school", "previousSchool"),
     year_graduated: pickValue(admission, "year_graduated", "yearGraduated"),
     program_applied: pickValue(admission, "program_applied", "programApplied"),
+    year_level: pickValue(admission, "year_level", "yearLevel") || "1st Year",
     application_date: pickValue(admission, "application_date", "applicationDate"),
     entrance_exam_score: pickValue(admission, "entrance_exam_score", "entranceExamScore"),
     interview_date: pickValue(admission, "interview_date", "interviewDate"),
@@ -131,6 +133,7 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
     gender: "",
     address: "",
     program_applied: "",
+    year_level: "1st Year",
     application_date: new Date().toISOString().split("T")[0],
     status: "Pending",
     previous_school: "",
@@ -207,6 +210,10 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
             address:
               studentProfile.permanent_address || studentProfile.address || "",
             program_applied: "",
+            year_level:
+              studentProfile.year_level ||
+              studentProfile.yearLevel ||
+              "1st Year",
             application_date: new Date().toISOString().split("T")[0],
             status: "Pending",
             previous_school: studentProfile.previous_school || "",
@@ -261,6 +268,10 @@ const EnrollmentModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
           program_applied:
             pickValue(initialData, "program_applied", "programApplied") ||
             baseData.program_applied,
+          year_level:
+            pickValue(initialData, "year_level", "yearLevel") ||
+            baseData.year_level ||
+            "1st Year",
           application_date: toDateInputValue(
             pickValue(initialData, "application_date", "applicationDate") ||
               baseData.application_date,
@@ -843,7 +854,7 @@ export default function StudentEnrollment() {
       }, 500);
     } catch (err) {
       console.error("Error submitting admission:", err);
-      alert("Failed to submit application. Please try again.");
+      toast.error("Failed to submit application. Please try again.");
     }
   };
 

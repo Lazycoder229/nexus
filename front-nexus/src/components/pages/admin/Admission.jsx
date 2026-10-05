@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Users,
   Check,
+  Mail,
 } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -212,6 +213,7 @@ const AdmissionModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
     previous_school: "",
     year_graduated: "",
     program_applied: "",
+    year_level: "1st Year",
     application_date: new Date().toISOString().split("T")[0],
     entrance_exam_score: "",
     interview_date: "",
@@ -281,6 +283,7 @@ const AdmissionModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
         previous_school: initialData.previous_school || "",
         year_graduated: initialData.year_graduated || "",
         program_applied: initialData.program_applied || "",
+        year_level: initialData.year_level || "1st Year",
         application_date: formatDate(
           initialData.application_date ||
             new Date().toISOString().split("T")[0]
@@ -309,6 +312,7 @@ const AdmissionModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
         previous_school: "",
         year_graduated: "",
         program_applied: "",
+        year_level: "1st Year",
         application_date: new Date().toISOString().split("T")[0],
         entrance_exam_score: "",
         interview_date: "",
@@ -543,7 +547,7 @@ const AdmissionModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
                   Program Applied *
@@ -562,6 +566,28 @@ const AdmissionModal = ({ isOpen, onClose, onSubmit, mode, initialData }) => {
                   required
                   disabled={mode === "view"}
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Year Level *
+                </label>
+                <select
+                  value={formData.year_level || "1st Year"}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      year_level: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  required
+                  disabled={mode === "view"}
+                >
+                  <option value="1st Year">1st Year</option>
+                  <option value="2nd Year">2nd Year</option>
+                  <option value="3rd Year">3rd Year</option>
+                  <option value="4th Year">4th Year</option>
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
@@ -782,6 +808,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
   const [filterAcademicPeriod, setFilterAcademicPeriod] = useState("");
   const [filterProgram, setFilterProgram] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterYearLevel, setFilterYearLevel] = useState("");
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState([]);
@@ -789,6 +816,10 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
   const [academicPeriods, setAcademicPeriods] = useState([]);
   const [defaultAcademicPeriod, setDefaultAcademicPeriod] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [sendEmail, setSendEmail] = useState(true);
+  const [remarks, setRemarks] = useState(
+    "Official enrollment confirmed. Welcome to NexusERP!"
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -833,7 +864,10 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
         setFilterAcademicPeriod(initialAcademicPeriodKey);
         setFilterProgram("");
         setFilterDepartment("");
+        setFilterYearLevel("");
         setSelectedIds(new Set());
+        setSendEmail(true);
+        setRemarks("Official enrollment confirmed. Welcome to NexusERP!");
       } catch (error) {
         console.error("Error loading bulk enroll lookup data:", error);
         toast.error(getErrorMessage(error, "Failed to load bulk enroll data."));
@@ -871,6 +905,13 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
     ),
   );
 
+  const yearLevelOptions = [
+    "1st Year",
+    "2nd Year",
+    "3rd Year",
+    "4th Year",
+  ];
+
   const getAdmissionDepartment = (admission) =>
     admission.department_name ||
     admission.department ||
@@ -895,6 +936,13 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
       match = match && getAdmissionDepartment(a) === filterDepartment;
     }
 
+    if (filterYearLevel) {
+      match =
+        match &&
+        (a.year_level || "1st Year").toLowerCase() ===
+          filterYearLevel.toLowerCase();
+    }
+
     return match;
   });
 
@@ -916,6 +964,13 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
     }
   };
 
+  const selectedApplicantsList = filteredAdmissions.filter((a) =>
+    selectedIds.has(a.admission_id)
+  );
+  const selectedWithEmailCount = selectedApplicantsList.filter(
+    (a) => a.email && a.email.includes("@")
+  ).length;
+
   // Triggered by the "Enroll" button - opens the Yes/No confirm modal
   const handleBulkEnrollClick = () => {
     if (selectedIds.size === 0) {
@@ -929,11 +984,17 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
   const performBulkEnroll = async () => {
     setLoading(true);
     try {
-      await onSubmit(Array.from(selectedIds));
+      await onSubmit(Array.from(selectedIds), filterYearLevel || undefined, {
+        sendEmail,
+        remarks,
+      });
       setSelectedIds(new Set());
       setFilterAcademicPeriod(defaultAcademicPeriod);
       setFilterProgram("");
       setFilterDepartment("");
+      setFilterYearLevel("");
+      setSendEmail(true);
+      setRemarks("Official enrollment confirmed. Welcome to NexusERP!");
     } catch (error) {
       console.error("Error during bulk enroll:", error);
       // toast for this is already handled by the parent onSubmit
@@ -959,7 +1020,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
           {/* Filters */}
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
             <h3 className="font-semibold text-slate-900 mb-3">Filters</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-700 mb-1.5">
                   Academic Year & Semester
@@ -1022,10 +1083,83 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
                   ))}
                 </select>
               </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Year Level
+                </label>
+                <select
+                  value={filterYearLevel}
+                  onChange={(e) => setFilterYearLevel(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">All Year Levels</option>
+                  {yearLevelOptions.map((lvl) => (
+                    <option key={lvl} value={lvl}>
+                      {lvl}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <p className="text-xs text-slate-600 mt-2">
               Found {filteredAdmissions.length} applicant(s) matching filters
             </p>
+          </div>
+
+          {/* Gmail Notification Settings Card */}
+          <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
+                  <Mail size={18} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-900 text-sm">
+                      Send Gmail Enrollment Confirmation
+                    </span>
+                    <span className="bg-blue-100 text-blue-700 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-blue-200">
+                      Gmail SMTP
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Automatically dispatch official enrollment confirmation emails to applicants with valid email addresses.
+                  </p>
+                </div>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={sendEmail}
+                  onChange={(e) => setSendEmail(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            {sendEmail && (
+              <div className="mt-3 pt-3 border-t border-blue-200/60">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Official Email Remarks / Notes
+                </label>
+                <input
+                  type="text"
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  placeholder="e.g. Official enrollment confirmed. Welcome to NexusERP!"
+                  className="w-full px-3 py-1.5 border border-blue-300 rounded-md text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1.5">
+                  <span>Included in the official enrollment confirmation email</span>
+                  <span>
+                    {selectedWithEmailCount} of {selectedIds.size} selected have registered email
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Applicants List */}
@@ -1062,6 +1196,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Academic Period</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Program</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Department</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Year Level</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700">Status</th>
                     </tr>
                   </thead>
@@ -1076,10 +1211,19 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
                             className="rounded border-slate-300"
                           />
                         </td>
-                        <td className="px-3 py-2 text-sm text-slate-900">
+                        <td className="px-3 py-2 text-sm text-slate-900 font-medium">
                           {applicant.first_name} {applicant.last_name}
                         </td>
-                        <td className="px-3 py-2 text-sm text-slate-600">{applicant.email}</td>
+                        <td className="px-3 py-2 text-sm text-slate-600">
+                          {applicant.email ? (
+                            <span className="flex items-center gap-1.5 text-slate-800">
+                              <Mail size={13} className="text-blue-500 shrink-0" />
+                              <span className="truncate max-w-[180px]">{applicant.email}</span>
+                            </span>
+                          ) : (
+                            <span className="text-xs text-amber-600 italic">No email provided</span>
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-sm text-slate-600">
                           {formatAcademicPeriod(
                             getAcademicPeriodForAdmission(applicant, academicPeriods)
@@ -1087,6 +1231,7 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
                         </td>
                         <td className="px-3 py-2 text-sm text-slate-600">{applicant.program_applied}</td>
                         <td className="px-3 py-2 text-sm text-slate-600">{getAdmissionDepartment(applicant) || "N/A"}</td>
+                        <td className="px-3 py-2 text-sm text-slate-600">{applicant.year_level || "1st Year"}</td>
                         <td className="px-3 py-2 text-sm">
                           <StatusBadge status={applicant.status} />
                         </td>
@@ -1118,7 +1263,11 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Check size={16} />
-              {loading ? "Enrolling..." : `Enroll ${selectedIds.size} Applicant(s)`}
+              {loading
+                ? sendEmail
+                  ? "Enrolling & Sending Emails..."
+                  : "Enrolling..."
+                : `Enroll ${selectedIds.size} Applicant(s)`}
             </button>
           </div>
         </div>
@@ -1128,8 +1277,12 @@ const BulkEnrollModal = ({ isOpen, onClose, admissions, onSubmit }) => {
         isOpen={confirmOpen}
         onClose={() => !loading && setConfirmOpen(false)}
         onConfirm={performBulkEnroll}
-        message={`Are you sure you want to enroll ${selectedIds.size} applicant(s)? This action cannot be undone.`}
-        confirmLabel="Enroll"
+        message={
+          sendEmail
+            ? `Are you sure you want to enroll ${selectedIds.size} applicant(s)? Enrollment confirmation emails will be sent via Gmail to ${selectedWithEmailCount} applicant(s) with registered email addresses.`
+            : `Are you sure you want to enroll ${selectedIds.size} applicant(s)? (Email notifications are disabled).`
+        }
+        confirmLabel={sendEmail ? "Enroll & Send Email" : "Enroll"}
         tone="success"
         loading={loading}
       />
@@ -1255,13 +1408,18 @@ const Admission = () => {
     }
   };
 
-  const handleBulkEnroll = async (selectedIds) => {
+  const handleBulkEnroll = async (selectedIds, targetYearLevel, options = {}) => {
     try {
-      await axios.post(`${API_BASE}/api/admissions/bulk-enroll`, {
+      const res = await axios.post(`${API_BASE}/api/admissions/bulk-enroll`, {
         admission_ids: selectedIds,
+        year_level: targetYearLevel || undefined,
+        send_email: options.sendEmail ?? true,
+        remarks: options.remarks,
       });
 
-      toast.success(`Successfully enrolled ${selectedIds.length} applicant(s).`);
+      toast.success(
+        res.data?.message || `Successfully enrolled ${selectedIds.length} applicant(s).`
+      );
       fetchAdmissions();
       setBulkEnrollModalOpen(false);
     } catch (err) {
@@ -1336,6 +1494,9 @@ const Admission = () => {
                 Program Applied
               </th>
               <th className="px-3 py-2 text-left text-sm font-semibold">
+                Year Level
+              </th>
+              <th className="px-3 py-2 text-left text-sm font-semibold">
                 Application Date
               </th>
               <th className="px-3 py-2 text-left text-sm font-semibold">
@@ -1362,6 +1523,9 @@ const Admission = () => {
                   <td className="px-3 py-2 text-sm">{admission.email}</td>
                   <td className="px-3 py-2 text-sm">
                     {admission.program_applied || "N/A"}
+                  </td>
+                  <td className="px-3 py-2 text-sm">
+                    {admission.year_level || "1st Year"}
                   </td>
                   <td className="px-3 py-2 text-sm">
                     {formatDisplayDate(admission.application_date)}
@@ -1399,7 +1563,7 @@ const Admission = () => {
             ) : (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="text-center py-4 text-slate-500 italic"
                 >
                   No admissions found.

@@ -23,9 +23,6 @@ const SharedLayout = ({ role, handleLogout }) => {
         <Header
           toggleSidebar={toggleSidebar}
           onLogout={handleLogout}
-          className={`${
-            isSidebarOpen ? "ml-[250px]" : "ml-[80px]"
-          } w-[calc(100%-var(--sidebar-width))]`}
         />
 
         {/* Main content, below header */}

@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import {
@@ -71,11 +72,11 @@ const SyllabusUpload = () => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
       if (selectedFile.type !== "application/pdf") {
-        alert("Please select a PDF file");
+        toast.warning("Please select a PDF file");
         return;
       }
       if (selectedFile.size > 10 * 1024 * 1024) {
-        alert("File size must be less than 10MB");
+        toast.warning("File size must be less than 10MB");
         return;
       }
       setFile(selectedFile);
@@ -85,7 +86,7 @@ const SyllabusUpload = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file || !selectedCourse) {
-      alert("Please select a course and upload a file");
+      toast.warning("Please select a course and upload a file");
       return;
     }
 
@@ -102,12 +103,12 @@ const SyllabusUpload = () => {
 
       // await axios.post('/api/faculty/syllabus/upload', formDataToSend);
 
-      alert("Syllabus uploaded successfully!");
+      toast.success("Syllabus uploaded successfully!");
       closeModal();
       fetchSyllabi();
     } catch (error) {
       console.error("Error uploading syllabus:", error);
-      alert("Failed to upload syllabus");
+      toast.error("Failed to upload syllabus");
     } finally {
       setLoading(false);
     }
@@ -117,7 +118,7 @@ const SyllabusUpload = () => {
     if (window.confirm("Are you sure you want to delete this syllabus?")) {
       try {
         // await axios.delete(`/api/faculty/syllabus/${id}`);
-        alert("Syllabus deleted successfully!");
+        toast.success("Syllabus deleted successfully!");
         fetchSyllabi();
       } catch (error) {
         console.error("Error deleting syllabus:", error);

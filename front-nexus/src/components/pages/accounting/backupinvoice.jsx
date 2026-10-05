@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import { Plus, Edit, Trash2, Search, FileText, ChevronLeft, ChevronRight } from "lucide-react";
@@ -131,7 +132,7 @@ const InvoiceManagement = () => {
       fetchSummary();
     } catch (error) {
       console.error("Error saving invoice:", error);
-      alert("Failed to save invoice");
+      toast.error("Failed to save invoice");
     }
   };
 

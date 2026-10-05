@@ -10,34 +10,41 @@ import {
   ClipboardCheck,
   Star,
   Download,
+  ClipboardList,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { downloadPDF, generateCSV, downloadCSV } from "../../../utils/exportHelpers";
+import api from "../../../api/axios";
+import { exportRegistrationFormsPDF } from "../../../utils/exportRegistrationForm";
 
 const BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const TABS = [
   { id: "students",    label: "Students",    icon: Users },
   { id: "enrollments", label: "Enrollments", icon: GraduationCap },
+  { id: "registration_forms", label: "Registration Forms", icon: ClipboardList },
   { id: "grades",      label: "Grades",      icon: Star },
 ];
 
 const COLUMNS = {
   students:    ["Student No.", "Name", "Program", "Year Level", "GPA", "Status"],
   enrollments: ["Enrollment ID", "Student", "Program", "Academic Year", "Units", "Status"],
+  registration_forms: ["Enrollment ID", "Student", "Program", "Subject", "Period", "Year Level", "Status"],
   grades:      ["Student", "Course", "Period", "Raw Grade", "Final Grade", "Status"],
 };
 
 const STATUS_OPTIONS = {
   students:    [["Active","Active"],["Inactive","Inactive"],["Graduated","Graduated"]],
   enrollments: [["enrolled","Enrolled"],["pending","Pending"],["dropped","Dropped"]],
+  registration_forms: [["Enrolled","Enrolled"],["Dropped","Dropped"],["Completed","Completed"],["Failed","Failed"]],
   grades:      [["approved","Approved"],["pending","Pending"],["failed","Failed"]],
 };
 
 const REPORT_TITLES = {
   students:    "Students Report",
   enrollments: "Enrollments Report",
+  registration_forms: "Enrollment Registration Forms",
   grades:      "Grades Report",
 };
 
@@ -88,7 +95,7 @@ const StudentReports = () => {
       if (selectedStudentProgramId !== "all") params.set("program_id", selectedStudentProgramId);
     }
 
-    if (activeTab === "enrollments" && selectedProgramId !== "all") {
+    if ((activeTab === "enrollments" || activeTab === "registration_forms") && selectedProgramId !== "all") {
       params.set("program_id", selectedProgramId);
     }
 
@@ -97,6 +104,7 @@ const StudentReports = () => {
     const ENDPOINTS = {
       students:    `/api/reports/students`,
       enrollments: `/api/reports/enrollments`,
+      registration_forms: `/api/enrollments`,
       grades:      `/api/grades`,
       attendance:  `/api/reports/attendance`,
       library:     `/api/library/transactions`,
@@ -132,12 +140,30 @@ const StudentReports = () => {
 
   // Client-side filter — search only; program/year/status already filtered server-side
   const filtered = useMemo(() => {
-    if (!searchTerm.trim()) return data;
-    const q = searchTerm.toLowerCase();
-    return data.filter((item) =>
-      Object.values(item).some((v) => String(v ?? "").toLowerCase().includes(q))
-    );
-  }, [data, searchTerm]);
+    const q = searchTerm.trim().toLowerCase();
+    return data.filter((item) => {
+      if (activeTab === "registration_forms") {
+        const matchesStatus = statusFilter === "all" || String(item.status || "").toLowerCase() === statusFilter.toLowerCase();
+        const matchesYear = yearLevelFilter === "all" || String(item.year_level || "") === yearLevelFilter;
+        const matchesProgram = selectedProgramId === "all" ||
+          String(item.student_program_id || "") === String(selectedProgramId) ||
+          String(item.section_program_id || "") === String(selectedProgramId);
+        const matchesSearch = !q || Object.values(item).some((v) => String(v ?? "").toLowerCase().includes(q));
+        return matchesStatus && matchesYear && matchesProgram && matchesSearch;
+      }
+      return !q || Object.values(item).some((v) => String(v ?? "").toLowerCase().includes(q));
+    });
+  }, [activeTab, data, searchTerm, statusFilter, yearLevelFilter, selectedProgramId]);
+
+  const filteredRegistrationForms = useMemo(() => {
+    if (activeTab !== "registration_forms") return [];
+    const uniqueForms = new Map();
+    filtered.forEach((enrollment) => {
+      const key = `${enrollment.student_id}:${enrollment.period_id}`;
+      if (!uniqueForms.has(key)) uniqueForms.set(key, enrollment);
+    });
+    return [...uniqueForms.values()];
+  }, [activeTab, filtered]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
@@ -204,9 +230,72 @@ const getExportShape = () => {
 
   // PDF Export
   const exportPDF = async () => {
-    if (!filtered.length || pdfLoading) return;
+    if (!(activeTab === "registration_forms" ? filteredRegistrationForms.length : filtered.length) || pdfLoading) return;
     setPdfLoading(true);
     try {
+      if (activeTab === "registration_forms") {
+        const loggedInUserId = localStorage.getItem("userId");
+        const firstName = localStorage.getItem("firstName") || "";
+        const lastName = localStorage.getItem("lastName") || "";
+        const role = localStorage.getItem("role") || "Registrar";
+        let registrar = {
+          full_name: `${firstName} ${lastName}`.trim() || "Registrar",
+          position: role,
+        };
+        if (loggedInUserId) {
+          try {
+            const res = await api.get(`/api/users/${loggedInUserId}`);
+            registrar = {
+              full_name: `${res.data.first_name} ${res.data.last_name}`.trim(),
+              position: res.data.employee_details?.position_title || "Registrar",
+            };
+          } catch {
+            // Continue with the name and role cached in local storage.
+          }
+        }
+
+        const forms = [];
+        for (const enrollment of filteredRegistrationForms) {
+          let studentInfo = {};
+          try {
+            const res = await api.get(`/api/users/${enrollment.student_id}`);
+            const student = res.data;
+            studentInfo = {
+              student_number: student.student_number,
+              full_name: `${student.first_name} ${student.last_name}`.trim(),
+              address: student.address || "",
+              birthday: student.birthday || "",
+              age: student.age || "",
+              gender: student.gender || "",
+              civil_status: student.civil_status || "",
+              religion: student.religion || "",
+              nationality: student.nationality || "",
+              cell_phone: student.phone || "",
+              email: student.email || "",
+              program_year: `${student.program || enrollment.student_program_code || enrollment.student_course || "N/A"} / ${enrollment.year_level || ""}`,
+            };
+          } catch {
+            // The form exporter can use the enrollment's basic student details.
+          }
+
+          let invoice = {};
+          try {
+            const res = await api.get("/api/invoices", {
+              params: { academic_period_id: enrollment.period_id },
+            });
+            const invoices = res.data?.data || res.data || [];
+            invoice = invoices.find((item) => String(item.student_id) === String(enrollment.student_id)) || {};
+          } catch {
+            // Export the form without invoice data when no invoice is available.
+          }
+
+          forms.push({ enrollment, studentInfo, currentUser: registrar, invoice });
+        }
+
+        await exportRegistrationFormsPDF(forms);
+        return;
+      }
+
       const reportTitle = REPORT_TITLES[activeTab] || `${activeTab} Report`;
       const program     = getProgramLabel();
       const { rows, headers } = getExportShape();
@@ -218,6 +307,9 @@ const getExportShape = () => {
         headers,
         includeTimestamps: false,
       });
+    } catch (error) {
+      console.error("Failed to export report PDF:", error);
+      window.alert("Failed to generate the PDF export.");
     } finally {
       setPdfLoading(false);
     }
@@ -273,6 +365,19 @@ const getExportShape = () => {
             <td className="px-4 py-2">{item.academic_year} – {item.semester}</td>
             <td className="px-4 py-2">{item.total_units || 0}</td>
             <td className="px-4 py-2">{badge(item.enrollment_status)}</td>
+          </>
+        );
+        break;
+      case "registration_forms":
+        cells = (
+          <>
+            <td className="px-4 py-2">{item.enrollment_id}</td>
+            <td className="px-4 py-2 font-semibold text-slate-900">{item.student_name}</td>
+            <td className="px-4 py-2">{item.student_program_code || item.section_program_code || item.student_course || "General"}</td>
+            <td className="px-4 py-2">{item.course_code} – {item.course_title}</td>
+            <td className="px-4 py-2">{item.school_year} – {item.semester}</td>
+            <td className="px-4 py-2">{item.year_level || "—"}</td>
+            <td className="px-4 py-2">{badge(item.status)}</td>
           </>
         );
         break;
@@ -403,7 +508,7 @@ const getExportShape = () => {
             )}
 
             {/* Students tab: Year Level filter */}
-            {activeTab === "students" && (
+            {(activeTab === "students" || activeTab === "registration_forms") && (
               <select
                 value={yearLevelFilter}
                 onChange={(e) => setYearLevelFilter(e.target.value)}
@@ -418,7 +523,7 @@ const getExportShape = () => {
             )}
 
             {/* Enrollments tab: Program filter */}
-            {activeTab === "enrollments" && (
+            {(activeTab === "enrollments" || activeTab === "registration_forms") && (
               <select
                 value={selectedProgramId}
                 onChange={(e) => setSelectedProgramId(e.target.value)}
@@ -483,7 +588,11 @@ const getExportShape = () => {
                   className="flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md text-sm font-medium transition-colors shadow-sm"
                 >
                   <Download size={14} />
-                  {pdfLoading ? "Generating…" : "Export PDF"}
+                  {pdfLoading
+                    ? "Generating…"
+                    : activeTab === "registration_forms"
+                      ? `Download Forms (${filteredRegistrationForms.length})`
+                      : "Export PDF"}
                 </button>
                 <span className="absolute left-1/2 -translate-x-1/2 top-full mt-1 hidden group-hover:block bg-slate-800 text-white text-xs px-2 py-1 rounded shadow whitespace-nowrap z-10">
                   Download professional PDF report

@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import api from "../../../api/axios"; // authenticated instance (adds Bearer token) — needed for endpoints that require auth, e.g. /api/invoices
@@ -344,7 +345,7 @@ const StudentCourses = () => {
     if (!studentId) return;
 
     if (!periodMeta) {
-      alert("No enrolled subjects to export.");
+      toast.warning("No enrolled subjects to export.");
       return;
     }
 
@@ -429,7 +430,7 @@ const StudentCourses = () => {
     if (downloadingTimetable) return;
 
     if (!timetable || timetable.length === 0) {
-      alert("No class schedule to export.");
+      toast.warning("No class schedule to export.");
       return;
     }
 

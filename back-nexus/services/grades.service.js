@@ -1,7 +1,7 @@
 import GradesModel from "../model/grades.model.js";
 
 const GradesService = {
-  getAllGrades: async (filters) => {
+  getAllGrades: async (filters = {}) => {
     try {
       return await GradesModel.getAllGrades(filters);
     } catch (error) {
@@ -9,14 +9,9 @@ const GradesService = {
     }
   },
 
-  // id is now the composite key "{student_id}-{course_id}-{period_id}"
   getGradeById: async (id) => {
     try {
-      const [studentId, courseId, periodId] = String(id).split("-");
-      if (!studentId || !courseId || !periodId) {
-        throw new Error("Invalid grade id");
-      }
-      const grade = await GradesModel.getGradeByComposite(studentId, courseId, periodId);
+      const grade = await GradesModel.getGradeById(id);
       if (!grade) {
         throw new Error("Grade not found");
       }
@@ -26,30 +21,74 @@ const GradesService = {
     }
   },
 
-  // "Approve" here bulk-approves every grade_entries row for this
-  // student/course/period — a shortcut over the per-entry approval flow
-  // in GradeEntryApproval.jsx.
+  createGrade: async (data) => {
+    try {
+      if (!data.student_user_id || !data.course_id || !data.period_id) {
+        throw new Error("Student, Course, and Academic Period are required.");
+      }
+      return await GradesModel.create(data);
+    } catch (error) {
+      throw new Error(`Error creating grade: ${error.message}`);
+    }
+  },
+
+  updateGrade: async (id, data) => {
+    try {
+      if (!id) {
+        throw new Error("Grade ID is required for update.");
+      }
+      return await GradesModel.update(id, data);
+    } catch (error) {
+      throw new Error(`Error updating grade: ${error.message}`);
+    }
+  },
+
+  deleteGrade: async (id) => {
+    try {
+      if (!id) {
+        throw new Error("Grade ID is required for deletion.");
+      }
+      const deleted = await GradesModel.delete(id);
+      if (!deleted) {
+        throw new Error("Grade not found or already deleted.");
+      }
+      return { success: true };
+    } catch (error) {
+      throw new Error(`Error deleting grade: ${error.message}`);
+    }
+  },
+
   approveGrade: async (id, approvedBy) => {
     try {
-      const [studentId, courseId, periodId] = String(id).split("-");
-      if (!studentId || !courseId || !periodId) {
-        throw new Error("Invalid grade id");
+      let studentId, courseId, periodId;
+
+      if (String(id).includes("-")) {
+        [studentId, courseId, periodId] = String(id).split("-");
+      } else {
+        const grade = await GradesModel.getGradeById(id);
+        if (grade) {
+          studentId = grade.student_user_id;
+          courseId = grade.course_id;
+          periodId = grade.period_id;
+        }
       }
 
-      const affectedRows = await GradesModel.approveAllEntriesFor(
-        studentId,
-        courseId,
-        periodId,
-        approvedBy,
-      );
-
-      if (affectedRows === 0) {
-        throw new Error("No pending entries found to approve for this student/course/period");
+      if (studentId && courseId && periodId) {
+        await GradesModel.approveAllEntriesFor(studentId, courseId, periodId, approvedBy);
+        return await GradesModel.getGradeByComposite(studentId, courseId, periodId);
       }
 
-      return await GradesModel.getGradeByComposite(studentId, courseId, periodId);
+      throw new Error("Invalid grade ID for approval");
     } catch (error) {
       throw new Error(`Error approving grade: ${error.message}`);
+    }
+  },
+
+  bulkUpsertGrades: async (gradesList) => {
+    try {
+      return await GradesModel.bulkUpsertGrades(gradesList);
+    } catch (error) {
+      throw new Error(`Error saving report grades: ${error.message}`);
     }
   },
 };

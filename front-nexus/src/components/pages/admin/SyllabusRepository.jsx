@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Select from "react-select";
@@ -115,7 +116,7 @@ const SyllabusRepository = () => {
     const user = JSON.parse(localStorage.getItem("userId"));
     const userId = user?.user_id || user?.userId;
     if (!userId) {
-      alert("You must be logged in to upload a syllabus.", userId);
+      toast.warning("You must be logged in to upload a syllabus.", userId);
       return;
     } */
     const submitData = { ...formData, uploaded_by: formData.uploaded_by };
@@ -132,7 +133,7 @@ const SyllabusRepository = () => {
       closeModal();
     } catch (error) {
       console.error("Error saving syllabus:", error);
-      alert(error.response?.data?.error || "Error saving syllabus");
+      toast.error(error.response?.data?.error || "Error saving syllabus");
     }
   };
 
@@ -159,14 +160,14 @@ const SyllabusRepository = () => {
         fetchSyllabi();
       } catch (error) {
         console.error("Error deleting syllabus:", error);
-        alert(error.response?.data?.error || "Error deleting syllabus");
+        toast.error(error.response?.data?.error || "Error deleting syllabus");
       }
     }
   };
 
   const handleDownload = (syllabus) => {
     // In a real implementation, this would download the actual file
-    alert(`Downloading: ${syllabus.file_name}`);
+    toast.info(`Downloading: ${syllabus.file_name}`);
     // window.open(syllabus.file_path, '_blank');
   };
 

@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import api from "../../../api/axios";
 import {
@@ -138,7 +139,7 @@ const IncomeExpensesReports = () => {
       fetchSummary();
     } catch (error) {
       console.error("Error saving transaction:", error);
-      alert("Failed to save transaction");
+      toast.error("Failed to save transaction");
     }
   };
 

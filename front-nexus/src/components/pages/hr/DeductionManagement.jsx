@@ -1,3 +1,4 @@
+import { toast } from "react-toastify";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Plus, Edit, Trash2, DollarSign, TrendingDown, Search, ChevronLeft, ChevronRight } from "lucide-react";
@@ -75,7 +76,7 @@ const DeductionManagement = () => {
       fetchDeductions();
     } catch (error) {
       console.error("Error saving deduction:", error);
-      alert("Failed to save deduction");
+      toast.error("Failed to save deduction");
     }
   };
 
