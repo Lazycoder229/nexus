@@ -88,9 +88,7 @@ const AnnouncementCenter = () => {
     is_pinned: false,
   });
 
-  const authHeaders = () => ({
-    headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-  });
+  const authHeaders = () => ({ withCredentials: true });
 
   useEffect(() => {
     fetchData();

@@ -698,6 +698,56 @@ const ReportsModel = {
       unique_students: Number(row.unique_students || 0),
     }));
   },
+
+  // Dropout metrics use persisted enrollment records. A dropout is an
+  // enrollment whose status is "dropped"; reasons are not stored in schema.
+  async getDropoutAnalytics() {
+    const [programRows] = await pool.query(`
+      SELECT
+        COALESCE(p.name, 'Unknown Program') AS program,
+        COALESCE(p.code, 'Unknown') AS short_name,
+        COUNT(*) AS enrolled,
+        SUM(CASE WHEN LOWER(e.status) = 'dropped' THEN 1 ELSE 0 END) AS dropouts
+      FROM enrollments e
+      INNER JOIN users u ON e.student_id = u.user_id
+      INNER JOIN student_details sd ON u.user_id = sd.user_id
+      LEFT JOIN programs p ON sd.course = p.name OR sd.course = p.code
+      GROUP BY p.program_id, p.name, p.code
+      ORDER BY dropouts DESC, program ASC
+    `);
+
+    const [trendRows] = await pool.query(`
+      SELECT
+        DATE_FORMAT(e.enrollment_date, '%Y-%m') AS period_key,
+        DATE_FORMAT(e.enrollment_date, '%b %Y') AS period_label,
+        COUNT(*) AS enrollments,
+        SUM(CASE WHEN LOWER(e.status) = 'dropped' THEN 1 ELSE 0 END) AS dropouts
+      FROM enrollments e
+      WHERE e.enrollment_date IS NOT NULL
+      GROUP BY period_key, period_label
+      ORDER BY period_key ASC
+    `);
+
+    return {
+      byProgram: programRows.map((row) => {
+        const enrolled = Number(row.enrolled || 0);
+        const dropouts = Number(row.dropouts || 0);
+        return {
+          program: row.program,
+          shortName: row.short_name,
+          enrolled,
+          dropouts,
+          rate: enrolled ? Math.round((dropouts / enrolled) * 1000) / 10 : 0,
+        };
+      }),
+      trends: trendRows.map((row) => ({
+        period_label: row.period_label,
+        enrollments: Number(row.enrollments || 0),
+        dropouts: Number(row.dropouts || 0),
+      })),
+      reasons: [],
+    };
+  },
 };
 
 export default ReportsModel;

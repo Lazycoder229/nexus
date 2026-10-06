@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import api from "./api/axios";
 import SharedLayout from "./layouts/SharedLayout";
 
 import AdminDashboard from "./components/pages/admin/AdminDashboard";
@@ -120,10 +121,15 @@ import AccountingDashboard from "./components/pages/accounting/AccountingDashboa
 function AppWrapper() {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    console.log("Logging out...");
-    localStorage.clear(); // clear token/role info
-    navigate("/", { replace: true });
+  const handleLogout = async () => {
+    try {
+      await api.post("/api/auth/logout");
+    } catch (error) {
+      console.error("Failed to clear the session cookie:", error);
+    } finally {
+      localStorage.clear();
+      navigate("/", { replace: true });
+    }
   };
 
   // Function to navigate based on role

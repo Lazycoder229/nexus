@@ -57,12 +57,8 @@ const AssignedSubjects = () => {
       setError(null);
 
       // Fetch assignments for the logged-in faculty member
-      const token = localStorage.getItem("token");
       const response = await axios.get(
         `${API_BASE}/api/faculty-assignments/faculty/${facultyUserId}`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        },
       );
 
       // Use response.data.data (API returns { success, data })
@@ -263,14 +259,9 @@ const AssignedSubjects = () => {
   const fetchStudentList = async (assignmentId) => {
     try {
       setLoadingStudents(true);
-      const token = localStorage.getItem("token");
-
       // Use the actual API endpoint for fetching students by assignment
       const response = await axios.get(
         `${API_BASE}/api/enrollments/assignment/${assignmentId}/students`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        },
       );
 
       setStudents(response.data.data || []);

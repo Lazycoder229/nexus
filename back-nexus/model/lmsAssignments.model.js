@@ -205,11 +205,31 @@ const LMSAssignments = {
   update: async (id, updateData) => {
     const fields = [];
     const values = [];
+    const allowedFields = new Set([
+      "section_id",
+      "course_id",
+      "title",
+      "description",
+      "assignment_type",
+      "total_points",
+      "due_date",
+      "academic_period_id",
+      "allow_late_submission",
+      "instructions",
+      "model_answer",
+      "model_answer_file_url",
+      "status",
+    ]);
 
     Object.keys(updateData).forEach((key) => {
+      if (!allowedFields.has(key)) return;
       fields.push(`${key} = ?`);
       values.push(updateData[key]);
     });
+
+    if (fields.length === 0) {
+      throw new Error("No valid assignment fields to update");
+    }
 
     values.push(id);
 

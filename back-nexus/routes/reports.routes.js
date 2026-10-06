@@ -4,6 +4,7 @@ import {
   getEnrollmentReports,
   getEnrollmentTrends,
   getEnrollmentByProgram,
+  getDropoutAnalytics,
   getAttendanceReports,
   getPayrollReports,
   getSummaryStatistics,
@@ -26,6 +27,9 @@ router.get("/enrollment-trends", getEnrollmentTrends);
 
 // Enrollment by program
 router.get("/enrollment-by-program", getEnrollmentByProgram);
+
+// Live dropout counts, rates, and enrollment-month trend
+router.get("/dropout-analytics", getDropoutAnalytics);
 
 // Attendance reports
 router.get("/attendance", getAttendanceReports);

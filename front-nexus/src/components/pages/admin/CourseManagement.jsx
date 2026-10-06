@@ -81,6 +81,7 @@ const CourseModal = ({
     hours: 3,
     type: "Major",
     curriculum_type: "New",
+    year_level: "",
     semester_offer: "",
     department_id: null,
     instructor_id: null,
@@ -97,6 +98,7 @@ const CourseModal = ({
         hours: initialData.hours || 3,
         type: initialData.type || "Major",
         curriculum_type: initialData.curriculum_type || "Old",
+        year_level: initialData.year_level || "",
         semester_offer: initialData.semester_offer || "",
         department_id: initialData.department_id || null,
         instructor_id: initialData.instructor_id || null,
@@ -112,6 +114,7 @@ const CourseModal = ({
         hours: 3,
         type: "Major",
         curriculum_type: "New",
+        year_level: "",
         semester_offer: "",
         department_id: null,
         instructor_id: null,
@@ -272,6 +275,24 @@ const CourseModal = ({
               >
                 <option value="New">New Curriculum</option>
                 <option value="Old">Old Curriculum</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                Year Level
+              </label>
+              <select
+                name="year_level"
+                value={formData.year_level}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">Select a year level...</option>
+                {["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"].map((year) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
               </select>
             </div>
 
@@ -610,13 +631,15 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm }) => {
 // --- Main Component ---
 const CourseManagement = () => {
   const [courses, setCourses] = useState([]);
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [courseLoadError, setCourseLoadError] = useState(false);
   const [departments, setDepartments] = useState([]);
-  const [programs, setPrograms] = useState([]);
   const [instructors, setInstructors] = useState([]);
   const [semesters, setSemesters] = useState([]);
   const [search, setSearch] = useState("");
   const [filterYearLevel, setFilterYearLevel] = useState("");
-  const [filterProgram, setFilterProgram] = useState("");
+  const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterPrerequisites, setFilterPrerequisites] = useState("");
   const [filterSemesterOffer, setFilterSemesterOffer] = useState("");
   const [filterCurriculum, setFilterCurriculum] = useState("");
   const [page, setPage] = useState(1);
@@ -630,6 +653,8 @@ const CourseManagement = () => {
 
   // Fetch data
   const fetchCourses = async () => {
+    setLoadingCourses(true);
+    setCourseLoadError(false);
     try {
       const res = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/api/course/courses`,
@@ -638,6 +663,9 @@ const CourseManagement = () => {
       setCourses(res.data);
     } catch (err) {
       console.error(err);
+      setCourseLoadError(true);
+    } finally {
+      setLoadingCourses(false);
     }
   };
 
@@ -669,20 +697,6 @@ const CourseManagement = () => {
     }
   };
 
-  const fetchPrograms = async () => {
-    try {
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/programs`);
-      // GET /api/programs returns an array with id, code, and name fields.
-      const responseData = res.data;
-      const programRows = Array.isArray(responseData)
-        ? responseData
-        : responseData?.programs || responseData?.data || [];
-      setPrograms(Array.isArray(programRows) ? programRows : []);
-    } catch (err) {
-      console.error("Failed to fetch programs:", err);
-    }
-  };
-
   const fetchSemesters = async () => {
     try {
       const res = await axios.get(
@@ -705,7 +719,6 @@ const CourseManagement = () => {
     fetchCourses();
     fetchDepartments();
     fetchInstructors();
-    fetchPrograms();
     fetchSemesters();
   }, []);
 
@@ -716,12 +729,15 @@ const CourseManagement = () => {
         (c) =>
           ((c.code || "").toLowerCase().includes(search.toLowerCase()) ||
             (c.title || "").toLowerCase().includes(search.toLowerCase())) &&
-          (!filterYearLevel || String(c.year_level || c.yearLevel || "") === filterYearLevel) &&
-          (!filterProgram || String(c.program_id || c.programId || "") === filterProgram) &&
+          (!filterYearLevel || c.year_level === filterYearLevel) &&
+          (!filterDepartment || String(c.department_id || "") === filterDepartment) &&
+          (!filterPrerequisites ||
+            (filterPrerequisites === "has" && (c.prerequisites || []).length > 0) ||
+            (filterPrerequisites === "none" && (c.prerequisites || []).length === 0)) &&
           (!filterSemesterOffer || String(c.semester_offer || "") === filterSemesterOffer) &&
           (!filterCurriculum || String(c.curriculum_type || "Old") === filterCurriculum),
       ),
-    [courses, search, filterYearLevel, filterProgram, filterSemesterOffer, filterCurriculum],
+    [courses, search, filterYearLevel, filterDepartment, filterPrerequisites, filterSemesterOffer, filterCurriculum],
   );
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
@@ -736,6 +752,7 @@ const CourseManagement = () => {
       course_id: c.course_id,
       code: c.code || "",
       title: c.title || "",
+      year_level: c.year_level || "Unassigned",
       department: c.department_name || "",
       instructor: c.instructor_name || "N/A",
       units: c.units ?? 0,
@@ -743,7 +760,7 @@ const CourseManagement = () => {
     downloadExcel(exportData, {
       title: "Course Catalog",
       officeLabel: "Registrar Office",
-      headers: ["course_id", "code", "title", "department", "instructor", "units"],
+      headers: ["course_id", "code", "title", "year_level", "department", "instructor", "units"],
     });
   };
 
@@ -752,6 +769,7 @@ const CourseManagement = () => {
       course_id: c.course_id,
       code: c.code || "",
       title: c.title || "",
+      year_level: c.year_level || "Unassigned",
       department: c.department_name || "",
       instructor: c.instructor_name || "N/A",
       units: c.units ?? 0,
@@ -760,7 +778,7 @@ const CourseManagement = () => {
       title: "Course Catalog",
       officeLabel: "Registrar Office",
       orientation: "portrait",
-      headers: ["course_id", "code", "title", "department", "instructor", "units"],
+      headers: ["course_id", "code", "title", "year_level", "department", "instructor", "units"],
     });
   };
 
@@ -792,7 +810,8 @@ const CourseManagement = () => {
         err.response?.data || err.message,
       );
       toast.error(
-        err.response?.data?.message ||
+        err.response?.data?.error ||
+          err.response?.data?.message ||
           (modalMode === "add"
             ? "Failed to add course."
             : "Failed to update course."),
@@ -850,7 +869,7 @@ const CourseManagement = () => {
       </div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:flex-1">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full sm:flex-1">
         <input
           type="text"
           placeholder="Search courses..."
@@ -859,21 +878,29 @@ const CourseManagement = () => {
             setSearch(e.target.value);
             setPage(1);
           }}
-          className="px-2 py-1 border border-slate-400 rounded-md w-full sm:max-w-xs focus:ring-1 focus:ring-indigo-500"
+          className="px-2 py-1 border border-slate-400 rounded-md w-full min-w-0 sm:flex-[1_1_17rem] sm:max-w-none focus:ring-1 focus:ring-indigo-500"
         />
-        <select value={filterYearLevel} onChange={(e) => { setFilterYearLevel(e.target.value); setPage(1); }} className="px-2 py-1 border border-slate-400 rounded-md bg-white text-sm">
+        <select value={filterYearLevel} onChange={(e) => { setFilterYearLevel(e.target.value); setPage(1); }} className="w-full sm:w-36 shrink-0 px-2 py-1 border border-slate-400 rounded-md bg-white text-sm">
           <option value="">All Year Levels</option>
-          {["1st Year", "2nd Year", "3rd Year", "4th Year"].map((year) => <option key={year} value={year}>{year}</option>)}
+          {["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"].map((year) => <option key={year} value={year}>{year}</option>)}
         </select>
-        <select value={filterProgram} onChange={(e) => { setFilterProgram(e.target.value); setPage(1); }} className="px-2 py-1 border border-slate-400 rounded-md bg-white text-sm">
-          <option value="">All Programs</option>
-          {programs.map((program) => <option key={program.program_id || program.id} value={program.program_id || program.id}>{program.code ? `${program.code} - ` : ""}{program.name || program.program_name}</option>)}
+        <select value={filterDepartment} onChange={(e) => { setFilterDepartment(e.target.value); setPage(1); }} className="w-full sm:w-48 shrink-0 px-2 py-1 border border-slate-400 rounded-md bg-white text-sm">
+          <option value="">All Departments</option>
+          {departments.map((department) => {
+            const id = department.department_id || department.id;
+            return <option key={id} value={id}>{department.name}</option>;
+          })}
         </select>
-        <select value={filterSemesterOffer} onChange={(e) => { setFilterSemesterOffer(e.target.value); setPage(1); }} className="px-2 py-1 border border-slate-400 rounded-md bg-white text-sm">
+        <select value={filterPrerequisites} onChange={(e) => { setFilterPrerequisites(e.target.value); setPage(1); }} className="w-full sm:w-44 shrink-0 px-2 py-1 border border-slate-400 rounded-md bg-white text-sm">
+          <option value="">All Prerequisites</option>
+          <option value="has">Has Prerequisites</option>
+          <option value="none">No Prerequisites</option>
+        </select>
+        <select value={filterSemesterOffer} onChange={(e) => { setFilterSemesterOffer(e.target.value); setPage(1); }} className="w-full sm:w-48 shrink-0 px-2 py-1 border border-slate-400 rounded-md bg-white text-sm">
           <option value="">All Semester Offers</option>
           {semesters.map((semester) => <option key={semester} value={semester}>{semester}</option>)}
         </select>
-        <select value={filterCurriculum} onChange={(e) => { setFilterCurriculum(e.target.value); setPage(1); }} className="px-2 py-1 border border-slate-400 rounded-md bg-white text-sm">
+        <select value={filterCurriculum} onChange={(e) => { setFilterCurriculum(e.target.value); setPage(1); }} className="w-full sm:w-40 shrink-0 px-2 py-1 border border-slate-400 rounded-md bg-white text-sm">
           <option value="">All Curricula</option>
           <option value="New">New Curriculum</option>
           <option value="Old">Old Curriculum</option>
@@ -904,7 +931,7 @@ const CourseManagement = () => {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded border border-slate-200">
+      <div className="overflow-x-auto rounded border border-slate-200" aria-busy={loadingCourses}>
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-100">
             <tr>
@@ -917,6 +944,9 @@ const CourseManagement = () => {
               </th>
               <th className="px-3 py-2 text-left text-sm font-semibold">
                 Curriculum
+              </th>
+              <th className="px-3 py-2 text-left text-sm font-semibold">
+                Year Level
               </th>
               <th className="px-3 py-2 text-left text-sm font-semibold">
                 Department
@@ -939,13 +969,45 @@ const CourseManagement = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
-            {displayed.length ? (
+            {loadingCourses ? (
+              <>
+                {Array.from({ length: 5 }).map((_, rowIndex) => (
+                  <tr key={`course-skeleton-${rowIndex}`} aria-hidden="true">
+                    {["w-10", "w-20", "w-36", "w-20", "w-28", "w-28", "w-10", "w-8", "w-16", "w-16", "w-12"].map((width, columnIndex) => (
+                      <td key={`course-skeleton-${rowIndex}-${columnIndex}`} className="px-3 py-3">
+                        <div className={`h-4 ${width} max-w-full rounded bg-slate-200 animate-pulse`} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+                <tr>
+                  <td colSpan={11} className="py-2 text-center text-xs text-slate-500">
+                    <span className="inline-flex items-center gap-2" role="status" aria-live="polite">
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+                      Loading courses…
+                    </span>
+                  </td>
+                </tr>
+              </>
+            ) : courseLoadError ? (
+              <tr>
+                <td colSpan={11} className="py-8 text-center">
+                  <p className="mb-2 text-sm text-red-600">Could not load courses.</p>
+                  <button
+                    type="button"
+                    onClick={fetchCourses}
+                    className="rounded-md border border-indigo-300 px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50"
+                  >Try again</button>
+                </td>
+              </tr>
+            ) : displayed.length ? (
               displayed.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-50 transition">
                   <td className="px-3 py-2 text-sm">{c.id}</td>
                   <td className="px-3 py-2 text-sm">{c.code}</td>
                   <td className="px-3 py-2 text-sm">{c.title}</td>
                   <td className="px-3 py-2 text-sm">{c.curriculum_type || "Old"}</td>
+                  <td className="px-3 py-2 text-sm">{c.year_level || "Unassigned"}</td>
                   <td className="px-3 py-2 text-sm">{c.department_name}</td>
                   <td className="px-3 py-2 text-sm">
                     {c.instructor_name || "N/A"}
@@ -988,7 +1050,7 @@ const CourseManagement = () => {
             ) : (
               <tr key="no-courses">
                 <td
-                  colSpan={10}
+                  colSpan={11}
                   className="text-center py-4 text-slate-500 italic"
                 >
                   No courses found.
@@ -999,12 +1061,16 @@ const CourseManagement = () => {
         </table>
       </div>
 
-      <Pagination
-        currentPage={page}
-        totalPages={totalPages}
-        setPage={setPage}
-        totalItems={filtered.length}
-      />
+      {loadingCourses ? (
+        <p className="mt-3 text-sm text-slate-500" role="status">Updating course list…</p>
+      ) : (
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          setPage={setPage}
+          totalItems={filtered.length}
+        />
+      )}
 
       {/* Modal */}
       <CourseModal

@@ -193,18 +193,20 @@ ALTER TABLE departments ADD COLUMN status ENUM('Active','Inactive','Pending') DE
 -- ===========================
 CREATE TABLE courses (
     course_id INT AUTO_INCREMENT PRIMARY KEY,       -- Unique ID for course
-    code VARCHAR(20) NOT NULL UNIQUE,              -- Course code (e.g., CS101)
+    code VARCHAR(20) NOT NULL,                     -- Course code (e.g., CS101)
     title VARCHAR(100) NOT NULL,                   -- Course title
     description TEXT,                              -- Optional course description
     units INT DEFAULT 3, 
     hours INT NOT NULL,
     type ENUM('Major','Minor') NOT NULL,                           -- Course type
     curriculum_type ENUM('New','Old') NOT NULL DEFAULT 'New',      -- Curriculum version
+    year_level ENUM('1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year') NULL,
     department_id INT NOT NULL,                     -- FK to department offering the course
     instructor_id INT,                              -- FK to faculty member (user_id)
     semester_offer VARCHAR(100) NOT NULL,
     status ENUM('Active', 'Inactive') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_courses_code_department_year_curriculum (code, department_id, year_level, curriculum_type),
     FOREIGN KEY (department_id) REFERENCES departments(department_id) ON DELETE CASCADE,
     FOREIGN KEY (instructor_id) REFERENCES users(user_id) ON DELETE SET NULL
 );

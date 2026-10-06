@@ -183,8 +183,7 @@ const LoginForm = ({ onRegisterClick, onLoginSuccess, onVerifyClick }) => {
 
       //console.log("Login Response:", data);
 
-      // Save JWT token & user info
-      localStorage.setItem("token", data.token);
+      // The server stores the session in an HttpOnly cookie; only display state stays client-side.
       localStorage.setItem("role", data.role);
       localStorage.setItem("userId", data.userId);
       localStorage.setItem("firstName", data.firstName || "");

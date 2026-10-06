@@ -132,11 +132,27 @@ const LMSMaterials = {
   update: async (id, updateData) => {
     const fields = [];
     const values = [];
+    const allowedFields = new Set([
+      "section_id",
+      "course_id",
+      "title",
+      "description",
+      "material_type",
+      "file_url",
+      "file_name",
+      "file_size",
+      "academic_period_id",
+    ]);
 
     Object.keys(updateData).forEach((key) => {
+      if (!allowedFields.has(key)) return;
       fields.push(`${key} = ?`);
       values.push(updateData[key]);
     });
+
+    if (fields.length === 0) {
+      throw new Error("No valid material fields to update");
+    }
 
     values.push(id);
 

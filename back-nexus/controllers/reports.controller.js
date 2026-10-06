@@ -75,6 +75,16 @@ export const getEnrollmentByProgram = async (req, res) => {
   }
 };
 
+export const getDropoutAnalytics = async (_req, res) => {
+  try {
+    const data = await ReportsService.getDropoutAnalytics();
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching dropout analytics:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Get Attendance Reports
 export const getAttendanceReports = async (req, res) => {
   try {

@@ -5,6 +5,15 @@ const paymentController = {
   // Create new payment
   createPayment: async (req, res) => {
     try {
+      const isStudent = String(req.user?.role || "").toLowerCase() === "student";
+      if (isStudent) {
+        const invoices = await Invoice.getById(req.body.invoice_id);
+        const invoice = invoices?.[0];
+        if (!invoice || String(invoice.student_id) !== String(req.user.userId)) {
+          return res.status(403).json({ message: "You do not have permission to pay this invoice" });
+        }
+      }
+
       // Generate payment reference
       const results = await Payment.generatePaymentReference();
 
@@ -17,12 +26,13 @@ const paymentController = {
       const data = {
         payment_reference: paymentRef,
         ...req.body,
-        collected_by: req.user.user_id,
+        student_id: isStudent ? req.user.userId : req.body.student_id,
+        collected_by: req.user.userId || req.user.user_id,
       };
 
-      data.payment_status =
-        data.payment_status ||
-        (data.payment_method === "Cash" ? "Verified" : "Pending");
+      data.payment_status = isStudent
+        ? "Pending"
+        : data.payment_status || (data.payment_method === "Cash" ? "Verified" : "Pending");
 
       const result = await Payment.create(data);
 

@@ -92,10 +92,8 @@ const HRProfile = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const getAxiosConfig = () => {
-    const token = localStorage.getItem("token");
     return {
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
     };
@@ -148,8 +146,7 @@ const HRProfile = () => {
 
   useEffect(() => {
     const storedUserId = localStorage.getItem("userId");
-    const token = localStorage.getItem("token");
-    if (!storedUserId || !token) {
+    if (!storedUserId) {
       toast.warning("Please login first");
       return;
     }

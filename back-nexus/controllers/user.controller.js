@@ -14,7 +14,7 @@ import {
   deleteUserService,
 } from "../services/user.service.js";
 
-import { generateToken } from "../helpers/jwt.js";
+import { clearAuthCookie, generateToken, setAuthCookie } from "../helpers/jwt.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -115,17 +115,10 @@ export const verifyEmail = async (req, res) => {
     const { email, code } = req.body;
     const result = await verifyEmailService(email, code);
 
-    // Provide token so user can optionally proceed immediately or log in
-    const token = generateToken({
-      userId: result.user.user_id,
-      role: result.user.role,
-    });
-
     res.status(200).json({
       message: "Email verified successfully! Registration is now complete.",
       success: true,
       alreadyVerified: result.alreadyVerified,
-      token,
       userId: result.user.user_id,
       role: result.user.role,
       firstName: result.user.first_name,
@@ -169,11 +162,11 @@ export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await loginUserService(email, password);
-    const token = generateToken({ userId: user.userId, role: user.role });
+    const token = generateToken({ userId: user.userId, role: user.role, email: user.email });
+    setAuthCookie(res, token);
 
     res.status(200).json({
       message: "Login successful",
-      token,
       role: user.role,
       userId: user.userId,
       firstName: user.firstName,
@@ -197,6 +190,11 @@ export const loginUser = async (req, res) => {
       message: statusCode === 401 ? "Invalid credentials" : "Login failed",
     });
   }
+};
+
+export const logoutUser = (_req, res) => {
+  clearAuthCookie(res);
+  res.status(200).json({ message: "Logged out successfully" });
 };
 
 // Update student — req.body already validated & sanitized by middleware

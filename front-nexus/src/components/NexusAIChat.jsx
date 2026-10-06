@@ -13,7 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.254.102:5000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:5000`;
 
 // ─────────────────────────────────────────────
 //  KB kept only as offline fallback (Gemini API is primary)

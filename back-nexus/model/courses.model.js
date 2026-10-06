@@ -12,6 +12,7 @@ export const getAllCourses = async () => {
         c.hours,
         c.type,
         c.curriculum_type,
+        c.year_level,
         c.semester_offer,
         c.status,
         d.department_id,
@@ -44,6 +45,22 @@ export const getAllCourses = async () => {
   return rows;
 };
 
+export const hasCourseCodeConflict = async (
+  { code, department_id, year_level, curriculum_type },
+  excludeCourseId = null,
+) => {
+  let query = `SELECT course_id FROM courses
+    WHERE code = ? AND department_id = ? AND year_level <=> ? AND curriculum_type = ?`;
+  const params = [code, department_id, year_level ?? null, curriculum_type || "New"];
+  if (excludeCourseId !== null) {
+    query += " AND course_id <> ?";
+    params.push(excludeCourseId);
+  }
+  query += " LIMIT 1";
+  const [rows] = await db.query(query, params);
+  return rows.length > 0;
+};
+
 // Get single course
 export const getCourseById = async (id) => {
   const [rows] = await db.query(
@@ -56,6 +73,7 @@ export const getCourseById = async (id) => {
         c.hours,
         c.type,
         c.curriculum_type,
+        c.year_level,
         c.semester_offer,
         c.status,
         c.department_id,
@@ -98,15 +116,16 @@ export const createCourse = async ({
   hours,
   type,
   curriculum_type = "New",
+  year_level = null,
   semester_offer,
   department_id,
   instructor_id,
   status,
 }) => {
   const [result] = await db.query(
-    `INSERT INTO courses (code, title, description, units, hours, type, curriculum_type, semester_offer, department_id, instructor_id, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [code, title, description, units, hours, type, curriculum_type, semester_offer, department_id, instructor_id, status]
+    `INSERT INTO courses (code, title, description, units, hours, type, curriculum_type, year_level, semester_offer, department_id, instructor_id, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [code, title, description, units, hours, type, curriculum_type, year_level, semester_offer, department_id, instructor_id, status]
   );
 
   return {
@@ -118,6 +137,7 @@ export const createCourse = async ({
     hours,
     type,
     curriculum_type,
+    year_level,
     semester_offer,
     department_id,
     instructor_id,
@@ -128,11 +148,11 @@ export const createCourse = async ({
 // Update course
 export const updateCourse = async (
   id,
-  { code, title, description, units, hours, type, curriculum_type = "Old", semester_offer, department_id, instructor_id, status }
+  { code, title, description, units, hours, type, curriculum_type = "Old", year_level = null, semester_offer, department_id, instructor_id, status }
 ) => {
   await db.query(
     `UPDATE courses 
-     SET code = ?, title = ?, description = ?, units = ?, hours = ?, type = ?, curriculum_type = ?, semester_offer = ?, department_id = ?, instructor_id = ?, status = ?
+     SET code = ?, title = ?, description = ?, units = ?, hours = ?, type = ?, curriculum_type = ?, year_level = ?, semester_offer = ?, department_id = ?, instructor_id = ?, status = ?
      WHERE course_id = ?`,
     [
       code,
@@ -142,6 +162,7 @@ export const updateCourse = async (
       hours,
       type,
       curriculum_type,
+      year_level,
       semester_offer,
       department_id,
       instructor_id,

@@ -2,25 +2,6 @@ import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 dotenv.config();
 
-// ---------------------------------------------------------------------------
-// TensorFlow.js Universal Sentence Encoder — lazy-loaded fallback
-// Loaded only when all Gemini models fail, so startup is not affected.
-// ---------------------------------------------------------------------------
-let _tf = null;
-let _useModel = null;
-
-const getTFInstances = async () => {
-  if (!_useModel) {
-    console.log("[Nexus AI] Loading TensorFlow.js fallback engine...");
-    _tf = await import("@tensorflow/tfjs-node");
-    const useLib =
-      await import("@tensorflow-models/universal-sentence-encoder");
-    _useModel = await useLib.default.load();
-    console.log("[Nexus AI] TensorFlow.js fallback engine ready.");
-  }
-  return { tf: _tf, useModel: _useModel };
-};
-
 // ERP-aware knowledge base used for semantic matching
 const KNOWLEDGE_BASE = [
   {
@@ -35,7 +16,7 @@ const KNOWLEDGE_BASE = [
       "greetings",
     ],
     answer:
-      "Hi there! I'm Nexus AI running in offline fallback mode. My main AI engine is temporarily unavailable, but I can help with basic Nexus ERP questions!",
+      "Hi there! I'm Nexus AI. I can help with questions about Nexus ERP and its features. What would you like to know?",
   },
   {
     questions: [
@@ -46,7 +27,7 @@ const KNOWLEDGE_BASE = [
       "whats up",
     ],
     answer:
-      "Doing my best in offline mode! My Gemini engine is temporarily down, but feel free to ask me anything about Nexus ERP.",
+      "I'm doing well, thanks for asking! What can I help you with in Nexus ERP?",
   },
   {
     questions: [
@@ -58,7 +39,7 @@ const KNOWLEDGE_BASE = [
       "are you a bot",
     ],
     answer:
-      "I'm Nexus AI — your smart assistant built into the Nexus ERP system! I'm currently running in offline fallback mode (powered by TensorFlow.js), so my capabilities are limited.",
+      "I'm Nexus AI, your assistant for Nexus ERP. I can help explain the system's modules and guide you through common tasks.",
   },
   {
     questions: [
@@ -80,7 +61,7 @@ const KNOWLEDGE_BASE = [
       "how can you help",
     ],
     answer:
-      "I can help you navigate the Nexus ERP system — enrollment, grades, payments, library, faculty schedules, and more. Currently in offline fallback mode, so for full AI conversation please try again soon!",
+      "I can help you navigate Nexus ERP, including enrollment, grades, payments, the library, faculty schedules, and more. What would you like help with?",
   },
   {
     questions: [
@@ -270,68 +251,64 @@ const KB_ENTRIES = KNOWLEDGE_BASE.flatMap(({ questions, answer }) =>
   questions.map((q) => ({ question: q, answer })),
 );
 
-// Cosine similarity between two float arrays
-const cosineSimilarity = (a, b) => {
-  let dot = 0,
-    normA = 0,
-    normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB) + 1e-10);
-};
+const FALLBACK_STOP_WORDS = new Set([
+  "a", "an", "and", "are", "can", "do", "does", "for", "how", "i",
+  "in", "is", "it", "me", "my", "of", "on", "please", "the", "to",
+  "what", "where", "which", "who", "with", "you", "your",
+]);
 
-// TensorFlow.js fallback: finds the closest knowledge-base answer
-const tfFallbackResponse = async (message) => {
-  try {
-    const { useModel } = await getTFInstances();
+const normalizeFallbackText = (text) =>
+  String(text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-    // Embed the user message + all KB questions in one batch
-    const allSentences = [message, ...KB_ENTRIES.map((e) => e.question)];
-    const embeddings = await useModel.embed(allSentences);
-    const embArray = await embeddings.array();
-    embeddings.dispose();
+const fallbackTokens = (text) =>
+  normalizeFallbackText(text)
+    .split(" ")
+    .filter((word) => word.length > 1 && !FALLBACK_STOP_WORDS.has(word));
 
-    const msgEmb = embArray[0];
-    let bestScore = -1;
-    let bestAnswer = null;
+// Local keyword fallback: works without Google credentials or ML packages.
+const offlineFallbackResponse = (message) => {
+  const normalizedMessage = normalizeFallbackText(message);
+  const messageTokens = new Set(fallbackTokens(message));
+  let bestEntry = null;
+  let bestScore = 0;
 
-    for (let i = 1; i < embArray.length; i++) {
-      const score = cosineSimilarity(msgEmb, embArray[i]);
-      if (score > bestScore) {
-        bestScore = score;
-        bestAnswer = KB_ENTRIES[i - 1].answer;
+  for (const entry of KB_ENTRIES) {
+    const normalizedQuestion = normalizeFallbackText(entry.question);
+    const questionTokens = new Set(fallbackTokens(entry.question));
+    if (!normalizedQuestion || questionTokens.size === 0) continue;
+
+    let score = 0;
+    if (normalizedMessage === normalizedQuestion) {
+      score = 1;
+    } else if (` ${normalizedMessage} `.includes(` ${normalizedQuestion} `)) {
+      score = 0.9 + Math.min(normalizedQuestion.length / 1000, 0.09);
+    } else {
+      let overlap = 0;
+      for (const token of questionTokens) {
+        if (messageTokens.has(token)) overlap += 1;
       }
+      score =
+        (overlap / questionTokens.size) * 0.7 +
+        (overlap / Math.max(messageTokens.size, 1)) * 0.3;
     }
 
-    console.log(
-      `[Nexus AI TF Fallback] Best similarity: ${bestScore.toFixed(3)}`,
-    );
-
-    const reply =
-      bestScore >= 0.5
-        ? bestAnswer
-        : "I'm running in offline fallback mode and couldn't find a confident answer. " +
-          "The main Nexus AI (Gemini) is temporarily unavailable. " +
-          "Try asking about enrollment, grades, payments, library, faculty, or other Nexus ERP features!";
-
-    return {
-      reply,
-      model:
-        bestScore >= 0.5
-          ? "tensorflow.js/universal-sentence-encoder"
-          : "tensorflow.js/fallback",
-    };
-  } catch (tfErr) {
-    console.error("[Nexus AI TF Fallback] Error:", tfErr.message);
-    return {
-      reply:
-        "Nexus AI is temporarily unavailable. Please try again in a moment.",
-      model: "offline",
-    };
+    if (score > bestScore) {
+      bestScore = score;
+      bestEntry = entry;
+    }
   }
+
+  const confidentMatch = bestScore >= 0.48 && bestEntry;
+  return {
+    reply: confidentMatch
+      ? bestEntry.answer
+      : "I can help with Nexus ERP topics such as enrollment, grades, payments, the library, and faculty schedules. Could you rephrase your question or tell me which area you need help with?",
+    model: confidentMatch ? "offline/knowledge-base" : "offline/fallback",
+  };
 };
 
 // ---------------------------------------------------------------------------
@@ -396,9 +373,9 @@ export const chatWithNexusAI = async (req, res) => {
 
     if (!process.env.GEMINI_API_KEY) {
       console.warn(
-        "[Nexus AI] No GEMINI_API_KEY found — using TensorFlow.js fallback.",
+        "[Nexus AI] No GEMINI_API_KEY found — using the local knowledge-base fallback.",
       );
-      const fallback = await tfFallbackResponse(message);
+      const fallback = offlineFallbackResponse(message);
       return res.json(fallback);
     }
 
@@ -414,7 +391,6 @@ export const chatWithNexusAI = async (req, res) => {
     ];
 
     // Try each model in priority order until one works
-    let lastError = null;
     for (const modelName of MODEL_PRIORITY) {
       try {
         const response = await ai.models.generateContent({
@@ -442,34 +418,20 @@ export const chatWithNexusAI = async (req, res) => {
           console.warn(
             `[Nexus AI] Skipping ${modelName} (${err.status ?? "error"}), trying next...`,
           );
-          lastError = err;
           continue;
         }
         throw err;
       }
     }
 
-    // All Gemini models exhausted — fall back to TensorFlow.js
+    // All Gemini models exhausted — fall back to the local knowledge base.
     console.warn(
-      "[Nexus AI] All Gemini models exhausted — switching to TensorFlow.js fallback.",
+      "[Nexus AI] All Gemini models exhausted — switching to the local knowledge-base fallback.",
     );
-    const fallback = await tfFallbackResponse(message);
+    const fallback = offlineFallbackResponse(message);
     return res.json(fallback);
   } catch (error) {
     console.error("Gemini AI error:", error);
-
-    if (
-      error.message?.includes("API_KEY_INVALID") ||
-      error.message?.includes("API key")
-    ) {
-      return res.status(401).json({
-        error:
-          "Please wait while the model is loading, or contact support if the issue persists.",
-      });
-    }
-
-    res
-      .status(500)
-      .json({ error: "Failed to get AI response. Please try again." });
+    return res.json(offlineFallbackResponse(message));
   }
 };

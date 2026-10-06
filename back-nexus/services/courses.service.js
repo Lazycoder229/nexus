@@ -15,6 +15,12 @@ export const getCourse = async (id) => {
 
 // Create new course
 export const addCourse = async (data) => {
+  if (await courseModel.hasCourseCodeConflict(data)) {
+    throw new Error(
+      "This course code already exists for the selected department, year level, and curriculum."
+    );
+  }
+
   // Optional: validate instructor_id exists
   if (data.instructor_id) {
     const instructors = await courseModel.getEligibleInstructors();
@@ -29,6 +35,12 @@ export const addCourse = async (data) => {
 
 // Update course
 export const editCourse = async (id, data) => {
+  if (await courseModel.hasCourseCodeConflict(data, id)) {
+    throw new Error(
+      "This course code already exists for the selected department, year level, and curriculum."
+    );
+  }
+
   if (data.instructor_id) {
     const instructors = await courseModel.getEligibleInstructors();
     const valid = instructors.some(

@@ -89,8 +89,29 @@ const FacultyCourseAssignmentService = {
   // Create new course assignment
   async createAssignment(assignmentData) {
     try {
-      // Check for schedule conflicts for each schedule
-      for (const sched of assignmentData.schedules || []) {
+      const courseIds = [...new Set(
+        (Array.isArray(assignmentData.course_ids) && assignmentData.course_ids.length
+          ? assignmentData.course_ids
+          : [assignmentData.course_id])
+          .filter(Boolean)
+          .map(Number),
+      )];
+      const schedules = (assignmentData.schedules || []).filter(
+        (schedule) => schedule.schedule_day && schedule.schedule_time_start && schedule.schedule_time_end,
+      );
+
+      if (courseIds.length === 0) {
+        return { success: false, message: "Select at least one course." };
+      }
+      if (courseIds.length > 1 && schedules.length > 0) {
+        return {
+          success: false,
+          message: "Assign multiple courses without schedules, then add each course's schedule separately.",
+        };
+      }
+
+      // Check schedule conflicts before creating any records.
+      for (const sched of schedules) {
         const [conflicts] = await FacultyCourseAssignment.checkConflict(
           assignmentData.faculty_user_id,
           assignmentData.academic_period_id,
@@ -108,14 +129,28 @@ const FacultyCourseAssignmentService = {
       // Remove schedule fields from main assignment
       const assignmentMain = { ...assignmentData };
       delete assignmentMain.schedules;
+      delete assignmentMain.course_ids;
       assignmentMain.schedule_day = null;
       assignmentMain.schedule_time_start = null;
       assignmentMain.schedule_time_end = null;
+
+      if (courseIds.length > 1) {
+        const assignmentIds = await FacultyCourseAssignment.createMany(
+          courseIds.map((courseId) => ({ ...assignmentMain, course_id: courseId })),
+        );
+        return {
+          success: true,
+          message: `${assignmentIds.length} course assignments created successfully`,
+          data: { assignment_ids: assignmentIds },
+        };
+      }
+
+      assignmentMain.course_id = courseIds[0];
       const [result] = await FacultyCourseAssignment.create(assignmentMain);
       // Insert schedules
       await FacultyAssignmentSchedule.createMany(
         result.insertId,
-        assignmentData.schedules || [],
+        schedules,
       );
       return {
         success: true,

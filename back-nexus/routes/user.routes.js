@@ -14,6 +14,7 @@ import {
   verifyEmail, resendVerification,
   loginUser, updateStudent, updateEmployee,
   changePassword, deleteUser,
+  logoutUser,
 } from "../controllers/user.controller.js";
 
 const router = express.Router();
@@ -60,6 +61,7 @@ router.delete("/users/:userId", deleteUser);
 
 // AUTH ROUTES
 router.post("/auth/login",                    loginLimiter,    validate(loginSchema),              loginUser);
+router.post("/auth/logout", logoutUser);
 router.post("/auth/register",                 registerLimiter, validate(registerStudentSchema),     registerStudent);
 router.post("/auth/verify-email",             verifyLimiter,   validate(verifyEmailSchema),        verifyEmail);
 router.post("/auth/resend-verification",      resendLimiter,   validate(resendVerificationSchema), resendVerification);

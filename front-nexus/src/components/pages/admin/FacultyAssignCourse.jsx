@@ -98,6 +98,7 @@ const AssignmentModal = ({
   const [formData, setFormData] = useState({
     faculty_id: null,
     course_id: null,
+    course_ids: [],
     period_id: null,
     section: "",
     room: "",
@@ -125,9 +126,10 @@ const AssignmentModal = ({
   useEffect(() => {
     if (initialData) {
       setFormData({
-        faculty_id: initialData.faculty_id ?? null,
+        faculty_id: initialData.faculty_user_id ?? initialData.faculty_id ?? null,
         course_id: initialData.course_id ?? null,
-        period_id: initialData.period_id ?? null,
+        course_ids: [],
+        period_id: initialData.academic_period_id ?? initialData.period_id ?? null,
         section: initialData.section || "",
         room: initialData.room || "",
         max_students: initialData.max_students || "",
@@ -150,6 +152,7 @@ const AssignmentModal = ({
       setFormData({
         faculty_id: null,
         course_id: null,
+        course_ids: [],
         period_id: null,
         section: "",
         room: "",
@@ -164,17 +167,31 @@ const AssignmentModal = ({
     // eslint-disable-next-line
   }, [initialData, mode]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.faculty_id || !formData.course_id || !formData.period_id) {
+    const selectedCourseIds = mode === "add"
+      ? formData.course_ids
+      : formData.course_id ? [formData.course_id] : [];
+    const schedules = formData.schedules.filter(
+      (schedule) => schedule.schedule_day && schedule.schedule_time_start && schedule.schedule_time_end,
+    );
+
+    if (!formData.faculty_id || selectedCourseIds.length === 0 || !formData.period_id) {
       toast.error("Please select faculty, course, and academic period.");
       return;
     }
 
-    console.log("formData before submit:", formData);
+    if (mode === "add" && selectedCourseIds.length > 1 && schedules.length > 0) {
+      toast.error("For multiple courses, leave schedules blank and add each course's schedule separately.");
+      return;
+    }
+
     const dataToSend = {
       ...formData,
+      course_id: selectedCourseIds[0],
+      course_ids: mode === "add" ? selectedCourseIds : undefined,
+      schedules,
       faculty_user_id: formData.faculty_id,
       academic_period_id: formData.period_id,
       max_students: formData.max_students
@@ -183,12 +200,12 @@ const AssignmentModal = ({
     };
     delete dataToSend.faculty_id;
     delete dataToSend.period_id;
-    onSubmit(dataToSend);
-    // Reset form after submit (add mode)
-    if (mode === "add") {
+    const saved = await onSubmit(dataToSend);
+    if (saved && mode === "add") {
       setFormData({
         faculty_id: null,
         course_id: null,
+        course_ids: [],
         period_id: null,
         section: "",
         room: "",
@@ -206,6 +223,7 @@ const AssignmentModal = ({
       setFormData({
         faculty_id: null,
         course_id: null,
+        course_ids: [],
         period_id: null,
         section: "",
         room: "",
@@ -289,16 +307,20 @@ const AssignmentModal = ({
                 </label>
                 <Select
                   value={
-                    courses.find((c) => c.value === formData.course_id) || null
+                    mode === "add"
+                      ? courses.filter((c) => formData.course_ids.includes(c.value))
+                      : courses.find((c) => c.value === formData.course_id) || null
                   }
                   onChange={(selected) =>
                     setFormData((prev) => ({
                       ...prev,
-                      course_id: selected?.value || null,
+                      course_id: mode === "add" ? selected?.[0]?.value || null : selected?.value || null,
+                      course_ids: mode === "add" ? (selected || []).map((course) => course.value) : [],
                     }))
                   }
                   options={courses}
-                  placeholder="Select course..."
+                  isMulti={mode === "add"}
+                  placeholder={mode === "add" ? "Select one or more courses..." : "Select course..."}
                   className="text-sm"
                   styles={{
                     control: (base) => ({
@@ -309,6 +331,11 @@ const AssignmentModal = ({
                     }),
                   }}
                 />
+                {mode === "add" && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Multi-course assignments share faculty, period, section, and room. Add schedules separately for each course.
+                  </p>
+                )}
               </div>
 
               <div className="col-span-2">
@@ -538,6 +565,8 @@ const FacultyAssignCourse = () => {
   const [subjectSections, setSubjectSections] = useState([]);
   const [search, setSearch] = useState("");
   const [filterFaculty, setFilterFaculty] = useState(null);
+  const [filterCourse, setFilterCourse] = useState(null);
+  const [filterYearLevel, setFilterYearLevel] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage] = useState(10);
   const [modalOpen, setModalOpen] = useState(false);
@@ -586,7 +615,8 @@ const FacultyAssignCourse = () => {
       const res = await axios.get(`${API_BASE}/api/course/courses`);
       const courseList = (res.data || []).map((c) => ({
         value: c.id || c.course_id,
-        label: `${c.code || c.course_code} - ${c.title || c.course_title}`,
+        label: `${c.code || c.course_code} - ${c.title || c.course_title}${c.year_level ? ` (${c.year_level})` : ""}`,
+        year_level: c.year_level || "",
       }));
       setCourses(courseList);
     } catch (err) {
@@ -620,9 +650,15 @@ const FacultyAssignCourse = () => {
       (a.faculty_name || "").toLowerCase().includes(search.toLowerCase()) ||
       (a.course_code || "").toLowerCase().includes(search.toLowerCase()) ||
       (a.course_title || "").toLowerCase().includes(search.toLowerCase());
-    const matchFaculty = !filterFaculty || a.faculty_id === filterFaculty.value;
-    return matchSearch && matchFaculty;
+    const assignmentFacultyId = a.faculty_user_id ?? a.faculty_id;
+    const matchFaculty = !filterFaculty || String(assignmentFacultyId) === String(filterFaculty.value);
+    const matchCourse = !filterCourse || String(a.course_id) === String(filterCourse.value);
+    const matchYearLevel = !filterYearLevel || a.course_year_level === filterYearLevel;
+    return matchSearch && matchFaculty && matchCourse && matchYearLevel;
   });
+
+  const yearLevelOptions = [...new Set(courses.map((course) => course.year_level).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b));
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const displayed = filtered.slice(
@@ -642,9 +678,10 @@ const FacultyAssignCourse = () => {
         );
         toast.success("Course assignment updated successfully.");
       }
-      fetchAssignments();
+      await fetchAssignments();
       setModalOpen(false);
       setCurrentRecord(null);
+      return true;
     } catch (err) {
       console.error("Error saving assignment:", err);
       toast.error(
@@ -655,6 +692,7 @@ const FacultyAssignCourse = () => {
             : "Failed to update assignment.",
         ),
       );
+      return false;
     }
   };
 
@@ -736,7 +774,7 @@ const FacultyAssignCourse = () => {
         {/* Filters */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Search Input - LEFT */}
-          <div className="relative flex-grow max-w-xs">
+          <div className="relative flex-grow min-w-[220px] max-w-xs">
             <input
               type="text"
               placeholder="Search by faculty or course..."
@@ -755,6 +793,32 @@ const FacultyAssignCourse = () => {
 
           {/* Filters - RIGHT */}
           <div className="flex items-center gap-2">
+            <Select
+              value={filterCourse}
+              onChange={(selected) => {
+                setFilterCourse(selected);
+                setPage(1);
+              }}
+              options={courses}
+              placeholder="Filter by Course"
+              isClearable
+              className="w-64 text-sm"
+              styles={{
+                control: (base) => ({ ...base, minHeight: "36px", fontSize: "14px" }),
+              }}
+            />
+            <select
+              value={filterYearLevel}
+              onChange={(e) => {
+                setFilterYearLevel(e.target.value);
+                setPage(1);
+              }}
+              className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm"
+              aria-label="Filter assignments by course year level"
+            >
+              <option value="">All Year Levels</option>
+              {yearLevelOptions.map((year) => <option key={year} value={year}>{year}</option>)}
+            </select>
             <Select
               value={filterFaculty}
               onChange={(selected) => {

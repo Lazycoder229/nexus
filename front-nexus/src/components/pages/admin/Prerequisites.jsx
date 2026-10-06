@@ -14,9 +14,15 @@ import axios from "axios";
 
 const Prerequisites = () => {
   const [courses, setCourses] = useState([]);
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [courseLoadError, setCourseLoadError] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [courseSearch, setCourseSearch] = useState("");
+  const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterYearLevel, setFilterYearLevel] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [prerequisites, setPrerequisites] = useState([]);
+  const [loadingPrerequisites, setLoadingPrerequisites] = useState(false);
   const [prereqForm, setPrereqForm] = useState({
     course: [], // support multiple selected prerequisite courses
     isCorequisite: false,
@@ -25,6 +31,8 @@ const Prerequisites = () => {
 
   // Fetch all courses
   const fetchCourses = async () => {
+    setLoadingCourses(true);
+    setCourseLoadError(false);
     try {
       const res = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/api/course/courses`
@@ -35,11 +43,15 @@ const Prerequisites = () => {
       }
     } catch (err) {
       console.error("Failed to fetch courses:", err);
+      setCourseLoadError(true);
+    } finally {
+      setLoadingCourses(false);
     }
   };
 
   // Fetch prerequisites for selected course
   const fetchPrerequisites = async (courseId) => {
+    setLoadingPrerequisites(true);
     try {
       const res = await axios.get(
         `${
@@ -50,6 +62,8 @@ const Prerequisites = () => {
     } catch (err) {
       console.error("Failed to fetch prerequisites:", err);
       setPrerequisites([]);
+    } finally {
+      setLoadingPrerequisites(false);
     }
   };
 
@@ -67,11 +81,23 @@ const Prerequisites = () => {
     return courses
       .filter(
         (course) =>
-          course.code.toLowerCase().includes(courseSearch.toLowerCase()) ||
-          course.title.toLowerCase().includes(courseSearch.toLowerCase())
+          ((course.code || "").toLowerCase().includes(courseSearch.toLowerCase()) ||
+            (course.title || "").toLowerCase().includes(courseSearch.toLowerCase())) &&
+          (!filterDepartment || String(course.department_id || "") === filterDepartment) &&
+          (!filterYearLevel || course.year_level === filterYearLevel)
       )
       .sort((a, b) => a.code.localeCompare(b.code));
-  }, [courses, courseSearch]);
+  }, [courses, courseSearch, filterDepartment, filterYearLevel]);
+
+  const departmentOptions = useMemo(() => {
+    const departments = new Map();
+    courses.forEach((course) => {
+      if (course.department_id && course.department_name) {
+        departments.set(String(course.department_id), course.department_name);
+      }
+    });
+    return [...departments.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [courses]);
 
   const courseOptions = useMemo(() => {
     // build a set of already assigned prerequisite course IDs to exclude
@@ -164,8 +190,6 @@ const Prerequisites = () => {
   };
 
   const handleDeletePrerequisite = async (prereqId) => {
-    if (!confirm("Are you sure you want to delete this prerequisite?")) return;
-
     try {
       await axios.delete(
         `${import.meta.env.VITE_API_BASE_URL}/api/prerequisites/${prereqId}`
@@ -175,6 +199,8 @@ const Prerequisites = () => {
     } catch (err) {
       console.error("Failed to delete prerequisite:", err);
       toast.error(err.response?.data?.message || "Failed to delete prerequisite");
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -196,9 +222,77 @@ const Prerequisites = () => {
   };
 
   if (!selectedCourse) {
+    if (!loadingCourses && courseLoadError) {
+      return (
+        <div className="p-4">
+          <h1 className="mb-2 text-xl font-bold">Course Prerequisites Management</h1>
+          <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+            <p className="mb-3 text-sm text-red-700">Could not load courses.</p>
+            <button
+              type="button"
+              onClick={fetchCourses}
+              className="rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50"
+            >Try again</button>
+          </div>
+        </div>
+      );
+    }
+
+    if (!loadingCourses) {
+      return (
+        <div className="p-4">
+          <h1 className="mb-2 text-xl font-bold">Course Prerequisites Management</h1>
+          <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+            No courses available. Add a course first to configure prerequisites.
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <div className="p-4 text-center">
-        <p className="text-slate-600">Loading courses...</p>
+      <div className="p-4" aria-busy="true">
+        <div className="mb-2 h-7 w-72 max-w-full animate-pulse rounded bg-slate-200" />
+        <div className="mb-4 h-4 w-[34rem] max-w-full animate-pulse rounded bg-slate-100" />
+        <div className="flex flex-col gap-4 lg:flex-row">
+          <section className="w-full rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:w-1/3">
+            <div className="mb-3 h-5 w-36 animate-pulse rounded bg-slate-200" />
+            <div className="mb-3 h-9 animate-pulse rounded bg-slate-100" />
+            <div className="mb-2 grid grid-cols-2 gap-2">
+              <div className="h-9 animate-pulse rounded bg-slate-100" />
+              <div className="h-9 animate-pulse rounded bg-slate-100" />
+            </div>
+            {[0, 1, 2, 3, 4].map((row) => (
+              <div key={row} className="mb-2 rounded-md border border-slate-100 p-2">
+                <div className="mb-2 h-4 w-3/4 animate-pulse rounded bg-slate-200" />
+                <div className="h-3 w-1/2 animate-pulse rounded bg-slate-100" />
+              </div>
+            ))}
+          </section>
+          <section className="w-full space-y-4 lg:w-2/3">
+            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-4 h-5 w-64 max-w-full animate-pulse rounded bg-slate-200" />
+              {[0, 1, 2].map((row) => (
+                <div key={row} className="mb-2 flex items-center justify-between rounded-lg border border-slate-100 p-3">
+                  <div className="w-2/3">
+                    <div className="mb-2 h-4 w-3/4 animate-pulse rounded bg-slate-200" />
+                    <div className="h-5 w-24 animate-pulse rounded-full bg-slate-100" />
+                  </div>
+                  <div className="h-8 w-24 animate-pulse rounded bg-slate-100" />
+                </div>
+              ))}
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-4 h-5 w-44 animate-pulse rounded bg-slate-200" />
+              <div className="mb-4 h-10 animate-pulse rounded bg-slate-100" />
+              <div className="mb-4 h-4 w-56 animate-pulse rounded bg-slate-100" />
+              <div className="h-9 w-40 animate-pulse rounded bg-indigo-100" />
+            </div>
+          </section>
+        </div>
+        <p className="mt-3 text-center text-xs text-slate-500" role="status" aria-live="polite">
+          <span className="mr-2 inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600 align-[-2px]" />
+          Loading courses…
+        </p>
       </div>
     );
   }
@@ -235,6 +329,31 @@ const Prerequisites = () => {
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <select
+              value={filterDepartment}
+              onChange={(e) => setFilterDepartment(e.target.value)}
+              className="min-w-0 px-2 py-2 border border-slate-300 rounded text-xs bg-white"
+              aria-label="Filter courses by department"
+            >
+              <option value="">All Departments</option>
+              {departmentOptions.map(([id, name]) => (
+                <option key={id} value={id}>{name}</option>
+              ))}
+            </select>
+            <select
+              value={filterYearLevel}
+              onChange={(e) => setFilterYearLevel(e.target.value)}
+              className="min-w-0 px-2 py-2 border border-slate-300 rounded text-xs bg-white"
+              aria-label="Filter courses by year level"
+            >
+              <option value="">All Years</option>
+              {["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"].map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="space-y-1 max-h-96 overflow-y-auto pr-1">
             {filteredCourses.map((course) => (
               <div
@@ -246,8 +365,10 @@ const Prerequisites = () => {
                     : "hover:bg-slate-100 text-slate-800"
                 }`}
               >
-                <div className="font-semibold">{course.code}</div>
-                <div className="text-xs">{course.title}</div>
+                <div className="font-semibold">{course.code} <span className="font-normal">— {course.title}</span></div>
+                <div className="text-xs text-slate-500">
+                  {course.department_name || "No department"} · {course.year_level || "Year not assigned"}
+                </div>
               </div>
             ))}
           </div>
@@ -262,7 +383,19 @@ const Prerequisites = () => {
               Prerequisites for: {selectedCourse.code} - {selectedCourse.title}
             </h2>
 
-            {prerequisites.length === 0 ? (
+            {loadingPrerequisites ? (
+              <div aria-busy="true" role="status" aria-live="polite" className="space-y-2">
+                {[0, 1, 2].map((row) => (
+                  <div key={row} className="flex items-center justify-between rounded-lg border border-slate-100 p-3">
+                    <div className="w-2/3">
+                      <div className="mb-2 h-4 w-3/4 animate-pulse rounded bg-slate-200" />
+                      <div className="h-5 w-24 animate-pulse rounded-full bg-slate-100" />
+                    </div>
+                    <div className="h-8 w-24 animate-pulse rounded bg-slate-100" />
+                  </div>
+                ))}
+              </div>
+            ) : prerequisites.length === 0 ? (
               <div className="text-center py-8 border-2 border-dashed border-slate-300 rounded bg-slate-50">
                 <Link size={32} className="mx-auto text-slate-400 mb-2" />
                 <p className="text-slate-600 text-sm">
@@ -306,7 +439,7 @@ const Prerequisites = () => {
                         Toggle Type
                       </button>
                       <button
-                        onClick={() => handleDeletePrerequisite(prereq.id)}
+                        onClick={() => setDeleteTarget(prereq)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded transition"
                         title="Delete prerequisite"
                       >
@@ -383,6 +516,40 @@ const Prerequisites = () => {
           </div>
         </div>
       </div>
+
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-prerequisite-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="delete-prerequisite-title" className="mb-2 text-lg font-semibold text-slate-900">
+              Delete prerequisite?
+            </h2>
+            <p className="mb-5 text-sm text-slate-600">
+              Remove <strong>{deleteTarget.prereq_code} — {deleteTarget.prereq_title}</strong> as a prerequisite for <strong>{selectedCourse.code}</strong>?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              >Cancel</button>
+              <button
+                type="button"
+                onClick={() => handleDeletePrerequisite(deleteTarget.id)}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+              >Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

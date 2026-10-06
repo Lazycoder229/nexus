@@ -6,7 +6,7 @@ const FacultyCourseAssignment = {
     return db.query(`
             SELECT fca.*, 
               CONCAT(u.first_name, ' ', u.last_name) AS faculty_name, u.first_name, u.last_name, ed.employee_id,
-              c.code as course_code, c.title as course_title, c.units,
+              c.code as course_code, c.title as course_title, c.units, c.year_level as course_year_level,
               ap.school_year, ap.semester, ap.status as period_status,
               fas.schedule_day, fas.schedule_time_start, fas.schedule_time_end
       FROM faculty_course_assignments fca
@@ -141,6 +141,41 @@ AND fca.section = s.section_name
 
       await connection.commit();
       return [result];
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  },
+
+  createMany: async (assignments) => {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      const assignmentIds = [];
+      for (const assignmentData of assignments) {
+        const [result] = await connection.query(
+          `INSERT INTO faculty_course_assignments
+           (faculty_user_id, course_id, academic_period_id, section, room, max_students,
+            current_enrolled, assignment_status, assigned_date)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            assignmentData.faculty_user_id,
+            assignmentData.course_id,
+            assignmentData.academic_period_id,
+            assignmentData.section,
+            assignmentData.room,
+            assignmentData.max_students,
+            assignmentData.current_enrolled || 0,
+            assignmentData.assignment_status || "active",
+            assignmentData.assigned_date || new Date(),
+          ],
+        );
+        assignmentIds.push(result.insertId);
+      }
+      await connection.commit();
+      return assignmentIds;
     } catch (error) {
       await connection.rollback();
       throw error;

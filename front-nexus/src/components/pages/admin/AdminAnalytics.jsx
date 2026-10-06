@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import api from "../../../api/axios";
 import {
   ResponsiveContainer,
   LineChart,
@@ -17,8 +18,6 @@ import {
   Pie,
   Legend,
 } from "recharts";
-
-// const BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -258,83 +257,11 @@ function DropoutInsights({ data, trends }) {
   );
 }
 
-// ─── dummy data ──────────────────────────────────────────────────────────────
-
-const FALLBACK_TRENDS = [
-  { period_label: "Jan", enrollment_count: 142 },
-  { period_label: "Feb", enrollment_count: 165 },
-  { period_label: "Mar", enrollment_count: 193 },
-  { period_label: "Apr", enrollment_count: 178 },
-  { period_label: "May", enrollment_count: 221 },
-  { period_label: "Jun", enrollment_count: 247 },
-  { period_label: "Jul", enrollment_count: 230 },
-  { period_label: "Aug", enrollment_count: 268 },
-  { period_label: "Sep", enrollment_count: 312 },
-  { period_label: "Oct", enrollment_count: 295 },
-  { period_label: "Nov", enrollment_count: 341 },
-  { period_label: "Dec", enrollment_count: 378 },
-];
-
-const FALLBACK_PROG = [
-  { program: "BAHISTO", count: 312 },
-  { program: "BPA", count: 278 },
-  { program: "BTVTEd", count: 241 },
-];
-
-// Dropout dummy data — per program
-const FALLBACK_DROPOUT_BY_PROGRAM = [
-  {
-    program: "Bachelor of Arts and History",
-    shortName: "BAHISTO",
-    enrolled: 312,
-    dropouts: 54,
-    rate: 17.3,
-  },
-  {
-    program: "Bachelor of Public Information",
-    shortName: "BPA",
-    enrolled: 278,
-    dropouts: 31,
-    rate: 11.2,
-  },
-  {
-    program: "Bachelor of Technical-Vocational Education",
-    shortName: "BTVTEd",
-    enrolled: 241,
-    dropouts: 28,
-    rate: 11.6,
-  },
-];
-
-// Dropout monthly trend
-const FALLBACK_DROPOUT_TRENDS = [
-  { period_label: "Jan", dropouts: 9,  enrollments: 142 },
-  { period_label: "Feb", dropouts: 11, enrollments: 165 },
-  { period_label: "Mar", dropouts: 14, enrollments: 193 },
-  { period_label: "Apr", dropouts: 10, enrollments: 178 },
-  { period_label: "May", dropouts: 13, enrollments: 221 },
-  { period_label: "Jun", dropouts: 16, enrollments: 247 },
-  { period_label: "Jul", dropouts: 12, enrollments: 230 },
-  { period_label: "Aug", dropouts: 18, enrollments: 268 },
-  { period_label: "Sep", dropouts: 22, enrollments: 312 },
-  { period_label: "Oct", dropouts: 15, enrollments: 295 },
-  { period_label: "Nov", dropouts: 20, enrollments: 341 },
-  { period_label: "Dec", dropouts: 24, enrollments: 378 },
-];
-
-// Dropout reasons breakdown
-const FALLBACK_DROPOUT_REASONS = [
-  { reason: "Financial", count: 42 },
-  { reason: "Academic failure", count: 28 },
-  { reason: "Personal/family", count: 21 },
-  { reason: "Transferred school", count: 14 },
-  { reason: "Health", count: 8 },
-];
-
 // ─── main component ──────────────────────────────────────────────────────────
 
 const AdminAnalytics = () => {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [trends, setTrends] = useState([]);
   const [prog, setProg] = useState([]);
   const [admissionsCount, setAdmissionsCount] = useState(null);
@@ -351,57 +278,36 @@ const AdminAnalytics = () => {
     let mounted = true;
     async function load() {
       setLoading(true);
+      setLoadError(false);
       try {
-        // ── DATABASE CALLS (commented out — restore when backend is ready) ──
-        // const [tr, pr, st, dr, dp, drr] = await Promise.all([
-        //   fetch(`${BASE}/api/reports/enrollment-trends`).then((r) => r.json()).catch(() => null),
-        //   fetch(`${BASE}/api/reports/enrollment-by-program`).then((r) => r.json()).catch(() => null),
-        //   fetch(`${BASE}/api/reports/statistics`).then((r) => r.json()).catch(() => null),
-        //   fetch(`${BASE}/api/reports/dropout-by-program`).then((r) => r.json()).catch(() => null),
-        //   fetch(`${BASE}/api/reports/dropout-trends`).then((r) => r.json()).catch(() => null),
-        //   fetch(`${BASE}/api/reports/dropout-reasons`).then((r) => r.json()).catch(() => null),
-        // ]);
-        // if (!mounted) return;
-        //
-        // const tdata = tr
-        //   ? (tr.data?.series || tr.data || tr.series || (Array.isArray(tr) ? tr : []))
-        //   : FALLBACK_TRENDS;
-        // const pdata = pr
-        //   ? (pr.data || pr || (Array.isArray(pr) ? pr : []))
-        //   : FALLBACK_PROG;
-        // const t = Array.isArray(tdata) && tdata.length ? tdata : FALLBACK_TRENDS;
-        // const p = Array.isArray(pdata) && pdata.length ? pdata : FALLBACK_PROG;
-        //
-        // if (st && st.data?.admissions && typeof st.data.admissions.enrolled !== "undefined") {
-        //   setAdmissionsCount(Number(st.data.admissions.enrolled || 0));
-        // }
-        //
-        // const dop = dr ? (dr.data || dr || []) : FALLBACK_DROPOUT_BY_PROGRAM;
-        // const dot = dp ? (dp.data || dp || []) : FALLBACK_DROPOUT_TRENDS;
-        // const dor = drr ? (drr.data || drr || []) : FALLBACK_DROPOUT_REASONS;
-        // ── END DATABASE CALLS ──
-
-        // ── Using dummy data ──
+        const [tr, pr, st, dropout] = await Promise.all([
+          api.get("/api/reports/enrollment-trends"),
+          api.get("/api/reports/enrollment-by-program"),
+          api.get("/api/reports/statistics"),
+          api.get("/api/reports/dropout-analytics"),
+        ]);
         if (!mounted) return;
-        const t = FALLBACK_TRENDS;
-        const p = FALLBACK_PROG;
-        const dop = FALLBACK_DROPOUT_BY_PROGRAM;
-        const dot = FALLBACK_DROPOUT_TRENDS;
-        const dor = FALLBACK_DROPOUT_REASONS;
-
+        const tdata = tr.data?.data?.series || [];
+        const t = Array.isArray(tdata) ? tdata : [];
+        const p = Array.isArray(pr.data?.data) ? pr.data.data : [];
+        const d = dropout.data?.data || {};
         setTrends(t);
         setProg(p);
-        setDropoutByProgram(dop);
-        setDropoutTrends(dot);
-        setDropoutReasons(dor);
+        setAdmissionsCount(Number(st.data?.data?.admissions?.enrolled || 0));
+        setDropoutByProgram(Array.isArray(d.byProgram) ? d.byProgram : []);
+        setDropoutTrends(Array.isArray(d.trends) ? d.trends : []);
+        setDropoutReasons(Array.isArray(d.reasons) ? d.reasons : []);
         if (t.length >= 3) setPrediction(linearPredict(t.map(getY)));
-      } catch {
+      } catch (error) {
+        console.error("Failed to load admin analytics:", error);
         if (mounted) {
-          setTrends(FALLBACK_TRENDS);
-          setProg(FALLBACK_PROG);
-          setDropoutByProgram(FALLBACK_DROPOUT_BY_PROGRAM);
-          setDropoutTrends(FALLBACK_DROPOUT_TRENDS);
-          setDropoutReasons(FALLBACK_DROPOUT_REASONS);
+          setLoadError(true);
+          setTrends([]);
+          setProg([]);
+          setAdmissionsCount(0);
+          setDropoutByProgram([]);
+          setDropoutTrends([]);
+          setDropoutReasons([]);
         }
       } finally {
         if (mounted) setLoading(false);
@@ -459,8 +365,8 @@ const AdminAnalytics = () => {
             <p className="aa-subtitle">Enrollment &amp; retention overview</p>
           </div>
           <div className="aa-status">
-            <span className={`aa-dot ${loading ? "aa-dot-loading" : "aa-dot-live"}`} />
-            {loading ? "Loading…" : "Live data"}
+            <span className={`aa-dot ${loading ? "aa-dot-loading" : loadError ? "aa-dot-error" : "aa-dot-live"}`} />
+            {loading ? "Loading…" : loadError ? "Data unavailable" : "Live data"}
           </div>
         </div>
 
@@ -635,19 +541,21 @@ const AdminAnalytics = () => {
             <div className="bottom-grid">
               {/* Dropout reasons */}
               <SectionCard title="Dropout reasons">
-                <ResponsiveContainer width="100%" height={190}>
-                  <BarChart data={dropoutReasons} layout="vertical" margin={{ top: 4, right: 16, left: 80, bottom: 4 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.12)" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <YAxis type="category" dataKey="reason" tick={{ fontSize: 12, fill: "#374151" }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="count" name="Students" radius={[0, 3, 3, 0]}>
-                      {dropoutReasons.map((_, i) => (
-                        <Cell key={i} fill={PROGRAM_COLORS[i % PROGRAM_COLORS.length]} fillOpacity={0.8} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                {dropoutReasons.length ? (
+                  <ResponsiveContainer width="100%" height={190}>
+                    <BarChart data={dropoutReasons} layout="vertical" margin={{ top: 4, right: 16, left: 80, bottom: 4 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.12)" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                      <YAxis type="category" dataKey="reason" tick={{ fontSize: 12, fill: "#374151" }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="count" name="Students" radius={[0, 3, 3, 0]}>
+                        {dropoutReasons.map((_, i) => (
+                          <Cell key={i} fill={PROGRAM_COLORS[i % PROGRAM_COLORS.length]} fillOpacity={0.8} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : <div className="empty-state">No dropout reasons recorded.</div>}
               </SectionCard>
 
               {/* Dropout insights */}
@@ -675,6 +583,7 @@ const CSS = `
 .aa-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .aa-dot-live { background: #3B6D11; }
 .aa-dot-loading { background: #BA7517; animation: pulse 1s infinite; }
+.aa-dot-error { background: #A32D2D; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
 /* tab bar */

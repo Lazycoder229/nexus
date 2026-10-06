@@ -1,11 +1,23 @@
 // controllers/enrollments.controller.js
 import * as enrollmentService from "../services/enrollments.service.js";
 
+const isStudent = (req) => String(req.user?.role || "").toLowerCase() === "student";
+const isAdmin = (req) => String(req.user?.role || "").toLowerCase() === "admin";
+const canReviewEnrollments = (req) => ["admin", "faculty", "hr", "accounting"].includes(String(req.user?.role || "").toLowerCase());
+const denyEnrollmentAccess = (res) => res.status(403).json({ message: "You do not have permission to access this enrollment" });
+
 // Get all enrollments
 export const getAllEnrollments = async (req, res) => {
   try {
+    if (!isStudent(req) && !canReviewEnrollments(req)) return denyEnrollmentAccess(res);
     const { course_id, period_id, section_id, student_id, program_id } = req.query;
-    const filters = { course_id, period_id, section_id, student_id, program_id };
+    const filters = {
+      course_id,
+      period_id,
+      section_id,
+      student_id: isStudent(req) ? req.user.userId : student_id,
+      program_id,
+    };
     const enrollments = await enrollmentService.listEnrollments(filters);
     res.json(enrollments);
   } catch (err) {
@@ -20,6 +32,7 @@ export const getAllEnrollments = async (req, res) => {
 export const getEnrollmentsByStudent = async (req, res) => {
   try {
     const { studentId } = req.params;
+    if (isStudent(req) && String(studentId) !== String(req.user.userId)) return denyEnrollmentAccess(res);
     const enrollments =
       await enrollmentService.listEnrollmentsByStudent(studentId);
     res.json(enrollments);
@@ -35,8 +48,10 @@ export const getEnrollmentsByStudent = async (req, res) => {
 // Get single enrollment
 export const getEnrollmentById = async (req, res) => {
   try {
+    if (!isStudent(req) && !canReviewEnrollments(req)) return denyEnrollmentAccess(res);
     const { id } = req.params;
     const enrollment = await enrollmentService.getEnrollment(id);
+    if (isStudent(req) && String(enrollment.student_id) !== String(req.user.userId)) return denyEnrollmentAccess(res);
     res.json(enrollment);
   } catch (err) {
     console.error(err);
@@ -47,7 +62,9 @@ export const getEnrollmentById = async (req, res) => {
 // Create new enrollment
 export const createEnrollment = async (req, res) => {
   try {
-    const enrollment = await enrollmentService.addEnrollment(req.body);
+    if (!isStudent(req) && !isAdmin(req)) return denyEnrollmentAccess(res);
+    const data = isStudent(req) ? { ...req.body, student_id: req.user.userId } : req.body;
+    const enrollment = await enrollmentService.addEnrollment(data);
     res.status(201).json(enrollment);
   } catch (err) {
     console.error(err);
@@ -58,6 +75,7 @@ export const createEnrollment = async (req, res) => {
 // Update enrollment
 export const updateEnrollment = async (req, res) => {
   try {
+    if (!isAdmin(req)) return denyEnrollmentAccess(res);
     const { id } = req.params;
     const enrollment = await enrollmentService.editEnrollment(id, req.body);
     res.json(enrollment);
@@ -71,6 +89,12 @@ export const updateEnrollment = async (req, res) => {
 export const deleteEnrollment = async (req, res) => {
   try {
     const { id } = req.params;
+    if (isStudent(req)) {
+      const enrollment = await enrollmentService.getEnrollment(id);
+      if (String(enrollment.student_id) !== String(req.user.userId)) return denyEnrollmentAccess(res);
+    } else if (!isAdmin(req)) {
+      return denyEnrollmentAccess(res);
+    }
     await enrollmentService.removeEnrollment(id);
     res.json({ message: "Enrollment deleted successfully" });
   } catch (err) {
@@ -82,6 +106,7 @@ export const deleteEnrollment = async (req, res) => {
 // Get enrolled students by faculty assignment ID
 export const getStudentsByAssignment = async (req, res) => {
   try {
+    if (!canReviewEnrollments(req)) return denyEnrollmentAccess(res);
     const { assignmentId } = req.params;
     const students =
       await enrollmentService.listStudentsByAssignment(assignmentId);
@@ -100,6 +125,7 @@ export const getStudentsByAssignment = async (req, res) => {
 // course/period and spreads them across that period's sections, evenly.
 export const runSectioning = async (req, res) => {
   try {
+    if (!isAdmin(req)) return denyEnrollmentAccess(res);
     const result = await enrollmentService.runSectioning(req.body);
     res.status(200).json(result);
   } catch (err) {

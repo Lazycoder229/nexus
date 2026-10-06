@@ -866,8 +866,7 @@ function UserManagement() {
   /* ── Data fetching ── */
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/users`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/users`);
       setUsers(res.data);
     } catch (err) {
       console.error(err);
@@ -877,8 +876,7 @@ function UserManagement() {
 
   const fetchDepartments = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`);
       setDepartments(res.data);
     } catch (err) {
       console.error("Error fetching departments:", err);
@@ -888,8 +886,7 @@ function UserManagement() {
 
   const fetchPrograms = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/programs`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/programs`);
       setPrograms(res.data);
     } catch (err) {
       console.error("Error fetching programs:", err);
@@ -899,8 +896,7 @@ function UserManagement() {
 
   const fetchRbac = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/rbac`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/rbac`);
       const fetched = res.data;
       setRbac((prev) => {
         const merged = { ...prev };
@@ -938,10 +934,8 @@ const handleAddNew = async () => {
   setFormData(getInitialFormState("Student"));
 
   try {
-    const token = localStorage.getItem("token");
     const res = await axios.get(
       `${import.meta.env.VITE_API_BASE_URL}/api/users/employee/next-id`,
-      { headers: { Authorization: `Bearer ${token}` } }
     );
     setNextEmployeeId(res.data.employeeId);
   } catch (err) {
@@ -1093,8 +1087,7 @@ const handleRoleChange = (e) => {
     const userId = deleteTargetId;
     if (!userId) return;
     try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/api/users/${userId}`, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.delete(`${import.meta.env.VITE_API_BASE_URL}/api/users/${userId}`);
       setUsers((prev) => prev.filter((u) => u.user_id !== userId));
       toast.success("User deleted successfully.");
     } catch (err) {
@@ -1133,23 +1126,20 @@ const handleRoleChange = (e) => {
       }
 
       const BASE = import.meta.env.VITE_API_BASE_URL;
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
 
       let response;
       if (!isEditing) {
         response = selectedRole === "Student"
-          ? await axios.post(`${BASE}/api/users/student`,  payload, { headers })
-          : await axios.post(`${BASE}/api/users/employee`, payload, { headers });
+          ? await axios.post(`${BASE}/api/users/student`,  payload)
+          : await axios.post(`${BASE}/api/users/employee`, payload);
       } else {
         response = selectedRole === "Student"
-          ? await axios.put(`${BASE}/api/users/student/${currentId}`,  payload, { headers })
-          : await axios.put(`${BASE}/api/users/employee/${currentId}`, payload, { headers });
+          ? await axios.put(`${BASE}/api/users/student/${currentId}`,  payload)
+          : await axios.put(`${BASE}/api/users/employee/${currentId}`, payload);
       }
 
       toast.success(response.data.message || "Success!");
       fetchUsers();
-      if (response.data.token) localStorage.setItem("token", response.data.token);
       closeFormModal();
     } catch (error) {
       console.error("Response data:", JSON.stringify(error.response?.data, null, 2));
@@ -1166,8 +1156,7 @@ const handleRoleChange = (e) => {
     setRbacSaving(true);
     setRbacSaved(false);
     try {
-      const token = localStorage.getItem("token");
-      await axios.put(`${import.meta.env.VITE_API_BASE_URL}/api/rbac`, rbac, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.put(`${import.meta.env.VITE_API_BASE_URL}/api/rbac`, rbac);
       setRbacSaved(true);
       toast.success("RBAC configuration saved.");
       setTimeout(() => setRbacSaved(false), 3000);

@@ -37,6 +37,14 @@ const ReportsService = {
     }
   },
 
+  async getDropoutAnalytics() {
+    try {
+      return await ReportsModel.getDropoutAnalytics();
+    } catch (error) {
+      throw new Error(`Error fetching dropout analytics: ${error.message}`);
+    }
+  },
+
   // Get attendance reports
   async getAttendanceReports(filters) {
     try {

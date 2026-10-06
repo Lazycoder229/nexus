@@ -1,9 +1,35 @@
 // controllers/admissions.controller.js
 import * as admissionService from "../services/admissions.service.js";
 
+const isAdmin = (req) => String(req.user?.role || "").toLowerCase() === "admin";
+const forbidden = (res) => res.status(403).json({ message: "You do not have permission to access this admission" });
+
+const ensureAdmissionOwner = async (req, res, id) => {
+  if (isAdmin(req)) return true;
+  if (String(req.user?.role || "").toLowerCase() !== "student" || !req.user?.email) {
+    forbidden(res);
+    return false;
+  }
+  try {
+    const record = await admissionService.getAdmission(id);
+    if (String(record.email || "").toLowerCase() !== String(req.user.email).toLowerCase()) {
+      forbidden(res);
+      return false;
+    }
+    return true;
+  } catch {
+    res.status(404).json({ message: "Admission not found" });
+    return false;
+  }
+};
+
 export const getAllAdmissions = async (req, res) => {
   try {
     const { email } = req.query;
+
+    if (!isAdmin(req) && (!email || String(email).toLowerCase() !== String(req.user?.email || "").toLowerCase())) {
+      return forbidden(res);
+    }
 
     // If email query param is provided, fetch student's specific admissions only
     if (email) {
@@ -28,6 +54,7 @@ export const getAllAdmissions = async (req, res) => {
 export const getAdmissionById = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!(await ensureAdmissionOwner(req, res, id))) return;
     const admission = await admissionService.getAdmission(id);
     res.json(admission);
   } catch (err) {
@@ -38,7 +65,12 @@ export const getAdmissionById = async (req, res) => {
 
 export const createAdmission = async (req, res) => {
   try {
-    const admission = await admissionService.addAdmission(req.body);
+    if (!isAdmin(req) && String(req.user?.role || "").toLowerCase() !== "student") return forbidden(res);
+    if (!isAdmin(req) && String(req.body?.email || "").toLowerCase() !== String(req.user?.email || "").toLowerCase()) {
+      return forbidden(res);
+    }
+    const data = isAdmin(req) ? req.body : { ...req.body, email: req.user.email };
+    const admission = await admissionService.addAdmission(data);
     res.status(201).json(admission);
   } catch (err) {
     console.error(err);
@@ -49,7 +81,9 @@ export const createAdmission = async (req, res) => {
 export const updateAdmission = async (req, res) => {
   try {
     const { id } = req.params;
-    const admission = await admissionService.editAdmission(id, req.body);
+    if (!(await ensureAdmissionOwner(req, res, id))) return;
+    const data = isAdmin(req) ? req.body : { ...req.body, email: req.user.email };
+    const admission = await admissionService.editAdmission(id, data);
     res.json(admission);
   } catch (err) {
     console.error(err);
@@ -59,6 +93,7 @@ export const updateAdmission = async (req, res) => {
 
 export const deleteAdmission = async (req, res) => {
   try {
+    if (!isAdmin(req)) return forbidden(res);
     const { id } = req.params;
     await admissionService.removeAdmission(id);
     res.json({ message: "Admission deleted successfully" });
@@ -70,6 +105,7 @@ export const deleteAdmission = async (req, res) => {
 
 export const bulkEnroll = async (req, res) => {
   try {
+    if (!isAdmin(req)) return forbidden(res);
     const { admission_ids, year_level, send_email = true, remarks } = req.body;
 
     if (!admission_ids || !Array.isArray(admission_ids) || admission_ids.length === 0) {

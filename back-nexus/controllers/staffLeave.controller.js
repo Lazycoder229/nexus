@@ -1,17 +1,25 @@
 import StaffLeave from "../model/staffLeave.model.js";
 import EmployeeRecords from "../model/employeeRecords.model.js";
 
+const isHr = (req) => ["admin", "hr"].includes(String(req.user?.role || "").toLowerCase());
+const canRequestLeave = (req) => ["staff", "faculty"].includes(String(req.user?.role || "").toLowerCase());
+const denyLeave = (res) => res.status(403).json({ message: "You do not have permission to access this leave request" });
+const getCurrentEmployeeId = async (req) => {
+  const rows = await EmployeeRecords.getByUserId(req.user.userId || req.user.user_id);
+  return rows?.[0]?.employee_id ?? null;
+};
+
 // Get all leave requests
 export const getAllLeaveRequests = async (req, res) => {
-  const filters = {
-    employee_id: req.query.employee_id,
-    status: req.query.status,
-    leave_type: req.query.leave_type,
-    start_date: req.query.start_date,
-    end_date: req.query.end_date,
-  };
-
+  if (!isHr(req) && !canRequestLeave(req)) return denyLeave(res);
   try {
+    const filters = {
+      employee_id: isHr(req) ? req.query.employee_id : await getCurrentEmployeeId(req),
+      status: req.query.status,
+      leave_type: req.query.leave_type,
+      start_date: req.query.start_date,
+      end_date: req.query.end_date,
+    };
     const results = await StaffLeave.getAll(filters);
     res.json({ success: true, data: results });
   } catch (err) {
@@ -29,6 +37,9 @@ export const getLeaveById = async (req, res) => {
     if (results.length === 0) {
       return res.status(404).json({ message: "Leave request not found" });
     }
+    if (!isHr(req) && (!canRequestLeave(req) || String(results[0].employee_id) !== String(await getCurrentEmployeeId(req)))) {
+      return denyLeave(res);
+    }
     res.json({ success: true, data: results[0] });
   } catch (err) {
     console.error("Error fetching leave request:", err);
@@ -42,7 +53,8 @@ export const getLeaveById = async (req, res) => {
 export const createLeaveRequest = async (req, res) => {
   try {
     // user_id from form (admin selecting an employee) or logged-in user
-    const userId = req.body.user_id || req.user.userId;
+    if (!isHr(req) && !canRequestLeave(req)) return denyLeave(res);
+    const userId = isHr(req) ? (req.body.user_id || req.user.userId) : req.user.userId;
 
     // Look up employee record by user_id
     let employees = await EmployeeRecords.getByUserId(userId);
@@ -88,7 +100,18 @@ export const createLeaveRequest = async (req, res) => {
 // Update leave request
 export const updateLeaveRequest = async (req, res) => {
   try {
-    const result = await StaffLeave.update(req.params.id, req.body);
+    let leaveData = req.body;
+    if (!isHr(req)) {
+      if (!canRequestLeave(req)) return denyLeave(res);
+      const rows = await StaffLeave.getById(req.params.id);
+      const leave = rows?.[0];
+      if (!leave || String(leave.employee_id) !== String(await getCurrentEmployeeId(req))) return denyLeave(res);
+      if (String(leave.status).toLowerCase() !== "pending") {
+        return res.status(409).json({ message: "Only pending leave requests can be edited" });
+      }
+      leaveData = { ...req.body, status: "Pending" };
+    }
+    const result = await StaffLeave.update(req.params.id, leaveData);
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Leave request not found" });
     }
@@ -103,7 +126,8 @@ export const updateLeaveRequest = async (req, res) => {
 
 // Approve leave request
 export const approveLeave = async (req, res) => {
-  const approvedBy = req.body.approved_by || req.user?.user_id;
+  if (!isHr(req)) return denyLeave(res);
+  const approvedBy = req.user?.userId || req.user?.user_id;
 
   try {
     const result = await StaffLeave.approve(req.params.id, approvedBy);
@@ -121,7 +145,8 @@ export const approveLeave = async (req, res) => {
 
 // Reject leave request
 export const rejectLeave = async (req, res) => {
-  const approvedBy = req.body.approved_by || req.user?.user_id;
+  if (!isHr(req)) return denyLeave(res);
+  const approvedBy = req.user?.userId || req.user?.user_id;
   const rejectionReason = req.body.rejection_reason;
 
   try {
@@ -148,6 +173,15 @@ export const rejectLeave = async (req, res) => {
 // Delete leave request
 export const deleteLeaveRequest = async (req, res) => {
   try {
+    if (!isHr(req)) {
+      if (!canRequestLeave(req)) return denyLeave(res);
+      const rows = await StaffLeave.getById(req.params.id);
+      const leave = rows?.[0];
+      if (!leave || String(leave.employee_id) !== String(await getCurrentEmployeeId(req))) return denyLeave(res);
+      if (String(leave.status).toLowerCase() !== "pending") {
+        return res.status(409).json({ message: "Only pending leave requests can be deleted" });
+      }
+    }
     const result = await StaffLeave.delete(req.params.id);
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "Leave request not found" });
@@ -163,6 +197,7 @@ export const deleteLeaveRequest = async (req, res) => {
 
 // Get leave summary
 export const getLeaveSummary = async (req, res) => {
+  if (!isHr(req)) return denyLeave(res);
   const filters = {
     start_date: req.query.start_date,
     end_date: req.query.end_date,

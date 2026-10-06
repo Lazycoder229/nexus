@@ -497,12 +497,8 @@ function EmployeeRecords() {
 
   const fetchDepartments = async () => {
     try {
-      const token = localStorage.getItem("token");
       const response = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/api/dept/departments`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }, // Added missing closing brace and comma
       );
       setDepartments(response.data);
     } catch (error) {
@@ -512,12 +508,8 @@ function EmployeeRecords() {
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem("token");
       const response = await axios.get(
         `${import.meta.env.VITE_API_BASE_URL}/api/users`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
       );
       console.log("Fetched users:", response.data);
       setUsers(response.data);
@@ -700,10 +692,6 @@ function EmployeeRecords() {
       toast.success(response.data.message || "Success!");
       console.log("Server Response:", response.data);
       fetchUsers();
-      // Optional token save
-      if (response.data.token)
-        localStorage.setItem("token", response.data.token);
-
       closeFormModal();
     } catch (error) {
       console.error("Submission error:", error);
@@ -716,10 +704,8 @@ function EmployeeRecords() {
     setSelectedRole("Staff");
     setFormData(getInitialFormState("Staff"));
     setActiveFormTab("personal");
-    const token = localStorage.getItem("token");
     axios.get(
       `${import.meta.env.VITE_API_BASE_URL}/api/users/employee/next-id`,
-      { headers: { Authorization: `Bearer ${token}` } },
     ).then((response) => {
       const employeeId = response.data.employeeId || "";
       setNextEmployeeId(employeeId);

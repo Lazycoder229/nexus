@@ -6,6 +6,7 @@ import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv"; //  ESM import
 dotenv.config(); // load env variables
+import { authenticateToken, enforceApiAccess } from "./helpers/jwt.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -74,14 +75,27 @@ import aiRoutes from "./routes/ai.routes.js"; // Nexus AI chat route
 import calendarRoutes from "./routes/calendar.routes.js"; // unified calendar routes
 import roomsRoutes from "./routes/rooms.routes.js"; // rooms management routes
 
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32 || process.env.JWT_SECRET === "supersecretkey") {
+  throw new Error("JWT_SECRET must be configured with at least 32 characters before starting the API");
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 
-// CORS 
+// CORS: configure deployed frontends with FRONTEND_ORIGINS (comma-separated).
+const allowedOrigins = new Set(
+  (process.env.FRONTEND_ORIGINS || "http://localhost:5173,https://nexusbacocommunitycollege.com")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
 app.use(
   cors({
-    origin: "https://nexusbacocommunitycollege.com", // Adjust this to your frontend's origin https://nexusbacocommunitycollege.com/
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+      return callback(null, false);
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
     exposedHeaders: ["Authorization"],
@@ -100,14 +114,47 @@ const globalLimiter = rateLimit({
 
 
 app.use(globalLimiter); // ✅ Move this UP, before all app.use("/api", ...) calls
+app.use(bodyParser.json({ limit: "25mb" }));
+app.use(bodyParser.urlencoded({ limit: "25mb", extended: true }));
+app.use(cookieParser());
+
+// Require a valid token for private APIs. Only authentication, public reference
+// lookups needed by sign-up, public event pages, and the calendar health check
+// are anonymously accessible.
+app.use("/api", (req, res, next) => {
+  const path = req.originalUrl.split("?")[0].replace(/\/$/, "") || "/";
+  const method = req.method.toUpperCase();
+  const publicAuthPaths = new Set([
+    "/api/auth/login",
+    "/api/auth/logout",
+    "/api/auth/register",
+    "/api/auth/verify-email",
+    "/api/auth/resend-verification",
+  ]);
+  const publicGetPaths = new Set([
+    "/api/programs",
+    "/api/academic-periods",
+    "/api/academic-periods/active",
+    "/api/dept/departments",
+    "/api/events/public",
+    "/api/calendar/health",
+  ]);
+  const isPublicEventDetail = path.startsWith("/api/events/public/");
+  const origin = req.get("origin");
+  if (!new Set(["GET", "HEAD", "OPTIONS"]).has(method) && origin && !allowedOrigins.has(origin)) {
+    return res.status(403).json({ message: "Request origin is not allowed" });
+  }
+  if (publicAuthPaths.has(path) || (method === "GET" && (publicGetPaths.has(path) || isPublicEventDetail))) {
+    return next();
+  }
+  return authenticateToken(req, res, () => enforceApiAccess(req, res, next));
+});
 
 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use(bodyParser.json({ limit: "25mb" }));
-app.use(bodyParser.urlencoded({ limit: "25mb", extended: true }));
 // Serve static files
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
