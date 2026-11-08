@@ -202,11 +202,11 @@ const Menu = {
           icons: CheckSquare,
           link: "/admin/admin_grade_entry",
         }, */
-        {
+       /*  {
           label: "Grade Computation Setup",
           icons: FileText,
           link: "/admin/admin_grade_computation",
-        },
+        }, */
         /*  {
           label: "Exam Schedule Builder",
           icons: CalendarCheck,
