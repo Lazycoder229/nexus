@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { ensureUploadDirectory } from "../helpers/uploadStorage.js";
 import LMSMaterials from "../model/lmsMaterials.model.js";
+import { resolveFacultyScopeId } from "../helpers/facultyScope.js";
 
 const lmsMaterialsController = {
   // Upload a learning material file and return a persistent URL
@@ -69,16 +70,20 @@ const lmsMaterialsController = {
   getByFaculty: async (req, res) => {
     try {
       const { faculty_id, academic_period_id } = req.query;
+      const facultyId = resolveFacultyScopeId(req, faculty_id);
 
-      if (!faculty_id || !academic_period_id) {
+      if (!facultyId) {
+        return res.status(403).json({ success: false, message: "Faculty access is required" });
+      }
+      if (!academic_period_id) {
         return res.status(400).json({
           success: false,
-          message: "Faculty ID and Academic Period ID are required",
+          message: "Academic Period ID is required",
         });
       }
 
       const materials = await LMSMaterials.getByFaculty(
-        faculty_id,
+        facultyId,
         academic_period_id
       );
 

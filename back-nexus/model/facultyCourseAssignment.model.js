@@ -39,12 +39,14 @@ const FacultyCourseAssignment = {
               ap.school_year, ap.semester,
               fas.schedule_day, fas.schedule_time_start, fas.schedule_time_end,
               s.section_id,
-              (SELECT COUNT(*)
+              (SELECT COUNT(DISTINCT e.student_id)
  FROM enrollments e
  JOIN sections enrolled_section ON e.section_id = enrolled_section.section_id
+ JOIN courses enrolled_course ON enrolled_course.course_id = e.course_id
  WHERE e.period_id = fca.academic_period_id
  AND enrolled_section.section_id = s.section_id
- AND e.course_id = fca.course_id
+ AND LOWER(TRIM(enrolled_course.code)) = LOWER(TRIM(c.code))
+ AND LOWER(TRIM(enrolled_course.title)) = LOWER(TRIM(c.title))
  AND e.status = 'Enrolled'
 ) AS current_enrolled
             FROM faculty_course_assignments fca
@@ -60,9 +62,11 @@ const FacultyCourseAssignment = {
               ORDER BY CASE WHEN EXISTS (
                 SELECT 1
                 FROM enrollments matched_enrollment
+                JOIN courses enrolled_course ON enrolled_course.course_id = matched_enrollment.course_id
                 WHERE matched_enrollment.section_id = matched_section.section_id
                   AND matched_enrollment.period_id = fca.academic_period_id
-                  AND matched_enrollment.course_id = fca.course_id
+                  AND LOWER(TRIM(enrolled_course.code)) = LOWER(TRIM(c.code))
+                  AND LOWER(TRIM(enrolled_course.title)) = LOWER(TRIM(c.title))
                   AND matched_enrollment.status = 'Enrolled'
               ) THEN 0 ELSE 1 END,
               matched_section.section_id

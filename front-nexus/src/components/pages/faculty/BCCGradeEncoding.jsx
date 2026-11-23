@@ -73,6 +73,8 @@ const entryName = (key, index) => key === "quizzes" ? `BCC Quiz / Activity ${ind
 const entryType = (key) => key === "quizzes" ? "assignment" : COMPONENTS.find((component) => component.key === key)?.type;
 const normalizeDepartmentName = (name) => String(name || "").trim().toUpperCase().replace(/\s+/g, " ");
 const normalizeCourseCode = (code) => String(code || "").trim().toUpperCase().replace(/\s+/g, " ");
+const normalizeCourseTitle = (title) => String(title || "").trim().toUpperCase().replace(/\s+/g, " ");
+const courseIdentity = (code, title) => `${normalizeCourseCode(code)}|${normalizeCourseTitle(title)}`;
 const normalizeSectionName = (section) => String(section || "").trim().toUpperCase().replace(/\s+/g, " ");
 const formatStudentName = (student) => `${student.lastName}, ${[student.firstName, student.middleName, student.suffix].filter(Boolean).join(" ")}`.trim();
 const coordinatorLabelFor = (departmentName) => {
@@ -102,7 +104,8 @@ function shiftWorksheetRows(xml, firstRow, count) {
   let shifted = xml
     .replace(/(<row\b[^>]*\br=")(\d+)(")/g, (match, before, row, after) => `${before}${Number(row) >= firstRow ? Number(row) + count : row}${after}`)
     .replace(/(<c\b[^>]*\br="[A-Z]{1,3})(\d+)(")/g, (match, before, row, after) => `${before}${Number(row) >= firstRow ? Number(row) + count : row}${after}`)
-    .replace(/\b(ref|sqref)="([^"]+)"/g, (match, attribute, refs) => {
+    .replace(/(<brk\b[^>]*\bid=")(\d+)(")/g, (match, before, row, after) => `${before}${Number(row) >= firstRow ? Number(row) + count : row}${after}`)
+    .replace(/\b(ref|sqref|activeCell)="([^"]+)"/g, (match, attribute, refs) => {
       const adjusted = refs.replace(/(\$?[A-Z]{1,3}\$?)(\d+)\b/g, (cellRef, column, row) => {
         const rowNumber = Number(row);
         return `${column}${rowNumber >= firstRow ? rowNumber + count : rowNumber}`;
@@ -261,8 +264,8 @@ function setWorksheetFormula(xml, address, formula, cachedValue = 0) {
 
 function setStudentColumnWidths(xml, students) {
   const longestText = (values) => values.reduce((longest, value) => Math.max(longest, String(value ?? "").trim().length), 0);
-  const studentIdWidth = Math.max(10, longestText(students.map((student) => student.studentId)) + 2);
-  const studentNameWidth = Math.max(48 - studentIdWidth, longestText(students.map(formatStudentName)) + 2);
+  const studentIdWidth = Math.min(18, Math.max(12, longestText(students.map((student) => student.studentId)) + 2));
+  const studentNameWidth = Math.min(42, Math.max(32, longestText(students.map(formatStudentName)) + 2));
   const setWidth = (worksheetXml, column, width) => {
     const pattern = new RegExp(`<col\\b(?=[^>]*\\bmin="${column}")(?=[^>]*\\bmax="${column}")[^>]*/>`);
     return worksheetXml.replace(pattern, (col) => col
@@ -270,6 +273,96 @@ function setStudentColumnWidths(xml, students) {
       .replace(/\s+bestFit="[^"]*"/g, ""));
   };
   return setWidth(setWidth(xml, 1, studentIdWidth), 2, studentNameWidth);
+}
+
+function wrapStudentNames(xml, stylesXml, students, firstRow, rowCount) {
+  const stylesMatch = stylesXml.match(/(<cellXfs\b[^>]*>)([\s\S]*?)(<\/cellXfs>)/);
+  if (!stylesMatch) throw new Error("The BCC workbook styles are missing cell formats.");
+  const xfs = stylesMatch[2].match(/<xf\b[^>]*?\/>|<xf\b[^>]*>[\s\S]*?<\/xf>/g) || [];
+  const nextStyleIds = new Map();
+  const addedStyles = [];
+  const wrapAlignment = '<alignment horizontal="left" vertical="center" wrapText="1"/>';
+  const setWrapText = (xf) => {
+    let wrapped = xf;
+    if (/<alignment\b[^>]*\bwrapText="1"/.test(wrapped)) return wrapped;
+    if (/<alignment\b/.test(xf)) {
+      wrapped = wrapped.replace(/<alignment\b([^>]*?)(\/?>)/, (match, attrs, ending) => {
+        const nextAttrs = /\bwrapText=/.test(attrs) ? attrs.replace(/\bwrapText="[^"]*"/, 'wrapText="1"') : `${attrs} wrapText="1"`;
+        return `<alignment${nextAttrs}${ending}`;
+      });
+    } else {
+      wrapped = wrapped.endsWith("/>")
+        ? `${wrapped.slice(0, -2)}>${wrapAlignment}</xf>`
+        : wrapped.replace(/<\/xf>$/, `${wrapAlignment}</xf>`);
+    }
+    return wrapped.replace(/<xf\b([^>]*?)(\/?>)/, (match, attrs, ending) => {
+      const nextAttrs = /\bapplyAlignment=/.test(attrs)
+        ? attrs.replace(/\bapplyAlignment="[^"]*"/, 'applyAlignment="1"')
+        : `${attrs} applyAlignment="1"`;
+      return `<xf${nextAttrs}${ending}`;
+    });
+  };
+  const styleForCell = (styleId) => {
+    if (nextStyleIds.has(styleId)) return nextStyleIds.get(styleId);
+    const sourceStyle = xfs[styleId];
+    if (!sourceStyle) return styleId;
+    if (/<alignment\b[^>]*\bwrapText="1"/.test(sourceStyle)) return styleId;
+    const newStyleId = xfs.length + addedStyles.length;
+    addedStyles.push(setWrapText(sourceStyle));
+    nextStyleIds.set(styleId, newStyleId);
+    return newStyleId;
+  };
+
+  let wrappedXml = xml;
+  for (let index = 0; index < rowCount; index += 1) {
+    const rowNumber = firstRow + index;
+    const student = students[index];
+    const name = student ? formatStudentName(student) : "";
+    const wrappedLines = name ? wrapTextLines(name, 26) : 1;
+    wrappedXml = setWorksheetRowHeight(wrappedXml, rowNumber, Math.max(18, wrappedLines * 15));
+    const cellPattern = new RegExp(`<c\\b(?=[^>]*\\br="B${rowNumber}")[^>]*>`);
+    wrappedXml = wrappedXml.replace(cellPattern, (cellTag) => {
+      const styleMatch = cellTag.match(/\bs="(\d+)"/);
+      if (!styleMatch) return cellTag;
+      const nextStyleId = styleForCell(Number(styleMatch[1]));
+      return nextStyleId === Number(styleMatch[1])
+        ? cellTag
+        : cellTag.replace(/\bs="\d+"/, `s="${nextStyleId}"`);
+    });
+  }
+
+  if (!addedStyles.length) return { xml: wrappedXml, stylesXml };
+  const updatedCellXfs = `${stylesMatch[2]}${addedStyles.join("")}`;
+  const openTag = stylesMatch[1].replace(/\bcount="\d+"/, `count="${xfs.length + addedStyles.length}"`);
+  const updatedStylesXml = stylesXml.replace(stylesMatch[0], `${openTag}${updatedCellXfs}${stylesMatch[3]}`);
+  return { xml: wrappedXml, stylesXml: updatedStylesXml };
+}
+
+function wrapTextLines(value, maxCharacters) {
+  const words = String(value || "").split(/\s+/).filter(Boolean);
+  let lines = 1;
+  let currentLineLength = 0;
+  words.forEach((word) => {
+    const nextLength = currentLineLength ? currentLineLength + 1 + word.length : word.length;
+    if (nextLength > maxCharacters && currentLineLength) {
+      lines += 1;
+      currentLineLength = word.length;
+    } else {
+      currentLineLength = nextLength;
+    }
+  });
+  return lines;
+}
+
+function setWorksheetRowHeight(xml, rowNumber, height) {
+  const rowTag = new RegExp(`<row\\b(?=[^>]*\\br="${rowNumber}")[^>]*>`);
+  return xml.replace(rowTag, (tag) => {
+    let next = /\bht="[^"]*"/.test(tag)
+      ? tag.replace(/\bht="[^"]*"/, `ht="${height}"`)
+      : tag.replace(/>$/, ` ht="${height}">`);
+    if (!/\bcustomHeight="1"/.test(next)) next = next.replace(/>$/, ' customHeight="1">');
+    return next;
+  });
 }
 
 function setWorksheetColumnWidth(xml, targetColumn, width) {
@@ -323,6 +416,7 @@ export default function BCCGradeEncoding() {
   const [courses, setCourses] = useState([]);
   const [students, setStudents] = useState([]);
   const [courseId, setCourseId] = useState("");
+  const [selectedAssignmentKey, setSelectedAssignmentKey] = useState("");
   const [periodId, setPeriodId] = useState("");
   const [periodLabel, setPeriodLabel] = useState("");
   const [rows, setRows] = useState({});
@@ -336,6 +430,7 @@ export default function BCCGradeEncoding() {
   const [lmsActivitySlots, setLmsActivitySlots] = useState({});
   const [lmsSyncVersion, setLmsSyncVersion] = useState(0);
   const savingRowsRef = useRef(new Set());
+  const facultyUserId = localStorage.getItem("userId") || localStorage.getItem("user_id") || sessionStorage.getItem("userId");
 
   useEffect(() => {
     if (!courseId || !periodId) return;
@@ -355,7 +450,6 @@ export default function BCCGradeEncoding() {
     const load = async () => {
       setLoading(true);
       try {
-        const facultyUserId = localStorage.getItem("userId") || localStorage.getItem("user_id") || sessionStorage.getItem("userId");
         const [assignmentResponse, enrollmentResponse, periodResponse, departmentResponse] = await Promise.all([
           facultyUserId ? axios.get(`${API_BASE}/api/faculty-assignments/faculty/${facultyUserId}`) : Promise.resolve({ data: { data: [] } }),
           axios.get(`${API_BASE}/api/enrollments`),
@@ -383,47 +477,56 @@ export default function BCCGradeEncoding() {
         setPeriodLabel([semester, schoolYear ? `F.Y. ${schoolYear}` : ""].filter(Boolean).join(" "));
         const assignmentSections = new Map();
         currentAssignments.forEach((item) => {
-          const id = String(item.course_id);
-          if (!assignmentSections.has(id)) assignmentSections.set(id, []);
-          assignmentSections.get(id).push({
+          const identity = courseIdentity(item.course_code, item.course_title);
+          if (!assignmentSections.has(identity)) assignmentSections.set(identity, []);
+          assignmentSections.get(identity).push({
             section: normalizeSectionName(item.section),
             sectionId: item.section_id == null ? "" : String(item.section_id),
           });
         });
-        const coursesById = new Map();
+        const coursesByAssignment = new Map();
         currentAssignments.forEach((item) => {
           const id = String(item.course_id);
-          if (!coursesById.has(id)) {
+          const section = normalizeSectionName(item.section);
+          const sectionId = item.section_id == null ? "" : String(item.section_id);
+          const assignmentKey = `${id}:${sectionId || section || "all"}`;
+          if (!coursesByAssignment.has(assignmentKey)) {
             const department = departmentById.get(String(item.department_id))
               || departmentByName.get(normalizeDepartmentName(item.department_name));
-            coursesById.set(id, {
+            coursesByAssignment.set(assignmentKey, {
+              assignmentKey,
               id: item.course_id,
               code: item.course_code || "Course",
               title: item.course_title || "",
+              identity: courseIdentity(item.course_code, item.course_title),
               facultyName: item.faculty_name || [item.first_name, item.last_name].filter(Boolean).join(" "),
               departmentId: item.department_id,
               departmentName: department?.name || item.department_name || "",
               departmentHeadName: department ? (department.head || "") : (item.department_head_name || ""),
-              sections: [],
+              section,
+              sectionId,
+              sections: item.section ? [String(item.section)] : [],
             });
           }
-          const course = coursesById.get(id);
-          if (item.section && !course.sections.includes(String(item.section))) course.sections.push(String(item.section));
         });
-        const courseList = [...coursesById.values()].map((course) => ({
+        const courseList = [...coursesByAssignment.values()].map((course) => ({
           ...course,
           label: `${course.code} - ${course.title}${course.sections?.length ? ` (Section ${course.sections.join(", ")})` : ""}`,
         }));
         setCourses(courseList);
+        const facultyPeriodCourseKey = `bcc-grade-course:${facultyUserId || "unknown"}:${activePeriodId}`;
+        const savedAssignmentKey = localStorage.getItem(facultyPeriodCourseKey);
         const savedCourseId = localStorage.getItem(`bcc-grade-course:${activePeriodId}`);
-        const initialCourseId = savedCourseId && courseList.some((course) => String(course.id) === savedCourseId)
-          ? savedCourseId
-          : String(courseList[0]?.id ?? "");
+        const initialCourse = courseList.find((course) => course.assignmentKey === savedAssignmentKey)
+          || courseList.find((course) => String(course.id) === savedCourseId)
+          || courseList[0];
+        const initialCourseId = String(initialCourse?.id ?? "");
         setCourseId(initialCourseId);
-        if (initialCourseId) localStorage.setItem(`bcc-grade-course:${activePeriodId}`, initialCourseId);
+        setSelectedAssignmentKey(initialCourse?.assignmentKey || "");
+        if (initialCourse) localStorage.setItem(facultyPeriodCourseKey, initialCourse.assignmentKey);
         const enrollmentList = Array.isArray(enrollmentResponse.data) ? enrollmentResponse.data : enrollmentResponse.data?.data || [];
         const enrolled = enrollmentList.map((item, index) => ({
-          userId: item.student_id || item.user_id,
+          userId: item.user_id || item.student_id,
           id: item.enrollment_id || item.student_id || item.user_id || index,
           studentId: item.student_number || item.student_id || item.user_id || "",
           firstName: item.first_name || item.student_name?.split(" ")?.[0] || item.name?.split(" ")?.[0] || "",
@@ -432,12 +535,13 @@ export default function BCCGradeEncoding() {
           suffix: item.suffix || "",
           courseId: item.course_id,
           courseCode: item.course_code || "",
+          courseTitle: item.course_title || "",
           periodId: item.period_id || item.academic_period_id,
           section: item.section_name || item.section || "",
           sectionId: item.section_id || null,
         }));
         setStudents(enrolled.filter((student) => {
-          const assignments = assignmentSections.get(String(student.courseId));
+          const assignments = assignmentSections.get(courseIdentity(student.courseCode, student.courseTitle));
           if (!assignments?.length || (activePeriodId && String(student.periodId) !== activePeriodId)) return false;
           return assignments.some(({ section, sectionId }) => {
             if (sectionId && student.sectionId) return sectionId === String(student.sectionId);
@@ -453,14 +557,21 @@ export default function BCCGradeEncoding() {
     load();
   }, []);
 
-  const selectedCourse = courses.find((course) => String(course.id) === String(courseId));
+  const selectedCourse = courses.find((course) => course.assignmentKey === selectedAssignmentKey)
+    || courses.find((course) => String(course.id) === String(courseId));
   const selectedCourseOption = selectedCourse
-    ? { value: String(selectedCourse.id), label: selectedCourse.label }
+    ? { value: selectedCourse.assignmentKey, label: selectedCourse.label }
     : null;
   const courseStudents = useMemo(() => {
     if (!selectedCourse) return [];
-    return students.filter((student) => String(student.courseId) === String(courseId));
-  }, [students, selectedCourse, courseId]);
+    return students.filter((student) => {
+      if (courseIdentity(student.courseCode, student.courseTitle) !== selectedCourse.identity) return false;
+      if (selectedCourse.sectionId && student.sectionId) {
+        return String(selectedCourse.sectionId) === String(student.sectionId);
+      }
+      return !selectedCourse.section || selectedCourse.section === normalizeSectionName(student.section);
+    });
+  }, [students, selectedCourse]);
   const selectedCourseIds = useMemo(
     () => [...new Set([courseId, ...courseStudents.map((student) => student.courseId)].filter(Boolean).map(String))],
     [courseId, courseStudents],
@@ -925,6 +1036,16 @@ export default function BCCGradeEncoding() {
         });
       }
 
+      const wrappedNames = wrapStudentNames(
+        gradingXml,
+        decoder.decode(files["xl/styles.xml"]),
+        visibleStudents,
+        14,
+        rowCount,
+      );
+      gradingXml = wrappedNames.xml;
+      files["xl/styles.xml"] = encoder.encode(wrappedNames.stylesXml);
+
       // All roster formula cells have been rewritten above. Remove any stale
       // shared-formula markers left by the source workbook's template rows.
       gradingXml = gradingXml.replace(/<f\b(?=[^>]*\bt="shared")[^>]*\/>/g, "")
@@ -932,6 +1053,15 @@ export default function BCCGradeEncoding() {
 
       files["xl/worksheets/sheet1.xml"] = encoder.encode(gradingXml);
       files["xl/worksheets/sheet2.xml"] = encoder.encode(ratingXml);
+      const sharedStringsPath = "xl/sharedStrings.xml";
+      if (files[sharedStringsPath]) {
+        const sharedStringReferenceCount = [gradingXml, ratingXml].reduce(
+          (count, worksheetXml) => count + (worksheetXml.match(/<c\b(?=[^>]*\bt="s")[^>]*>/g) || []).length,
+          0,
+        );
+        files[sharedStringsPath] = encoder.encode(decoder.decode(files[sharedStringsPath])
+          .replace(/(<sst\b[^>]*\bcount=")\d+(")/, (match, prefix, suffix) => `${prefix}${sharedStringReferenceCount}${suffix}`));
+      }
       delete files["xl/calcChain.xml"];
       const relationshipPath = "xl/_rels/workbook.xml.rels";
       files[relationshipPath] = encoder.encode(decoder.decode(files[relationshipPath])
@@ -1033,11 +1163,15 @@ export default function BCCGradeEncoding() {
         inputId="bcc-grade-course-select"
         value={selectedCourseOption}
         onChange={(option) => {
-          const value = option?.value || "";
-          setCourseId(value);
-          if (periodId) localStorage.setItem(`bcc-grade-course:${periodId}`, value);
+          const assignmentKey = option?.value || "";
+          const selected = courses.find((course) => course.assignmentKey === assignmentKey);
+          setSelectedAssignmentKey(assignmentKey);
+          setCourseId(String(selected?.id ?? ""));
+          if (periodId && assignmentKey) {
+            localStorage.setItem(`bcc-grade-course:${facultyUserId || "unknown"}:${periodId}`, assignmentKey);
+          }
         }}
-        options={courses.map((course) => ({ value: String(course.id), label: course.label }))}
+        options={courses.map((course) => ({ value: course.assignmentKey, label: course.label }))}
         placeholder="Select course"
         isSearchable
         isClearable

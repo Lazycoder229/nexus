@@ -736,12 +736,9 @@ export const synchronizeCohortCurriculum = async (student_ids, course_ids, perio
     const [deleteResult] = await connection.query(
       `DELETE e FROM enrollments e
        JOIN courses c ON c.course_id = e.course_id
-       JOIN academic_periods ap ON ap.period_id = e.period_id
        LEFT JOIN student_details sd ON sd.user_id = e.student_id
        WHERE e.period_id = ? AND e.student_id IN (${studentPlaceholders})
          AND TRIM(COALESCE(NULLIF(e.year_level, ''), NULLIF(c.year_level, ''), NULLIF(sd.year_level, ''), '')) = TRIM(?)
-         AND LOWER(REPLACE(TRIM(COALESCE(c.semester_offer, '')), ' ', ''))
-           = LOWER(REPLACE(TRIM(COALESCE(ap.semester, '')), ' ', ''))
          AND e.course_id NOT IN (${coursePlaceholders})`,
       [period_id, ...student_ids, year_level, ...course_ids],
     );
@@ -804,26 +801,36 @@ export const setEnrollmentSections = async (assignments, periodId) => {
 };
 
 // Get enrolled students by faculty assignment ID
-export const getStudentsByAssignment = async (assignmentId) => {
+export const getStudentsByAssignment = async (assignmentId, facultyUserId = null) => {
+  const facultyFilter = facultyUserId ? " AND fca.faculty_user_id = ?" : "";
+  const params = facultyUserId ? [assignmentId, facultyUserId] : [assignmentId];
   const [rows] = await db.query(
     `SELECT 
         e.enrollment_id,
-        e.student_id,
+        e.student_id AS user_id,
         sd.student_number AS student_id,
         CONCAT(u.first_name, ' ', u.last_name) AS name,
         u.email,
         u.phone AS phone,
+        e.course_id,
+        e.section_id,
+        s.section_name,
+        e.period_id,
         e.status
-     FROM enrollments e
-     JOIN faculty_course_assignments fca ON e.course_id = fca.course_id 
-         AND e.period_id = fca.academic_period_id
-     JOIN sections s ON e.section_id = s.section_id AND s.section_name = fca.section
+     FROM faculty_course_assignments fca
+     JOIN courses assigned_course ON assigned_course.course_id = fca.course_id
+     JOIN sections s ON s.period_id = fca.academic_period_id AND s.section_name = fca.section
+     JOIN enrollments e ON e.section_id = s.section_id
+         AND e.period_id = fca.academic_period_id AND e.status = 'Enrolled'
+     JOIN courses enrolled_course ON enrolled_course.course_id = e.course_id
+         AND LOWER(TRIM(enrolled_course.code)) = LOWER(TRIM(assigned_course.code))
+         AND LOWER(TRIM(enrolled_course.title)) = LOWER(TRIM(assigned_course.title))
      JOIN users u ON e.student_id = u.user_id
      LEFT JOIN student_details sd ON e.student_id = sd.user_id
      WHERE fca.assignment_id = ?
-       AND e.status = 'Enrolled'
+       ${facultyFilter}
      ORDER BY sd.student_number ASC`,
-    [assignmentId],
+    params,
   );
   return rows;
 };
@@ -836,33 +843,45 @@ export const getStudentsByFaculty = async (facultyUserId) => {
         e.enrollment_id,
         e.student_id AS user_id,
         COALESCE(sd.student_number, CAST(u.user_id AS CHAR)) AS student_id,
+        sd.student_number,
         u.first_name,
+        u.middle_name,
         u.last_name,
+        u.suffix,
         CONCAT_WS(' ', u.first_name, u.last_name) AS name,
+        CONCAT_WS(' ', u.first_name, NULLIF(TRIM(u.middle_name), ''), u.last_name, NULLIF(TRIM(u.suffix), '')) AS student_name,
         u.email,
         u.phone,
         fca.assignment_id,
-        fca.course_id,
+        e.course_id,
+        fca.course_id AS assigned_course_id,
+        e.section_id,
+        s.section_name,
+        e.period_id,
         c.code AS course_code,
         c.title AS course_title,
         fca.section,
+        s.program_id AS student_program_id,
         COALESCE(p.code, sd.course, 'N/A') AS program,
         COALESCE(e.year_level, sd.year_level, 'N/A') AS year_level,
         e.status,
         e.midterm_grade,
         e.final_grade
      FROM faculty_course_assignments fca
+     JOIN courses c ON c.course_id = fca.course_id
      JOIN enrollments e
-       ON e.course_id = fca.course_id
-      AND e.period_id = fca.academic_period_id
+       ON e.period_id = fca.academic_period_id
       AND e.status = 'Enrolled'
+     JOIN courses enrolled_course
+       ON enrolled_course.course_id = e.course_id
+      AND LOWER(TRIM(enrolled_course.code)) = LOWER(TRIM(c.code))
+      AND LOWER(TRIM(enrolled_course.title)) = LOWER(TRIM(c.title))
      JOIN sections s
        ON s.section_id = e.section_id
       AND s.period_id = e.period_id
       AND s.section_name = fca.section
      JOIN users u ON u.user_id = e.student_id
      LEFT JOIN student_details sd ON sd.user_id = e.student_id
-     JOIN courses c ON c.course_id = e.course_id
      LEFT JOIN programs p ON p.program_id = s.program_id
      WHERE fca.faculty_user_id = ?
      ORDER BY c.code, fca.section, sd.student_number, u.last_name, u.first_name`,

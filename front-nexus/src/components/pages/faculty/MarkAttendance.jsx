@@ -24,6 +24,8 @@ if (API_BASE_URL.endsWith("/")) {
 if (!API_BASE_URL.endsWith("/api")) {
   API_BASE_URL = API_BASE_URL + "/api";
 }
+const courseIdentity = (code, title) =>
+  `${String(code || "").trim().toUpperCase().replace(/\s+/g, " ")}|${String(title || "").trim().toUpperCase().replace(/\s+/g, " ")}`;
 
 const MarkAttendance = () => {
   const [loading, setLoading] = useState(false);
@@ -34,6 +36,7 @@ const MarkAttendance = () => {
   const [remarks, setRemarks] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCourse, setSelectedCourse] = useState("");
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
   const [selectedPeriod, setSelectedPeriod] = useState("");
   const [selectedDate, setSelectedDate] = useState(
@@ -56,10 +59,10 @@ const MarkAttendance = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedCourse) {
+    if (selectedCourse && selectedAssignmentId) {
       fetchStudentsByCourse();
     }
-  }, [selectedCourse, selectedSection, selectedPeriod]);
+  }, [selectedCourse, selectedAssignmentId, selectedSection, selectedPeriod]);
 
   const fetchInitialData = async () => {
     setLoading(true);
@@ -72,11 +75,17 @@ const MarkAttendance = () => {
         : assignmentsResponse.data.data || [];
       setFacultyAssignments(assignmentsData);
       const assignedCourses = [...new Map(assignmentsData.map((assignment) => [
-        String(assignment.course_id), {
+        String(assignment.assignment_id), {
+          assignment_id: assignment.assignment_id,
+          assignmentKey: String(assignment.assignment_id),
           course_id: assignment.course_id,
           id: assignment.course_id,
           code: assignment.course_code,
           title: assignment.course_title,
+          identity: courseIdentity(assignment.course_code, assignment.course_title),
+          section: assignment.section,
+          section_id: assignment.section_id,
+          academic_period_id: assignment.academic_period_id,
         },
       ])).values()];
       setCourses(assignedCourses);
@@ -114,7 +123,7 @@ const MarkAttendance = () => {
     if (selectedCourse && selectedPeriod) {
       fetchSectionsForCourse();
     }
-  }, [selectedCourse, selectedPeriod]);
+  }, [selectedCourse, selectedAssignmentId, selectedPeriod]);
 
   // Add this new function
   const fetchSectionsForCourse = async () => {
@@ -143,10 +152,12 @@ const MarkAttendance = () => {
       }));
 
       const assignedSectionNames = new Set(facultyAssignments
-        .filter((assignment) => String(assignment.course_id) === String(selectedCourse)
+        .filter((assignment) => String(assignment.assignment_id) === String(selectedAssignmentId)
           && String(assignment.academic_period_id) === String(selectedPeriod))
-        .map((assignment) => String(assignment.section || "")));
-      normalizedSections = normalizedSections.filter((section) => assignedSectionNames.has(String(section.section_name || "")));
+        .map((assignment) => String(assignment.section || "").trim().toLowerCase()));
+      normalizedSections = normalizedSections.filter((section) =>
+        assignedSectionNames.has(String(section.section_name || "").trim().toLowerCase()),
+      );
 
       console.log("Sections for selected course/period:", normalizedSections);
       setSections(normalizedSections);
@@ -157,11 +168,24 @@ const MarkAttendance = () => {
   const fetchStudentsByCourse = async () => {
     if (!selectedCourse || !selectedPeriod) return;
 
+    const selectedCourseData = courses.find((course) => String(course.assignment_id) === String(selectedAssignmentId));
+    const assignedSectionNames = new Set(facultyAssignments
+      .filter((assignment) => String(assignment.assignment_id) === String(selectedAssignmentId)
+        && String(assignment.academic_period_id) === String(selectedPeriod))
+      .map((assignment) => String(assignment.section || "").trim().toLowerCase())
+      .filter(Boolean));
+
+    if (!assignedSectionNames.size) {
+      setStudents([]);
+      return;
+    }
+
     setLoading(true);
     try {
-      // Fetch students enrolled in the selected course
+      // Fetch this period's roster, then match the equivalent course record
+      // and exact assigned sections. Programs can have separate course IDs
+      // for the same subject code/title.
       const params = {
-        course_id: selectedCourse,
         period_id: selectedPeriod,
       };
 
@@ -179,10 +203,17 @@ const MarkAttendance = () => {
         : response.data.data || [];
       
       // Ensure all students have required fields for attendance marking
-      enrolledStudents = enrolledStudents.map((student) => ({
-        ...student,
-        student_id: student.student_id || student.user_id,
-      }));
+      enrolledStudents = enrolledStudents
+        .filter((student) =>
+          String(student.status || "").trim().toLowerCase() === "enrolled"
+          && selectedCourseData
+          && courseIdentity(student.course_code, student.course_title) === selectedCourseData.identity
+          && assignedSectionNames.has(String(student.section_name || "").trim().toLowerCase())
+          && (!selectedSection || String(student.section_id) === String(selectedSection)))
+        .map((student) => ({
+          ...student,
+          student_id: student.user_id || student.student_id,
+        }));
       
       console.log("Enrolled students fetched:", enrolledStudents);
       setStudents(enrolledStudents);
@@ -200,21 +231,18 @@ const MarkAttendance = () => {
 
   const fetchExistingAttendance = async (studentsList) => {
     try {
-      const params = {
-        course_id: selectedCourse,
-        period_id: selectedPeriod,
-        date_from: selectedDate,
-        date_to: selectedDate,
-      };
-
-      if (selectedSection) {
-        params.section_id = selectedSection;
-      }
-
-      const response = await axios.get(`${API_BASE_URL}/student-attendance`, {
-        params,
-      });
-      const existingAttendance = response.data.data || [];
+      const enrolledCourseIds = [...new Set(studentsList.map((student) => String(student.course_id)).filter(Boolean))];
+      const attendanceResponses = await Promise.all(enrolledCourseIds.map((courseId) => {
+        const params = {
+          course_id: courseId,
+          period_id: selectedPeriod,
+          date_from: selectedDate,
+          date_to: selectedDate,
+        };
+        if (selectedSection) params.section_id = selectedSection;
+        return axios.get(`${API_BASE_URL}/student-attendance`, { params });
+      }));
+      const existingAttendance = attendanceResponses.flatMap((response) => response.data.data || []);
 
       console.log("Existing attendance for selected date:", existingAttendance);
       
@@ -223,7 +251,7 @@ const MarkAttendance = () => {
       const initialRemarks = {};
 
       studentsList.forEach((student) => {
-        const studentId = student.student_id || student.user_id;
+        const studentId = student.user_id || student.student_id;
         
         const existing = existingAttendance.find(
           (att) =>
@@ -249,7 +277,7 @@ const MarkAttendance = () => {
       const initialAttendance = {};
       const initialRemarks = {};
       studentsList.forEach((student) => {
-        const studentId = student.student_id || student.user_id;
+        const studentId = student.user_id || student.student_id;
         initialAttendance[studentId] = "present";
         initialRemarks[studentId] = "";
       });
@@ -275,7 +303,7 @@ const MarkAttendance = () => {
   const markAllPresent = () => {
     const allPresent = {};
     filteredStudents.forEach((student) => {
-      allPresent[student.student_id || student.user_id] = "present";
+      allPresent[student.user_id || student.student_id] = "present";
     });
     setAttendance((prev) => ({ ...prev, ...allPresent }));
   };
@@ -283,7 +311,7 @@ const MarkAttendance = () => {
   const markAllAbsent = () => {
     const allAbsent = {};
     filteredStudents.forEach((student) => {
-      allAbsent[student.student_id || student.user_id] = "absent";
+      allAbsent[student.user_id || student.student_id] = "absent";
     });
     setAttendance((prev) => ({ ...prev, ...allAbsent }));
   };
@@ -310,7 +338,7 @@ const MarkAttendance = () => {
       // Prepare attendance records for bulk insert
       const attendanceRecords = filteredStudents.map((student) => {
         // Use the correct student identifier
-        const studentId = student.student_id || student.user_id;
+        const studentId = student.user_id || student.student_id;
         
         if (!studentId) {
           throw new Error("Student ID is missing for one or more students");
@@ -318,8 +346,8 @@ const MarkAttendance = () => {
 
         return {
           student_id: studentId,
-          course_id: parseInt(selectedCourse),
-          section_id: selectedSection ? parseInt(selectedSection) : null,
+          course_id: parseInt(student.course_id || selectedCourse),
+          section_id: parseInt(selectedSection || student.section_id) || null,
           period_id: parseInt(selectedPeriod),
           attendance_date: selectedDate,
           time_in: dayjs().format("HH:mm:ss"),
@@ -423,6 +451,10 @@ const MarkAttendance = () => {
               value={selectedPeriod}
               onChange={(e) => {
                 setSelectedPeriod(e.target.value);
+                setSelectedCourse("");
+                setSelectedAssignmentId("");
+                setSelectedSection("");
+                setStudents([]);
                 setCurrentPage(1);
               }}
               className="w-full px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
@@ -443,21 +475,22 @@ const MarkAttendance = () => {
               Course *
             </label>
             <select
-              value={selectedCourse}
+              value={selectedAssignmentId}
               onChange={(e) => {
-                setSelectedCourse(e.target.value);
+                const assignment = courses.find((course) => course.assignmentKey === e.target.value);
+                setSelectedCourse(String(assignment?.id || ""));
+                setSelectedAssignmentId(String(assignment?.assignment_id || ""));
+                setSelectedSection(String(assignment?.section_id || ""));
+                setStudents([]);
                 setCurrentPage(1);
               }}
               className="w-full px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
               required
             >
               <option value="">Select Course</option>
-              {courses.filter((course) => facultyAssignments.some((assignment) =>
-                String(assignment.course_id) === String(course.course_id)
-                && String(assignment.academic_period_id) === String(selectedPeriod)
-              )).map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.code} - {course.title}
+              {courses.filter((course) => String(course.academic_period_id) === String(selectedPeriod)).map((course) => (
+                <option key={course.assignmentKey} value={course.assignmentKey}>
+                  {course.code} - {course.title} (Section {course.section})
                 </option>
               ))}
             </select>
@@ -476,7 +509,7 @@ const MarkAttendance = () => {
               }}
               className="w-full px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
             >
-              <option value="">All Sections</option>
+              <option value="">All Students in Assigned Section</option>
               {sections.map((section) => (
                 <option key={section.section_id} value={section.section_id}>
                   {section.section_name}
@@ -630,7 +663,7 @@ const MarkAttendance = () => {
                 </tr>
               ) : (
                 currentStudents.map((student) => {
-                  const studentId = student.student_id || student.user_id;
+                  const studentId = student.user_id || student.student_id;
                   const studentNumber =
                     student.student_number || student.studentId || studentId;
                   const firstName =

@@ -650,6 +650,7 @@ import fs from "fs";
 import path from "path";
 import { runTensorFlowAiCheck, initializeTensorFlow } from "../services/aiChecker.service.js";
 import { ensureUploadDirectory, resolveUploadPath } from "../helpers/uploadStorage.js";
+import { resolveFacultyScopeId } from "../helpers/facultyScope.js";
 
 class AiCheckError extends Error {
   constructor(status, message) {
@@ -957,16 +958,20 @@ const lmsAssignmentsController = {
   getByFaculty: async (req, res) => {
     try {
       const { faculty_id, academic_period_id } = req.query;
+      const facultyId = resolveFacultyScopeId(req, faculty_id);
 
-      if (!faculty_id || !academic_period_id) {
+      if (!facultyId) {
+        return res.status(403).json({ success: false, message: "Faculty access is required" });
+      }
+      if (!academic_period_id) {
         return res.status(400).json({
           success: false,
-          message: "Faculty ID and Academic Period ID are required",
+          message: "Academic Period ID is required",
         });
       }
 
       const assignments = await LMSAssignments.getByFaculty(
-        faculty_id,
+        facultyId,
         academic_period_id
       );
 

@@ -11,6 +11,17 @@ export const getAllEnrollments = async (req, res) => {
   try {
     if (!isStudent(req) && !canReviewEnrollments(req)) return denyEnrollmentAccess(res);
     const { course_id, period_id, section_id, student_id, program_id } = req.query;
+    if (String(req.user?.role || "").toLowerCase() === "faculty") {
+      const ownRoster = await enrollmentService.listStudentsByFaculty(req.user.userId ?? req.user.user_id);
+      const enrollments = ownRoster.filter((row) =>
+        (!course_id || String(row.course_id) === String(course_id) || String(row.assigned_course_id) === String(course_id))
+        && (!period_id || String(row.period_id) === String(period_id))
+        && (!section_id || String(row.section_id) === String(section_id))
+        && (!student_id || String(row.user_id) === String(student_id) || String(row.student_id) === String(student_id))
+        && (!program_id || String(row.student_program_id) === String(program_id)),
+      );
+      return res.json(enrollments);
+    }
     const filters = {
       course_id,
       period_id,
@@ -150,10 +161,15 @@ export const deleteStudentPeriodEnrollments = async (req, res) => {
 // Get enrolled students by faculty assignment ID
 export const getStudentsByAssignment = async (req, res) => {
   try {
+    const role = String(req.user?.role || "").toLowerCase();
     if (!canReviewEnrollments(req)) return denyEnrollmentAccess(res);
     const { assignmentId } = req.params;
+    if (role !== "admin" && role !== "faculty") return denyEnrollmentAccess(res);
+    const facultyUserId = role === "faculty"
+      ? (req.user.userId ?? req.user.user_id)
+      : null;
     const students =
-      await enrollmentService.listStudentsByAssignment(assignmentId);
+      await enrollmentService.listStudentsByAssignment(assignmentId, facultyUserId);
     res.json({ success: true, data: students });
   } catch (err) {
     console.error(err);

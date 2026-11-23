@@ -1073,11 +1073,12 @@ const SectioningModal = ({ isOpen, onClose, onSubmit, courses, coursesLoading, p
       });
       return;
     }
-    const { select_all_courses, ...sectioningData } = formData;
-    // "All Courses" omits course IDs so the backend can include shared
-    // subjects too. The backend still filters by the selected curriculum
-    // and the academic period's semester.
-    if (select_all_courses) sectioningData.course_ids = [];
+    const sectioningData = { ...formData };
+    delete sectioningData.select_all_courses;
+    // Preserve the exact course IDs shown in the selected program's filtered
+    // list, including when "All Courses" is selected. An empty list makes
+    // the backend infer courses department-wide and can include unrelated
+    // program subjects.
     const selectedCourseIds = new Set((sectioningData.course_ids || []).map(String));
     const matchingCohortStudentIds = new Set(enrollments.filter((row) =>
       String(row.period_id) === String(formData.period_id)

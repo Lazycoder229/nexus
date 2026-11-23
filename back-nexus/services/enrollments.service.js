@@ -339,8 +339,8 @@ export const removeStudentPeriodEnrollments = async (student_id, period_id) => {
 };
 
 // Get enrolled students by faculty assignment ID
-export const listStudentsByAssignment = async (assignmentId) => {
-  return await enrollmentModel.getStudentsByAssignment(assignmentId);
+export const listStudentsByAssignment = async (assignmentId, facultyUserId = null) => {
+  return await enrollmentModel.getStudentsByAssignment(assignmentId, facultyUserId);
 };
 
 export const listStudentsByFaculty = async (facultyUserId) => {
@@ -369,7 +369,7 @@ export const runSectioning = async ({
     period_id,
     program_id || null,
     year_level || null,
-    null,
+    curriculum_type,
   );
 
   if (cohortEnrollments.length === 0) {

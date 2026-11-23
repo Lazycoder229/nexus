@@ -1,4 +1,5 @@
 import LMSDiscussions from "../model/lmsDiscussions.model.js";
+import { resolveFacultyScopeId } from "../helpers/facultyScope.js";
 
 const lmsDiscussionsController = {
   // Create new discussion thread
@@ -57,16 +58,20 @@ const lmsDiscussionsController = {
   getByFaculty: async (req, res) => {
     try {
       const { faculty_id, academic_period_id } = req.query;
+      const facultyId = resolveFacultyScopeId(req, faculty_id);
 
-      if (!faculty_id || !academic_period_id) {
+      if (!facultyId) {
+        return res.status(403).json({ success: false, message: "Faculty access is required" });
+      }
+      if (!academic_period_id) {
         return res.status(400).json({
           success: false,
-          message: "Faculty ID and Academic Period ID are required",
+          message: "Academic Period ID is required",
         });
       }
 
       const discussions = await LMSDiscussions.getByFaculty(
-        faculty_id,
+        facultyId,
         academic_period_id
       );
 
