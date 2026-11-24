@@ -76,6 +76,7 @@ import PublicEventPosting from "./components/pages/admin/PublicEventPosting";
 import InventoryAssetManagement from "./components/pages/admin/InventoryAssetManagement";
 import StudentReports from "./components/pages/admin/StudentReports";
 import AdminAnalytics from "./components/pages/admin/AdminAnalytics";
+import AITrainingMetrics from "./components/pages/admin/AITrainingMetrics";
 import GeneralSettings from "./components/pages/admin/GeneralSettings_New";
 import EmailSMSGateway from "./components/pages/admin/EmailSMSGateway";
 import SystemLogs from "./components/pages/admin/SystemLogs";
@@ -252,6 +253,7 @@ function AppWrapper() {
         <Route path="admin_absentee" element={<AbsenteeAlerts />} />
         <Route path="admin_student_reports" element={<StudentReports />} />
         <Route path="admin_analytics" element={<AdminAnalytics />} />
+        <Route path="admin_ai_training_metrics" element={<AITrainingMetrics />} />
         <Route path="admin_exam_setup" element={<ExamSetup />} />
         <Route path="admin_grade_entry" element={<GradeEntryApproval />} />
         <Route

@@ -274,6 +274,11 @@ const Menu = {
             icons: ReportIcon,
           link: "/admin/admin_analytics",
         },
+        {
+          label: "AI Training Metrics",
+          icons: ReportIcon,
+          link: "/admin/admin_ai_training_metrics",
+        },
         /*
         {
           label: "Attendance Reports",

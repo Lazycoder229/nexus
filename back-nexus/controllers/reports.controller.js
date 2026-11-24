@@ -57,6 +57,19 @@ export const getEnrollmentTrends = async (req, res) => {
   }
 };
 
+export const trainEnrollmentPredictionModel = async (_req, res) => {
+  try {
+    const data = await ReportsService.trainEnrollmentForecastModel();
+    res.json({ success: true, message: "A new enrollment prediction model was trained and saved.", data });
+  } catch (error) {
+    const status = error.message.includes("At least two academic semesters") ? 422
+      : error.message.includes("already in progress") ? 409
+        : 500;
+    console.error("Error training enrollment prediction model:", error);
+    res.status(status).json({ success: false, message: error.message });
+  }
+};
+
 // Get Enrollment by Program
 export const getEnrollmentByProgram = async (req, res) => {
   try {

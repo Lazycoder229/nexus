@@ -28,6 +28,14 @@ const ReportsService = {
     }
   },
 
+  async trainEnrollmentForecastModel() {
+    try {
+      return await ReportsModel.trainEnrollmentForecastModel();
+    } catch (error) {
+      throw new Error(`Error training enrollment prediction model: ${error.message}`);
+    }
+  },
+
   // Get enrollment by program
   async getEnrollmentByProgram(filters) {
     try {

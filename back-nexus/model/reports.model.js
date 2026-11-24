@@ -1,5 +1,7 @@
 import pool from "../config/db.js";
 import * as tf from "@tensorflow/tfjs";
+import { trainEnrollmentPredictionModel } from "../services/predictionModel.service.js";
+import { getEnrollmentTrainingDataset } from "../services/enrollmentDataset.service.js";
 
 const formatAcademicPeriodLabel = (period) => {
   if (!period) return "Unknown period";
@@ -26,22 +28,22 @@ const calculateEnrollmentForecast = async (series) => {
 
   const xTensor = tf.tensor2d(xValues.map((value) => [value]), [xValues.length, 1]);
   const yTensor = tf.tensor2d(yValues.map((value) => [value]), [yValues.length, 1]);
-
   const model = tf.sequential();
   model.add(tf.layers.dense({ units: 1, inputShape: [1] }));
-  model.compile({
-    loss: "meanSquaredError",
-    optimizer: tf.train.adam(0.1),
-  });
-
-  await model.fit(xTensor, yTensor, {
-    epochs: Math.min(200, 40 + xValues.length * 10),
-    verbose: 0,
-  });
-
-  const predictionTensor = model.predict(tf.tensor2d([[xValues.length]], [1, 1]));
-  const predictionValues = await predictionTensor.data();
-  const regressionPrediction = Number(predictionValues[0] || 0);
+  model.compile({ loss: "meanSquaredError", optimizer: tf.train.adam(0.1) });
+  let regressionPrediction;
+  let predictionInput;
+  let predictionTensor;
+  try {
+    await model.fit(xTensor, yTensor, { epochs: Math.min(200, 40 + xValues.length * 10), verbose: 0 });
+    predictionInput = tf.tensor2d([[xValues.length]], [1, 1]);
+    predictionTensor = model.predict(predictionInput);
+    const predictionValues = await predictionTensor.data();
+    regressionPrediction = Number(predictionValues[0] || 0);
+  } finally {
+    tf.dispose([xTensor, yTensor, predictionInput, predictionTensor]);
+    model.dispose();
+  }
 
   const recentWindow = yValues.slice(-3);
   const weightedAverage =
@@ -56,9 +58,6 @@ const calculateEnrollmentForecast = async (series) => {
   const yMean = yValues.reduce((sum, value) => sum + value, 0) / yValues.length;
   const variance = yValues.reduce((sum, value) => sum + (value - yMean) ** 2, 0) / yValues.length;
   const confidence = Math.max(0, Math.min(1, 1 - Math.sqrt(variance) / (yMean + 1)));
-
-  tf.dispose([xTensor, yTensor, predictionTensor]);
-  model.dispose();
 
   return {
     predicted_next_enrollment: predictedNextEnrollment,
@@ -336,6 +335,23 @@ const ReportsModel = {
         target_period_label: nextPeriodLabel,
       },
     };
+  },
+
+  async trainEnrollmentForecastModel() {
+    const dataset = await getEnrollmentTrainingDataset();
+    const samples = dataset.samples.map((sample) => ({
+      period_label: sample.period_label,
+      period_index: sample.period_index,
+      academic_year: sample.academic_year,
+      semester: sample.semester,
+      program: sample.program,
+      program_index: sample.program_index,
+      enrollment_count: sample.enrollment_count,
+    }));
+    return trainEnrollmentPredictionModel(samples, {
+      syntheticSampleCount: dataset.synthetic_sample_count,
+      syntheticStudentRecordCount: dataset.synthetic_student_record_count,
+    });
   },
 
   // Get attendance reports (student or staff)

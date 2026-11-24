@@ -3,6 +3,7 @@ import {
   getStudentReports,
   getEnrollmentReports,
   getEnrollmentTrends,
+  trainEnrollmentPredictionModel,
   getEnrollmentByProgram,
   getDropoutAnalytics,
   getAttendanceReports,
@@ -24,6 +25,7 @@ router.get("/enrollments", getEnrollmentReports);
 
 // Enrollment trends and forecast
 router.get("/enrollment-trends", getEnrollmentTrends);
+router.post("/prediction-model/train", trainEnrollmentPredictionModel);
 
 // Enrollment by program
 router.get("/enrollment-by-program", getEnrollmentByProgram);

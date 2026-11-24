@@ -90,7 +90,7 @@ export const enforceApiAccess = (req, res, next) => {
     return method === "GET" || roleIs(req.user, "Admin") ? next() : deny(res);
   }
 
-  const adminOnlyResources = ["/academic-history", "/clearances", "/course-transfers"];
+  const adminOnlyResources = ["/academic-history", "/clearances", "/course-transfers", "/ai/training-metrics"];
   if (adminOnlyResources.some((prefix) => resourcePath === prefix || resourcePath.startsWith(`${prefix}/`))) {
     return roleIs(req.user, "Admin") ? next() : deny(res);
   }
