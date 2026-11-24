@@ -104,11 +104,12 @@ const FacultyDashboard = () => {
 
     try {
       // Fetch real data from multiple endpoints
-      const [coursesRes, scheduleRes, gradesRes, attendanceRes] = await Promise.all([
+      const [coursesRes, scheduleRes, gradesRes, attendanceRes, rosterRes] = await Promise.all([
         axios.get(`${API_BASE}/api/faculty-assignments/faculty/${facultyUserId}`).catch(() => ({ data: { data: [] } })),
         axios.get(`${API_BASE}/api/faculty-schedules/faculty/${facultyUserId}`).catch(() => ({ data: [] })),
         axios.get(`${API_BASE}/api/grades`).catch(() => ({ data: [] })),
         axios.get(`${API_BASE}/api/student-attendance`).catch(() => ({ data: { data: [] } })),
+        axios.get(`${API_BASE}/api/enrollments/faculty/${facultyUserId}/students`).catch(() => ({ data: { data: [] } })),
       ]);
 
       const courses = Array.isArray(coursesRes.data) ? coursesRes.data : (coursesRes.data.data || []);
@@ -116,6 +117,8 @@ const FacultyDashboard = () => {
       const assignedCourseIds = new Set(courses.map((course) => String(course.course_id || course.id)));
       const grades = (Array.isArray(gradesRes.data) ? gradesRes.data : (gradesRes.data.data || [])).filter((g) => assignedCourseIds.has(String(g.course_id)));
       const attendance = (attendanceRes.data.data || []).filter((a) => assignedCourseIds.has(String(a.course_id)));
+      const roster = Array.isArray(rosterRes.data?.data) ? rosterRes.data.data : [];
+      const totalStudents = new Set(roster.map((student) => String(student.user_id || student.id)).filter(Boolean)).size;
 
       // Calculate stats from real data
       const assignedCourses = assignedCourseIds.size;
@@ -129,7 +132,11 @@ const FacultyDashboard = () => {
         code: s.course_code || s.code || `Course ${idx + 1}`,
         name: s.course_title || s.course_name || s.title || 'Course',
         schedule: s.schedule || `${s.day || 'TBD'} ${s.start_time || ''} - ${s.end_time || ''}`,
-        students: s.student_count || 30,
+        students: s.student_count ?? courses.find((course) =>
+          String(course.assignment_id) === String(s.assignment_id)
+          || (String(course.course_id) === String(s.course_id)
+            && String(course.section || "") === String(s.section || "")),
+        )?.current_enrolled ?? 0,
         status: 'upcoming',
       }));
 
@@ -156,7 +163,7 @@ const FacultyDashboard = () => {
       setDashboardData({
         stats: {
           assignedCourses,
-          totalStudents: attendance.length || grades.length || 0,
+          totalStudents,
           pendingGrades,
           attendanceRate: Number(attendanceRate),
         },

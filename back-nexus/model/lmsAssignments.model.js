@@ -164,20 +164,52 @@ const LMSAssignments = {
           ELSE COALESCE(las.file_name, '')
         END as file_name
       FROM lms_assignments la
-      INNER JOIN enrollments e ON la.course_id = e.course_id 
-        AND la.academic_period_id = e.period_id
       LEFT JOIN courses c ON la.course_id = c.course_id
       LEFT JOIN sections s ON la.section_id = s.section_id
       LEFT JOIN users u ON la.faculty_id = u.user_id
       LEFT JOIN lms_assignment_submissions las ON la.id = las.assignment_id AND las.student_id = ?
       LEFT JOIN users grader ON las.graded_by = grader.user_id
-      WHERE e.student_id = ? 
-        AND e.period_id = ? 
-        AND e.status = 'Enrolled'
+      WHERE la.academic_period_id = ?
         AND la.status = 'active'
+        AND EXISTS (
+          SELECT 1
+          FROM enrollments e
+          INNER JOIN sections enrolled_section ON e.section_id = enrolled_section.section_id
+          LEFT JOIN courses enrolled_course ON e.course_id = enrolled_course.course_id
+          LEFT JOIN sections assignment_section ON la.section_id = assignment_section.section_id
+          WHERE e.student_id = ?
+            AND e.period_id = la.academic_period_id
+            AND e.status = 'Enrolled'
+            AND (
+              (la.section_id IS NULL AND (
+                e.course_id = la.course_id
+                OR (
+                  LOWER(TRIM(enrolled_course.code)) = LOWER(TRIM(c.code))
+                  AND LOWER(TRIM(enrolled_course.title)) = LOWER(TRIM(c.title))
+                )
+              ))
+              OR (
+                la.section_id IS NOT NULL
+                AND (
+                  e.section_id = la.section_id
+                  OR (
+                    enrolled_section.section_name = assignment_section.section_name
+                    AND COALESCE(enrolled_section.program_id, 0) = COALESCE(assignment_section.program_id, 0)
+                  )
+                )
+                AND (
+                  e.course_id = la.course_id
+                  OR (
+                    LOWER(TRIM(enrolled_course.code)) = LOWER(TRIM(c.code))
+                    AND LOWER(TRIM(enrolled_course.title)) = LOWER(TRIM(c.title))
+                  )
+                )
+              )
+            )
+        )
       ORDER BY la.due_date ASC
     `;
-    const [rows] = await db.query(query, [student_id, student_id, academic_period_id]);
+    const [rows] = await db.query(query, [student_id, academic_period_id, student_id]);
     return rows;
   },
 

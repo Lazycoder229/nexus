@@ -238,6 +238,21 @@ const StudentLMS = () => {
     } catch (error) {
       console.error("Error downloading lesson file:", error);
       window.open(resolvedUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    // Count one download per student and material. The backend uses the
+    // material/student pair as a unique key, so repeat downloads do not
+    // inflate the faculty card count.
+    if (lesson.lesson_id && studentId) {
+      try {
+        await axios.post(`${API_BASE}/api/lms/materials/track-view`, {
+          material_id: lesson.lesson_id,
+          student_id: studentId,
+        });
+      } catch (error) {
+        console.error("Error tracking lesson download:", error);
+      }
     }
   };
 
