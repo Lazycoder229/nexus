@@ -34,6 +34,12 @@ const getCurrentAcademicPeriodId = async () => {
   }
 };
 
+const getAssignmentCourseKey = (assignment) => [
+  String(assignment.course_code || "").trim().toLowerCase(),
+  String(assignment.course_title || "").trim().toLowerCase(),
+  String(assignment.program_id || assignment.program_code || assignment.program_name || "").trim().toLowerCase(),
+].join("|");
+
 const LMSMaterials = () => {
   const [materials, setMaterials] = useState([]);
   const [assignments, setAssignments] = useState([]);
@@ -41,6 +47,7 @@ const LMSMaterials = () => {
   const [loading, setLoading] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [editingMaterial, setEditingMaterial] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -57,6 +64,8 @@ const LMSMaterials = () => {
     file_size: "",
     section_id: "",
     course_id: "",
+    program_id: "",
+    course_key: "",
     academic_period_id: "",
   });
 
@@ -191,20 +200,19 @@ const LMSMaterials = () => {
         academic_period_id: formData.academic_period_id,
       };
 
-      const response = await axios.post(
-        `${API_BASE}/api/lms/materials`,
-        materialData,
-      );
+      const response = editingMaterial
+        ? await axios.put(`${API_BASE}/api/lms/materials/${editingMaterial.id}`, materialData)
+        : await axios.post(`${API_BASE}/api/lms/materials`, materialData);
 
       if (response.data.success) {
-        toast.success("Material uploaded successfully!");
+        toast.success(editingMaterial ? "Material updated successfully!" : "Material uploaded successfully!");
         setShowUploadModal(false);
         resetForm();
         fetchMaterials();
       }
     } catch (error) {
-      console.error("Error uploading material:", error);
-      toast.error("Failed to upload material");
+      console.error(editingMaterial ? "Error updating material:" : "Error uploading material:", error);
+      toast.error(error.response?.data?.message || (editingMaterial ? "Failed to update material" : "Failed to upload material"));
     } finally {
       setLoading(false);
     }
@@ -232,6 +240,7 @@ const LMSMaterials = () => {
   };
 
   const resetForm = () => {
+    setEditingMaterial(null);
     setFormData({
       title: "",
       description: "",
@@ -241,8 +250,33 @@ const LMSMaterials = () => {
       file_size: "",
       section_id: "",
       course_id: "",
+      program_id: "",
+      course_key: "",
       academic_period_id: "",
     });
+  };
+
+  const handleEdit = (material) => {
+    const assignment = assignments.find((item) =>
+      String(item.course_id) === String(material.course_id)
+        && String(item.section_id) === String(material.section_id)
+        && (!item.academic_period_id || String(item.academic_period_id) === String(material.academic_period_id)),
+    );
+    setEditingMaterial(material);
+    setFormData({
+      title: material.title || "",
+      description: material.description || "",
+      material_type: material.material_type || "document",
+      file_url: material.file_url || "",
+      file_name: material.file_name || "",
+      file_size: material.file_size || "",
+      section_id: String(material.section_id || ""),
+      course_id: String(material.course_id || ""),
+      program_id: String(assignment?.program_id || ""),
+      course_key: assignment ? getAssignmentCourseKey(assignment) : "",
+      academic_period_id: String(material.academic_period_id || ""),
+    });
+    setShowUploadModal(true);
   };
 
   const getFileIcon = (type) => {
@@ -270,6 +304,11 @@ const LMSMaterials = () => {
       filterType === "all" || material.material_type === filterType;
     return matchesSearch && matchesFilter;
   });
+  const editingAssignment = editingMaterial && assignments.find((item) =>
+    String(item.course_id) === String(editingMaterial.course_id)
+      && String(item.section_id) === String(editingMaterial.section_id)
+      && (!item.academic_period_id || String(item.academic_period_id) === String(editingMaterial.academic_period_id)),
+  );
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -377,12 +416,24 @@ const LMSMaterials = () => {
                     <Eye className="w-4 h-4" />
                     View
                   </button>
-                 <button
-  onClick={() => setDeleteTarget(material)}
-  className="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition"
->
-  <Trash2 className="w-4 h-4" />
-</button>
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(material)}
+                    className="bg-amber-50 text-amber-700 px-4 py-2 rounded-lg hover:bg-amber-100 transition"
+                    title="Edit learning material"
+                    aria-label={`Edit ${material.title}`}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(material)}
+                    className="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition"
+                    title="Delete learning material"
+                    aria-label={`Delete ${material.title}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -402,7 +453,7 @@ const LMSMaterials = () => {
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
               <h2 className="text-2xl font-bold text-gray-900">
-                Upload Learning Material
+                {editingMaterial ? "Edit Learning Material" : "Upload Learning Material"}
               </h2>
               <button
                 onClick={() => {
@@ -510,25 +561,30 @@ const LMSMaterials = () => {
                   </label>
                   <select
                     name="course_id"
-                    value={formData.course_id}
+                    value={formData.course_key}
                     onChange={(e) => {
-                      handleInputChange(e);
-                      setFormData((prev) => ({ ...prev, section_id: "" }));
+                      setFormData((prev) => ({
+                        ...prev,
+                        course_id: "",
+                        program_id: "",
+                        course_key: e.target.value,
+                        section_id: "",
+                      }));
                     }}
-                    required
+                    required={!editingMaterial || Boolean(editingAssignment)}
+                    disabled={Boolean(editingMaterial && !editingAssignment)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">Select Course</option>
-                    {[
-                      ...new Map(
-                        assignments.map((item) => [item.course_id, item]),
-                      ).values(),
-                    ].map((assignment) => (
+                    {[...new Map(assignments.map((item) => [getAssignmentCourseKey(item), item])).values()].map((assignment) => (
                       <option
-                        key={assignment.course_id}
-                        value={assignment.course_id}
+                        key={getAssignmentCourseKey(assignment)}
+                        value={getAssignmentCourseKey(assignment)}
                       >
                         {assignment.course_code} - {assignment.course_title}
+                        {assignment.program_code || assignment.program_name
+                          ? ` (${assignment.program_code || assignment.program_name})`
+                          : ""}
                       </option>
                     ))}
                   </select>
@@ -541,19 +597,30 @@ const LMSMaterials = () => {
                   <select
                     name="section_id"
                     value={formData.section_id}
-                    onChange={handleInputChange}
-                    required
-                    disabled={!formData.course_id}
+                    onChange={(e) => {
+                      const selected = assignments.find((a) =>
+                        getAssignmentCourseKey(a) === formData.course_key
+                          && String(a.section_id) === String(e.target.value),
+                      );
+                      setFormData((prev) => ({
+                        ...prev,
+                        section_id: e.target.value,
+                        course_id: selected ? String(selected.course_id) : "",
+                        program_id: selected?.program_id ? String(selected.program_id) : "",
+                      }));
+                    }}
+                    required={!editingMaterial || Boolean(editingAssignment)}
+                    disabled={!formData.course_key || Boolean(editingMaterial && !editingAssignment)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
                   >
                     <option value="">Select Section</option>
                     {assignments
                       .filter(
-                        (a) => a.course_id === parseInt(formData.course_id),
+                        (a) => getAssignmentCourseKey(a) === formData.course_key,
                       )
                       .map((assignment) => (
                         <option
-                          key={assignment.section_id}
+                          key={`${assignment.section_id}:${assignment.course_id}`}
                           value={assignment.section_id}
                         >
                           {assignment.section}
@@ -602,7 +669,7 @@ const LMSMaterials = () => {
                   disabled={loading || uploadingFile}
                   className="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition disabled:bg-gray-400"
                 >
-                  {uploadingFile ? "Uploading file..." : loading ? "Uploading..." : "Upload Material"}
+                  {uploadingFile ? "Uploading file..." : loading ? (editingMaterial ? "Saving..." : "Uploading...") : editingMaterial ? "Save Changes" : "Upload Material"}
                 </button>
               </div>
             </form>

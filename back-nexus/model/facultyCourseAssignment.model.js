@@ -30,6 +30,7 @@ const FacultyCourseAssignment = {
                 u.last_name, NULLIF(TRIM(u.suffix), '')) AS faculty_name,
               u.first_name, u.middle_name, u.last_name, u.suffix, ed.employee_id,
               c.code as course_code, c.title as course_title, c.units,
+              p.program_id, p.code AS program_code, p.name AS program_name,
               COALESCE(p.department_id, c.department_id) AS department_id,
               CONCAT_WS(' ', dh.first_name,
                 CASE WHEN NULLIF(TRIM(dh.middle_name), '') IS NULL THEN NULL

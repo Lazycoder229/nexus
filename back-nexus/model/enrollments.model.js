@@ -135,7 +135,9 @@ export const getEnrollmentsByStudent = async (studentId) => {
      JOIN academic_periods ap ON e.period_id = ap.period_id
      LEFT JOIN sections s ON e.section_id = s.section_id
      LEFT JOIN faculty_course_assignments fca 
-       ON e.course_id = fca.course_id AND e.period_id = fca.academic_period_id
+       ON e.course_id = fca.course_id
+      AND e.period_id = fca.academic_period_id
+      AND LOWER(TRIM(fca.section)) = LOWER(TRIM(s.section_name))
      LEFT JOIN faculty_assignment_schedules fas ON fca.assignment_id = fas.assignment_id
      LEFT JOIN users fu ON fca.faculty_user_id = fu.user_id
      WHERE e.student_id = ?

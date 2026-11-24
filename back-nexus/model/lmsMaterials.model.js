@@ -91,16 +91,40 @@ const LMSMaterials = {
         CONCAT(u.first_name, ' ', u.last_name) as faculty_name,
         CASE WHEN lmv.id IS NOT NULL THEN 1 ELSE 0 END as is_viewed
       FROM lms_materials lm
-      INNER JOIN enrollments e ON lm.course_id = e.course_id 
-        AND lm.academic_period_id = e.period_id
       LEFT JOIN courses c ON lm.course_id = c.course_id
       LEFT JOIN sections s ON lm.section_id = s.section_id
       LEFT JOIN users u ON lm.faculty_id = u.user_id
       LEFT JOIN lms_material_views lmv ON lm.id = lmv.material_id AND lmv.student_id = ?
-      WHERE e.student_id = ? 
-        AND e.period_id = ? 
-        AND e.status = 'Enrolled'
-        AND (lm.section_id IS NULL OR lm.section_id = e.section_id)
+      WHERE EXISTS (
+        SELECT 1
+        FROM enrollments e
+        INNER JOIN sections enrolled_section ON e.section_id = enrolled_section.section_id
+        LEFT JOIN courses enrolled_course ON e.course_id = enrolled_course.course_id
+        LEFT JOIN sections material_section ON lm.section_id = material_section.section_id
+        WHERE e.student_id = ?
+          AND e.period_id = ?
+          AND e.status = 'Enrolled'
+          AND (
+            (lm.section_id IS NULL AND lm.course_id = e.course_id)
+            OR (
+              lm.section_id IS NOT NULL
+              AND (
+                lm.section_id = e.section_id
+                OR (
+                  material_section.section_name = enrolled_section.section_name
+                  AND COALESCE(material_section.program_id, 0) = COALESCE(enrolled_section.program_id, 0)
+                )
+              )
+              AND (
+                lm.course_id = e.course_id
+                OR (
+                  LOWER(TRIM(c.code)) = LOWER(TRIM(enrolled_course.code))
+                  AND LOWER(TRIM(c.title)) = LOWER(TRIM(enrolled_course.title))
+                )
+              )
+            )
+          )
+      )
       ORDER BY lm.created_at DESC
     `;
 
