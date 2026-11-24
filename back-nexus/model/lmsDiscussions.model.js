@@ -93,21 +93,53 @@ const LMSDiscussions = {
         COUNT(DISTINCT ldr.id) as reply_count,
         MAX(ldr.created_at) as last_reply_at
       FROM lms_discussions ld
-      INNER JOIN enrollments e ON ld.course_id = e.course_id 
-        AND ld.academic_period_id = e.period_id
       LEFT JOIN courses c ON ld.course_id = c.course_id
       LEFT JOIN sections s ON ld.section_id = s.section_id
       LEFT JOIN users u ON ld.faculty_id = u.user_id
       LEFT JOIN lms_discussion_replies ldr ON ld.id = ldr.discussion_id
-      WHERE e.student_id = ? 
-        AND e.period_id = ? 
-        AND e.status = 'Enrolled'
+      WHERE ld.academic_period_id = ?
         AND ld.status = 'active'
+        AND EXISTS (
+          SELECT 1
+          FROM enrollments e
+          INNER JOIN sections enrolled_section ON e.section_id = enrolled_section.section_id
+          LEFT JOIN courses enrolled_course ON e.course_id = enrolled_course.course_id
+          LEFT JOIN sections discussion_section ON ld.section_id = discussion_section.section_id
+          WHERE e.student_id = ?
+            AND e.period_id = ld.academic_period_id
+            AND e.status = 'Enrolled'
+            AND (
+              (ld.section_id IS NULL AND (
+                e.course_id = ld.course_id
+                OR (
+                  LOWER(TRIM(enrolled_course.code)) = LOWER(TRIM(c.code))
+                  AND LOWER(TRIM(enrolled_course.title)) = LOWER(TRIM(c.title))
+                )
+              ))
+              OR (
+                ld.section_id IS NOT NULL
+                AND (
+                  e.section_id = ld.section_id
+                  OR (
+                    enrolled_section.section_name = discussion_section.section_name
+                    AND COALESCE(enrolled_section.program_id, 0) = COALESCE(discussion_section.program_id, 0)
+                  )
+                )
+                AND (
+                  e.course_id = ld.course_id
+                  OR (
+                    LOWER(TRIM(enrolled_course.code)) = LOWER(TRIM(c.code))
+                    AND LOWER(TRIM(enrolled_course.title)) = LOWER(TRIM(c.title))
+                  )
+                )
+              )
+            )
+        )
       GROUP BY ld.id
       ORDER BY ld.is_pinned DESC, ld.created_at DESC
     `;
 
-    const [rows] = await db.query(query, [student_id, academic_period_id]);
+    const [rows] = await db.query(query, [academic_period_id, student_id]);
     return rows;
   },
 

@@ -3,7 +3,7 @@ import axios from "axios";
 import Select from "react-select";
 import * as XLSX from "xlsx-js-style";
 import { unzipSync, zipSync } from "fflate";
-import { Download, Save, Upload, Award, Plus } from "lucide-react";
+import { Download, Save, Upload, Award, Plus, Minus } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -431,20 +431,21 @@ export default function BCCGradeEncoding() {
   const [lmsSyncVersion, setLmsSyncVersion] = useState(0);
   const savingRowsRef = useRef(new Set());
   const facultyUserId = localStorage.getItem("userId") || localStorage.getItem("user_id") || sessionStorage.getItem("userId");
+  const columnSettingsKey = selectedAssignmentKey || courseId;
 
   useEffect(() => {
     if (!courseId || !periodId) return;
     try {
-      const saved = JSON.parse(localStorage.getItem(`bcc-grade-max:${courseId}:${periodId}`) || "null");
+      const saved = JSON.parse(localStorage.getItem(`bcc-grade-max:${columnSettingsKey}:${periodId}`) || "null");
       // Only counts recorded by the explicit Add column button should extend
       // the three default slots. Ignore the legacy count that included LMS items.
-      const savedColumnCount = Number(localStorage.getItem(`bcc-grade-manual-quiz-count-v3:${courseId}:${periodId}`));
+      const savedColumnCount = Number(localStorage.getItem(`bcc-grade-manual-quiz-count-v3:${columnSettingsKey}:${periodId}`));
       const count = Math.max(DEFAULT_QUIZ_COUNT, Number.isInteger(savedColumnCount) ? savedColumnCount : DEFAULT_QUIZ_COUNT);
       setQuizCount(count);
       const savedQuizMaxima = Array.from({ length: count }, (_, index) => saved?.quizzes?.[index] ?? 10);
       setMaxScores(saved ? { ...DEFAULT_MAX_SCORES, ...saved, quizzes: savedQuizMaxima } : DEFAULT_MAX_SCORES);
     } catch { setQuizCount(DEFAULT_QUIZ_COUNT); setMaxScores(DEFAULT_MAX_SCORES); }
-  }, [courseId, periodId]);
+  }, [courseId, columnSettingsKey, periodId]);
 
   useEffect(() => {
     const load = async () => {
@@ -601,6 +602,14 @@ export default function BCCGradeEncoding() {
         });
         const activities = (response.data?.assignments || [])
           .filter((item) => String(item.course_id) === String(courseId)
+            && (() => {
+              const itemSectionId = item.section_id == null ? "" : String(item.section_id);
+              const selectedSectionId = selectedCourse?.sectionId == null ? "" : String(selectedCourse.sectionId);
+              if (itemSectionId && selectedSectionId) return itemSectionId === selectedSectionId;
+              const itemSection = normalizeSectionName(item.section_name || item.section);
+              const selectedSection = normalizeSectionName(selectedCourse?.section);
+              return !itemSection || !selectedSection || itemSection === selectedSection;
+            })()
             && ["assignment", "quiz"].includes(String(item.assignment_type || "assignment").toLowerCase()))
           .sort((a, b) => new Date(a.due_date || a.created_at || 0) - new Date(b.due_date || b.created_at || 0));
         const activitiesWithScores = await Promise.all(activities.map(async (item) => {
@@ -642,7 +651,7 @@ export default function BCCGradeEncoding() {
     };
     loadLmsActivities();
     return () => { cancelled = true; };
-  }, [courseId, periodId]);
+  }, [courseId, periodId, selectedCourse?.sectionId, selectedCourse?.section]);
 
   useEffect(() => {
     if (!courseId || !periodId || !courseStudents.length) { setRows({}); setEntryIds({}); setLocked({}); return; }
@@ -734,19 +743,31 @@ export default function BCCGradeEncoding() {
   const addQuizColumn = () => {
     const nextCount = quizCount + 1;
     setQuizCount(nextCount);
-    if (courseId && periodId) localStorage.setItem(`bcc-grade-manual-quiz-count-v3:${courseId}:${periodId}`, String(nextCount));
+    if (courseId && periodId) localStorage.setItem(`bcc-grade-manual-quiz-count-v3:${columnSettingsKey}:${periodId}`, String(nextCount));
     setMaxScores((prev) => {
       const next = { ...prev, quizzes: [...prev.quizzes, 10] };
-      if (courseId && periodId) localStorage.setItem(`bcc-grade-max:${courseId}:${periodId}`, JSON.stringify(next));
+      if (courseId && periodId) localStorage.setItem(`bcc-grade-max:${columnSettingsKey}:${periodId}`, JSON.stringify(next));
       return next;
     });
     setRows((prev) => Object.fromEntries(Object.entries(prev).map(([id, row]) => [id, { ...row, quizzes: [...row.quizzes, ""] }])));
+  };
+  const removeQuizColumn = () => {
+    if (quizCount <= DEFAULT_QUIZ_COUNT) return;
+    const nextCount = quizCount - 1;
+    setQuizCount(nextCount);
+    if (courseId && periodId) localStorage.setItem(`bcc-grade-manual-quiz-count-v3:${columnSettingsKey}:${periodId}`, String(nextCount));
+    setMaxScores((prev) => {
+      const next = { ...prev, quizzes: prev.quizzes.slice(0, nextCount) };
+      if (courseId && periodId) localStorage.setItem(`bcc-grade-max:${columnSettingsKey}:${periodId}`, JSON.stringify(next));
+      return next;
+    });
+    setRows((prev) => Object.fromEntries(Object.entries(prev).map(([id, row]) => [id, { ...row, quizzes: row.quizzes.slice(0, nextCount) }])));
   };
   const updateMax = (key, index, value) => setMaxScores((prev) => {
     const next = key === "quizzes"
       ? { ...prev, quizzes: prev.quizzes.map((max, i) => i === index ? (value === "" ? "" : Math.max(1, Number(value))) : max) }
       : { ...prev, [key]: value === "" ? "" : Math.max(1, Number(value)) };
-    if (courseId && periodId) localStorage.setItem(`bcc-grade-max:${courseId}:${periodId}`, JSON.stringify(next));
+    if (courseId && periodId) localStorage.setItem(`bcc-grade-max:${columnSettingsKey}:${periodId}`, JSON.stringify(next));
     return next;
   });
 
@@ -1118,7 +1139,7 @@ export default function BCCGradeEncoding() {
         ? { quizzes: [Number(maxRow[2]) || 10, Number(maxRow[3]) || 10, Number(maxRow[4]) || 10], performance: Number(maxRow[8]) || 100, attendance: Number(maxRow[11]) || 100, project: Number(maxRow[14]) || 100, prelim: Number(maxRow[16]) || 60, midterm: Number(maxRow[19]) || 20, finals: Number(maxRow[22]) || 60 }
         : { quizzes: [Number(maxRow[3]) || 10, Number(maxRow[4]) || 10, Number(maxRow[5]) || 10], performance: Number(maxRow[9]) || 100, attendance: Number(maxRow[11]) || 100, project: Number(maxRow[14]) || 100, prelim: Number(maxRow[16]) || 60, midterm: Number(maxRow[19]) || 20, finals: Number(maxRow[22]) || 60 };
       setMaxScores(importedMaxScores);
-      if (courseId && periodId) localStorage.setItem(`bcc-grade-max:${courseId}:${periodId}`, JSON.stringify(importedMaxScores));
+      if (courseId && periodId) localStorage.setItem(`bcc-grade-max:${columnSettingsKey}:${periodId}`, JSON.stringify(importedMaxScores));
       data.slice(headerIndex + 2).forEach((line, rowIndex) => {
         const name = String(line[0] || "").trim().toLowerCase(); if (!name) return;
         const student = isAppExport
@@ -1211,7 +1232,7 @@ export default function BCCGradeEncoding() {
             <th colSpan="2" className="border px-2 py-2 bg-stone-200">REMOVAL</th>
           </tr>
           <tr>
-            <th colSpan={totalQuizCount + 3} className="border px-2 py-2 bg-blue-100">Quizzes / Activities 10% <button type="button" onClick={addQuizColumn} className="ml-2 inline-flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-white"><Plus size={13} /> Add column</button>{lmsActivities.length > Object.keys(lmsActivitySlots).length && <span className="ml-2 text-xs font-normal text-amber-800">{lmsActivities.length - Object.keys(lmsActivitySlots).length} LMS item(s) did not fit in the {quizCount} available columns; only blank columns are used.</span>}</th>
+            <th colSpan={totalQuizCount + 3} className="border px-2 py-2 bg-blue-100">Quizzes / Activities 10% <button type="button" onClick={addQuizColumn} aria-label="Add column" title="Add column" className="ml-2 inline-flex items-center justify-center rounded bg-blue-600 p-1.5 text-white"><Plus size={15} /></button><button type="button" onClick={removeQuizColumn} disabled={quizCount <= DEFAULT_QUIZ_COUNT} aria-label="Remove column" title="Remove column" className="ml-1 inline-flex items-center justify-center rounded bg-rose-600 p-1.5 text-white disabled:cursor-not-allowed disabled:opacity-50"><Minus size={15} /></button>{lmsActivities.length > Object.keys(lmsActivitySlots).length && <span className="ml-2 text-xs font-normal text-amber-800">{lmsActivities.length - Object.keys(lmsActivitySlots).length} LMS item(s) did not fit in the {quizCount} available columns; only blank columns are used.</span>}</th>
             <th colSpan="2" className="border px-2 py-2 bg-emerald-100">Performance 10%</th>
             <th colSpan="2" className="border px-2 py-2 bg-amber-100">Attendance 10%</th>
             <th rowSpan="2" className="border px-2 py-2 bg-blue-200"><span className="[writing-mode:vertical-rl] rotate-180">Class Standing 30%</span></th>

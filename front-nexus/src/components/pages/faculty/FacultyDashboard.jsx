@@ -187,7 +187,7 @@ const FacultyDashboard = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
         <StatCard
           title="Assigned Courses"
           value={dashboardData.stats.assignedCourses}
@@ -211,14 +211,6 @@ const FacultyDashboard = () => {
           color="bg-yellow-500"
           detail="Require your action"
           trend={-15}
-        />
-        <StatCard
-          title="Attendance Rate"
-          value={`${dashboardData.stats.attendanceRate}%`}
-          icon={CalendarCheck}
-          color="bg-purple-500"
-          detail="Average across classes"
-          trend={3}
         />
       </div>
 
